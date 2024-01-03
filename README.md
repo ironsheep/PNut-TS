@@ -6,7 +6,25 @@
 [![Release][Release-shield]](https://github.com/ironsheep/Pnut_ts_dev/releases) 
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut_ts_dev/issues)
 
-A joint project with Chip Gracey and Stephen M Moraco.
+A joint project between Chip Gracey and Stephen M Moraco. 
+We are re-implemting PNut in a platform agnostic language.
+
+**Simplified project goals**: 
+
+- Replace all use of Delphi/Pascal, x86 assembly, and SmallBASIC with pure typescript.
+- Still is a command line tool (command line options may be slightly different)
+- Omit editor component - is compiler only
+- Also Provides downloader command line tool
+- More -TBA-
+
+**Question**?  This will be both P1 and P2 compiler, right?
+
+PNut source is current found in a Parallax Repo [P2_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public)
+
+
+### Repository Configuration
+
+This project is configured to run in a docker instance. Docker is essentially a way to run stuff in a local sandboxed environment. The environment is specified by a docker image, and its main component is a snapshot of all files that are needed to run.
 
 
 
