@@ -25,7 +25,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-*.swp
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -166,6 +165,9 @@ cython_debug/
 # npm/node stuff
 node_modules/
 
+# vi Editor
+*.swp
+
 # .vscode stuff
 .history/
 
@@ -183,4 +185,3 @@ alias.sh
 
 HOLD/
 *.tar.gz
-

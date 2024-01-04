@@ -3,8 +3,8 @@
 
 ![Project Maintenance][maintenance-shield]
 [![License][license-shield]](LICENSE) 
-[![Release][Release-shield]](https://github.com/ironsheep/Pnut_ts_dev/releases) 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut_ts_dev/issues)
+[![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases) 
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
 
 A joint project between Chip Gracey and Stephen M Moraco. 
 We are re-implemting PNut in a platform agnostic language.
@@ -55,6 +55,6 @@ Follow these links for more information:
 
 [license-shield]: https://camo.githubusercontent.com/bc04f96d911ea5f6e3b00e44fc0731ea74c8e1e9/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f6c6963656e73652f69616e74726963682f746578742d646976696465722d726f772e7376673f7374796c653d666f722d7468652d6261646765
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut_ts_dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut_ts_dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
