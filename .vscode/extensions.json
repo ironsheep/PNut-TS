@@ -1,0 +1,16 @@
+{
+    "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "oouo-diogo-perdigao.docthis",
+        "peterschmalfeldt.explorer-exclude",
+        "bierner.github-markdown-preview",
+        "donjayamanne.githistory",
+        "mhutchie.git-graph",
+        "ms-vscode.hexeditor",
+        "ironsheepproductionsllc.spin2",
+        "nataliemclaren.typescript-docs",
+        "loiane.ts-extension-pack",
+        "gruntfuggly.todo-tree"
+    ]
+}
