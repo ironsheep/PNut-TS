@@ -66,6 +66,7 @@ export class PNutInTypeScript {
     if (this.options.compile) {
       this.verboseMsg(`Compiling file [${filename}]`);
     }
+    console.log('\n');
 
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
