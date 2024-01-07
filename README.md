@@ -1,4 +1,4 @@
-# PNut for Windows - A reimplementation in TypeScript
+# PNut reimplementation in TypeScript (PNut-TS)
 
 ![Project Maintenance][maintenance-shield]
 [![License][license-shield]](LICENSE)
@@ -6,7 +6,7 @@
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
 
 A joint project between Chip Gracey and Stephen M Moraco.
-We are re-implemting PNut in a platform agnostic language.
+We are re-implemting Pnut for Windows in a platform agnostic language.
 
 **Simplified project goals**:
 
@@ -24,7 +24,7 @@ PNut source is current found in a Parallax Repo [P2_PNut_Public](https://github.
 
 This project is configured to run in a docker instance. Docker is essentially a way to run stuff in a local sandboxed environment. The environment is specified by a docker image, and its main component is a snapshot of all files that are needed to run.
 
-Linting and formatting of TypeScript is setup usong Prettier formatter and ESLint.
+Linting and formatting of TypeScript is setup usong **Prettier** formatter and **ESLint**.
 See [How to use Prettier with ESLint and TypeScript in VSCode](https://khalilstemmler.com/blogs/tooling/prettier/)
 
 ---
