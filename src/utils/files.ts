@@ -20,7 +20,7 @@ export function workingDir(): string {
 
 /**
  * Loads a Spin2 file into memory.
- * NOTE: The local directory is searched first then the built-in library is searched
+ * NOTE: The local directory is searched first then the built-in library path is searched
  * @param {string} filename - The name of the Spin2 file to load.
  * @returns {SpinDocument} A SpinDocument object representing the loaded Spin2 file.
  * @throws {Error} If the file does not exist or cannot be read.

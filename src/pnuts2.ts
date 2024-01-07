@@ -2,9 +2,19 @@
 /** @format */
 
 // src/pnuts.ts
-
 'use strict';
 import { Command, type OptionValues } from 'commander';
+import { logMessage } from './classes/Log';
+
+// NOTEs re-stdio in js/ts
+// REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
+
+// expose our installation path
+// REF: https://stackoverflow.com/questions/32944714/best-way-to-find-the-location-of-a-specific-file-within-a-node-dependency
+// can then get by:
+//  var assets = require('foo');
+//  fs.readFile(assets.root + '/bar.png', function(){/*whatever*/});
+module.exports.root = __dirname;
 
 export class PNutInTypeScript {
   private readonly program = new Command();
@@ -39,7 +49,7 @@ export class PNutInTypeScript {
     this.options = { ...this.options, ...this.program.opts() };
     const filename: string = this.options.filename;
     if (filename !== undefined && filename !== '') {
-      console.log(`Working with file [${filename}]`);
+      logMessage(`Working with file [${filename}]`);
     } else {
       // this.warningMsg('Missing filename argument');
     }
@@ -66,7 +76,7 @@ export class PNutInTypeScript {
     if (this.options.compile) {
       this.verboseMsg(`Compiling file [${filename}]`);
     }
-    console.log('\n');
+    logMessage('\n');
 
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
@@ -76,16 +86,16 @@ export class PNutInTypeScript {
 
   private verboseMsg(msg: string): void {
     if (this.options?.verbose) {
-      console.log(`${this.program.name()}: Verbose- ${msg}`);
+      logMessage(`${this.program.name()}: Verbose- ${msg}`);
     }
   }
 
   private warningMsg(msg: string): void {
-    console.log(`${this.program.name()}: WARNING- ${msg}`);
+    logMessage(`${this.program.name()}: WARNING- ${msg}`);
   }
 
   private progressMsg(msg: string): void {
-    console.log(`${this.program.name()}: ${msg}`);
+    logMessage(`${this.program.name()}: ${msg}`);
   }
 }
 
