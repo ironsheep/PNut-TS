@@ -1,6 +1,6 @@
 # Change Log
 
-All notable changes to the "spin2 syntax highlighting & code navigation" extension are documented in this file.
+All notable changes to the "PNut - A reimplementation in TypeScript" are documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for reminders on how to structure this file. Also, note that our version numbering adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
