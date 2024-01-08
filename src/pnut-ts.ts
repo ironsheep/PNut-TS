@@ -4,7 +4,8 @@
 // src/pnuts.ts
 'use strict';
 import { Command, type OptionValues } from 'commander';
-import { logMessage } from './classes/Log';
+import { Logger } from './classes/Log';
+import { Context, createContext } from './utils/context';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -20,6 +21,7 @@ export class PNutInTypeScript {
   private readonly program = new Command();
   private options: OptionValues = this.program.opts();
   private argsArray: string[] = [];
+  private context: Context = createContext();
 
   // constructor() {}
 
@@ -29,7 +31,7 @@ export class PNutInTypeScript {
 
   public run(): number {
     this.program
-      .name('PnuTS')
+      .name('Pnut-TS')
       .version('0.0.0', '-V, --version', 'output the version number')
       .usage('[optons] filename')
       .description('Propeller2 spin compiler/downloader')
@@ -49,7 +51,7 @@ export class PNutInTypeScript {
     this.options = { ...this.options, ...this.program.opts() };
     const filename: string = this.options.filename;
     if (filename !== undefined && filename !== '') {
-      logMessage(`Working with file [${filename}]`);
+      this.context.logger.logMessage(`Working with file [${filename}]`);
     } else {
       // this.warningMsg('Missing filename argument');
     }
@@ -76,7 +78,7 @@ export class PNutInTypeScript {
     if (this.options.compile) {
       this.verboseMsg(`Compiling file [${filename}]`);
     }
-    logMessage('\n');
+    this.context.logger.logMessage('\n');
 
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
@@ -86,16 +88,16 @@ export class PNutInTypeScript {
 
   private verboseMsg(msg: string): void {
     if (this.options?.verbose) {
-      logMessage(`${this.program.name()}: Verbose- ${msg}`);
+      this.context.logger.logMessage(`${this.program.name()}: Verbose- ${msg}`);
     }
   }
 
   private warningMsg(msg: string): void {
-    logMessage(`${this.program.name()}: WARNING- ${msg}`);
+    this.context.logger.logMessage(`${this.program.name()}: WARNING- ${msg}`);
   }
 
   private progressMsg(msg: string): void {
-    logMessage(`${this.program.name()}: ${msg}`);
+    this.context.logger.logMessage(`${this.program.name()}: ${msg}`);
   }
 }
 

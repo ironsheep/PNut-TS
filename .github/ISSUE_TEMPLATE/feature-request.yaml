@@ -1,5 +1,5 @@
 name: 🎗️ Feature Request
-description: Suggest an idea for improving the PNut TypeScript Implementation
+description: Suggest an idea for improving the Pnut TypeScript Implementation
 labels:
   - enhancement
 
@@ -50,4 +50,4 @@ body:
 
   - type: markdown
     attributes:
-      value: Thank you for taking the time to request this enhancement! By doing so you are helping us make the PNut TypeScript Implementation better
+      value: Thank you for taking the time to request this enhancement! By doing so you are helping us make the Pnut TypeScript Implementation better

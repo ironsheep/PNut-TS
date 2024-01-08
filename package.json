@@ -1,11 +1,11 @@
 {
-  "name": "pnuts",
+  "name": "p2-pnut-ts",
   "version": "0.0.1",
-  "description": "A Parallax Propeller compiler in Typecsript",
-  "main": "dist/pnuts.js",
+  "description": "A Parallax Propeller 2 compiler in Typecsript",
+  "main": "dist/pnut-ts.js",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && dist/pnuts.js",
+    "start": "npm run build && dist/pnut-ts.js",
     "test": "jest",
     "watch": "tsc -b -w",
     "lint": "eslint ./src --ext .ts,.tsx",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ironsheep/P2-vscode-langserv-extension"
+    "url": "https://github.com/ironsheep/Pnut-ts-dev/tree/main"
   },
   "keywords": [
     "cli",

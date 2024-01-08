@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-console */
 /** @format */
 
 // src/pnuts2.test.ts
-import { PNutInTypeScript } from './pnuts2';
+import { PNutInTypeScript } from './pnut-ts';
 import mockConsole from 'jest-mock-console';
 
 describe('PNutInTypeScript', () => {
@@ -17,39 +19,39 @@ describe('PNutInTypeScript', () => {
 
   /*
   test('run function logs correct message for for -V (version) option', () => {
-    process.argv = ['node', 'pnuts2.js', '-V'];
+    process.argv = ['node', 'pnut-ts.js', '-V'];
     const cliTool = new PNutInTypeScript();
-    // cliTool.setArgs(['node', 'pnuts2.js', '-V']);
+    // cliTool.setArgs(['node', 'pnut-ts.js', '-V']);
     expect(() => cliTool.run()).toThrow('0.0.0');
   });
   */
 
   test('run function logs correct message for --debug option', () => {
-    process.argv = ['node', 'pnuts2.js', '--debug'];
+    process.argv = ['node', 'pnut-ts.js', '--debug'];
     const cliTool = new PNutInTypeScript();
-    // cliTool.setArgs(['node', 'pnuts2.js', '--debug']);
+    // cliTool.setArgs(['node', 'pnut-ts.js', '--debug']);
     cliTool.run();
-    expect(console.log).toHaveBeenCalledWith('PnuTS: Compiling with DEBUG');
+    expect(console.log).toHaveBeenCalledWith('Pnut-TS: Compiling with DEBUG');
   });
 
   test('run function logs correct message for --verbose option', () => {
-    process.argv = ['node', 'pnuts2.js', '--verbose'];
+    process.argv = ['node', 'pnut-ts.js', '--verbose'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
-    expect(console.log).toHaveBeenCalledWith('PnuTS: Verbose- Verbose output is on');
+    expect(console.log).toHaveBeenCalledWith('Pnut-TS: Verbose- Verbose output is on');
   });
 
   test('run function logs correct message for --flash option', () => {
-    process.argv = ['node', 'pnuts2.js', '--flash'];
+    process.argv = ['node', 'pnut-ts.js', '--flash'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
-    expect(console.log).toHaveBeenCalledWith('PnuTS: Downloading to FLASH');
+    expect(console.log).toHaveBeenCalledWith('Pnut-TS: Downloading to FLASH');
   });
 
   test('run function logs correct message for --ram option', () => {
-    process.argv = ['node', 'pnuts2.js', '--ram'];
+    process.argv = ['node', 'pnut-ts.js', '--ram'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
-    expect(console.log).toHaveBeenCalledWith('PnuTS: Downloading to RAM');
+    expect(console.log).toHaveBeenCalledWith('Pnut-TS: Downloading to RAM');
   });
 });

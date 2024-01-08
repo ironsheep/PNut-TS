@@ -1,6 +1,6 @@
 /** @format */
 
-// Common file-system operations shares by classes in PnuTS.
+// Common file-system operations shares by classes in Pnut-TS.
 
 // src/classes/spinDocument.ts
 

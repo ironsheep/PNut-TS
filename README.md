@@ -1,4 +1,4 @@
-# PNut reimplementation in TypeScript (PNut-TS)
+# Pnut reimplementation in TypeScript (Pnut-TS)
 
 ![Project Maintenance][maintenance-shield]
 [![License][license-shield]](LICENSE)
@@ -18,7 +18,7 @@ We are re-implemting Pnut for Windows in a platform agnostic language.
 
 **Question**? This will be both P1 and P2 compiler, right?
 
-PNut source is current found in a Parallax Repo [P2_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public)
+Pnut source is current found in a Parallax Repo [P2_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public)
 
 ### Repository Configuration
 

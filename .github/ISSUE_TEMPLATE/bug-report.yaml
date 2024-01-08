@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report an issue you are experiencing with the PNut TypeScript Implementation.
+description: Report an issue you are experiencing with the Pnut TypeScript Implementation.
 labels:
   - bug
 
@@ -25,8 +25,8 @@ body:
     validations:
       required: true
     attributes:
-      label: Version of PNut TypeScript Implementation with the issue
-      description: Please specify which version of PNut TypeScript Implementation you are using, and if this is a regression, what is the last known version that worked?
+      label: Version of Pnut TypeScript Implementation with the issue
+      description: Please specify which version of Pnut TypeScript Implementation you are using, and if this is a regression, what is the last known version that worked?
       placeholder: |
         Failing in v1.4.1, last worked in v1.4.0
 
@@ -84,4 +84,4 @@ body:
 
   - type: markdown
     attributes:
-      value: "Thank you for taking the time to report this issue! By doing so you are helping us make the PNut TypeScript Implementation better."
+      value: 'Thank you for taking the time to report this issue! By doing so you are helping us make the Pnut TypeScript Implementation better.'

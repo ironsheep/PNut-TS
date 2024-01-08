@@ -1,14 +1,13 @@
-# PNut reimplementation in TypeScript (PNut-TS)
+# Pnut reimplementation in TypeScript (Pnut-TS)
 
 ![Project Maintenance][maintenance-shield]
 [![License][license-shield]](LICENSE)
 [![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
 
-
 ## Preprocessor Directives
 
-PNut-TS has a pre-processor that understands a few primitive directives:
+Pnut-TS has a pre-processor that understands a few primitive directives:
 
 - `#define`
 - `#ifdef / #ifndef / #else / #endif`
@@ -39,7 +38,7 @@ If no value is given, e.g.:
 #define BAR
 ```
 
-then the symbol `BAR` is defined as the string `1`.  This is generally useful when symbol presence is being used, not the value.  That is to say that the symbol is being tested by following preprocessor directives and is not exptected to be replacing text within the containing file.
+then the symbol `BAR` is defined as the string `1`. This is generally useful when symbol presence is being used, not the value. That is to say that the symbol is being tested by following preprocessor directives and is not exptected to be replacing text within the containing file.
 
 #### \#ifdef {symbol}
 
@@ -55,7 +54,7 @@ Introduces a conditional compilation section, which is only compiled if the symb
 
 #### \#ifndef {symbol}
 
-Introduces a conditional compilation section, which is only compiled if the symbol after the `#ifndef` is *not* defined.
+Introduces a conditional compilation section, which is only compiled if the symbol after the `#ifndef` is _not_ defined.
 
 #### \#else
 
@@ -90,8 +89,8 @@ Includes a file. The contents of the file are placed in the compilation just as 
 ```
 #include "foo.spin2"
 ```
-Included files are searched for in the same directory as the file that contains the `#include`.
 
+Included files are searched for in the same directory as the file that contains the `#include`.
 
 #### \#warn {msg}
 
@@ -111,23 +110,22 @@ There are several predefined symbols:
 
 This is TBD but here's the placeholder / initial thought...
 
-Symbol           | When Defined
------------------|-------------
-`__propeller__`  | always defined to 1 (for P1) or 2 (for P2)
-`__P1__`         | only defined if compiling for Propeller 1`
-`__P2__`         | only defined if compiling for Propeller 2
-`__propeller2__` | only defined if compiling for Propeller 2
-`__PNUTTS__`     | indicates that the `PNut-TS` compiler is used
-`__PNUTTS_MAJOR__`         | always defined to the PNut-TS major version number (e.g. "5" in 5.9.26)
-`__PNUTTS_MINOR__`         | always defined to the PNut-TS minor version number (e.g. "9" in 5.9.26)
-`__PNUTTS_REV__`           | always defined to the PNut-TS revision number      (e.g. "26" in 5.9.26)
-`__DATE__`       | a string containing the date when compilation was begun
-`__FILE__`       | a string giving the current file being compiled
-`__LINE__`       | the current source line number
-`__TIME__`       | a string containing the time when compilation was begun
-`__VERSION__`    | a string containing the full version of PNut-TS in use
-`__DEBUG__`              | only if debugging is enabled (-g or -gbrk given)
-
+| Symbol             | When Defined                                                            |
+| ------------------ | ----------------------------------------------------------------------- |
+| `__propeller__`    | always defined to 1 (for P1) or 2 (for P2)                              |
+| `__P1__`           | only defined if compiling for Propeller 1`                              |
+| `__P2__`           | only defined if compiling for Propeller 2                               |
+| `__propeller2__`   | only defined if compiling for Propeller 2                               |
+| `__PNUTTS__`       | indicates that the `Pnut-TS` compiler is used                           |
+| `__PNUTTS_MAJOR__` | always defined to the Pnut-TS major version number (e.g. "5" in 5.9.26) |
+| `__PNUTTS_MINOR__` | always defined to the Pnut-TS minor version number (e.g. "9" in 5.9.26) |
+| `__PNUTTS_REV__`   | always defined to the Pnut-TS revision number (e.g. "26" in 5.9.26)     |
+| `__DATE__`         | a string containing the date when compilation was begun                 |
+| `__FILE__`         | a string giving the current file being compiled                         |
+| `__LINE__`         | the current source line number                                          |
+| `__TIME__`         | a string containing the time when compilation was begun                 |
+| `__VERSION__`      | a string containing the full version of Pnut-TS in use                  |
+| `__DEBUG__`        | only if debugging is enabled (-g or -gbrk given)                        |
 
 ---
 
@@ -152,4 +150,3 @@ Follow these links for more information:
 [license-shield]: https://camo.githubusercontent.com/bc04f96d911ea5f6e3b00e44fc0731ea74c8e1e9/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f6c6963656e73652f69616e74726963682f746578742d646976696465722d726f772e7376673f7374796c653d666f722d7468652d6261646765
 [Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
 [Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
-
