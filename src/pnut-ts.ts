@@ -55,49 +55,42 @@ export class PNutInTypeScript {
     } else {
       // this.warningMsg('Missing filename argument');
     }
-    this.verboseMsg('Verbose output is on');
+
+    if (this.options.verbose) {
+      this.context.logger.enabledVerbose();
+    }
 
     if (this.options.both) {
-      this.verboseMsg('have BOTH: enabling FLASH and DEBUG');
+      this.context.logger.verboseMsg('have BOTH: enabling FLASH and DEBUG');
       this.options.debug = true;
       this.options.flash = true;
+      this.options.ram = false;
     }
 
     if (this.options.debug) {
-      this.progressMsg('Compiling with DEBUG');
+      this.context.logger.progressMsg('Compiling with DEBUG');
     }
 
     if (this.options.flash) {
-      this.progressMsg('Downloading to FLASH');
+      this.context.logger.progressMsg('Downloading to FLASH');
     }
 
     if (this.options.ram) {
-      this.progressMsg('Downloading to RAM');
+      this.context.logger.progressMsg('Downloading to RAM');
     }
 
     if (this.options.compile) {
-      this.verboseMsg(`Compiling file [${filename}]`);
+      this.context.logger.verboseMsg(`Compiling file [${filename}]`);
     }
+    this.context.logger.logMessage('\n');
+    this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]\n`);
+    this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]\n`);
     this.context.logger.logMessage('\n');
 
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
     // this.progressMsg('Done');
     return 0;
-  }
-
-  private verboseMsg(msg: string): void {
-    if (this.options?.verbose) {
-      this.context.logger.logMessage(`${this.program.name()}: Verbose- ${msg}`);
-    }
-  }
-
-  private warningMsg(msg: string): void {
-    this.context.logger.logMessage(`${this.program.name()}: WARNING- ${msg}`);
-  }
-
-  private progressMsg(msg: string): void {
-    this.context.logger.logMessage(`${this.program.name()}: ${msg}`);
   }
 }
 
