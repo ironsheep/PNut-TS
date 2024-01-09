@@ -16,8 +16,8 @@ export interface Context {
 
 export function createContext(): Context {
   return {
-    libraryFolder: path.join(__dirname, '../lib'),
-    currentFolder: path.dirname('.'),
+    libraryFolder: path.join(__dirname, '../ext'),
+    currentFolder: process.cwd(),
     logger: new Logger()
   };
 }

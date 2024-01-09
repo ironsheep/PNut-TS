@@ -6,6 +6,7 @@
 import { Command, type OptionValues } from 'commander';
 import { Logger } from './classes/Log';
 import { Context, createContext } from './utils/context';
+import { Compiler } from './classes/compiler';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -22,6 +23,7 @@ export class PNutInTypeScript {
   private options: OptionValues = this.program.opts();
   private argsArray: string[] = [];
   private context: Context = createContext();
+  private compiler: Compiler = new Compiler(this.context);
 
   // constructor() {}
 
@@ -49,6 +51,9 @@ export class PNutInTypeScript {
     this.program.parse();
     // this.options = this.program.opts();
     this.options = { ...this.options, ...this.program.opts() };
+
+    this.context.logger.setProgramName(this.program.name());
+
     const filename: string = this.options.filename;
     if (filename !== undefined && filename !== '') {
       this.context.logger.logMessage(`Working with file [${filename}]`);
