@@ -8,13 +8,7 @@
 
 import * as path from 'path';
 
-import {
-  isSpin1File,
-  isSpin2File,
-  fileExists,
-  fileSpecFromURI,
-  loadFileAsString
-} from '../utils/files';
+import { isSpin1File, isSpin2File, fileExists, fileSpecFromURI, loadFileAsString } from '../utils/files';
 import { TextLine } from './TextLine';
 
 export enum eEOLType {
@@ -85,9 +79,7 @@ export class SpinDocument {
       desiredString = this.rawLines[lineIndex];
     }
     // return object with additional details about this line
-    const desiredLine: TextLine = desiredString
-      ? new TextLine(desiredString, lineIndex)
-      : new TextLine('', -1);
+    const desiredLine: TextLine = desiredString ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
     return desiredLine;
   }
 }

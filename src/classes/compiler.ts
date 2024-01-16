@@ -3,7 +3,7 @@
 
 'use strict';
 
-import { Context } from 'vm';
+import { Context } from '../utils/context';
 
 // src/classes/Compiler.ts
 

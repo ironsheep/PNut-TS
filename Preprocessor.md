@@ -22,7 +22,7 @@ If you are seeing the similarity to FlexSpin directive set you are correct! This
 
 #### \#define {symbol} {value}
 
-```
+```c++
 #define FOO hello
 ```
 
@@ -34,7 +34,7 @@ Also note that this preprocessor is case insensitive, just like spin.
 
 If no value is given, e.g.:
 
-```
+```c++
 #define BAR
 ```
 
@@ -44,7 +44,7 @@ then the symbol `BAR` is defined as the string `1`. This is generally useful whe
 
 Introduces a conditional compilation section, which is only compiled if the symbol after the `#ifdef` is in fact defined. For example:
 
-```
+```c++
 #ifdef __P2__
 '' propeller 2 code goes here
 #else
@@ -72,7 +72,7 @@ A combination of `#else` and `#ifndef`.
 
 Prints an error message. Mainly used in conditional compilation to report an unhandled condition. Everything after the `#error` directive is printed. Example:
 
-```
+```c++
 #ifndef __P2__
 #error This code only works on Propeller 2
 #endif
@@ -86,7 +86,7 @@ NOTE: this is NOT initially supported in the initial PNUTTS release but will be 
 
 Includes a file. The contents of the file are placed in the compilation just as if everything in that file was typed into the original file instead. This is often used
 
-```
+```c++
 #include "foo.spin2"
 ```
 
@@ -100,7 +100,7 @@ Included files are searched for in the same directory as the file that contains 
 
 Removes the definition of a symbol, e.g. to undefine `FOO` do:
 
-```
+```c++
 #undef FOO
 ```
 
@@ -137,16 +137,13 @@ This is TBD but here's the placeholder / initial thought...
 
 ## License
 
-Licensed under the MIT License. <br>
-<br>
+Licensed under the MIT License.
+
 Follow these links for more information:
 
 ### [Copyright](copyright) | [License](LICENSE)
 
 [maintenance-shield]: https://img.shields.io/badge/maintainer-stephen%40ironsheep%2ebiz-blue.svg?style=for-the-badge
-[marketplace-version]: https://vsmarketplacebadge.apphb.com/version-short/ironsheepproductionsllc.spin2.svg
-[marketplace-installs]: https://vsmarketplacebadge.apphb.com/installs-short/ironsheepproductionsllc.spin2.svg
-[marketplace-rating]: https://vsmarketplacebadge.apphb.com/rating-short/ironsheepproductionsllc.spin2.svg
 [license-shield]: https://camo.githubusercontent.com/bc04f96d911ea5f6e3b00e44fc0731ea74c8e1e9/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f6c6963656e73652f69616e74726963682f746578742d646976696465722d726f772e7376673f7374796c653d666f722d7468652d6261646765
 [Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
 [Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg

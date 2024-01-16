@@ -9,12 +9,20 @@
     "-v",
     "${env:HOME}${env:USERPROFILE}/.ssh:/tmp/.ssh" // This is added so you can push from inside the container
   ],
-  "extensions": ["eamodio.gitlens", "bierner.lit-html", "runem.lit-plugin"],
+  "extensions": [
+    "github.vscode-pull-request-github",
+    "eamodio.gitlens",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "auchenberg.vscode-browser-preview",
+    "davidanson.vscode-markdownlint",
+    "redhat.vscode-yaml"
+  ],
   "settings": {
     "files.eol": "\n",
     "editor.tabSize": 2,
     "terminal.integrated.shell.linux": "/bin/bash",
-    "editor.formatOnPaste": true,
+    "editor.formatOnPaste": false,
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
     "files.trimTrailingWhitespace": true
