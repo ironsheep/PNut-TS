@@ -104,11 +104,12 @@ export class PNutInTypeScript {
         this.shouldAbort = true;
       }
     }
-    this.context.logger.logMessage('\n');
-    this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]\n`);
-    this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]\n`);
-    this.context.logger.logMessage('\n');
-
+    if (this.options.compile) {
+      this.context.logger.logMessage('\n');
+      this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]\n`);
+      this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]\n`);
+      this.context.logger.logMessage('\n');
+    }
     if (!this.shouldAbort && this.spinDocument) {
       this.compiler.Compile(this.spinDocument);
     }
