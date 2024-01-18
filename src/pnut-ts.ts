@@ -4,9 +4,9 @@
 // src/pnuts.ts
 'use strict';
 import { Command, type OptionValues } from 'commander';
-import { Logger } from './classes/Log';
 import { Context, createContext } from './utils/context';
 import { Compiler } from './classes/compiler';
+import { SpinDocument } from './classes/SpinDocument';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -24,6 +24,8 @@ export class PNutInTypeScript {
   private argsArray: string[] = [];
   private context: Context = createContext();
   private compiler: Compiler = new Compiler(this.context);
+  private spinDocument: SpinDocument | undefined = undefined;
+  private shouldAbort: boolean = false;
 
   // constructor() {}
 
@@ -57,8 +59,10 @@ export class PNutInTypeScript {
     const filename: string = this.options.filename;
     if (filename !== undefined && filename !== '') {
       this.context.logger.logMessage(`Working with file [${filename}]`);
+      this.spinDocument = new SpinDocument(filename);
     } else {
-      // this.warningMsg('Missing filename argument');
+      this.context.logger.logError('Missing filename argument');
+      this.shouldAbort = true;
     }
 
     if (this.options.verbose) {
@@ -74,24 +78,40 @@ export class PNutInTypeScript {
 
     if (this.options.debug) {
       this.context.logger.progressMsg('Compiling with DEBUG');
+      this.context.compileOptions.enableDebug = true;
     }
 
     if (this.options.flash) {
       this.context.logger.progressMsg('Downloading to FLASH');
+      this.context.compileOptions.writeFlash = true;
     }
 
     if (this.options.ram) {
       this.context.logger.progressMsg('Downloading to RAM');
+      this.context.compileOptions.writeRAM = true;
+    }
+
+    if (this.options.ram && this.options.flash) {
+      this.context.logger.logError('Please only use one of -f and -r');
+      this.shouldAbort = true;
     }
 
     if (this.options.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
+      this.context.compileOptions.compile = true;
+      if (!this.spinDocument || !this.spinDocument.validFile) {
+        this.context.logger.logError(`File [${filename}] does not exist or is not a .spin2 file`);
+        this.shouldAbort = true;
+      }
     }
     this.context.logger.logMessage('\n');
     this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]\n`);
     this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]\n`);
     this.context.logger.logMessage('\n');
 
+    if (!this.shouldAbort && this.spinDocument) {
+      this.compiler.Compile(this.spinDocument);
+    }
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
     // this.progressMsg('Done');

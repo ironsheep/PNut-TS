@@ -142,6 +142,7 @@ export class SpinElementCoding {
   private pushPops = new Map<string, number>();
   private types = new Map<string, number>();
   private bytecodes = new Map<string, number>();
+  private operators = new Map<string, number>();
 
   constructor() {
     let counter = 0;
@@ -721,6 +722,60 @@ export class SpinElementCoding {
     counter += 2;
     this.bytecodes.set('bc_float', counter); // 606 (0x25E)
     counter += 2;
+
+    counter = 0;
+    this.operators = new Map([
+      ['bc_drop', counter++], // 0 (0x0) - drop top of stack
+      ['bc_drop_push', counter++], // 1 (0x1) - drop top of stack and push next value
+      ['bc_drop_trap', counter++], // 2 (0x2) - drop top of stack and trap
+      ['bc_drop_trap_push', counter++], // 3 (0x3) - drop top of stack, trap, and push next value
+
+      ['bc_return_results', counter++], // 4 (0x4) - return results
+      ['bc_return_args', counter++], // 5 (0x5) - return arguments
+
+      ['bc_abort_0', counter++], // 6 (0x6) - abort with code 0
+      ['bc_abort_arg', counter++], // 7 (0x7) - abort with argument
+
+      ['bc_call_obj_sub', counter++], // 8 (0x8) - call object subroutine
+      ['bc_call_obji_sub', counter++], // 9 (0x9) - call object instance subroutine
+      ['bc_call_sub', counter++], // 10 (0xA) - call subroutine
+      ['bc_call_ptr', counter++], // 11 (0xB) - call pointer
+      ['bc_call_recv', counter++], // 12 (0xC) - call receiver
+      ['bc_call_send', counter++], // 13 (0xD) - call sender
+      ['bc_call_send_bytes', counter++], // 14 (0xE) - call sender with bytes
+
+      ['bc_mptr_obj_sub', counter++], // 15 (0xF) - move pointer to object subroutine
+      ['bc_mptr_obji_sub', counter++], // 16 (0x10) - move pointer to object instance subroutine
+      ['bc_mptr_sub', counter++], // 17 (0x11) - move pointer to subroutine
+
+      ['bc_jmp', counter++], // 18 (0x12) - jump
+      ['bc_jz', counter++], // 19 (0x13) - jump if zero
+      ['bc_jnz', counter++], // 20 (0x14) - jump if not zero
+      ['bc_tjz', counter++], // 21 (0x15) - test and jump if zero
+      ['bc_djnz', counter++], // 22 (0x16) - decrement and jump if not zero
+
+      ['bc_pop', counter++], // 23 (0x17) - pop top of stack
+      ['bc_pop_rfvar', counter++], // 24 (0x18) - pop top of stack into rfvar
+
+      ['bc_hub_bytecode', counter++], // 25 (0x19) - hub bytecode
+
+      ['bc_case_fast_init', counter++], // 26 (0x1A) - fast case initialization
+      ['bc_case_fast_done', counter++], // 27 (0x1B) - fast case done
+
+      ['bc_case_value', counter++], // 28 (0x1C) - case value
+      ['bc_case_range', counter++], // 29 (0x1D) - case range
+      ['bc_case_done', counter++], // 30 (0x1E) - case done
+
+      ['bc_lookup_value', counter++], // 31 (0x1F) - lookup value
+      ['bc_lookdown_value', counter++], // 32 (0x20) - lookdown value
+      ['bc_lookup_range', counter++], // 33 (0x21) - lookup range
+      ['bc_lookdown_range', counter++], // 34 (0x22) - lookdown range
+      ['bc_look_done', counter++], // 35 (0x23) - look done
+
+      ['bc_add_pbase', counter++], // 36 (0x24) - add pbase
+
+      ['bc_coginit', counter++] // 37 (0x25) - coginit    ]);
+    ]);
   }
 }
 

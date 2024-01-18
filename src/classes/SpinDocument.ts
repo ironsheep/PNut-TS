@@ -32,6 +32,7 @@ export class SpinDocument {
   private readonly langId: eLangaugeId = eLangaugeId.LID_Unknown;
   private readonly docFolder: string;
   private readonly fileBaseName: string;
+  private haveFile: boolean = false;
 
   constructor(fileSpec: string) {
     // record file name and location
@@ -44,12 +45,17 @@ export class SpinDocument {
         this.langId = eLangaugeId.LID_SPIN;
       } else if (isSpin2File(this.fileBaseName)) {
         this.langId = eLangaugeId.LID_SPIN2;
+        this.haveFile = true; // only spin2 files are usable for now
       }
       // load file and record line-ending type then split into lines (removing endings)
       const fileContents: string = loadFileAsString(fileSpec);
       this.eolType = fileContents.includes('\r\n') ? eEOLType.EOL_CRLF : eEOLType.EOL_CRLF;
       this.rawLines = fileContents.split(/\r?\n/);
     }
+  }
+
+  get validFile(): boolean {
+    return this.haveFile;
   }
 
   get fileName(): string {

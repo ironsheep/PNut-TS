@@ -10,7 +10,7 @@ import { TextLine } from './TextLine';
 
 // src/classes/Compiler.ts
 
-export class Compiler {
+export class Spin2Parser {
   private context: Context;
   private srcFile: SpinDocument;
   private currLineIndex: number = 0;
@@ -33,6 +33,22 @@ export class Compiler {
     this.at_eof = this.srcFile.lineCount == 0 ? true : false;
   }
 
+  public P2InitStruct() {
+    // TODO: we need code here
+  }
+
+  public P2Compile1() {
+    // TODO: we need code here
+  }
+
+  public P2Compile2() {
+    // TODO: we need code here
+  }
+
+  public P2InsertInterpreter() {
+    // TODO: we need code here
+  }
+
   private loadLine(lineIndex: number): number {
     if (!this.at_eof) {
       this.currentTextLine = this.srcFile.lineAt(lineIndex);
@@ -42,7 +58,7 @@ export class Compiler {
     return this.currLineIndex < this.srcFile.lineCount - 1 ? lineIndex + 1 : -1;
   }
 
-  public determine_mode(): boolean {
+  private determine_mode(): boolean {
     this.reset_element();
     let bFoundSpin: boolean = false;
     let [elemType, elemValue] = this.get_element();
@@ -56,35 +72,81 @@ export class Compiler {
     return bFoundSpin;
   }
 
-  public reset_element(): void {
+  private reset_element(): void {
     this.currCharacterIndex = 0;
     this.currLineIndex = 0;
     this.currflags = 0;
   }
 
-  public get_element(): [eElementType, eValueType] {
+  private get_element(): [eElementType, eValueType] {
     let typeFound: eElementType = eElementType.type_undefined;
+    // eslint-disable-next-line prefer-const
     let valueFound: eValueType = eValueType.value_undefined;
 
-    const checkChar = this.currCharacterIndex < this.currentLineLength - 1 ? this.currentLine.charAt(this.currCharacterIndex++) : 13;
+    const checkChar: string = this.currCharacterIndex < this.currentLineLength - 1 ? this.currentLine.charAt(this.currCharacterIndex++) : '\x0a';
     if (this.source_flags != 0) {
+      // heads to @@str2
       if (this.source_flags == 1) {
+        // @@str4 only does...
+        typeFound = eElementType.type_comma;
+        // @@setPtrs
       } else {
         this.source_flags = 0;
         if (checkChar == '"') {
           // present string error
           typeFound = eElementType.type_error_abort;
-        } else if (checkChar == 0) {
+        } else if (checkChar == '\x00') {
           // present EOF error
           typeFound = eElementType.type_error_abort;
-        } else if (checkChar == 13) {
+        } else if (checkChar == '\x0a') {
           // present EOL error
           typeFound = eElementType.type_error_abort;
         }
       }
     } else {
+      //const isDecimal: boolean = /^[0-9]/.test(checkChar);
       switch (checkChar) {
-        case value:
+        case '"': // new string?
+          // @@str
+          break;
+        case '\x00': // end of file?
+          // @@eof
+          break;
+        case '\x0a': // end of line?
+          // @@eol
+          break;
+        case ' ': // space or tab?
+          // ignore, do nothing!
+          break;
+        case "'": // single line comment?
+          // @@com
+          break;
+        case '{': // brace comment start?
+          // @@bcom
+          break;
+        case '}': // unmatched brace comment end?
+          // @@error_bcom
+          break;
+        case '%': // binary or packed characters?
+          // @@bin
+          break;
+        case '$': // hex?
+          // @@hex
+          break;
+        case '0': // decimal?
+        case '1': // decimal?
+        case '2': // decimal?
+        case '3': // decimal?
+        case '4': // decimal?
+        case '5': // decimal?
+        case '6': // decimal?
+        case '7': // decimal?
+        case '8': // decimal?
+        case '9': // decimal?
+          // @@dec
+          break;
+        case '.': // continue on next line?
+          // @@hex
           break;
 
         default:
@@ -94,5 +156,5 @@ export class Compiler {
     return [typeFound, valueFound];
   }
 
-  public back_element(): void {}
+  private back_element(): void {}
 }
