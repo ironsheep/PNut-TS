@@ -47,10 +47,12 @@ export class SpinDocument {
         this.langId = eLangaugeId.LID_SPIN2;
         this.haveFile = true; // only spin2 files are usable for now
       }
-      // load file and record line-ending type then split into lines (removing endings)
-      const fileContents: string = loadFileAsString(fileSpec);
-      this.eolType = fileContents.includes('\r\n') ? eEOLType.EOL_CRLF : eEOLType.EOL_CRLF;
-      this.rawLines = fileContents.split(/\r?\n/);
+      if (this.langId == eLangaugeId.LID_SPIN2) {
+        // load file and record line-ending type then split into lines (removing endings)
+        const fileContents: string = loadFileAsString(fileSpec);
+        this.eolType = fileContents.includes('\r\n') ? eEOLType.EOL_CRLF : eEOLType.EOL_LF_ONLY;
+        this.rawLines = fileContents.split(/\r?\n/);
+      }
     }
   }
 
