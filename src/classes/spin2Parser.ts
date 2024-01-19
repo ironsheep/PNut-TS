@@ -7,6 +7,7 @@ import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { eElementType, eValueType } from './types';
 import { TextLine } from './textLine';
+import { SymbolTable } from './symbolTable';
 
 // src/classes/spin2Parser.ts
 
@@ -22,6 +23,14 @@ export class Spin2Parser {
   private source_flags: number = 0;
   private at_eof: boolean = false;
   private at_eol: boolean = false;
+  private symbols_debug_hash_auto: SymbolTable = new SymbolTable();
+  private symbols_debughash_name: SymbolTable = new SymbolTable();
+  private symbols_hash_auto: SymbolTable = new SymbolTable();
+  private symbols_hash_level: SymbolTable = new SymbolTable();
+  private symbols_hash_param: SymbolTable = new SymbolTable();
+  private symbols_hash_main: SymbolTable = new SymbolTable();
+  private symbols_hash_local: SymbolTable = new SymbolTable();
+  private symbols_hash_inline: SymbolTable = new SymbolTable();
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;

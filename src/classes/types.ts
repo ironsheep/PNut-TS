@@ -109,5 +109,76 @@ export enum eValueType {
   block_var, // VAR Block
   block_pub, // PUB Block
   block_pri, // PRI Block
-  block_dat // DAT Block
+  block_dat, // DAT Block
+  dir_orgh,
+  dir_alignw,
+  dir_alignl,
+  dir_org,
+  dir_orgf,
+  dir_res,
+  dir_fit,
+  op_bitnot, //	!		unary		0	-
+  op_neg, //	-		unary		0	yes
+  op_fneg, //	-.		unary		0	-
+  op_abs, //	ABS		unary		0	yes
+  op_fabs, //	FABS		unary		0	-
+  op_encod, //	ENCOD		unary		0	-
+  op_decod, //	DECOD		unary		0	-
+  op_bmask, //	BMASK		unary		0	-
+  op_ones, //	ONES		unary		0	-
+  op_sqrt, //	SQRT		unary		0	-
+  op_fsqrt, //	FSQRT		unary		0	-
+  op_qlog, //	QLOG		unary		0	-
+  op_qexp, //	QEXP		unary		0	-
+  op_shr, //	>>		binary		1	-
+  op_shl, //	<<		binary		1	-
+  op_sar, //	SAR		binary		1	-
+  op_ror, //	ROR		binary		1	-
+  op_rol, //	ROL		binary		1	-
+  op_rev, //	REV		binary		1	-
+  op_zerox, //	ZEROX		binary		1	-
+  op_signx, //	SIGNX		binary		1	-
+  op_bitand, //	&		binary		2	-
+  op_bitxor, //	^		binary		3	-
+  op_bitor, //	|		binary		4	-
+  op_mul, //	*		binary		5	yes
+  op_fmul, //	*.		binary		5	-
+  op_div, //	/		binary		5	yes
+  op_fdiv, //	/.		binary		5	-
+  op_divu, //	+/		binary		5	-
+  op_rem, //	//		binary		5	-
+  op_remu, //	+//		binary		5	-
+  op_sca, //	SCA		binary		5	-
+  op_scas, //	SCAS		binary		5	-
+  op_frac, //	FRAC		binary		5	-
+  op_add, //	+		binary		6	yes
+  op_fadd, //	+.		binary		6	-
+  op_sub, //	-		binary		6	yes
+  op_fsub, //	-.		binary		6	-
+  op_fge, //	#>		binary		7	yes
+  op_fle, //	<#		binary		7	yes
+  op_addbits, //	ADDBITS		binary		8	-
+  op_addpins, //	ADDPINS		binary		8	-
+  op_lt, //	<		binary		9	yes
+  op_flt, //	<.		binary		9	-
+  op_ltu, //	+<		binary		9	-
+  op_lte, //	<=		binary		9	yes
+  op_flte, //	<=.		binary		9	-
+  op_lteu, //	+<=		binary		9	-
+  op_e, //	==		binary		9	yes
+  op_fe, //	==.		binary		9	-
+  op_ne, //	<>		binary		9	yes
+  op_fne, //	<>.		binary		9	-
+  op_gte, //	>=		binary		9	yes
+  op_fgte, //	>=.		binary		9	-
+  op_gteu, //	+>=		binary		9	-
+  op_gt, //	>		binary		9	yes
+  op_fgt, //	>.		binary		9	-
+  op_gtu, //	+>		binary		9	-
+  op_ltegt, //	<=>		binary		9	yes
+  op_lognot, //	!!, NOT		unary		10	-
+  op_logand, //	&&, AND		binary		11	-
+  op_logxor, //	^^, XOR		binary		12	-
+  op_logor, //	||, OR		binary		13	-
+  op_ternary //	? (:)		ternary		14	-
 }
