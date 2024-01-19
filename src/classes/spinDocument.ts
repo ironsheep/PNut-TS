@@ -9,7 +9,7 @@
 import * as path from 'path';
 
 import { isSpin1File, isSpin2File, fileExists, fileSpecFromURI, loadFileAsString } from '../utils/files';
-import { TextLine } from './TextLine';
+import { TextLine } from './textLine';
 
 export enum eEOLType {
   EOL_Unknown,

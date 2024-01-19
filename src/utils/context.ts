@@ -6,7 +6,7 @@
 
 'use strict';
 import path from 'path';
-import { Logger } from '../classes/Log';
+import { Logger } from '../classes/logger';
 
 export interface CompileOptions {
   writeFlash: boolean; // after compile, load to flash and run

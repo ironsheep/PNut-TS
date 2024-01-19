@@ -4,7 +4,7 @@
 // it also handles light-weight preprocessing of the file
 
 'use strict';
-// src/classes/TextLine.ts
+// src/classes/textLine.ts
 
 /**
  * The Position class represents a position in a text document, defined by a line number and a character offset.

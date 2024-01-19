@@ -4,11 +4,11 @@
 'use strict';
 
 import { Context } from '../utils/context';
-import { SpinDocument } from './SpinDocument';
+import { SpinDocument } from './spinDocument';
 import { eElementType, eValueType } from './types';
-import { TextLine } from './TextLine';
+import { TextLine } from './textLine';
 
-// src/classes/Compiler.ts
+// src/classes/spin2Parser.ts
 
 export class Spin2Parser {
   private context: Context;
@@ -33,12 +33,20 @@ export class Spin2Parser {
     this.at_eof = this.srcFile.lineCount == 0 ? true : false;
   }
 
+  get errorLineNumber(): number {
+    // return last access line number
+    //  ultimately this will be line with error on it
+    return this.currentTextLine.lineNumber;
+  }
+
   public P2InitStruct() {
     // TODO: we need code here
+    throw new Error('ALIGNW/ALIGNL not allowed within inline assembly code');
   }
 
   public P2Compile1() {
     // TODO: we need code here
+    throw new Error('@ is not allowed for bitfields, use ^@ to get field pointer');
   }
 
   public P2Compile2() {

@@ -4,15 +4,16 @@
 'use strict';
 
 import { Context } from '../utils/context';
-import { SpinDocument } from './SpinDocument';
-import { Spin2Parser } from './spinParser';
+import { SpinDocument } from './spinDocument';
+import { Spin2Parser } from './spin2Parser';
 
-// src/classes/Compiler.ts
+// src/classes/compiler.ts
 
 export class Compiler {
   private context: Context;
   private spinDocument: SpinDocument | undefined;
   private spin2Parser: Spin2Parser | undefined;
+
   constructor(ctx: Context) {
     this.context = ctx;
   }
@@ -27,10 +28,18 @@ export class Compiler {
       try {
         this.spin2Parser.P2InitStruct();
         this.spin2Parser.P2Compile1();
-      } catch (error) {
-        // handle erro message
-        //  - decorate it with filename and linenumber, etc.
-        //  - emit error message
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          const filename: string = this.spinDocument.fileName;
+          const lineNumber: number = this.spin2Parser.errorLineNumber;
+          this.context.logger.compilerErrorMsg(`${filename}:${lineNumber}:error:${error.message}`);
+          //if (error.stack) {
+          //  this.context.logger.errorMsg(error.stack);
+          //}
+        } else {
+          // If it's not an Error object, it could be a string, null, etc.
+          this.context.logger.errorMsg(error);
+        }
       }
     }
   }

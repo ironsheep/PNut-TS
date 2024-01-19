@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /** @format */
 
-// src/pnuts.ts
+// src/pnut-ts.ts
 'use strict';
 import { Command, type OptionValues } from 'commander';
 import { Context, createContext } from './utils/context';
 import { Compiler } from './classes/compiler';
-import { SpinDocument } from './classes/SpinDocument';
+import { SpinDocument } from './classes/spinDocument';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -50,23 +50,27 @@ export class PNutInTypeScript {
       .option('-r, --ram', 'download to RAM and run')
       .option('-v, --verbose', 'output verbose messages');
 
-    this.program.parse();
-    // this.options = this.program.opts();
-    this.options = { ...this.options, ...this.program.opts() };
-
     this.context.logger.setProgramName(this.program.name());
+    //this.context.logger.progressMsg(`after setting name`);
 
-    const filename: string = this.options.filename;
-    if (filename !== undefined && filename !== '') {
-      this.context.logger.logMessage(`Working with file [${filename}]`);
-      this.spinDocument = new SpinDocument(filename);
-    } else {
-      this.context.logger.logError('Missing filename argument');
-      this.shouldAbort = true;
-    }
+    this.program.parse();
+    //this.context.logger.progressMsg(`after parse()`);
+
+    this.options = { ...this.options, ...this.program.opts() };
 
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
+    }
+
+    const filename: string = this.options.filename;
+    //this.context.logger.progressMsg(`grab filename`);
+
+    if (filename !== undefined && filename !== '') {
+      this.context.logger.verboseMsg(`Working with file [${filename}]`);
+      this.spinDocument = new SpinDocument(filename);
+    } else {
+      this.context.logger.errorMsg('Missing filename argument');
+      this.shouldAbort = true;
     }
 
     if (this.options.both) {
@@ -92,7 +96,7 @@ export class PNutInTypeScript {
     }
 
     if (this.options.ram && this.options.flash) {
-      this.context.logger.logError('Please only use one of -f and -r');
+      this.context.logger.errorMsg('Please only use one of -f and -r');
       this.shouldAbort = true;
     }
 
@@ -100,7 +104,7 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       this.context.compileOptions.compile = true;
       if (!this.spinDocument || !this.spinDocument.validFile) {
-        this.context.logger.logError(`File [${filename}] does not exist or is not a .spin2 file`);
+        this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file`);
         this.shouldAbort = true;
       }
     }

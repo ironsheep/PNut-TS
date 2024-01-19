@@ -2,13 +2,13 @@
 
 // Common file-system operations shares by classes in Pnut-TS.
 
-// src/classes/spinDocument.ts
+// src/utils/files.ts
 
 'use strict';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { SpinDocument } from '../classes/SpinDocument';
+import { SpinDocument } from '../classes/spinDocument';
 
 export function libraryDir(): string {
   return './lib';

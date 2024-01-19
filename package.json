@@ -4,7 +4,7 @@
   "description": "A Parallax Propeller 2 compiler in Typecsript",
   "main": "dist/pnut-ts.js",
   "scripts": {
-    "compile": "tsc",
+    "compile": "tsc && chmod +x dist/pnut-ts.js",
     "start": "npm run compile && dist/pnut-ts.js",
     "test": "jest",
     "pretest": "npm run compile && npm run lint",

@@ -2,7 +2,8 @@
 /* eslint-disable no-console */
 /** @format */
 
-// src/pnuts2.test.ts
+// src/pnut-ts.test.ts
+
 import { PNutInTypeScript } from './pnut-ts';
 
 describe('PNutInTypeScript', () => {
@@ -16,12 +17,13 @@ describe('PNutInTypeScript', () => {
     process.stdout.write = write;
   });
 
-  /*
+  /*  tests don't work on this method!
   test('run function logs correct message for for -V (version) option', () => {
     process.argv = ['node', 'pnut-ts.js', '-V'];
     const cliTool = new PNutInTypeScript();
     // cliTool.setArgs(['node', 'pnut-ts.js', '-V']);
-    expect(() => cliTool.run()).toThrow('0.0.0');
+    cliTool.run();
+    expect(process.stdout.write).toHaveBeenCalledWith('0.0.0\r\n');
   });
   */
 

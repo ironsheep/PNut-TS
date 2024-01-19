@@ -12,7 +12,7 @@ We are re-implemting Pnut for Windows in a platform agnostic language.
 
 We have a number of built-in commands we use to build code, lint our code, format our code, run tests, etc.
 
- These commands are run with `npm run {command}`.
+ These commands are run with `npm {command}`.
 
 Lifecycle Scripts:
 
@@ -20,10 +20,16 @@ Lifecycle Scripts:
 | --- | --- |
 | start | compile and run pnut-ts.js
 | test | run all the tests
+
+
+
+ These commands are run with `npm run {command}`.
+
+| Command | Description
+| --- | --- |
 | compile | compile all the typescript source in project
 | watch | watch for typescript files and recompile when any change
 | prettier-format | reformat all the typescript source in project
-
 We will keep this list up-to-date as more commands are added.
 
 ### Internal Commands
@@ -43,7 +49,7 @@ Assuming you don't havve any uncommitted changes in your workspace then the foll
 2. from the top of the local repository run `git pull`
 3. from the top run `code .`
 4. one VSCode opens, wait for the [Reload in Container] button to appear. Press it when it does. Wait for the environment to settle down again...
-5. run `npm run compile` to ensure the latest code is building
+5. run `npm test` to ensure the latest code is building and all the tests are running
 6. You are ready to resume work with the newest repo content
 
 ### Steps if yu have local changes
