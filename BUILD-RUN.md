@@ -52,7 +52,7 @@ Assuming you don't havve any uncommitted changes in your workspace then the foll
 5. run `npm test` to ensure the latest code is building and all the tests are running
 6. You are ready to resume work with the newest repo content
 
-### Steps if yu have local changes
+### Steps if you have local changes
 
 This section TBA (to be added)
 
