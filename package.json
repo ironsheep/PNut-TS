@@ -1,7 +1,7 @@
 {
   "name": "p2-pnut-ts",
   "version": "0.0.1",
-  "description": "A Parallax Propeller 2 compiler in Typecsript",
+  "description": "A Parallax Propeller 2 compiler in TypeScript",
   "main": "dist/pnut-ts.js",
   "scripts": {
     "compile": "tsc && chmod +x dist/pnut-ts.js",

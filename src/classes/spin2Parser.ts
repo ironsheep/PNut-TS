@@ -100,6 +100,9 @@ export class Spin2Parser {
     // eslint-disable-next-line prefer-const
     let valueFound: eValueType = eValueType.value_undefined;
 
+    //
+    // I'll bet we want to replace this char-by-char loop with better pattern matching symbol gathering code!
+    //
     const checkChar: string = this.currCharacterIndex < this.currentLineLength - 1 ? this.currentLine.charAt(this.currCharacterIndex++) : '\x0a';
     if (this.source_flags != 0) {
       // heads to @@str2
