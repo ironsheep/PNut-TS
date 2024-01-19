@@ -49,7 +49,7 @@ Assuming you don't havve any uncommitted changes in your workspace then the foll
 2. From the top of the local repository run `git pull`
 3. From the same top run `code .`
 4. Once VSCode opens, wait for the [Reload in Container] button to appear. Press it when it does. Wait for the environment to settle down again...
-5. Run `npm test` to ensure the latest code is building and all the tests are running
+5. In the VSCode terminal window, run `npm test` to ensure the latest code is building and all the tests are running
 6. You are ready to resume work with the newest repo content
 
 ### Steps if you have local changes
