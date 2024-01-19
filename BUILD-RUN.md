@@ -46,10 +46,10 @@ These are used by other commands:
 Assuming you don't havve any uncommitted changes in your workspace then the following steps will make sure you have the latest and greatest contents.
 
 1. Ensure you have VSCode shut down (all instances)
-2. from the top of the local repository run `git pull`
-3. from the top run `code .`
-4. one VSCode opens, wait for the [Reload in Container] button to appear. Press it when it does. Wait for the environment to settle down again...
-5. run `npm test` to ensure the latest code is building and all the tests are running
+2. From the top of the local repository run `git pull`
+3. From the same top run `code .`
+4. Once VSCode opens, wait for the [Reload in Container] button to appear. Press it when it does. Wait for the environment to settle down again...
+5. Run `npm test` to ensure the latest code is building and all the tests are running
 6. You are ready to resume work with the newest repo content
 
 ### Steps if you have local changes
