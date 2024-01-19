@@ -24,7 +24,7 @@ export class Spin2Parser {
   private at_eof: boolean = false;
   private at_eol: boolean = false;
   private symbols_debug_hash_auto: SymbolTable = new SymbolTable();
-  private symbols_debughash_name: SymbolTable = new SymbolTable();
+  private symbols_debug_hash_name: SymbolTable = new SymbolTable();
   private symbols_hash_auto: SymbolTable = new SymbolTable();
   private symbols_hash_level: SymbolTable = new SymbolTable();
   private symbols_hash_param: SymbolTable = new SymbolTable();
