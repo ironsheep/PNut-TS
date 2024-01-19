@@ -46,6 +46,17 @@ I'm usually learning as I go. I'm searching the web for best patterns of how to 
 - The TypeScript Doc site [TypeScript Documentation](https://www.typescriptlang.org/docs/)
 - If you looking for a book "**O'Reilly - Learning TypeScript**" seems to be a good one [Book Website](https://www.learningtypescript.com/) - this website provides links to bying the book and provides accompanying exercises
 
+## Extensions for viewing X86 code
+
+I'm using the following extensions which make the viewing of the .asm Pnut .asm file more readable.
+
+- [x86_64 Assembly Pro](https://marketplace.visualstudio.com/items?itemName=EhlKr.x86-64-assembly-pro)
+- [ASM Code Lens](https://marketplace.visualstudio.com/items?itemName=maziac.asm-code-lens)
+- [Intel x86 Instruction Reference](https://marketplace.visualstudio.com/items?itemName=whiteout2.x86ex)
+
+Download these extensions then close all VSCode instances then open VSCode and they'll be working.
+
+
 ## Repository Configuration
 
 This project is configured to run in a docker instance. Docker is essentially a way to run stuff in a local sandboxed environment. The environment is specified by a docker image, and its main component is a snapshot of all files that are needed to run.
