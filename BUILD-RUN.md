@@ -45,7 +45,7 @@ These are used by other commands:
 
 Assuming you don't havve any uncommitted changes in your workspace then the following steps will make sure you have the latest and greatest contents.
 
-1. Ensure you have VSCode shut down (all instances
+1. Ensure you have VSCode shut down (all instances)
 2. from the top of the local repository run `git pull`
 3. from the top run `code .`
 4. one VSCode opens, wait for the [Reload in Container] button to appear. Press it when it does. Wait for the environment to settle down again...
