@@ -8,6 +8,10 @@
 import path from 'path';
 import { Logger } from '../classes/logger';
 
+export interface LogOptions {
+  logElementizer: boolean; // write elementizer
+}
+
 export interface CompileOptions {
   writeFlash: boolean; // after compile, load to flash and run
   writeRAM: boolean; // after compile, load to RAM and run
@@ -19,6 +23,7 @@ export interface Context {
   currentFolder: string;
   logger: Logger;
   compileOptions: CompileOptions;
+  logOptions: LogOptions;
 }
 
 export function createContext(): Context {
@@ -26,6 +31,7 @@ export function createContext(): Context {
     libraryFolder: path.join(__dirname, '../ext'),
     currentFolder: process.cwd(),
     logger: new Logger(),
-    compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false }
+    compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
+    logOptions: { logElementizer: false }
   };
 }

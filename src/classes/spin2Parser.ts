@@ -17,10 +17,11 @@ export class Spin2Parser {
   private srcFile: SpinDocument;
   private currLineIndex: number = 0;
   private currCharacterIndex: number = 0;
+  private symbolLineIndex: number = 0;
+  private symbolCharacterIndex: number = 0;
   private currflags: number = 0;
   private currentTextLine: TextLine;
-  private currentLine: string;
-  private currentLineLength: number;
+  private unprocessedLine: string = '';
   private source_flags: number = 0;
   private at_eof: boolean = false;
   private at_eol: boolean = false;
@@ -36,14 +37,14 @@ export class Spin2Parser {
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
     this.srcFile = spinCode;
+    // dummy load of next line (replaced by loadNextLine())
     this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
-    this.currentLine = this.currentTextLine.text;
-    this.currentLineLength = this.currentLine.length;
-    this.at_eol = this.currentLineLength == 0 ? true : false;
-    this.at_eof = this.srcFile.lineCount == 0 ? true : false;
+    // now load the line and set conditions after incrementing line index
+    this.currLineIndex = -1;
+    this.loadNextLine();
   }
 
-  get errorLineNumber(): number {
+  get sourceLineNumber(): number {
     // return last access line number
     //  ultimately this will be line with error on it
     return this.currentTextLine.sourceLineNumber;
@@ -65,15 +66,6 @@ export class Spin2Parser {
 
   public P2InsertInterpreter() {
     // TODO: we need code here
-  }
-
-  private loadLine(lineIndex: number): number {
-    if (!this.at_eof) {
-      this.currentTextLine = this.srcFile.lineAt(lineIndex);
-      this.currentLine = this.currentTextLine.text;
-      this.currentLineLength = this.currentLine.length;
-    }
-    return this.currLineIndex < this.srcFile.lineCount - 1 ? lineIndex + 1 : -1;
   }
 
   private determine_mode(): boolean {
@@ -103,66 +95,77 @@ export class Spin2Parser {
     //
     // let's parse like spin example initially
     //
-    let scanLine: string = this.currentLine;
     // skip white left edge
-    const whiteSkipCount = this.skipNCountWhite(scanLine);
+    const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
     if (whiteSkipCount > 0) {
-      scanLine = this.skipAhead(whiteSkipCount, scanLine);
-    } else if (this.at_eof) {
+      this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
+    }
+    if (this.at_eof) {
       typeFound = eElementType.type_end;
+      this.recordSymbolLocation();
     } else if (this.at_eol) {
+      this.recordSymbolLocation();
+      this.loadNextLine();
       typeFound = eElementType.type_end_line;
-    } else if (scanLine.charAt(0) == '"') {
+    } else if (this.unprocessedLine.charAt(0) == '"') {
+      // handle double-quoted string
       // FIXME: TODO: add double-quoted string parsing!
-    } else if (scanLine.charAt(0) == "'") {
-      // skip rest of line
+    } else if (this.unprocessedLine.charAt(0) == "'") {
+      // handle tic-comment, skip rest of line
       this.currLineIndex += 1;
-      this.loadLine(this.currLineIndex);
       typeFound = eElementType.type_end_line;
-    } else if (this.isDigit(scanLine.charAt(0))) {
-      // handle decimal or decimal float convertion
-      const [charsUsed, value] = this.decimalConversion(scanLine);
+      this.recordSymbolLocation();
+      this.loadNextLine();
+    } else if (this.isDigit(this.unprocessedLine.charAt(0))) {
+      // handle decimal or decimal-float convertion
+      const [charsUsed, value] = this.decimalConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
-      scanLine = this.skipAhead(charsUsed, scanLine);
-    } else if (scanLine.charAt(0) == '$') {
+      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+    } else if (this.unprocessedLine.charAt(0) == '$') {
       // handle hexadecimal convertion
-      const [charsUsed, value] = this.hexadecimalConversion(scanLine);
+      const [charsUsed, value] = this.hexadecimalConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
-      scanLine = this.skipAhead(charsUsed, scanLine);
-    } else if (scanLine.startsWith('%%')) {
+      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+    } else if (this.unprocessedLine.startsWith('%%')) {
       // handle base-four numbers of the form %%012_032_000, %%0320213, etc
-      const [charsUsed, value] = this.quaternaryConversion(scanLine);
+      const [charsUsed, value] = this.quaternaryConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
-      scanLine = this.skipAhead(charsUsed, scanLine);
-    } else if (scanLine.charAt(0) == '%') {
+      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+    } else if (this.unprocessedLine.charAt(0) == '%') {
       // handle base-two numbers of the form %0100_0111, %01111010, etc
-      const [charsUsed, value] = this.binaryConversion(scanLine);
+      const [charsUsed, value] = this.binaryConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
-      scanLine = this.skipAhead(charsUsed, scanLine);
-    } else if (this.isSymbolStartChar(scanLine.charAt(0))) {
-      const [charsUsed, value] = this.symbolNameConversion(scanLine);
+      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+    } else if (this.isSymbolStartChar(this.unprocessedLine.charAt(0))) {
+      // handle symbol names
+      const [charsUsed, value] = this.symbolNameConversion(this.unprocessedLine);
       // FIXME: TODO: add identify symbol type here... then return type found
       typeFound = eElementType.type_undefined; // FIXME: TODO: make this real!
       // NOTE: when value is string of symbol name.
       valueFound = value;
-      scanLine = this.skipAhead(charsUsed, scanLine);
+      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else {
       // lookup operator but in 3 then 2 then 1 length ...
-      const [found, charsUsed, value, type] = this.operatorConvert(scanLine);
+      const [found, charsUsed, value, type] = this.operatorConvert(this.unprocessedLine);
       if (found) {
         typeFound = type;
         valueFound = value;
-        scanLine = this.skipAhead(charsUsed, scanLine);
+        this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
       } else {
         // FIXME: TODO: report error bad character....
       }
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
-    return [typeFound, valueFound, this.currentTextLine.sourceLineNumber, this.currCharacterIndex];
+    if (this.context.logOptions.logElementizer) {
+      this.context.logger.logMessage(
+        `- get_element() Ln#${this.symbolLineIndex}(${this.symbolCharacterIndex}) - typeFound=(${typeFound}), valueFound=(${valueFound})`
+      );
+    }
+    return [typeFound, valueFound, this.symbolLineIndex, this.symbolCharacterIndex];
   }
 
   private isDigit(line: string) {
@@ -226,7 +229,8 @@ export class Spin2Parser {
     if (quaternaryNumberMatch) {
       interpValue = parseInt(quaternaryNumberMatch[0].replace('_', ''), 4);
       charsUsed = quaternaryNumberMatch[0].length;
-      // FIXME: TODO: validate that result fits in 32-bits
+      // ensure that result fits in 32-bits
+      this.validate32BitInteger(interpValue);
     }
     return [charsUsed, interpValue];
   }
@@ -239,7 +243,8 @@ export class Spin2Parser {
     if (binaryNumberMatch) {
       interpValue = parseInt(binaryNumberMatch[0].replace('_', ''), 2);
       charsUsed = binaryNumberMatch[0].length;
-      // FIXME: TODO: validate that result fits in 32-bits
+      // ensure that result fits in 32-bits
+      this.validate32BitInteger(interpValue);
     }
     return [charsUsed, interpValue];
   }
@@ -252,7 +257,8 @@ export class Spin2Parser {
     if (hexNumberMatch) {
       interpValue = parseInt(hexNumberMatch[0].replace('_', ''), 16);
       charsUsed = hexNumberMatch[0].length;
-      // FIXME: TODO: validate that result fits in 32-bits
+      // ensure that result fits in 32-bits
+      this.validate32BitInteger(interpValue);
     }
     return [charsUsed, interpValue];
   }
@@ -297,17 +303,21 @@ export class Spin2Parser {
       if (decimalNumberMatch) {
         interpValue = parseInt(decimalNumberMatch[0].replace('_', ''));
         charsUsed = decimalNumberMatch[0].length;
-        // FIXME: TODO: validate that result fits in 32-bits
+        // ensure that result fits in 32-bits
+        this.validate32BitInteger(interpValue);
       }
     }
     return [charsUsed, interpValue];
   }
 
-  private skipAhead(symbolLength: number, currentLine: string) {
+  private skipAhead(symbolLength: number, line: string) {
+    this.recordSymbolLocation();
     this.currCharacterIndex += symbolLength;
-    currentLine = currentLine.substring(this.currCharacterIndex);
-    this.at_eol = currentLine.length == 0 ? true : false;
-    return currentLine;
+    const remainingLine = line.substring(this.currCharacterIndex);
+    if (remainingLine.length == 0) {
+      this.loadNextLine();
+    }
+    return remainingLine;
   }
 
   private skipNCountWhite(line: string) {
@@ -318,6 +328,31 @@ export class Spin2Parser {
       matchLength = whiteSpaceMatch[0].length;
     }
     return matchLength;
+  }
+
+  private validate32BitInteger(value: number): void {
+    if (value > 4294967295 || value < -2147483648) {
+      this.context.logger.logErrorMessage('The result does not fit in 32 bits');
+      throw new Error('Constant exceeds 32 bits');
+    }
+  }
+  private recordSymbolLocation(): void {
+    this.symbolLineIndex = this.sourceLineNumber;
+    this.symbolCharacterIndex = this.currCharacterIndex;
+  }
+
+  private loadNextLine(): void {
+    if (!this.at_eof) {
+      if (this.currLineIndex < this.srcFile.lineCount - 1) {
+        this.currLineIndex += 1;
+        this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
+        this.unprocessedLine = this.currentTextLine.text;
+        this.at_eol = this.unprocessedLine.length == 0 ? true : false;
+      } else {
+        this.at_eol = true;
+        this.at_eof = true;
+      }
+    }
   }
 
   private back_element(): void {}

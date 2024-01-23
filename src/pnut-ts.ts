@@ -46,6 +46,7 @@ export class PNutInTypeScript {
       .option('-b, --both', 'compile with DEBUG, download to FLASH and run')
       .option('-c, --compile', 'compile file')
       .option('-d, --debug', 'compile with DEBUG')
+      .option('-e, --elementizer', 'log elementizer efforts')
       .option('-f, --flash', 'download to FLASH and run')
       .option('-r, --ram', 'download to RAM and run')
       .option('-v, --verbose', 'output verbose messages');
@@ -60,6 +61,11 @@ export class PNutInTypeScript {
 
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
+    }
+
+    if (this.options.elementizer) {
+      this.context.logger.verboseMsg('LOG: elementizer');
+      this.context.logOptions.logElementizer = true;
     }
 
     const filename: string = this.options.filename;
