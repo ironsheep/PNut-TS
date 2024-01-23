@@ -98,13 +98,13 @@ export class TextLine {
    * Gets the line number.
    * @returns {number} The raw line number.
    */
-  get lineNumber(): number {
+  get sourceLineNumber(): number {
     return this.rawLineNumber;
   }
 
   get range(): Range {
-    const startPos: Position = new Position(this.lineNumber, 0);
-    const endPos: Position = new Position(this.lineNumber, this.rawText.length - 1);
+    const startPos: Position = new Position(this.sourceLineNumber, 0);
+    const endPos: Position = new Position(this.sourceLineNumber, this.rawText.length - 1);
     const desiredRange = new Range(startPos, endPos);
     return desiredRange;
   }

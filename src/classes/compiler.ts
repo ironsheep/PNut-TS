@@ -31,8 +31,8 @@ export class Compiler {
       } catch (error: unknown) {
         if (error instanceof Error) {
           const filename: string = this.spinDocument.fileName;
-          const lineNumber: number = this.spin2Parser.errorLineNumber;
-          this.context.logger.compilerErrorMsg(`${filename}:${lineNumber}:error:${error.message}`);
+          const sourceLineNumber: number = this.spin2Parser.errorLineNumber;
+          this.context.logger.compilerErrorMsg(`${filename}:${sourceLineNumber}:error:${error.message}`);
           //if (error.stack) {
           //  this.context.logger.errorMsg(error.stack);
           //}
