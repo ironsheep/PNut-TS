@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // this is our common logging mechanism
 //  TODO: make it context/runtime option aware
 
@@ -48,6 +49,20 @@ export class Spin2Parser {
     // return last access line number
     //  ultimately this will be line with error on it
     return this.currentTextLine.sourceLineNumber;
+  }
+
+  public testGetElementLoop() {
+    //let numberCalls: number = 30;
+    let [type, value, lineIdx, charIdx] = this.get_element();
+    do {
+      if (type != eElementType.type_end_file) {
+        [type, value, lineIdx, charIdx] = this.get_element();
+      }
+      //numberCalls -= 1;
+      //if (numberCalls < 1) {
+      //  break;
+      //}
+    } while (type != eElementType.type_end_file);
   }
 
   public P2InitStruct() {
@@ -106,14 +121,13 @@ export class Spin2Parser {
     } else if (this.at_eol) {
       this.recordSymbolLocation();
       this.loadNextLine();
-      typeFound = eElementType.type_end_line;
-    } else if (this.unprocessedLine.charAt(0) == '"') {
+      typeFound = eElementType.type_end_file;
+      //} else if (this.unprocessedLine.charAt(0) == '"') {
       // handle double-quoted string
       // FIXME: TODO: add double-quoted string parsing!
     } else if (this.unprocessedLine.charAt(0) == "'") {
       // handle tic-comment, skip rest of line
-      this.currLineIndex += 1;
-      typeFound = eElementType.type_end_line;
+      typeFound = eElementType.type_end;
       this.recordSymbolLocation();
       this.loadNextLine();
     } else if (this.isDigit(this.unprocessedLine.charAt(0))) {
@@ -134,6 +148,12 @@ export class Spin2Parser {
       typeFound = eElementType.type_con;
       valueFound = value;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+    } else if (this.unprocessedLine.startsWith('%"')) {
+      // handle %"abcd" one to four chars packed into long
+      const [charsUsed, value] = this.packedAsciiConversion(this.unprocessedLine);
+      typeFound = eElementType.type_con;
+      valueFound = value;
+      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '%') {
       // handle base-two numbers of the form %0100_0111, %01111010, etc
       const [charsUsed, value] = this.binaryConversion(this.unprocessedLine);
@@ -144,7 +164,7 @@ export class Spin2Parser {
       // handle symbol names
       const [charsUsed, value] = this.symbolNameConversion(this.unprocessedLine);
       // FIXME: TODO: add identify symbol type here... then return type found
-      typeFound = eElementType.type_undefined; // FIXME: TODO: make this real!
+      typeFound = eElementType.type_var_byte; // FIXME: TODO: make this real!
       // NOTE: when value is string of symbol name.
       valueFound = value;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
@@ -157,19 +177,28 @@ export class Spin2Parser {
         this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
       } else {
         // FIXME: TODO: report error bad character....
+        typeFound = eElementType.type_undefined;
+        valueFound = this.unprocessedLine;
+        this.recordSymbolLocation();
+        this.logMessage(`  -- SKIP Ln#${this.symbolLineIndex + 1} line=[${this.unprocessedLine}]`);
+        this.loadNextLine();
       }
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
-    if (this.context.logOptions.logElementizer) {
-      this.context.logger.logMessage(
-        `- get_element() Ln#${this.symbolLineIndex}(${this.symbolCharacterIndex}) - typeFound=(${typeFound}), valueFound=(${valueFound})`
-      );
-    }
-    return [typeFound, valueFound, this.symbolLineIndex, this.symbolCharacterIndex];
+    this.logMessage(
+      `- get_element() Ln#${this.symbolLineIndex + 1}(${this.symbolCharacterIndex}) - typeFound=(${typeFound}), valueFound=(${valueFound})`
+    );
+    return [typeFound, valueFound, this.symbolLineIndex + 1, this.symbolCharacterIndex];
   }
 
   private isDigit(line: string) {
     return /^\d$/.test(line);
+  }
+
+  private logMessage(message: string) {
+    if (this.context.logOptions.logElementizer) {
+      this.context.logger.logMessage(message);
+    }
   }
 
   private isSymbolStartChar(line: string) {
@@ -189,15 +218,19 @@ export class Spin2Parser {
     if (line.length > 3) {
       searchString = line.substring(0, 3);
     }
+    //this.logMessage(`- operatorConvert(${line})`);
     if (searchString.length > 2) {
+      //this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = find_symbol_s3.find((symbol) => symbol.symbol === searchString);
     }
-    if (!findResult && searchString.length > 2) {
+    if (!findResult && searchString.length > 1) {
       searchString = line.substring(0, 2);
+      //this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = find_symbol_s2.find((symbol) => symbol.symbol === searchString);
     }
-    if (!findResult && searchString.length > 2) {
+    if (!findResult && searchString.length > 0) {
       searchString = line.substring(0, 1);
+      //this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = find_symbol_s1.find((symbol) => symbol.symbol === searchString);
     }
     if (findResult) {
@@ -205,6 +238,9 @@ export class Spin2Parser {
       interpValue = findResult.value;
       charsUsed = searchString.length;
       type = findResult.type;
+      this.logMessage(`- operatorConvert() Operator found [${searchString}](${searchString.length}), type=(${type}), interpValue=(${interpValue})`);
+    } else {
+      this.logMessage('- operatorConvert() NO operator found');
     }
     return [foundStatus, charsUsed, interpValue, type];
   }
@@ -221,15 +257,38 @@ export class Spin2Parser {
     return [charsUsed, interpValue];
   }
 
+  private packedAsciiConversion(line: string): [number, number] {
+    let interpValue: number = 0;
+    let charsUsed: number = 0;
+    const endOffset: number = line.substring(2).indexOf('"');
+    if (endOffset != -1) {
+      // FIXME: TODO: let's ensure asciiStr is valid ascii
+      //  this should be 0x20-0x7f! is any other then throw exception
+      // FIXME: TODO: no more than 4 chars in string
+      const asciiStr = line.slice(2, endOffset + 2);
+      for (let i = 0; i < asciiStr.length; i++) {
+        interpValue = (interpValue << 8) | asciiStr.charCodeAt(i);
+      }
+      charsUsed = asciiStr.length + 3;
+    } else {
+      throw new Error(`missing 2nd " on packed ascii`);
+      // FIXME: TODO: move this to 2nd quote check before calling this method
+    }
+    this.logMessage(`- quaternaryConversion(${line}) = interpValue=(${interpValue})`);
+    return [charsUsed, interpValue];
+  }
+
   private quaternaryConversion(line: string): [number, number] {
     const isQuaternaryNumberRegEx = /^%%([[0-3]+[0-3_]*)/;
     let interpValue: number = 0;
     let charsUsed: number = 0;
     const quaternaryNumberMatch = line.match(isQuaternaryNumberRegEx);
     if (quaternaryNumberMatch) {
-      interpValue = parseInt(quaternaryNumberMatch[0].replace('_', ''), 4);
+      const valueFound: string = quaternaryNumberMatch[0].substring(2);
+      interpValue = parseInt(valueFound.replace('_', ''), 4);
       charsUsed = quaternaryNumberMatch[0].length;
       // ensure that result fits in 32-bits
+      this.logMessage(`- quaternaryConversion(${line}) = interpValue=(${interpValue})`);
       this.validate32BitInteger(interpValue);
     }
     return [charsUsed, interpValue];
@@ -241,9 +300,12 @@ export class Spin2Parser {
     let charsUsed: number = 0;
     const binaryNumberMatch = line.match(isBinaryNumberRegEx);
     if (binaryNumberMatch) {
-      interpValue = parseInt(binaryNumberMatch[0].replace('_', ''), 2);
+      const valueFound: string = binaryNumberMatch[0].substring(1);
+      this.logMessage(`- binaryNumberMatch[0]=(${valueFound})`);
+      interpValue = parseInt(valueFound.replace('_', ''), 2);
       charsUsed = binaryNumberMatch[0].length;
       // ensure that result fits in 32-bits
+      this.logMessage(`- binaryConversion(${line}) = interpValue=(${interpValue})`);
       this.validate32BitInteger(interpValue);
     }
     return [charsUsed, interpValue];
@@ -255,35 +317,45 @@ export class Spin2Parser {
     let charsUsed: number = 0;
     const hexNumberMatch = line.match(isHexNumberRegEx);
     if (hexNumberMatch) {
-      interpValue = parseInt(hexNumberMatch[0].replace('_', ''), 16);
+      const valueFound: string = hexNumberMatch[0].substring(1);
+      this.logMessage(`- hexNumberMatch[0]=(${valueFound})`);
+      interpValue = parseInt(valueFound.replace('_', ''), 16);
       charsUsed = hexNumberMatch[0].length;
       // ensure that result fits in 32-bits
+      this.logMessage(`- hexadecimalConversion(${line}) = interpValue=(${interpValue})`);
       this.validate32BitInteger(interpValue);
     }
     return [charsUsed, interpValue];
   }
 
   private decimalFloatConversion(line: string): [boolean, number, number] {
-    const isFloat1NumberRegEx = /^([+-]?(?:0|[1-9][0-9_]*)\.(?:[0-9]+)?(?:[eE][+-]?[0-9]+)?)/;
-    const isFloat2NumberRegEx = /^([+-]?(?:0|[1-9][0-9_]*)?\.(?:[0-9]+)(?:[eE][+-]?[0-9]+))/;
+    const isFloat1NumberRegEx = /^((?:0|[1-9][0-9_]*)\.(?:[0-9]+[0-9_]*)?(?:[eE][+-]?[0-9]+[0-9_]*)?)/;
+    const isFloat2NumberRegEx = /^((?:0|[1-9][0-9_]*)?\.(?:[0-9]+[0-9_]*)(?:[eE][+-]?[0-9]+[0-9_]*))/;
     // FIXME: TODO: validate and correct these two Regular Expressions ^^^^
     let interpValue: number = 0;
     let charsUsed: number = 0;
     let didMatch: boolean = false;
+    let haveExponent: boolean = false;
     const float1NumberMatch = line.match(isFloat1NumberRegEx);
     if (float1NumberMatch) {
-      interpValue = parseInt(float1NumberMatch[0].replace('_', ''));
+      interpValue = parseFloat(float1NumberMatch[0].replace('_', ''));
       charsUsed = float1NumberMatch[0].length;
+      haveExponent = float1NumberMatch[0].toUpperCase().indexOf('E') != -1;
       // FIXME: TODO: validate that result fits in 32-bits
       didMatch = true;
     } else {
       const float2NumberMatch = line.match(isFloat2NumberRegEx);
       if (float2NumberMatch) {
-        interpValue = parseInt(float2NumberMatch[0].replace('_', ''));
+        interpValue = parseFloat(float2NumberMatch[0].replace('_', ''));
         charsUsed = float2NumberMatch[0].length;
+        haveExponent = float2NumberMatch[0].toUpperCase().indexOf('E') != -1;
         // FIXME: TODO: validate that result fits in 32-bits
         didMatch = true;
       }
+    }
+    if (didMatch) {
+      const floatValueStr: string = haveExponent ? interpValue.toExponential() : interpValue.toFixed(3);
+      this.logMessage(`- decimalFloatConversion(${line}) = interpValue=(${floatValueStr})`);
     }
     return [didMatch, charsUsed, interpValue];
   }
@@ -304,6 +376,7 @@ export class Spin2Parser {
         interpValue = parseInt(decimalNumberMatch[0].replace('_', ''));
         charsUsed = decimalNumberMatch[0].length;
         // ensure that result fits in 32-bits
+        this.logMessage(`- decimalConversion(${line}) = interpValue=(${interpValue})`);
         this.validate32BitInteger(interpValue);
       }
     }
@@ -312,21 +385,27 @@ export class Spin2Parser {
 
   private skipAhead(symbolLength: number, line: string) {
     this.recordSymbolLocation();
+    //this.logMessage(`- skipAhead(${symbolLength}) currCharacterIndex=[${this.currCharacterIndex}]`);
     this.currCharacterIndex += symbolLength;
-    const remainingLine = line.substring(this.currCharacterIndex);
+    let remainingLine = line.substring(symbolLength);
     if (remainingLine.length == 0) {
       this.loadNextLine();
+      remainingLine = this.unprocessedLine;
+      //} else {
+      //  this.logMessage(`- skipAhead() remainingLine=[${remainingLine}]`);
     }
     return remainingLine;
   }
 
   private skipNCountWhite(line: string) {
+    // FIXME: TODO: expand tabs per Pnut...
     const leftEdgeSpaceRegEx = /^(\s*)/;
     let matchLength: number = 0;
     const whiteSpaceMatch = line.match(leftEdgeSpaceRegEx);
     if (whiteSpaceMatch) {
       matchLength = whiteSpaceMatch[0].length;
     }
+    //this.logMessage(`- skipNCountWhite([${line}]) matchLength=(${matchLength})`);
     return matchLength;
   }
 
@@ -336,6 +415,7 @@ export class Spin2Parser {
       throw new Error('Constant exceeds 32 bits');
     }
   }
+
   private recordSymbolLocation(): void {
     this.symbolLineIndex = this.sourceLineNumber;
     this.symbolCharacterIndex = this.currCharacterIndex;
@@ -347,6 +427,8 @@ export class Spin2Parser {
         this.currLineIndex += 1;
         this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
         this.unprocessedLine = this.currentTextLine.text;
+        this.currCharacterIndex = 0;
+        this.logMessage(`- loadNextLine() unprocessedLine=[${this.unprocessedLine}]`);
         this.at_eol = this.unprocessedLine.length == 0 ? true : false;
       } else {
         this.at_eol = true;

@@ -99,8 +99,8 @@ export enum eElementType {
   type_objcon_float, //	user object.constant float
   type_method, //	user method
   type_error_abort, // NEW we found an error, abort processing
-  type_end_line, //	end-of-line c=0
-  type_end //	end-of-file c=1
+  type_end, //	end-of-line c=0
+  type_end_file //	end-of-file c=1
 }
 
 export enum eValueType {

@@ -80,17 +80,7 @@ export const find_symbol_s1: SpinSymbol[] = [
   { symbol: '>', type: eElementType.type_op, value: SpinOpCode.oc_gt },
   { symbol: '?', type: eElementType.type_op, value: SpinOpCode.oc_ternary }
 ];
-export const find_symbol_s3: SpinSymbol[] = [
-  // find_symbol_s3
-  { symbol: '+//', type: eElementType.type_op, value: SpinOpCode.oc_remu },
-  { symbol: '+<=', type: eElementType.type_op, value: SpinOpCode.oc_lteu },
-  { symbol: '+>=', type: eElementType.type_op, value: SpinOpCode.oc_gteu },
-  { symbol: '<=>', type: eElementType.type_op, value: SpinOpCode.oc_ltegt },
-  { symbol: '<>.', type: eElementType.type_op, value: SpinOpCode.oc_fne },
-  { symbol: '==.', type: eElementType.type_op, value: SpinOpCode.oc_fe },
-  { symbol: '<=.', type: eElementType.type_op, value: SpinOpCode.oc_flte },
-  { symbol: '>=.', type: eElementType.type_op, value: SpinOpCode.oc_fgte }
-];
+
 export const find_symbol_s2: SpinSymbol[] = [
   // find_symbol_s2
   { symbol: ':=', type: eElementType.type_assign, value: 0 },
@@ -119,15 +109,14 @@ export const find_symbol_s2: SpinSymbol[] = [
   { symbol: '||', type: eElementType.type_op, value: SpinOpCode.oc_logor }
 ];
 
-/**
- * The findSymbol function takes a string and returns the symbol that matches that string, or undefined if
- * no symbol matches.
- *
- * @export
- * @param {string} s
- * @return {*}  {(SpinSymbol | undefined)}
- * @memberof Compiler
- */
-export function findSymbol(s: string): SpinSymbol | undefined {
-  return find_symbol_s1.find((symbol) => symbol.symbol === s);
-}
+export const find_symbol_s3: SpinSymbol[] = [
+  // find_symbol_s3
+  { symbol: '+//', type: eElementType.type_op, value: SpinOpCode.oc_remu },
+  { symbol: '+<=', type: eElementType.type_op, value: SpinOpCode.oc_lteu },
+  { symbol: '+>=', type: eElementType.type_op, value: SpinOpCode.oc_gteu },
+  { symbol: '<=>', type: eElementType.type_op, value: SpinOpCode.oc_ltegt },
+  { symbol: '<>.', type: eElementType.type_op, value: SpinOpCode.oc_fne },
+  { symbol: '==.', type: eElementType.type_op, value: SpinOpCode.oc_fe },
+  { symbol: '<=.', type: eElementType.type_op, value: SpinOpCode.oc_flte },
+  { symbol: '>=.', type: eElementType.type_op, value: SpinOpCode.oc_fgte }
+];
