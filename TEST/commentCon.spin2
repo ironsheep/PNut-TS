@@ -1,0 +1,4 @@
+' fil eheader 1
+' file header 2
+
+  CLK_FREQ = 335_000_000       ' system freq as a constant
