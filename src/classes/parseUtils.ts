@@ -1506,17 +1506,17 @@ export class SpinSymbolTables {
     //
     //		flexcode	bytecode	params	results	pinfld	hubcode
     //		---------------------------------------------------------------------------------------
-    this.flexcodeValues.set(eFlexcode.fc_coginit, flexcodeValue(eByteCode.bc_coginit, 3, 0, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_coginit, flexcodeValue(eByteCode.bc_coginit, 3, 0, 0, 0)); // (also asm instr.)
 
     this.flexcodeValues.set(eFlexcode.fc_coginit_push, flexcodeValue(eByteCode.bc_coginit_push, 3, 1, 0, 0));
-    this.flexcodeValues.set(eFlexcode.fc_cogstop, flexcodeValue(eByteCode.bc_cogstop, 1, 0, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_cogstop, flexcodeValue(eByteCode.bc_cogstop, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_cogid, flexcodeValue(eByteCode.bc_cogid, 0, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_cogid, flexcodeValue(eByteCode.bc_cogid, 0, 1, 0, 0)); // (also asm instr.)
 
     this.flexcodeValues.set(eFlexcode.fc_cogchk, flexcodeValue(eByteCode.bc_cogchk, 1, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_getrnd, flexcodeValue(eByteCode.bc_getrnd, 0, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_getrnd, flexcodeValue(eByteCode.bc_getrnd, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_getct, flexcodeValue(eByteCode.bc_getct, 0, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_getct, flexcodeValue(eByteCode.bc_getct, 0, 1, 0, 0)); // (also asm instr.)
 
     this.flexcodeValues.set(eFlexcode.fc_pollct, flexcodeValue(eByteCode.bc_pollct, 1, 1, 0, 0));
     this.flexcodeValues.set(eFlexcode.fc_waitct, flexcodeValue(eByteCode.bc_waitct, 1, 0, 0, 0));
@@ -1528,39 +1528,39 @@ export class SpinSymbolTables {
     this.flexcodeValues.set(eFlexcode.fc_pinread, flexcodeValue(eByteCode.bc_pinread, 1, 1, 1, 0));
     this.flexcodeValues.set(eFlexcode.fc_pinstart, flexcodeValue(eByteCode.bc_pinstart, 4, 0, 1, 0));
     this.flexcodeValues.set(eFlexcode.fc_pinclear, flexcodeValue(eByteCode.bc_pinclear, 1, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_wrpin, flexcodeValue(eByteCode.bc_wrpin, 2, 0, 1, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_wrpin, flexcodeValue(eByteCode.bc_wrpin, 2, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_wxpin, flexcodeValue(eByteCode.bc_wxpin, 2, 0, 1, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_wxpin, flexcodeValue(eByteCode.bc_wxpin, 2, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_wypin, flexcodeValue(eByteCode.bc_wypin, 2, 0, 1, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_wypin, flexcodeValue(eByteCode.bc_wypin, 2, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_akpin, flexcodeValue(eByteCode.bc_akpin, 1, 0, 1, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_akpin, flexcodeValue(eByteCode.bc_akpin, 1, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_rdpin, flexcodeValue(eByteCode.bc_rdpin, 1, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_rdpin, flexcodeValue(eByteCode.bc_rdpin, 1, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_rqpin, flexcodeValue(eByteCode.bc_rqpin, 1, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_rqpin, flexcodeValue(eByteCode.bc_rqpin, 1, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_locknew, flexcodeValue(eByteCode.bc_locknew, 0, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_locknew, flexcodeValue(eByteCode.bc_locknew, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_lockret, flexcodeValue(eByteCode.bc_lockret, 1, 0, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_lockret, flexcodeValue(eByteCode.bc_lockret, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_locktry, flexcodeValue(eByteCode.bc_locktry, 1, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_locktry, flexcodeValue(eByteCode.bc_locktry, 1, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_lockrel, flexcodeValue(eByteCode.bc_lockrel, 1, 0, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_lockrel, flexcodeValue(eByteCode.bc_lockrel, 1, 0, 0, 0)); // (also asm instr.)
 
     this.flexcodeValues.set(eFlexcode.fc_lockchk, flexcodeValue(eByteCode.bc_lockchk, 1, 1, 0, 0));
-    this.flexcodeValues.set(eFlexcode.fc_cogatn, flexcodeValue(eByteCode.bc_cogatn, 1, 0, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_cogatn, flexcodeValue(eByteCode.bc_cogatn, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_pollatn, flexcodeValue(eByteCode.bc_pollatn, 0, 1, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_pollatn, flexcodeValue(eByteCode.bc_pollatn, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_waitatn, flexcodeValue(eByteCode.bc_waitatn, 0, 0, 0, 0)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_waitatn, flexcodeValue(eByteCode.bc_waitatn, 0, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_hubset, flexcodeValue(eByteCode.bc_hubset, 1, 0, 0, 1)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_hubset, flexcodeValue(eByteCode.bc_hubset, 1, 0, 0, 1)); // (also asm instr.)
 
     this.flexcodeValues.set(eFlexcode.fc_clkset, flexcodeValue(eByteCode.bc_clkset, 2, 0, 0, 1));
     this.flexcodeValues.set(eFlexcode.fc_regexec, flexcodeValue(eByteCode.bc_regexec, 1, 0, 0, 1));
     this.flexcodeValues.set(eFlexcode.fc_regload, flexcodeValue(eByteCode.bc_regload, 1, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_call, flexcodeValue(eByteCode.bc_call, 1, 0, 0, 1)); // (also asm instruction)
+    this.flexcodeValues.set(eFlexcode.fc_call, flexcodeValue(eByteCode.bc_call, 1, 0, 0, 1)); // (also asm instr.)
 
     this.flexcodeValues.set(eFlexcode.fc_getregs, flexcodeValue(eByteCode.bc_getregs, 3, 0, 0, 1));
     this.flexcodeValues.set(eFlexcode.fc_setregs, flexcodeValue(eByteCode.bc_setregs, 3, 0, 0, 1));
@@ -1666,31 +1666,31 @@ export class SpinSymbolTables {
     //
     //		---------------------------------------------------------------------------------------
 
-    this.automatic_symbols.set(SYMBOLS.ABS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_abs) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.ABS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_abs) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.FABS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fabs) });
-    this.automatic_symbols.set(SYMBOLS.ENCOD, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_encod) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.DECOD, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_decod) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.BMASK, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_bmask) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.ONES, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_ones) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.ENCOD, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_encod) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.DECOD, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_decod) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.BMASK, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_bmask) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.ONES, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_ones) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.SQRT, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_sqrt) });
     this.automatic_symbols.set(SYMBOLS.FSQRT, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fsqrt) });
-    this.automatic_symbols.set(SYMBOLS.QLOG, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_qlog) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.QEXP, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_qexp) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.SAR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_sar) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.ROR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_ror) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.ROL, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_rol) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.REV, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_rev) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.ZEROX, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_zerox) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.SIGNX, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_signx) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.SCA, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_sca) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.SCAS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_scas) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.QLOG, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_qlog) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.QEXP, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_qexp) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.SAR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_sar) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.ROR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_ror) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.ROL, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_rol) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.REV, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_rev) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.ZEROX, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_zerox) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.SIGNX, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_signx) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.SCA, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_sca) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.SCAS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_scas) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.FRAC, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_frac) });
     this.automatic_symbols.set(SYMBOLS.ADDBITS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_addbits) });
     this.automatic_symbols.set(SYMBOLS.ADDPINS, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_addpins) });
-    this.automatic_symbols.set(SYMBOLS.NOT, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_lognot_name) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.AND, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logand_name) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.XOR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logxor_name) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.OR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logor_name) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.NOT, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_lognot_name) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.AND, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logand_name) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.XOR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logxor_name) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.OR, { type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logor_name) }); // (also asm instr.)
 
     this.automatic_symbols.set(SYMBOLS.FLOAT, { type: eElementType.type_float, value: 0 }); // floating-point operators
     this.automatic_symbols.set(SYMBOLS.ROUND, { type: eElementType.type_round, value: 0 });
@@ -1869,15 +1869,15 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.END, { type: eElementType.type_asm_end, value: 0 }); // misc
     this.automatic_symbols.set(SYMBOLS._, { type: eElementType.type_under, value: 0 });
 
-    this.automatic_symbols.set(SYMBOLS.HUBSET, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_hubset) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.HUBSET, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_hubset) }); // (also asm instr.)
 
-    this.automatic_symbols.set(SYMBOLS.COGINIT, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_coginit) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.COGSTOP, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogstop) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.COGID, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogid) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.COGINIT, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_coginit) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.COGSTOP, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogstop) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.COGID, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogid) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.COGCHK, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogchk) });
 
-    this.automatic_symbols.set(SYMBOLS.GETRND, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_getrnd) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.GETCT, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_getct) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.GETRND, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_getrnd) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.GETCT, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_getct) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.POLLCT, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_pollct) });
     this.automatic_symbols.set(SYMBOLS.WAITCT, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_waitct) });
 
@@ -1897,31 +1897,31 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.PINSTART, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_pinstart) });
     this.automatic_symbols.set(SYMBOLS.PINCLEAR, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_pinclear) });
 
-    this.automatic_symbols.set(SYMBOLS.WRPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_wrpin) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.WXPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_wxpin) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.WYPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_wypin) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.AKPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_akpin) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.RDPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_rdpin) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.RQPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_rqpin) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.WRPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_wrpin) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.WXPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_wxpin) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.WYPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_wypin) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.AKPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_akpin) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.RDPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_rdpin) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.RQPIN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_rqpin) }); // (also asm instr.)
 
     this.automatic_symbols.set(SYMBOLS.ROTXY, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_rotxy) });
     this.automatic_symbols.set(SYMBOLS.POLXY, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_polxy) });
     this.automatic_symbols.set(SYMBOLS.XYPOL, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_xypol) });
 
-    this.automatic_symbols.set(SYMBOLS.LOCKNEW, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_locknew) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.LOCKRET, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_lockret) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.LOCKTRY, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_locktry) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.LOCKREL, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_lockrel) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.LOCKNEW, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_locknew) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.LOCKRET, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_lockret) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.LOCKTRY, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_locktry) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.LOCKREL, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_lockrel) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.LOCKCHK, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_lockchk) });
 
-    this.automatic_symbols.set(SYMBOLS.COGATN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogatn) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.POLLATN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_pollatn) }); // (also asm instruction)
-    this.automatic_symbols.set(SYMBOLS.WAITATN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_waitatn) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.COGATN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_cogatn) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.POLLATN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_pollatn) }); // (also asm instr.)
+    this.automatic_symbols.set(SYMBOLS.WAITATN, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_waitatn) }); // (also asm instr.)
 
     this.automatic_symbols.set(SYMBOLS.CLKSET, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_clkset) });
     this.automatic_symbols.set(SYMBOLS.REGEXEC, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_regexec) });
     this.automatic_symbols.set(SYMBOLS.REGLOAD, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_regload) });
-    this.automatic_symbols.set(SYMBOLS.CALL, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_call) }); // (also asm instruction)
+    this.automatic_symbols.set(SYMBOLS.CALL, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_call) }); // (also asm instr.)
     this.automatic_symbols.set(SYMBOLS.GETREGS, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_getregs) });
     this.automatic_symbols.set(SYMBOLS.SETREGS, { type: eElementType.type_i_flex, value: this.flexValue(eFlexcode.fc_setregs) });
 
@@ -2436,12 +2436,12 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.AUGS, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_augs) });
     this.automatic_symbols.set(SYMBOLS.AUGD, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_augd) });
 
-    this.automatic_symbols.set(SYMBOLS.PUSHA, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_pusha) }); // alias instructions
+    this.automatic_symbols.set(SYMBOLS.PUSHA, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_pusha) }); // alias instru.
     this.automatic_symbols.set(SYMBOLS.PUSHB, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_pushb) });
     this.automatic_symbols.set(SYMBOLS.POPA, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_popa) });
     this.automatic_symbols.set(SYMBOLS.POPB, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_popb) });
 
-    this.automatic_symbols.set(SYMBOLS.RET, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_ret) }); // xlat instructions
+    this.automatic_symbols.set(SYMBOLS.RET, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_ret) }); // xlat instru.
     this.automatic_symbols.set(SYMBOLS.RETA, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_reta) });
     this.automatic_symbols.set(SYMBOLS.RETB, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_retb) });
     this.automatic_symbols.set(SYMBOLS.RETI0, { type: eElementType.type_asm_inst, value: this.asmcodeValue(eAsmcode.ac_reti0) });
@@ -2617,9 +2617,9 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.P_TRUE_IN, { type: eElementType.type_con, value: 0b0000000000000000 });
     this.automatic_symbols.set(SYMBOLS.P_INVERT_IN, { type: eElementType.type_con, value: 0b1000000000000000 });
 
-    this.automatic_symbols.set(SYMBOLS.P_TRUE_OUTPUT, { type: eElementType.type_con, value: 0b000000000000000 }); // TESTT change to P_TRUE_OUT
+    this.automatic_symbols.set(SYMBOLS.P_TRUE_OUTPUT, { type: eElementType.type_con, value: 0b000000000000000 }); // Added P_TRUE_OUT
     this.automatic_symbols.set(SYMBOLS.P_TRUE_OUT, { type: eElementType.type_con, value: 0b000000000000000 });
-    this.automatic_symbols.set(SYMBOLS.P_INVERT_OUTPUT, { type: eElementType.type_con, value: 0b100000000000000 }); // TESTT change P_INVERT_OUT
+    this.automatic_symbols.set(SYMBOLS.P_INVERT_OUTPUT, { type: eElementType.type_con, value: 0b100000000000000 }); // Added P_INVERT_OUT
     this.automatic_symbols.set(SYMBOLS.P_INVERT_OUT, { type: eElementType.type_con, value: 0b100000000000000 });
 
     this.automatic_symbols.set(SYMBOLS.P_HIGH_FAST, { type: eElementType.type_con, value: 0b00000000000000 });
