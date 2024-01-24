@@ -155,7 +155,7 @@ export class Spin2Parser {
     } else if (this.isDigit(this.unprocessedLine.charAt(0))) {
       // handle decimal or decimal-float convertion
       const [charsUsed, value] = this.decimalConversion(this.unprocessedLine);
-      typeFound = eElementType.type_con;
+      typeFound = this.isFloat(value) ? eElementType.type_con_float : eElementType.type_con;
       valueFound = value;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '$' && this.isHexStartChar(this.unprocessedLine.charAt(1))) {
@@ -264,6 +264,10 @@ export class Spin2Parser {
     return findStatus;
   }
 
+  private isFloat(possFloat: number): boolean {
+    return Number(possFloat) === possFloat && possFloat % 1 !== 0;
+  }
+
   private symbolConvert(symbolName: string): iBuiltInSymbol {
     let findResult: iSpinSymbol | undefined = undefined;
     let value: string | number = '';
@@ -333,13 +337,14 @@ export class Spin2Parser {
       //  this should be 0x20-0x7f! is any other then throw exception
       // FIXME: TODO: no more than 4 chars in string
       const asciiStr = line.slice(2, endOffset + 2);
-      if (asciiStr.length <= 4) {
+      if (asciiStr.length <= 4 && asciiStr.length != 0) {
         for (let i = 0; i < asciiStr.length; i++) {
-          interpValue = (interpValue << 8) | asciiStr.charCodeAt(i);
+          interpValue |= asciiStr.charCodeAt(i) << (i * 8);
         }
         charsUsed = asciiStr.length + 3;
       } else {
-        throw new Error(`Packed ascii can only be 1-4 characters - [${asciiStr}] is too long`);
+        const explainStr = asciiStr.length == 0 ? 'short' : 'long';
+        throw new Error(`Packed ascii must be 1-4 characters - [${asciiStr}] is too ${explainStr}`);
       }
     } else {
       throw new Error(`Missing 2nd " on packed ascii`);
@@ -401,9 +406,13 @@ export class Spin2Parser {
   }
 
   private decimalFloatConversion(line: string): [boolean, number, number] {
-    const isFloat1NumberRegEx = /^((?:0|[1-9][0-9_]*)\.(?:[0-9]+[0-9_]*)?(?:[eE][+-]?[0-9]+[0-9_]*)?)/;
-    const isFloat2NumberRegEx = /^((?:0|[1-9][0-9_]*)?\.(?:[0-9]+[0-9_]*)(?:[eE][+-]?[0-9]+[0-9_]*))/;
-    // FIXME: TODO: validate and correct these two Regular Expressions ^^^^
+    // we are parsing these
+    //    = 1.4e5
+    //    = 1e-5
+    //    = 1.7exponent
+    const isFloat1NumberRegEx = /^\d+[\d_]*\.\d+[\d_]*[eE](\+\d|-\d|\d)[\d_]*/; // decimal and E
+    const isFloat2NumberRegEx = /^\d+[\d_]*[eE](\+\d|-\d|\d)[\d_]*/; // no decimal but E
+    const isFloat3NumberRegEx = /^\d+[\d_]*\.\d+[\d_]*/; // decimal no E
     let interpValue: number = 0;
     let charsUsed: number = 0;
     let didMatch: boolean = false;
@@ -413,7 +422,6 @@ export class Spin2Parser {
       interpValue = parseFloat(float1NumberMatch[0].replace('_', ''));
       charsUsed = float1NumberMatch[0].length;
       haveExponent = float1NumberMatch[0].toUpperCase().indexOf('E') != -1;
-      // FIXME: TODO: validate that result fits in 32-bits
       didMatch = true;
     } else {
       const float2NumberMatch = line.match(isFloat2NumberRegEx);
@@ -421,11 +429,18 @@ export class Spin2Parser {
         interpValue = parseFloat(float2NumberMatch[0].replace('_', ''));
         charsUsed = float2NumberMatch[0].length;
         haveExponent = float2NumberMatch[0].toUpperCase().indexOf('E') != -1;
-        // FIXME: TODO: validate that result fits in 32-bits
         didMatch = true;
+      } else {
+        const float3NumberMatch = line.match(isFloat3NumberRegEx);
+        if (float3NumberMatch) {
+          interpValue = parseFloat(float3NumberMatch[0].replace('_', ''));
+          charsUsed = float3NumberMatch[0].length;
+          didMatch = true;
+        }
       }
     }
     if (didMatch) {
+      // FIXME: TODO: validate that result fits in 32-bits
       const floatValueStr: string = haveExponent ? interpValue.toExponential() : interpValue.toFixed(3);
       this.logMessage(`  -- decimalFloatConversion(${line}) = interpValue=(${floatValueStr})`);
     }
@@ -453,6 +468,24 @@ export class Spin2Parser {
       }
     }
     return [charsUsed, interpValue];
+  }
+
+  private toSinglePrecisionFloat(numStr: string): number {
+    //
+    // In this code, toSinglePrecisionFloat function takes a string, parses it to a float
+    // using parseFloat, stores it in a Float32Array(which uses single - precision
+    // floating - point format), and then uses a DataView to get the single - precision
+    // float value from the Float32Array.
+    //
+    // Please note that the returned value is still a JavaScript number, which is a
+    // double - precision float, but it has the precision of a single - precision float.
+    // This means that it may not have the same precision as the original string if the
+    // original string had more precision than a single - precision float can represent.
+    //
+    const float32Array = new Float32Array(1);
+    float32Array[0] = parseFloat(numStr);
+    const dataView = new DataView(float32Array.buffer);
+    return dataView.getFloat32(0);
   }
 
   private skipAhead(symbolLength: number, line: string) {

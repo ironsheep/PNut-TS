@@ -3289,6 +3289,7 @@ enum eFlexcode {
   fc_float
 }
 
+// unofficial enum - internal use ONLY
 export enum eOpcode {
   oc_bitnot,
   oc_neg,

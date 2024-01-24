@@ -3,6 +3,8 @@ CON
 	b = %1010
 	c = %%3210
 	d = %"abcd"
+	d1 = %"abc"
+	'd2 = %"abcde"  ' uncomment to cause exception
 	e = 100
 	'f = 1.0
 	'g = 1.0e6
