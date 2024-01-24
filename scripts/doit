@@ -1,0 +1,48 @@
+#!/bin/bash -p
+SCRIPT=${0##*/}
+SCRIPT_VERSION="1.0"
+
+echo ""
+
+SCR_TO_RUN=$1
+if [ -z "$SCR_TO_RUN" ]; then
+	echo "$SCRIPT: ERROR- need \$1 as scriptname" >&2
+	exit 2;
+fi
+
+if [ ! -f $SCR_TO_RUN ]; then
+	echo "$SCRIPT: ERROR-!! make $SCR_TO_RUN executable, and rerun!!"
+	exit 1;
+fi
+shift
+
+OUTDIR="LogFiles"
+if [ ! -d "$OUTDIR" ]; then
+	mkdir "$OUTDIR"
+	echo "$SCRIPT: Created $OUTDIR Directory"
+fi
+
+# remove dir and suffix components of name
+OUTBASE=`basename $SCR_TO_RUN .bat`
+OUTBASE=`basename $OUTBASE .ksh`
+OUTBASE=`basename $OUTBASE .js`
+OUTBASE=`basename $OUTBASE .exe`
+LOG_NOW=`date +%y%m%d-%H%M%S`
+OUTFILE="${OUTDIR}/${OUTBASE}-${LOG_NOW}.log"
+
+if [ -s "$OUTFILE" ]; then
+    echo "$SCRIPT: WARNING- overwriting $OUTFILE" >&2
+fi
+echo "$SCRIPT: INFO- logging to $OUTFILE"
+
+NOW=`date +%y/%m/%d-%H:%M:%S`
+echo "$SCRIPT: $NOW: +$SCR_TO_RUN $*"
+echo "$SCRIPT: $NOW: +$SCR_TO_RUN $*" >"$OUTFILE"
+
+./$SCR_TO_RUN $* 2>&1 | tee -a "$OUTFILE"
+
+NOW=`date +%y%m%d-%H:%M:%S`
+echo ""
+echo "$SCRIPT: $NOW: Done ($OUTFILE)"
+echo "" >>"$OUTFILE"
+echo "$SCRIPT: $NOW: Done ($OUTFILE)" >>"$OUTFILE"

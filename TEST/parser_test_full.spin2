@@ -1,13 +1,13 @@
 CON
-	a = $FF00
-	b = %1010
-	c = %%3210
+	a = $FF00____
+	b = %10_10
+	c = %%32_10
 	d = %"abcd"
-	e = 100
+	e = 100_000
 	f = 1.0
 	g = 1.0e6
 	h = -1.0E-6
-	i = 1e9
+	i = 1e+9
 	j = 1e-9
 
 DAT
@@ -21,7 +21,7 @@ PUB hypot(x,y) : z
 
 PRI index(x) : z
 
-  z := lookupz(x :	...	test ... and two-chr symbol :=
+  z := lookupz(x :	...	'test ... and two-chr symbol :=
 	@"Apples",	...
 	@"Oranges",	...
 	@"Pears",	...

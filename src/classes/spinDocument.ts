@@ -10,6 +10,7 @@ import * as path from 'path';
 
 import { isSpin1File, isSpin2File, fileExists, fileSpecFromURI, loadFileAsString } from '../utils/files';
 import { TextLine } from './textLine';
+import { Context } from '../utils/context';
 
 export enum eEOLType {
   EOL_Unknown,
@@ -33,6 +34,7 @@ export class SpinDocument {
   private readonly docFolder: string;
   private readonly fileBaseName: string;
   private haveFile: boolean = false;
+  private ctx: Context | undefined = undefined;
 
   constructor(fileSpec: string) {
     // record file name and location
@@ -56,6 +58,17 @@ export class SpinDocument {
     }
   }
 
+  public setDebugContext(context: Context): void {
+    this.ctx = context;
+  }
+
+  private logMessage(message: string): void {
+    if (this.ctx) {
+      if (this.ctx.logOptions.logElementizer) {
+        this.ctx.logger.logMessage(message);
+      }
+    }
+  }
   get validFile(): boolean {
     return this.haveFile;
   }
@@ -79,15 +92,22 @@ export class SpinDocument {
   /**
    * Returns a TextLine object representing the line at the given index.
    * @param {number} lineIndex - The index of the line to return.
-   * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range, returns a TextLine object representing an empty line with a line number of -1.
+   * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range,
+   * returns a TextLine object representing an empty line with a line number of -1.
    */
   public lineAt(lineIndex: number): TextLine {
-    let desiredString: string | undefined;
-    if (lineIndex >= 0 && lineIndex < this.rawLines.length) {
+    let desiredString: string | undefined = undefined;
+    if (lineIndex >= 0 && lineIndex < this.lineCount) {
       desiredString = this.rawLines[lineIndex];
+      //this.logMessage(`DOC: lineAt(${lineIndex}) finds desiredString=[${desiredString}](${desiredString.length})`);
+      if (desiredString != null) {
+        // do nothing this is good
+      } else {
+        desiredString = ''; // we want an empty string in this case
+      }
     }
     // return object with additional details about this line
-    const desiredLine: TextLine = desiredString ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
+    const desiredLine: TextLine = desiredString != null ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
     return desiredLine;
   }
 }

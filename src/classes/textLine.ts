@@ -66,9 +66,9 @@ export class TextLine {
   private readonly nonWhiteIndex: number;
 
   /**
-   * The raw line number.
+   * The raw line index [0 - length-1].
    */
-  private readonly rawLineNumber: number;
+  private readonly rawLineIndex: number;
 
   /**
    * The raw text of the line.
@@ -78,11 +78,11 @@ export class TextLine {
   /**
    * Constructs a new TextLine instance.
    * @param {string} line - The raw text of the line.
-   * @param {number} lineNumber - The raw line number.
+   * @param {number} lineIndex - The raw line number, zero relative [0 to lineCount - 1].
    */
-  constructor(line: string, lineNumber: number) {
+  constructor(line: string, lineIndex: number) {
     this.rawText = line;
-    this.rawLineNumber = lineNumber;
+    this.rawLineIndex = lineIndex;
     this.nonWhiteIndex = this._skipWhite(line, 0);
   }
 
@@ -99,12 +99,12 @@ export class TextLine {
    * @returns {number} The raw line number.
    */
   get sourceLineNumber(): number {
-    return this.rawLineNumber;
+    return this.rawLineIndex + 1;
   }
 
   get range(): Range {
-    const startPos: Position = new Position(this.sourceLineNumber, 0);
-    const endPos: Position = new Position(this.sourceLineNumber, this.rawText.length - 1);
+    const startPos: Position = new Position(this.rawLineIndex, 0);
+    const endPos: Position = new Position(this.rawLineIndex, this.rawText.length - 1);
     const desiredRange = new Range(startPos, endPos);
     return desiredRange;
   }

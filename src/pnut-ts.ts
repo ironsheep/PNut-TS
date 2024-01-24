@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 /** @format */
 
 // src/pnut-ts.ts
@@ -27,7 +28,24 @@ export class PNutInTypeScript {
   private spinDocument: SpinDocument | undefined = undefined;
   private shouldAbort: boolean = false;
 
-  // constructor() {}
+  constructor() {
+    process.stdout.on('error', (error: Error) => {
+      console.error(`Pnut-TS: An error occurred on stdout: "${error.message}", Aborting.`);
+      process.exit(1);
+    });
+
+    process.stderr.on('error', (error: Error) => {
+      console.error(`Pnut-TS: An error occurred on stderr: "${error.message}", Aborting.`);
+      process.exit(1);
+    });
+    process.stdout.on('close', () => {
+      console.log('Pnut-TS: stdout was closed');
+    });
+
+    process.stderr.on('close', () => {
+      console.log('Pnut-TS: stderr was closed');
+    });
+  }
 
   public setArgs(args: string[]): void {
     this.argsArray = args;

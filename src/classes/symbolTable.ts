@@ -16,7 +16,7 @@ import { eElementType } from './types';
 export interface iSymbol {
   name: string;
   type: eElementType;
-  value: number;
+  value: number | string;
 }
 /**
  * The Pnut_ts symbol table class.
