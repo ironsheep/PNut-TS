@@ -11,6 +11,7 @@
         "ironsheepproductionsllc.spin2",
         "nataliemclaren.typescript-docs",
         "loiane.ts-extension-pack",
-        "gruntfuggly.todo-tree"
+        "gruntfuggly.todo-tree",
+        "johnnywong.vscode-ts-whitespace-converter"
     ]
 }

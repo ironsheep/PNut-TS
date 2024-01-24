@@ -16,7 +16,8 @@
     "esbenp.prettier-vscode",
     "auchenberg.vscode-browser-preview",
     "davidanson.vscode-markdownlint",
-    "redhat.vscode-yaml"
+    "redhat.vscode-yaml",
+    "johnnywong.vscode-ts-whitespace-converter"
   ],
   "settings": {
     "files.eol": "\n",

@@ -6,10 +6,10 @@
 
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
-import { eElementType, eValueType } from './types';
+import { eElementType, eValueType, getElementTypeString } from './types';
 import { TextLine } from './textLine';
 import { SymbolTable } from './symbolTable';
-import { find_symbol_s1, find_symbol_s2, find_symbol_s3, SpinSymbol } from './parseUtils';
+import { SpinSymbolTables, iSpinSymbol } from './parseUtils';
 
 // src/classes/spin2Parser.ts
 
@@ -26,6 +26,7 @@ export class Spin2Parser {
   private source_flags: number = 0;
   private at_eof: boolean = false;
   private at_eol: boolean = false;
+  private symbol_tables: SpinSymbolTables = new SpinSymbolTables();
   private symbols_debug_hash_auto: SymbolTable = new SymbolTable();
   private symbols_debug_hash_name: SymbolTable = new SymbolTable();
   private symbols_hash_auto: SymbolTable = new SymbolTable();
@@ -186,8 +187,9 @@ export class Spin2Parser {
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
     this.logMessage(
-      `- get_element() Ln#${this.symbolLineIndex + 1}(${this.symbolCharacterIndex}) - typeFound=(${typeFound}), valueFound=(${valueFound})`
+      `- get_element() Ln#${this.symbolLineIndex + 1}(${this.symbolCharacterIndex}) - typeFound=(${getElementTypeString(typeFound)}), valueFound=(${valueFound})`
     );
+    this.logMessage(''); // blank line
     return [typeFound, valueFound, this.symbolLineIndex + 1, this.symbolCharacterIndex];
   }
 
@@ -210,7 +212,7 @@ export class Spin2Parser {
     let charsUsed: number = 0;
     let foundStatus: boolean = false;
     let type: eElementType = eElementType.type_undefined;
-    let findResult: SpinSymbol | undefined = undefined;
+    let findResult: iSpinSymbol | undefined = undefined;
     let searchString: string = line;
     // find a possible match in our three tables
     // search longest match first!
@@ -218,27 +220,16 @@ export class Spin2Parser {
     if (line.length > 3) {
       searchString = line.substring(0, 3);
     }
+    findResult = this.symbol_tables.operatorSymbol(searchString);
     //this.logMessage(`- operatorConvert(${line})`);
-    if (searchString.length > 2) {
-      //this.logMessage(`  --  searchString=[${searchString}]`);
-      findResult = find_symbol_s3.find((symbol) => symbol.symbol === searchString);
-    }
-    if (!findResult && searchString.length > 1) {
-      searchString = line.substring(0, 2);
-      //this.logMessage(`  --  searchString=[${searchString}]`);
-      findResult = find_symbol_s2.find((symbol) => symbol.symbol === searchString);
-    }
-    if (!findResult && searchString.length > 0) {
-      searchString = line.substring(0, 1);
-      //this.logMessage(`  --  searchString=[${searchString}]`);
-      findResult = find_symbol_s1.find((symbol) => symbol.symbol === searchString);
-    }
     if (findResult) {
       foundStatus = true;
       interpValue = findResult.value;
-      charsUsed = searchString.length;
+      charsUsed = findResult.symbol.length;
       type = findResult.type;
-      this.logMessage(`- operatorConvert() Operator found [${searchString}](${searchString.length}), type=(${type}), interpValue=(${interpValue})`);
+      this.logMessage(
+        `- operatorConvert() Operator found [${findResult.symbol}](${findResult.symbol.length}), type=(${getElementTypeString(type)}), interpValue=(${interpValue})`
+      );
     } else {
       this.logMessage('- operatorConvert() NO operator found');
     }
@@ -428,7 +419,8 @@ export class Spin2Parser {
         this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
         this.unprocessedLine = this.currentTextLine.text;
         this.currCharacterIndex = 0;
-        this.logMessage(`- loadNextLine() unprocessedLine=[${this.unprocessedLine}]`);
+        //this.logMessage(`- loadNextLine() unprocessedLine=[${this.unprocessedLine}]`);
+        this.logMessage(`- LOADed Ln#${this.sourceLineNumber + 1}(${this.unprocessedLine.length})`);
         this.at_eol = this.unprocessedLine.length == 0 ? true : false;
       } else {
         this.at_eol = true;
