@@ -28,6 +28,14 @@ interface iBuiltInSymbol {
   type: eElementType;
 }
 
+interface iElement {
+  sourceLineIndex: number;
+  sourceCharacterOffset: number;
+  value: number | string;
+  type: eElementType;
+  midStringComma: boolean; // valid only if type_comma
+}
+
 export class Spin2Parser {
   private context: Context;
   private srcFile: SpinDocument;
@@ -72,16 +80,48 @@ export class Spin2Parser {
 
   public testGetElementLoop() {
     //let numberCalls: number = 30;
-    let [type, value, lineIdx, charIdx] = this.get_element();
+    const element_list: iElement[] = [];
+    // store the value(s) in list
+    let atEndOfFile: boolean = false;
+    let elements: iElement[] = this.get_element_entries();
+    //this.logMessage(`- get EARLY elements(${elements.length})=[${elements}]`);
     do {
-      if (type != eElementType.type_end_file) {
-        [type, value, lineIdx, charIdx] = this.get_element();
+      for (let index = 0; index < elements.length; index++) {
+        const element = elements[index];
+        element_list.push(element);
+        if (element.type == eElementType.type_end_file) {
+          atEndOfFile = true;
+        }
       }
-      //numberCalls -= 1;
-      //if (numberCalls < 1) {
-      //  break;
-      //}
-    } while (type != eElementType.type_end_file);
+      if (atEndOfFile) {
+        break;
+      }
+      elements = this.get_element_entries();
+      //this.logMessage(`- get IN-LOOP elements(${elements.length})=[${elements}]`);
+    } while (!atEndOfFile);
+
+    // now loop thru elements found
+    this.logMessage(''); // blank line
+    this.logMessage('// ---------------------------------------');
+    this.logMessage(`- displaying ${element_list.length} entries`);
+    for (let index = 0; index < element_list.length; index++) {
+      const element = element_list[index];
+      const elemTypeStr: string = getElementTypeString(element.type);
+      const flagInterp: string = element.type == eElementType.type_comma && element.midStringComma == true ? `, midString` : '';
+      let valueInterp: string = typeof element.value === 'number' ? `, (${element.value})` : element.value;
+      if (element.type == eElementType.type_con_float) {
+        valueInterp = `, (${this.toFloatString(element.value)})`;
+      }
+      if (typeof element.value === 'string') {
+        valueInterp = `, "${element.value}"`;
+      }
+      if (!element.value) {
+        valueInterp = '';
+      }
+      this.logMessage(` (${index + 1}) -- Ln#${element.sourceLineIndex}(${element.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}`);
+    }
+    this.logMessage('\\ ---------------------------------------');
+    this.logMessage(''); // blank line
   }
 
   public P2InitStruct() {
@@ -103,17 +143,7 @@ export class Spin2Parser {
   }
 
   private determine_mode(): boolean {
-    this.reset_element();
-    let bFoundSpin: boolean = false;
-    let [elemType, elemValue] = this.get_element();
-    do {
-      if (elemType == eElementType.type_block && elemValue != eValueType.block_con && elemValue != eValueType.block_dat) {
-        bFoundSpin = true;
-        break; // we have our result, exit loop
-      }
-      [elemType, elemValue] = this.get_element();
-    } while (elemType != eElementType.type_end);
-    return bFoundSpin;
+    return false;
   }
 
   private reset_element(): void {
@@ -122,21 +152,37 @@ export class Spin2Parser {
     this.currflags = 0;
   }
 
-  private get_element(): [eElementType, string | number, number, number] {
+  private get_element_entries(): iElement[] {
+    const elementsFound: iElement[] = [];
+    let returningSingleEntry: boolean = true;
     let typeFound: eElementType = eElementType.type_undefined;
     // eslint-disable-next-line prefer-const
     let valueFound: string | number = '';
     //
     // let's parse like spin example initially
     //
+    let skippingContinuations: boolean = true;
+    while (skippingContinuations) {
+      // skip white left edge
+      const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
+      if (whiteSkipCount > 0) {
+        this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
+      }
+      if (this.unprocessedLine.startsWith('...')) {
+        // handle line continuation
+        this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "..." skipping to next line`);
+        // force load of next line
+        this.loadNextLine();
+      } else {
+        skippingContinuations = false;
+      }
+    }
+
     if (this.currCharacterIndex == 0) {
       this.logMessage(`  --- NEW ---   Ln#${this.sourceLineNumber}(${this.unprocessedLine.length})  line=[${this.unprocessedLine}]`);
     }
-    // skip white left edge
-    const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
-    if (whiteSkipCount > 0) {
-      this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
-    }
+
+    // past line continuations, now determine what we see next
     if (this.at_eof) {
       typeFound = eElementType.type_end_file;
       this.recordSymbolLocation();
@@ -144,9 +190,35 @@ export class Spin2Parser {
       this.recordSymbolLocation();
       this.loadNextLine();
       typeFound = eElementType.type_end;
-      //} else if (this.unprocessedLine.charAt(0) == '"') {
+    } else if (this.unprocessedLine.charAt(0) == '"') {
       // handle double-quoted string
       // FIXME: TODO: add double-quoted string parsing!
+      const endQuoteOffset = this.unprocessedLine.substring(1).indexOf('"');
+      // if we have an end and not an empty string
+      if (endQuoteOffset != -1 && endQuoteOffset != 0) {
+        returningSingleEntry = false;
+        let charOffset = this.currCharacterIndex;
+        for (let charIndex = 1; charIndex < endQuoteOffset + 1; charIndex++) {
+          const char = this.unprocessedLine.charAt(charIndex);
+          const elementChar: iElement = this.buildElement(eElementType.type_con, char, charOffset);
+          elementsFound.push(elementChar);
+          if (charIndex != endQuoteOffset) {
+            const elementComma: iElement = this.buildElement(eElementType.type_comma, 0, charOffset);
+            elementComma.midStringComma = true;
+            elementsFound.push(elementComma);
+          }
+          charOffset += 1;
+        }
+        this.unprocessedLine = this.skipAhead(endQuoteOffset + 2, this.unprocessedLine);
+      } else {
+        if (endQuoteOffset == 0) {
+          // [error_es] we have an empty string
+          throw new Error('Empty string');
+        } else {
+          // [error_eatq] we have an unterminated string
+          throw new Error('Expected a terminating quote');
+        }
+      }
     } else if (this.unprocessedLine.charAt(0) == "'") {
       // handle tic-comment, skip rest of line
       typeFound = eElementType.type_end;
@@ -224,11 +296,44 @@ export class Spin2Parser {
     // return findings and position within file (sourceLine# NOT lineIndex!)
     const elemTypeStr: string = getElementTypeString(typeFound);
     const valueToDisplay: string | number = typeFound == eElementType.type_con_float ? this.toFloatString(valueFound) : valueFound;
-    this.logMessage(
-      `- get_element() Ln#${this.symbolLineNumber}(${this.symbolCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${valueToDisplay})`
-    );
-    this.logMessage(''); // blank line
-    return [typeFound, valueFound, this.symbolLineNumber, this.symbolCharacterOffset];
+    // return our 1 iElement within an array
+    if (returningSingleEntry) {
+      this.logMessage(
+        `- get_element_entries() Ln#${this.symbolLineNumber}(${this.symbolCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${valueToDisplay})`
+      );
+      this.logMessage(''); // blank line
+      elementsFound[0] = {
+        type: typeFound,
+        value: valueFound,
+        sourceLineIndex: this.symbolLineNumber - 1,
+        sourceCharacterOffset: this.symbolCharacterOffset,
+        midStringComma: false
+      };
+    } else {
+      // dump our list of values
+      this.logMessage(`- displaying ${elementsFound.length} elements`); // blank line
+      for (let index = 0; index < elementsFound.length; index++) {
+        const element = elementsFound[index];
+        const elemTypeStr: string = getElementTypeString(element.type);
+        const flagInterp: string = element.type == eElementType.type_comma ? `, midString` : '';
+        this.logMessage(
+          `- get_element_entries() Ln#${element.sourceLineIndex}(${element.sourceCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${element.value})${flagInterp}`
+        );
+      }
+      this.logMessage(''); // blank line
+    }
+    return elementsFound;
+  }
+
+  private buildElement(type: eElementType, value: number | string, charOffset: number): iElement {
+    const newElement: iElement = {
+      sourceLineIndex: this.currentTextLine.sourceLineNumber - 1,
+      sourceCharacterOffset: charOffset,
+      value: value,
+      type: type,
+      midStringComma: false
+    };
+    return newElement;
   }
 
   private isDigit(line: string): boolean {
@@ -512,7 +617,7 @@ export class Spin2Parser {
 
   private toFloatString(float32: number | string): string {
     const hexValue = this.toSinglePrecisionHex(typeof float32 === 'number' ? float32 : 0); // replace with your hex value
-    const float64Value = this.hexToFloat64(hexValue);
+    const float64Value = this.hexToFloat64(hexValue).toExponential(6);
     return float64Value.toString();
   }
 
