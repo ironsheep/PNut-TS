@@ -154,8 +154,8 @@ export class Spin2Parser {
       this.loadNextLine();
     } else if (this.isDigit(this.unprocessedLine.charAt(0))) {
       // handle decimal or decimal-float convertion
-      const [charsUsed, value] = this.decimalConversion(this.unprocessedLine);
-      typeFound = this.isFloat(value) ? eElementType.type_con_float : eElementType.type_con;
+      const [isFloat, charsUsed, value] = this.decimalConversion(this.unprocessedLine);
+      typeFound = isFloat ? eElementType.type_con_float : eElementType.type_con;
       valueFound = value;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '$' && this.isHexStartChar(this.unprocessedLine.charAt(1))) {
@@ -223,8 +223,9 @@ export class Spin2Parser {
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
     const elemTypeStr: string = getElementTypeString(typeFound);
+    const valueToDisplay: string | number = typeFound == eElementType.type_con_float ? this.toFloatString(valueFound) : valueFound;
     this.logMessage(
-      `- get_element() Ln#${this.symbolLineNumber}(${this.symbolCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${valueFound})`
+      `- get_element() Ln#${this.symbolLineNumber}(${this.symbolCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${valueToDisplay})`
     );
     this.logMessage(''); // blank line
     return [typeFound, valueFound, this.symbolLineNumber, this.symbolCharacterOffset];
@@ -419,45 +420,50 @@ export class Spin2Parser {
     let haveExponent: boolean = false;
     const float1NumberMatch = line.match(isFloat1NumberRegEx);
     if (float1NumberMatch) {
-      interpValue = parseFloat(float1NumberMatch[0].replace('_', ''));
+      interpValue = this.toSinglePrecisionFloat(float1NumberMatch[0].replace('_', ''));
       charsUsed = float1NumberMatch[0].length;
       haveExponent = float1NumberMatch[0].toUpperCase().indexOf('E') != -1;
       didMatch = true;
     } else {
       const float2NumberMatch = line.match(isFloat2NumberRegEx);
       if (float2NumberMatch) {
-        interpValue = parseFloat(float2NumberMatch[0].replace('_', ''));
+        interpValue = this.toSinglePrecisionFloat(float2NumberMatch[0].replace('_', ''));
         charsUsed = float2NumberMatch[0].length;
         haveExponent = float2NumberMatch[0].toUpperCase().indexOf('E') != -1;
         didMatch = true;
       } else {
         const float3NumberMatch = line.match(isFloat3NumberRegEx);
         if (float3NumberMatch) {
-          interpValue = parseFloat(float3NumberMatch[0].replace('_', ''));
+          interpValue = this.toSinglePrecisionFloat(float3NumberMatch[0].replace('_', ''));
           charsUsed = float3NumberMatch[0].length;
           didMatch = true;
         }
       }
     }
     if (didMatch) {
-      // FIXME: TODO: validate that result fits in 32-bits
-      const floatValueStr: string = haveExponent ? interpValue.toExponential() : interpValue.toFixed(3);
+      // Validate it's a legal floating point number
+      if (this.toSinglePrecisionHex(interpValue) == '7f800000') {
+        throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
+      }
+      const floatValueStr: string = `0x${this.toSinglePrecisionHex(interpValue)}`;
       this.logMessage(`  -- decimalFloatConversion(${line}) = interpValue=(${floatValueStr})`);
     }
     return [didMatch, charsUsed, interpValue];
   }
 
-  private decimalConversion(line: string): [number, number] {
+  private decimalConversion(line: string): [boolean, number, number] {
     let interpValue: number = 0;
     let charsUsed: number = 0;
+    let isFloat: boolean = false;
     // FloatConversion if fails then do nonFloat.
     const [didMatch, nbrChars, value] = this.decimalFloatConversion(line);
     if (didMatch) {
       interpValue = value;
       charsUsed = nbrChars;
+      isFloat = true;
     } else {
       // do nonFloat
-      const isDecimalNumberRegEx = /^([[0-9]+[0-9_]*)/;
+      const isDecimalNumberRegEx = /^(\d+[\d_]*)/;
       const decimalNumberMatch = line.match(isDecimalNumberRegEx);
       if (decimalNumberMatch) {
         interpValue = parseInt(decimalNumberMatch[0].replace('_', ''));
@@ -467,7 +473,7 @@ export class Spin2Parser {
         this.validate32BitInteger(interpValue);
       }
     }
-    return [charsUsed, interpValue];
+    return [isFloat, charsUsed, interpValue];
   }
 
   private toSinglePrecisionFloat(numStr: string): number {
@@ -486,6 +492,28 @@ export class Spin2Parser {
     float32Array[0] = parseFloat(numStr);
     const dataView = new DataView(float32Array.buffer);
     return dataView.getFloat32(0);
+  }
+
+  private toSinglePrecisionHex(float32: number): string {
+    const float32Array = new Float32Array(1);
+    float32Array[0] = float32;
+    const dataView = new DataView(float32Array.buffer);
+    const intView = dataView.getUint32(0);
+    return intView.toString(16);
+  }
+
+  private hexToFloat64(hex: string): number {
+    const int = parseInt(hex, 16);
+    const float32Array = new Float32Array(1);
+    const dataView = new DataView(float32Array.buffer);
+    dataView.setUint32(0, int);
+    return dataView.getFloat32(0);
+  }
+
+  private toFloatString(float32: number | string): string {
+    const hexValue = this.toSinglePrecisionHex(typeof float32 === 'number' ? float32 : 0); // replace with your hex value
+    const float64Value = this.hexToFloat64(hexValue);
+    return float64Value.toString();
   }
 
   private skipAhead(symbolLength: number, line: string) {

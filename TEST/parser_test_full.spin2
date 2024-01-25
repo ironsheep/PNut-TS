@@ -9,6 +9,7 @@ CON
 	h = -1.0E-6
 	i = 1e+9
 	j = 1e-9
+'	k = 1e50   ' uncommnet this to throw exception
 
 DAT
 	org
