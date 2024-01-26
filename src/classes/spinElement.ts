@@ -62,6 +62,10 @@ export class SpinElement {
     return this._type == eElementType.type_con;
   }
 
+  get isOperation(): boolean {
+    return this._type == eElementType.type_op;
+  }
+
   get isMidStringComma(): boolean {
     return this._type == eElementType.type_comma && this._midStringComma == true;
   }
@@ -87,7 +91,11 @@ export class SpinElement {
     } else if (this.isConstantFloat) {
       valueInterp = `(${toFloatString(this.value)})`;
     } else if (this.valueIsNumber) {
-      valueInterp = `(${this.value})`;
+      if (this.isOperation) {
+        valueInterp = `(0x${this.value.toString(16)})`;
+      } else {
+        valueInterp = `(${this.value})`;
+      }
     } else if (this.valueIsString) {
       if (this.value !== '') {
         valueInterp = `"${this.value}"`;

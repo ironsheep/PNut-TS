@@ -6,6 +6,7 @@
 // a collection of generally useful functions for parsing spin
 
 import { eElementType, eValueType, eByteCode } from './types';
+import { Context } from '../utils/context';
 
 export interface iSpinSymbol {
   symbol: string;
@@ -982,7 +983,8 @@ function setOpcodeValue(
   // macro		opcode	symbol,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10
   // symbol		=	v1 + (v2 shl 8) + (v3 shl 16) + (v4 shl 24) + (v5 shl 25) + (v6 shl 26) + (v7 shl 27) + (v8 shl 28) + (v9 shl 29) + (v10 shl 30)
   //        endm
-  return v1 + (v2 << 8) + (v3 << 16) + (v4 << 24) + (v5 << 25) + (v6 << 26) + (v7 << 27) + (v8 << 28) + (v9 << 29) + (v10 << 30);
+  const newValue = v1 + (v2 << 8) + (v3 << 16) + (v4 << 24) + (v5 << 25) + (v6 << 26) + (v7 << 27) + (v8 << 28) + (v9 << 29) + (v10 << 30);
+  return newValue;
 }
 
 interface iBaseSymbolInfo {
@@ -991,6 +993,8 @@ interface iBaseSymbolInfo {
 }
 
 export class SpinSymbolTables {
+  private context: Context;
+  private shouldLog: boolean = false;
   private automatic_symbols = new Map<string, iBaseSymbolInfo>();
   private flexcodeValues = new Map<eFlexcode, number>();
   private asmcodeValues = new Map<eAsmcode, number>();
@@ -999,7 +1003,8 @@ export class SpinSymbolTables {
   private find_symbol_s2: iSpinSymbol[] = [];
   private find_symbol_s3: iSpinSymbol[] = [];
 
-  constructor() {
+  constructor(ctx: Context) {
+    this.context = ctx;
     this.find_symbol_s1 = [
       // find_symbol_s1
       { symbol: '(', type: eElementType.type_left, value: 0 },
@@ -2791,12 +2796,24 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.EVENT_QMT, { type: eElementType.type_con, value: 15 });
   }
 
+  public enableLogging(enable: boolean = true) {
+    // can pass false to disable
+    this.shouldLog = enable;
+  }
+
+  private logMessage(message: string): void {
+    if (this.shouldLog) {
+      this.context.logger.logMessage(message);
+    }
+  }
+
   public builtInSymbol(symbolName: string): iSpinSymbol | undefined {
     let findResult: iSpinSymbol | undefined = undefined;
-    const desiredName: string = symbolName.toUpperCase();
-    if (this.automatic_symbols.has(desiredName)) {
-      const symbolInfo: iBaseSymbolInfo | undefined = this.automatic_symbols.get(desiredName);
+    //const desiredName: string = symbolName.toUpperCase(); // the caller has already done this
+    if (this.automatic_symbols.has(symbolName)) {
+      const symbolInfo: iBaseSymbolInfo | undefined = this.automatic_symbols.get(symbolName);
       if (symbolInfo) {
+        this.logMessage(`- builtInSymbol(${symbolName}) = (${symbolInfo.value})`);
         findResult = { symbol: symbolName, type: symbolInfo.type, value: symbolInfo.value };
       }
     }
@@ -2830,6 +2847,7 @@ export class SpinSymbolTables {
     if (this.opcodeValues.has(opcodeId)) {
       const tmpReturnValue = this.opcodeValues.get(opcodeId);
       if (tmpReturnValue) {
+        this.logMessage(`  --  opcodeValue(${opcodeId}) tmpReturnValue=[${tmpReturnValue}]`);
         returnValue = tmpReturnValue;
       }
     }

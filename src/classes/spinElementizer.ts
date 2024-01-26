@@ -41,14 +41,16 @@ export class SpinElementizer {
   private source_flags: number = 0;
   private at_eof: boolean = false;
   private at_eol: boolean = false;
-  private symbol_tables: SpinSymbolTables = new SpinSymbolTables();
+  private symbol_tables: SpinSymbolTables;
   private lastEmittedIsLineEnd: boolean = true;
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
     this.srcFile = spinCode;
+    this.symbol_tables = new SpinSymbolTables(ctx);
     if (this.context.logOptions.logElementizer) {
       this.srcFile.setDebugContext(this.context);
+      this.symbol_tables.enableLogging();
     }
     // dummy load of next line (replaced by loadNextLine())
     this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
@@ -136,7 +138,7 @@ export class SpinElementizer {
       } while (this.unprocessedLine.startsWith('{'));
     }
 
-    // past line continuations, now determine what we see next
+    // past line continuations/comments, now determine what we see next
     if (this.at_eof) {
       typeFound = eElementType.type_end_file;
       this.recordSymbolLocation();
@@ -185,7 +187,7 @@ export class SpinElementizer {
       valueFound = value;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '$' && this.isHexStartChar(this.unprocessedLine.charAt(1))) {
-      // handle hexadecimal convertion
+      // handle hexadecimal conversion Ex: $0f, $dead_f00d, etc.
       const [charsUsed, value] = this.hexadecimalConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
@@ -216,6 +218,10 @@ export class SpinElementizer {
       // standalone % (percent) sign
       typeFound = eElementType.type_percent;
       this.unprocessedLine = this.skipAhead(1, this.unprocessedLine);
+    } else if (this.unprocessedLine.charAt(0) == '}') {
+      // fail if close '{' before open
+      // [error_bmbpbb]
+      throw new Error('"}" must be preceeded by "{" to form a comment');
     } else if (this.isSymbolStartChar(this.unprocessedLine.charAt(0))) {
       // handle symbol names
       const [charsUsed, value] = this.symbolNameConversion(this.unprocessedLine);
@@ -241,13 +247,12 @@ export class SpinElementizer {
         }
         this.unprocessedLine = this.skipAhead(knownOperator.charsUsed, this.unprocessedLine);
       } else {
-        // FIXME: TODO: report error bad character....
-        typeFound = eElementType.type_undefined;
-        valueFound = this.unprocessedLine;
-        this.recordSymbolLocation();
-        const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
-        this.logMessage(`  -- SKIP Ln#${lineNbrString} line=[${this.unprocessedLine}]`);
-        this.loadNextLine();
+        // NEW: report error bad character....  we added a new Unknown type to be able to do this
+        typeFound = eElementType.type_unknown;
+        valueFound = this.unprocessedLine.charAt(0);
+        this.unprocessedLine = this.skipAhead(1, this.unprocessedLine);
+        // [error_uc]
+        throw new Error(`Unrecognized character [${valueFound}]($${this.unprocessedLine.charCodeAt(0).toString(16)})`);
       }
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
@@ -504,9 +509,11 @@ export class SpinElementizer {
         charsUsed = asciiStr.length + 3;
       } else {
         const explainStr = asciiStr.length == 0 ? 'short' : 'long';
+        // [error_nmt4c]
         throw new Error(`Packed ascii must be 1-4 characters - [${asciiStr}] is too ${explainStr}`);
       }
     } else {
+      // [error_  NEW not in Pnut]
       throw new Error(`Missing 2nd " on packed ascii`);
       // FIXME: TODO: move this to 2nd quote check before calling this method
     }
@@ -599,6 +606,7 @@ export class SpinElementizer {
     if (didMatch) {
       // Validate it's a legal floating point number
       if (toSinglePrecisionHex(interpValue) == '7f800000') {
+        // [error_fpcmbw]
         throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
       }
       const floatValueStr: string = `0x${toSinglePrecisionHex(interpValue)}`;
@@ -635,6 +643,7 @@ export class SpinElementizer {
   private validate32BitInteger(value: number): void {
     if (value > 4294967295 || value < -2147483648) {
       this.context.logger.logErrorMessage(`The result (${value}) does not fit in 32 bits`);
+      // [error_ce32b]
       throw new Error('Constant exceeds 32 bits');
     }
   }

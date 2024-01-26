@@ -1,5 +1,5 @@
 
-CON
+ CON
 	a = $FF00____
 	b = %10_10
 	c = %%32_10
@@ -13,7 +13,7 @@ CON
 '	k = 1e50   ' uncomment this to throw exception
 
   {{doc comment
-  in multiple lines}} l = 5_000
+  in multiple lines}} l = 5_000  ' uncomment to fail on this -> ;
 
 
 DAT
@@ -44,4 +44,7 @@ PRI index(x) : z
   	{comment{nested comment}}
 
 ' {{doc comment w/missing end   ' uncomment to throw exception
+' {doc comment w/missing end   ' uncomment to throw exception
+' } ' doc comment w/missing open   ' uncomment to throw exception
+
 x := 0
