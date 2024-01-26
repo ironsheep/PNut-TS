@@ -94,6 +94,11 @@ export class SpinElementizer {
     // eslint-disable-next-line prefer-const
     let valueFound: string | number = '';
 
+    if (this.currCharacterIndex == 0) {
+      const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
+      this.logMessage(`  --- NEW ---   Ln#${lineNbrString}  line=[${this.unprocessedLine}]`);
+    }
+
     // skip initial white space on opening line
     const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
     if (whiteSkipCount > 0) {
@@ -159,10 +164,6 @@ export class SpinElementizer {
       } else {
         skippingContinuations = false;
       }
-    }
-
-    if (this.currCharacterIndex == 0) {
-      this.logMessage(`  --- NEW ---   Ln#${this.sourceLineNumber}(${this.unprocessedLine.length})  line=[${this.unprocessedLine}]`);
     }
 
     // past line continuations, now determine what we see next
@@ -274,7 +275,8 @@ export class SpinElementizer {
         typeFound = eElementType.type_undefined;
         valueFound = this.unprocessedLine;
         this.recordSymbolLocation();
-        this.logMessage(`  -- SKIP Ln#${this.symbolLineNumber} line=[${this.unprocessedLine}]`);
+        const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
+        this.logMessage(`  -- SKIP Ln#${lineNbrString} line=[${this.unprocessedLine}]`);
         this.loadNextLine();
       }
     }
@@ -283,15 +285,14 @@ export class SpinElementizer {
     const valueToDisplay: string | number = typeFound == eElementType.type_con_float ? toFloatString(valueFound) : valueFound;
     // return our 1 iElement within an array
     if (returningSingleEntry) {
-      this.logMessage(
-        `- get_element_entries() Ln#${this.symbolLineNumber}(${this.symbolCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${valueToDisplay})`
-      );
+      const lineNbrString: string = this.lineNumberString(this.symbolLineNumber, this.symbolCharacterOffset);
+      this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${valueToDisplay})`);
       this.logMessage(''); // blank line
       const singleElement = new SpinElement(typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
       if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
         elementsFound.push(singleElement);
         this.lastEmittedIsLineEnd = singleElement.isLineEnd ? true : false;
-        this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd}) type=[${singleElement.typeString()}]`); // blank line
+        //this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd}) type=[${singleElement.typeString()}]`); // blank line
       }
     } else {
       // dump our list of values
@@ -300,15 +301,19 @@ export class SpinElementizer {
         const element = elementsFound[index];
         const elemTypeStr: string = getElementTypeString(element.type);
         const flagInterp: string = element.isMidStringComma ? `, midString` : '';
-        this.logMessage(
-          `- get_element_entries() Ln#${element.sourceLineIndex}(${element.sourceCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${element.value})${flagInterp}`
-        );
+        const lineNbrString: string = this.lineNumberString(element.sourceLineIndex, element.sourceCharacterOffset);
+        this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${element.value})${flagInterp}`);
       }
       this.lastEmittedIsLineEnd = false;
-      this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd})`); // blank line
+      //this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd})`); // blank line
       this.logMessage(''); // blank line
     }
     return elementsFound;
+  }
+
+  private lineNumberString(lineIndex: number, characterIndex: number): string {
+    // return 99(999) where 99 is the line number and 999 is the offset into the line
+    return `${lineIndex}(${characterIndex})`;
   }
 
   private buildElement(type: eElementType, value: number | string, charOffset: number): SpinElement {
@@ -602,9 +607,6 @@ export class SpinElementizer {
         this.currLineIndex += 1;
         this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
         this.unprocessedLine = this.currentTextLine.text;
-        //if (this.currentTextLine.sourceLineNumber == 0) {
-        //  this.logMessage('- ERROR: loadNextLine() lineAt() failed to give us a line!');
-        //}
         this.currCharacterIndex = 0;
         //this.logMessage(`  -- loadNextLine() unprocessedLine=[${this.unprocessedLine}](${this.unprocessedLine.length})`);
         this.logMessage(`      ( LOADed Ln#${this.sourceLineNumber}(${this.unprocessedLine.length}) )`);
