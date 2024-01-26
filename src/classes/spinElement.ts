@@ -4,15 +4,16 @@
 // src/classes/parseUtils.ts
 
 import { eElementType, getElementTypeString } from './types';
+import { toFloatString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
 
 export class SpinElement {
   private _sourceLineIndex: number = 0;
   private _sourceCharacterOffset: number = 0;
-  private _value: number | string = 0;
+  private _value: number | string = '';
   private _type: eElementType = eElementType.type_undefined;
-  public midStringComma: boolean = false; // valid only if type_comma
+  private _midStringComma: boolean = false; // valid only if type_comma
 
   constructor(type: eElementType, value: number | string, lineIndex: number, charIndex: number) {
     this._type = type;
@@ -33,20 +34,66 @@ export class SpinElement {
     return this._sourceLineIndex;
   }
 
+  get sourceLineNumber(): number {
+    return this._sourceLineIndex + 1;
+  }
+
   get sourceCharacterOffset(): number {
     return this._sourceCharacterOffset;
   }
 
+  get isLineEnd(): boolean {
+    return this._type == eElementType.type_end;
+  }
+
+  get valueIsNumber(): boolean {
+    return typeof this._value === 'number';
+  }
+
+  get valueIsString(): boolean {
+    return typeof this._value === 'string';
+  }
+
+  get isConstantFloat(): boolean {
+    return this._type == eElementType.type_con_float;
+  }
+
+  get isConstant(): boolean {
+    return this._type == eElementType.type_con;
+  }
+
   get isMidStringComma(): boolean {
-    return this._type == eElementType.type_comma && this.midStringComma == true;
+    return this._type == eElementType.type_comma && this._midStringComma == true;
+  }
+
+  set midStringComma(enable: boolean) {
+    if (this._type == eElementType.type_comma) {
+      this._midStringComma = enable;
+    }
+  }
+
+  get isEndOfLine(): boolean {
+    return this.type == eElementType.type_end;
   }
 
   get isEndOfFile(): boolean {
     return this.type == eElementType.type_end_file;
   }
 
-  public toString(): string {
-    return '';
+  public valueString(): string {
+    let valueInterp: string = `${this.value}`;
+    if (this.isEndOfLine) {
+      valueInterp = '';
+    } else if (this.isConstantFloat) {
+      valueInterp = `(${toFloatString(this.value)})`;
+    } else if (this.valueIsNumber) {
+      valueInterp = `(${this.value})`;
+    } else if (this.valueIsString) {
+      if (this.value !== '') {
+        valueInterp = `"${this.value}"`;
+      }
+    }
+    return valueInterp;
   }
 
   public typeString(): string {

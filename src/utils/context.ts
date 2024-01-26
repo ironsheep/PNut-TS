@@ -9,7 +9,12 @@ import path from 'path';
 import { Logger } from '../classes/logger';
 
 export interface LogOptions {
-  logElementizer: boolean; // write elementizer
+  logElementizer: boolean; // write elementizer log
+  logParser: boolean; // write parser log
+  logResolver: boolean; // write resolver log
+}
+export interface ReportOptions {
+  writeTablesReport: boolean; // write elementizer
 }
 
 export interface CompileOptions {
@@ -24,6 +29,7 @@ export interface Context {
   logger: Logger;
   compileOptions: CompileOptions;
   logOptions: LogOptions;
+  reportOptions: ReportOptions;
 }
 
 export function createContext(): Context {
@@ -32,6 +38,7 @@ export function createContext(): Context {
     currentFolder: process.cwd(),
     logger: new Logger(),
     compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
-    logOptions: { logElementizer: false }
+    logOptions: { logElementizer: false, logParser: false, logResolver: false },
+    reportOptions: { writeTablesReport: false }
   };
 }

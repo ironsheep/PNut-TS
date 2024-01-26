@@ -1,18 +1,17 @@
 /** @format */
 'use strict';
 
-// src/classes/parseUtils.ts
+// src/classes/spinElementizer.ts
 
 import { toSinglePrecisionFloat, toSinglePrecisionHex, toFloatString } from '../utils/float32';
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { eElementType, getElementTypeString } from './types';
 import { TextLine } from './textLine';
-//import { SymbolTable } from './symbolTable';
 import { SpinSymbolTables, iSpinSymbol } from './parseUtils';
 import { SpinElement } from './spinElement';
 
-// a collection of generally useful functions for parsing spin
+// interfaces for internal methods
 interface iKnownOperator {
   foundStatus: boolean;
   charsUsed: number;
@@ -26,6 +25,8 @@ interface iBuiltInSymbol {
   value: number | string;
   type: eElementType;
 }
+
+// FIXME: TODO: debug() returns new type debug-statment whoes value is a list: SpinSymobl[]
 
 export class SpinElementizer {
   private context: Context;
@@ -41,6 +42,7 @@ export class SpinElementizer {
   private at_eof: boolean = false;
   private at_eol: boolean = false;
   private symbol_tables: SpinSymbolTables = new SpinSymbolTables();
+  private lastEmittedIsLineEnd: boolean = true;
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
@@ -91,6 +93,54 @@ export class SpinElementizer {
     let typeFound: eElementType = eElementType.type_undefined;
     // eslint-disable-next-line prefer-const
     let valueFound: string | number = '';
+
+    // skip initial white space on opening line
+    const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
+    if (whiteSkipCount > 0) {
+      this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
+    }
+
+    // if this line contains the start of a '{{..}}' doc comment then skip lines until close of comment
+    if (this.unprocessedLine.startsWith('{{')) {
+      let inDocBraceComment: boolean = true;
+      do {
+        const closeOffset = this.unprocessedLine.substring(2).indexOf('}}');
+        if (closeOffset != -1) {
+          this.unprocessedLine = this.skipAhead(closeOffset + 4, this.unprocessedLine);
+          inDocBraceComment = false;
+        } else {
+          this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "{{..}}" skipping to next line`);
+          this.loadNextLine();
+          if (this.at_eof) {
+            //  [error_erbb]
+            throw new Error('Expected "}}"');
+          }
+        }
+      } while (inDocBraceComment);
+    }
+
+    // if this line contains the start of a '{.{..}.}' non-doc comment then skip lines until
+    //  close of possibly nested comment
+    /*
+    if (this.unprocessedLine.startsWith('{')) {
+      let inDocBraceComment: boolean = true;
+      do {
+        const closeOffset = this.unprocessedLine.substring(2).indexOf('}');
+        if (closeOffset != -1) {
+          this.unprocessedLine = this.skipAhead(closeOffset + 4, this.unprocessedLine);
+          inDocBraceComment = false;
+        } else {
+          this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "{{..}}" skipping to next line`);
+          this.loadNextLine();
+          if (this.at_eof) {
+            //  [error_erbb]
+            throw new Error('Expected "}}"');
+          }
+        }
+      } while (inDocBraceComment);
+    }
+    */
+
     //
     // let's parse like spin example initially
     //
@@ -215,7 +265,9 @@ export class SpinElementizer {
       const knownOperator: iKnownOperator = this.operatorConvert(this.unprocessedLine);
       if (knownOperator.foundStatus) {
         typeFound = knownOperator.type;
-        valueFound = knownOperator.value;
+        if (typeFound == eElementType.type_op) {
+          valueFound = knownOperator.value;
+        }
         this.unprocessedLine = this.skipAhead(knownOperator.charsUsed, this.unprocessedLine);
       } else {
         // FIXME: TODO: report error bad character....
@@ -235,7 +287,12 @@ export class SpinElementizer {
         `- get_element_entries() Ln#${this.symbolLineNumber}(${this.symbolCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${valueToDisplay})`
       );
       this.logMessage(''); // blank line
-      elementsFound[0] = new SpinElement(typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
+      const singleElement = new SpinElement(typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
+      if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
+        elementsFound.push(singleElement);
+        this.lastEmittedIsLineEnd = singleElement.isLineEnd ? true : false;
+        this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd}) type=[${singleElement.typeString()}]`); // blank line
+      }
     } else {
       // dump our list of values
       this.logMessage(`- displaying ${elementsFound.length} elements`); // blank line
@@ -247,6 +304,8 @@ export class SpinElementizer {
           `- get_element_entries() Ln#${element.sourceLineIndex}(${element.sourceCharacterOffset}) - typeFound=(${elemTypeStr}), valueFound=(${element.value})${flagInterp}`
         );
       }
+      this.lastEmittedIsLineEnd = false;
+      this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd})`); // blank line
       this.logMessage(''); // blank line
     }
     return elementsFound;
@@ -495,20 +554,16 @@ export class SpinElementizer {
     return [isFloat, charsUsed, interpValue];
   }
 
-  private skipAhead(symbolLength: number, line: string) {
-    this.recordSymbolLocation();
-    //this.logMessage(`- skipAhead(${symbolLength}) currCharacterIndex=(${this.currCharacterIndex}), remLine=[${line}](${line.length})`);
-    this.currCharacterIndex += symbolLength;
-    let remainingLine = line.substring(symbolLength);
-    //this.logMessage(`- skipAhead() EARLY remainingLine=[${remainingLine}]`);
-    if (!remainingLine || remainingLine.length == 0 || symbolLength == line.length) {
-      this.loadNextLine();
-      remainingLine = this.unprocessedLine;
-      //} else {
-      //  this.logMessage(`- skipAhead() remainingLine=[${remainingLine}]`);
+  private validate32BitInteger(value: number): void {
+    if (value > 4294967295 || value < -2147483648) {
+      this.context.logger.logErrorMessage(`The result (${value}) does not fit in 32 bits`);
+      throw new Error('Constant exceeds 32 bits');
     }
-    //this.logMessage(`- skipAhead() EXIT w/remainingLine=[${remainingLine}]`);
-    return remainingLine;
+  }
+
+  private recordSymbolLocation(): void {
+    this.symbolLineNumber = this.sourceLineNumber;
+    this.symbolCharacterOffset = this.currCharacterIndex;
   }
 
   private skipNCountWhite(line: string) {
@@ -523,16 +578,21 @@ export class SpinElementizer {
     return matchLength;
   }
 
-  private validate32BitInteger(value: number): void {
-    if (value > 4294967295 || value < -2147483648) {
-      this.context.logger.logErrorMessage(`The result (${value}) does not fit in 32 bits`);
-      throw new Error('Constant exceeds 32 bits');
+  private skipAhead(symbolLength: number, line: string) {
+    this.recordSymbolLocation();
+    //this.logMessage(`- skipAhead(${symbolLength}) currCharacterIndex=(${this.currCharacterIndex}), remLine=[${line}](${line.length})`);
+    this.currCharacterIndex += symbolLength;
+    let remainingLine = line.substring(symbolLength);
+    //this.logMessage(`- skipAhead() EARLY remainingLine=[${remainingLine}]`);
+    if (!remainingLine || remainingLine.length == 0 || symbolLength == line.length) {
+      //this.loadNextLine();
+      this.at_eol = true;
+      remainingLine = this.unprocessedLine;
+      //} else {
+      //  this.logMessage(`- skipAhead() remainingLine=[${remainingLine}]`);
     }
-  }
-
-  private recordSymbolLocation(): void {
-    this.symbolLineNumber = this.sourceLineNumber;
-    this.symbolCharacterOffset = this.currCharacterIndex;
+    //this.logMessage(`- skipAhead() EXIT w/remainingLine=[${remainingLine}]`);
+    return remainingLine;
   }
 
   private loadNextLine(): void {

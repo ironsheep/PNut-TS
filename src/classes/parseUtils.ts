@@ -946,7 +946,7 @@ enum SYMBOLS {
   EVENT_QMT = 'EVENT_QMT'
 }
 
-function asmcodeValue(v1: number, v2: number, v3: number): number {
+function setAsmcodeValue(v1: number, v2: number, v3: number): number {
   // calculate the actual asm code value from given parts
   //
   // macro		asmcode	symbol,v1,v2,v3
@@ -955,7 +955,7 @@ function asmcodeValue(v1: number, v2: number, v3: number): number {
   return (v3 << 11) + (v2 << 9) + v1;
 }
 
-function flexcodeValue(bytecode: number, params: number, results: number, pinfld: number, hubcode: number): number {
+function setFlexcodeValue(bytecode: number, params: number, results: number, pinfld: number, hubcode: number): number {
   // calculate the actual flexcode value from given parts
   //
   // macro		flexcode	symbol,bytecode,params,results,pinfld,hubcode
@@ -965,7 +965,7 @@ function flexcodeValue(bytecode: number, params: number, results: number, pinfld
   return bytecode + (params << 8) + (results << 11) + (pinfld << 14) + (hubcode << 15);
 }
 
-function opcodeValue(
+function setOpcodeValue(
   v1: number,
   v2: number,
   v3: number,
@@ -1071,595 +1071,595 @@ export class SpinSymbolTables {
     // generated opcode table load
 
     //		oc		op		prec	bytecode	ternary	binary	unary	assign	float	alias	hubcode
-    this.opcodeValues.set(eOpcode.oc_bitnot, opcodeValue(eValueType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
-    this.opcodeValues.set(eOpcode.oc_neg, opcodeValue(eValueType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
-    this.opcodeValues.set(eOpcode.oc_fneg, opcodeValue(eValueType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub symbol)
-    this.opcodeValues.set(eOpcode.oc_abs, opcodeValue(eValueType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
-    this.opcodeValues.set(eOpcode.oc_fabs, opcodeValue(eValueType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS
-    this.opcodeValues.set(eOpcode.oc_encod, opcodeValue(eValueType.op_encod, 0, eByteCode.bc_encod, 0, 0, 1, 1, 0, 0, 0)); //  ENCOD
-    this.opcodeValues.set(eOpcode.oc_decod, opcodeValue(eValueType.op_decod, 0, eByteCode.bc_decod, 0, 0, 1, 1, 0, 0, 0)); //  DECOD
-    this.opcodeValues.set(eOpcode.oc_bmask, opcodeValue(eValueType.op_bmask, 0, eByteCode.bc_bmask, 0, 0, 1, 1, 0, 0, 0)); //  BMASK
-    this.opcodeValues.set(eOpcode.oc_ones, opcodeValue(eValueType.op_ones, 0, eByteCode.bc_ones, 0, 0, 1, 1, 0, 0, 0)); //  ONES
-    this.opcodeValues.set(eOpcode.oc_sqrt, opcodeValue(eValueType.op_sqrt, 0, eByteCode.bc_sqrt, 0, 0, 1, 1, 0, 0, 0)); //  SQRT
-    this.opcodeValues.set(eOpcode.oc_fsqrt, opcodeValue(eValueType.op_fsqrt, 0, eByteCode.bc_fsqrt, 0, 0, 1, 0, 1, 0, 1)); //  FSQRT
-    this.opcodeValues.set(eOpcode.oc_qlog, opcodeValue(eValueType.op_qlog, 0, eByteCode.bc_qlog, 0, 0, 1, 1, 0, 0, 0)); //  QLOG
-    this.opcodeValues.set(eOpcode.oc_qexp, opcodeValue(eValueType.op_qexp, 0, eByteCode.bc_qexp, 0, 0, 1, 1, 0, 0, 0)); //  QEXP
-    this.opcodeValues.set(eOpcode.oc_shr, opcodeValue(eValueType.op_shr, 1, eByteCode.bc_shr, 0, 1, 0, 1, 0, 0, 0)); //  >>
-    this.opcodeValues.set(eOpcode.oc_shl, opcodeValue(eValueType.op_shl, 1, eByteCode.bc_shl, 0, 1, 0, 1, 0, 0, 0)); //  <<
-    this.opcodeValues.set(eOpcode.oc_sar, opcodeValue(eValueType.op_sar, 1, eByteCode.bc_sar, 0, 1, 0, 1, 0, 0, 0)); //  SAR
-    this.opcodeValues.set(eOpcode.oc_ror, opcodeValue(eValueType.op_ror, 1, eByteCode.bc_ror, 0, 1, 0, 1, 0, 0, 0)); //  ROR
-    this.opcodeValues.set(eOpcode.oc_rol, opcodeValue(eValueType.op_rol, 1, eByteCode.bc_rol, 0, 1, 0, 1, 0, 0, 0)); //  ROL
-    this.opcodeValues.set(eOpcode.oc_rev, opcodeValue(eValueType.op_rev, 1, eByteCode.bc_rev, 0, 1, 0, 1, 0, 0, 0)); //  REV
-    this.opcodeValues.set(eOpcode.oc_zerox, opcodeValue(eValueType.op_zerox, 1, eByteCode.bc_zerox, 0, 1, 0, 1, 0, 0, 0)); //  ZEROX
-    this.opcodeValues.set(eOpcode.oc_signx, opcodeValue(eValueType.op_signx, 1, eByteCode.bc_signx, 0, 1, 0, 1, 0, 0, 0)); //  SIGNX
-    this.opcodeValues.set(eOpcode.oc_bitand, opcodeValue(eValueType.op_bitand, 2, eByteCode.bc_bitand, 0, 1, 0, 1, 0, 0, 0)); //  &
-    this.opcodeValues.set(eOpcode.oc_bitxor, opcodeValue(eValueType.op_bitxor, 3, eByteCode.bc_bitxor, 0, 1, 0, 1, 0, 0, 0)); //  ^
-    this.opcodeValues.set(eOpcode.oc_bitor, opcodeValue(eValueType.op_bitor, 4, eByteCode.bc_bitor, 0, 1, 0, 1, 0, 0, 0)); //  |
-    this.opcodeValues.set(eOpcode.oc_mul, opcodeValue(eValueType.op_mul, 5, eByteCode.bc_mul, 0, 1, 0, 1, 1, 0, 0)); //  *
-    this.opcodeValues.set(eOpcode.oc_fmul, opcodeValue(eValueType.op_fmul, 5, eByteCode.bc_fmul, 0, 1, 0, 0, 1, 0, 1)); //  *.
-    this.opcodeValues.set(eOpcode.oc_div, opcodeValue(eValueType.op_div, 5, eByteCode.bc_div, 0, 1, 0, 1, 1, 0, 0)); //  /
-    this.opcodeValues.set(eOpcode.oc_fdiv, opcodeValue(eValueType.op_fdiv, 5, eByteCode.bc_fdiv, 0, 1, 0, 0, 1, 0, 1)); //  /.
-    this.opcodeValues.set(eOpcode.oc_divu, opcodeValue(eValueType.op_divu, 5, eByteCode.bc_divu, 0, 1, 0, 1, 0, 0, 0)); //  +/
-    this.opcodeValues.set(eOpcode.oc_rem, opcodeValue(eValueType.op_rem, 5, eByteCode.bc_rem, 0, 1, 0, 1, 0, 0, 0)); //  //
-    this.opcodeValues.set(eOpcode.oc_remu, opcodeValue(eValueType.op_remu, 5, eByteCode.bc_remu, 0, 1, 0, 1, 0, 0, 0)); //  +//
-    this.opcodeValues.set(eOpcode.oc_sca, opcodeValue(eValueType.op_sca, 5, eByteCode.bc_sca, 0, 1, 0, 1, 0, 0, 0)); //  SCA
-    this.opcodeValues.set(eOpcode.oc_scas, opcodeValue(eValueType.op_scas, 5, eByteCode.bc_scas, 0, 1, 0, 1, 0, 0, 0)); //  SCAS
-    this.opcodeValues.set(eOpcode.oc_frac, opcodeValue(eValueType.op_frac, 5, eByteCode.bc_frac, 0, 1, 0, 1, 0, 0, 0)); //  FRAC
-    this.opcodeValues.set(eOpcode.oc_add, opcodeValue(eValueType.op_add, 6, eByteCode.bc_add, 0, 1, 0, 1, 1, 0, 0)); //  +
-    this.opcodeValues.set(eOpcode.oc_fadd, opcodeValue(eValueType.op_fadd, 6, eByteCode.bc_fadd, 0, 1, 0, 0, 1, 0, 1)); //  +.
-    this.opcodeValues.set(eOpcode.oc_sub, opcodeValue(eValueType.op_sub, 6, eByteCode.bc_sub, 0, 1, 0, 1, 1, 0, 0)); //  -
-    this.opcodeValues.set(eOpcode.oc_fsub, opcodeValue(eValueType.op_fsub, 6, eByteCode.bc_fsub, 0, 1, 0, 0, 1, 0, 1)); //  -.
-    this.opcodeValues.set(eOpcode.oc_fge, opcodeValue(eValueType.op_fge, 7, eByteCode.bc_fge, 0, 1, 0, 1, 1, 0, 0)); //  #>
-    this.opcodeValues.set(eOpcode.oc_fle, opcodeValue(eValueType.op_fle, 7, eByteCode.bc_fle, 0, 1, 0, 1, 1, 0, 0)); //  <#
-    this.opcodeValues.set(eOpcode.oc_addbits, opcodeValue(eValueType.op_addbits, 8, eByteCode.bc_addbits, 0, 1, 0, 1, 0, 0, 0)); //  ADDBITS
-    this.opcodeValues.set(eOpcode.oc_addpins, opcodeValue(eValueType.op_addpins, 8, eByteCode.bc_addpins, 0, 1, 0, 1, 0, 0, 0)); //  ADDPINS
-    this.opcodeValues.set(eOpcode.oc_lt, opcodeValue(eValueType.op_lt, 9, eByteCode.bc_lt, 0, 1, 0, 0, 1, 0, 0)); //  <
-    this.opcodeValues.set(eOpcode.oc_flt, opcodeValue(eValueType.op_flt, 9, eByteCode.bc_flt, 0, 1, 0, 0, 1, 0, 1)); //  <.
-    this.opcodeValues.set(eOpcode.oc_ltu, opcodeValue(eValueType.op_ltu, 9, eByteCode.bc_ltu, 0, 1, 0, 0, 0, 0, 0)); //  +<
-    this.opcodeValues.set(eOpcode.oc_lte, opcodeValue(eValueType.op_lte, 9, eByteCode.bc_lte, 0, 1, 0, 0, 1, 0, 0)); //  <=
-    this.opcodeValues.set(eOpcode.oc_flte, opcodeValue(eValueType.op_flte, 9, eByteCode.bc_flte, 0, 1, 0, 0, 1, 0, 1)); //  <=.
-    this.opcodeValues.set(eOpcode.oc_lteu, opcodeValue(eValueType.op_lteu, 9, eByteCode.bc_lteu, 0, 1, 0, 0, 0, 0, 0)); //  +<=
-    this.opcodeValues.set(eOpcode.oc_e, opcodeValue(eValueType.op_e, 9, eByteCode.bc_e, 0, 1, 0, 0, 1, 0, 0)); //  ==
-    this.opcodeValues.set(eOpcode.oc_fe, opcodeValue(eValueType.op_fe, 9, eByteCode.bc_fe, 0, 1, 0, 0, 1, 0, 1)); //  ==.
-    this.opcodeValues.set(eOpcode.oc_ne, opcodeValue(eValueType.op_ne, 9, eByteCode.bc_ne, 0, 1, 0, 0, 1, 0, 0)); //  <>
-    this.opcodeValues.set(eOpcode.oc_fne, opcodeValue(eValueType.op_fne, 9, eByteCode.bc_fne, 0, 1, 0, 0, 1, 0, 1)); //  <>.
-    this.opcodeValues.set(eOpcode.oc_gte, opcodeValue(eValueType.op_gte, 9, eByteCode.bc_gte, 0, 1, 0, 0, 1, 0, 0)); //  >=
-    this.opcodeValues.set(eOpcode.oc_fgte, opcodeValue(eValueType.op_fgte, 9, eByteCode.bc_fgte, 0, 1, 0, 0, 1, 0, 1)); //  >=.
-    this.opcodeValues.set(eOpcode.oc_gteu, opcodeValue(eValueType.op_gteu, 9, eByteCode.bc_gteu, 0, 1, 0, 0, 0, 0, 0)); //  +>=
-    this.opcodeValues.set(eOpcode.oc_gt, opcodeValue(eValueType.op_gt, 9, eByteCode.bc_gt, 0, 1, 0, 0, 1, 0, 0)); //  >
-    this.opcodeValues.set(eOpcode.oc_fgt, opcodeValue(eValueType.op_fgt, 9, eByteCode.bc_fgt, 0, 1, 0, 0, 1, 0, 1)); //  >.
-    this.opcodeValues.set(eOpcode.oc_gtu, opcodeValue(eValueType.op_gtu, 9, eByteCode.bc_gtu, 0, 1, 0, 0, 0, 0, 0)); //  +>
-    this.opcodeValues.set(eOpcode.oc_ltegt, opcodeValue(eValueType.op_ltegt, 9, eByteCode.bc_ltegt, 0, 1, 0, 0, 1, 0, 0)); //  <=>
-    this.opcodeValues.set(eOpcode.oc_lognot, opcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 1, 0)); //  !!
-    this.opcodeValues.set(eOpcode.oc_lognot_name, opcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 0, 0)); //  NOT
-    this.opcodeValues.set(eOpcode.oc_logand, opcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 1, 0)); //  &&
-    this.opcodeValues.set(eOpcode.oc_logand_name, opcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 0, 0)); //  AND
-    this.opcodeValues.set(eOpcode.oc_logxor, opcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 1, 0)); //  ^^
-    this.opcodeValues.set(eOpcode.oc_logxor_name, opcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 0, 0)); //  XOR
-    this.opcodeValues.set(eOpcode.oc_logor, opcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 1, 0)); //  ||
-    this.opcodeValues.set(eOpcode.oc_logor_name, opcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 0, 0)); //  OR
-    this.opcodeValues.set(eOpcode.oc_ternary, opcodeValue(eValueType.op_ternary, 14, 0, 1, 0, 0, 1, 0, 0, 0)); //  ?
+    this.opcodeValues.set(eOpcode.oc_bitnot, setOpcodeValue(eValueType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
+    this.opcodeValues.set(eOpcode.oc_neg, setOpcodeValue(eValueType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
+    this.opcodeValues.set(eOpcode.oc_fneg, setOpcodeValue(eValueType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub symbol)
+    this.opcodeValues.set(eOpcode.oc_abs, setOpcodeValue(eValueType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
+    this.opcodeValues.set(eOpcode.oc_fabs, setOpcodeValue(eValueType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS
+    this.opcodeValues.set(eOpcode.oc_encod, setOpcodeValue(eValueType.op_encod, 0, eByteCode.bc_encod, 0, 0, 1, 1, 0, 0, 0)); //  ENCOD
+    this.opcodeValues.set(eOpcode.oc_decod, setOpcodeValue(eValueType.op_decod, 0, eByteCode.bc_decod, 0, 0, 1, 1, 0, 0, 0)); //  DECOD
+    this.opcodeValues.set(eOpcode.oc_bmask, setOpcodeValue(eValueType.op_bmask, 0, eByteCode.bc_bmask, 0, 0, 1, 1, 0, 0, 0)); //  BMASK
+    this.opcodeValues.set(eOpcode.oc_ones, setOpcodeValue(eValueType.op_ones, 0, eByteCode.bc_ones, 0, 0, 1, 1, 0, 0, 0)); //  ONES
+    this.opcodeValues.set(eOpcode.oc_sqrt, setOpcodeValue(eValueType.op_sqrt, 0, eByteCode.bc_sqrt, 0, 0, 1, 1, 0, 0, 0)); //  SQRT
+    this.opcodeValues.set(eOpcode.oc_fsqrt, setOpcodeValue(eValueType.op_fsqrt, 0, eByteCode.bc_fsqrt, 0, 0, 1, 0, 1, 0, 1)); //  FSQRT
+    this.opcodeValues.set(eOpcode.oc_qlog, setOpcodeValue(eValueType.op_qlog, 0, eByteCode.bc_qlog, 0, 0, 1, 1, 0, 0, 0)); //  QLOG
+    this.opcodeValues.set(eOpcode.oc_qexp, setOpcodeValue(eValueType.op_qexp, 0, eByteCode.bc_qexp, 0, 0, 1, 1, 0, 0, 0)); //  QEXP
+    this.opcodeValues.set(eOpcode.oc_shr, setOpcodeValue(eValueType.op_shr, 1, eByteCode.bc_shr, 0, 1, 0, 1, 0, 0, 0)); //  >>
+    this.opcodeValues.set(eOpcode.oc_shl, setOpcodeValue(eValueType.op_shl, 1, eByteCode.bc_shl, 0, 1, 0, 1, 0, 0, 0)); //  <<
+    this.opcodeValues.set(eOpcode.oc_sar, setOpcodeValue(eValueType.op_sar, 1, eByteCode.bc_sar, 0, 1, 0, 1, 0, 0, 0)); //  SAR
+    this.opcodeValues.set(eOpcode.oc_ror, setOpcodeValue(eValueType.op_ror, 1, eByteCode.bc_ror, 0, 1, 0, 1, 0, 0, 0)); //  ROR
+    this.opcodeValues.set(eOpcode.oc_rol, setOpcodeValue(eValueType.op_rol, 1, eByteCode.bc_rol, 0, 1, 0, 1, 0, 0, 0)); //  ROL
+    this.opcodeValues.set(eOpcode.oc_rev, setOpcodeValue(eValueType.op_rev, 1, eByteCode.bc_rev, 0, 1, 0, 1, 0, 0, 0)); //  REV
+    this.opcodeValues.set(eOpcode.oc_zerox, setOpcodeValue(eValueType.op_zerox, 1, eByteCode.bc_zerox, 0, 1, 0, 1, 0, 0, 0)); //  ZEROX
+    this.opcodeValues.set(eOpcode.oc_signx, setOpcodeValue(eValueType.op_signx, 1, eByteCode.bc_signx, 0, 1, 0, 1, 0, 0, 0)); //  SIGNX
+    this.opcodeValues.set(eOpcode.oc_bitand, setOpcodeValue(eValueType.op_bitand, 2, eByteCode.bc_bitand, 0, 1, 0, 1, 0, 0, 0)); //  &
+    this.opcodeValues.set(eOpcode.oc_bitxor, setOpcodeValue(eValueType.op_bitxor, 3, eByteCode.bc_bitxor, 0, 1, 0, 1, 0, 0, 0)); //  ^
+    this.opcodeValues.set(eOpcode.oc_bitor, setOpcodeValue(eValueType.op_bitor, 4, eByteCode.bc_bitor, 0, 1, 0, 1, 0, 0, 0)); //  |
+    this.opcodeValues.set(eOpcode.oc_mul, setOpcodeValue(eValueType.op_mul, 5, eByteCode.bc_mul, 0, 1, 0, 1, 1, 0, 0)); //  *
+    this.opcodeValues.set(eOpcode.oc_fmul, setOpcodeValue(eValueType.op_fmul, 5, eByteCode.bc_fmul, 0, 1, 0, 0, 1, 0, 1)); //  *.
+    this.opcodeValues.set(eOpcode.oc_div, setOpcodeValue(eValueType.op_div, 5, eByteCode.bc_div, 0, 1, 0, 1, 1, 0, 0)); //  /
+    this.opcodeValues.set(eOpcode.oc_fdiv, setOpcodeValue(eValueType.op_fdiv, 5, eByteCode.bc_fdiv, 0, 1, 0, 0, 1, 0, 1)); //  /.
+    this.opcodeValues.set(eOpcode.oc_divu, setOpcodeValue(eValueType.op_divu, 5, eByteCode.bc_divu, 0, 1, 0, 1, 0, 0, 0)); //  +/
+    this.opcodeValues.set(eOpcode.oc_rem, setOpcodeValue(eValueType.op_rem, 5, eByteCode.bc_rem, 0, 1, 0, 1, 0, 0, 0)); //  //
+    this.opcodeValues.set(eOpcode.oc_remu, setOpcodeValue(eValueType.op_remu, 5, eByteCode.bc_remu, 0, 1, 0, 1, 0, 0, 0)); //  +//
+    this.opcodeValues.set(eOpcode.oc_sca, setOpcodeValue(eValueType.op_sca, 5, eByteCode.bc_sca, 0, 1, 0, 1, 0, 0, 0)); //  SCA
+    this.opcodeValues.set(eOpcode.oc_scas, setOpcodeValue(eValueType.op_scas, 5, eByteCode.bc_scas, 0, 1, 0, 1, 0, 0, 0)); //  SCAS
+    this.opcodeValues.set(eOpcode.oc_frac, setOpcodeValue(eValueType.op_frac, 5, eByteCode.bc_frac, 0, 1, 0, 1, 0, 0, 0)); //  FRAC
+    this.opcodeValues.set(eOpcode.oc_add, setOpcodeValue(eValueType.op_add, 6, eByteCode.bc_add, 0, 1, 0, 1, 1, 0, 0)); //  +
+    this.opcodeValues.set(eOpcode.oc_fadd, setOpcodeValue(eValueType.op_fadd, 6, eByteCode.bc_fadd, 0, 1, 0, 0, 1, 0, 1)); //  +.
+    this.opcodeValues.set(eOpcode.oc_sub, setOpcodeValue(eValueType.op_sub, 6, eByteCode.bc_sub, 0, 1, 0, 1, 1, 0, 0)); //  -
+    this.opcodeValues.set(eOpcode.oc_fsub, setOpcodeValue(eValueType.op_fsub, 6, eByteCode.bc_fsub, 0, 1, 0, 0, 1, 0, 1)); //  -.
+    this.opcodeValues.set(eOpcode.oc_fge, setOpcodeValue(eValueType.op_fge, 7, eByteCode.bc_fge, 0, 1, 0, 1, 1, 0, 0)); //  #>
+    this.opcodeValues.set(eOpcode.oc_fle, setOpcodeValue(eValueType.op_fle, 7, eByteCode.bc_fle, 0, 1, 0, 1, 1, 0, 0)); //  <#
+    this.opcodeValues.set(eOpcode.oc_addbits, setOpcodeValue(eValueType.op_addbits, 8, eByteCode.bc_addbits, 0, 1, 0, 1, 0, 0, 0)); //  ADDBITS
+    this.opcodeValues.set(eOpcode.oc_addpins, setOpcodeValue(eValueType.op_addpins, 8, eByteCode.bc_addpins, 0, 1, 0, 1, 0, 0, 0)); //  ADDPINS
+    this.opcodeValues.set(eOpcode.oc_lt, setOpcodeValue(eValueType.op_lt, 9, eByteCode.bc_lt, 0, 1, 0, 0, 1, 0, 0)); //  <
+    this.opcodeValues.set(eOpcode.oc_flt, setOpcodeValue(eValueType.op_flt, 9, eByteCode.bc_flt, 0, 1, 0, 0, 1, 0, 1)); //  <.
+    this.opcodeValues.set(eOpcode.oc_ltu, setOpcodeValue(eValueType.op_ltu, 9, eByteCode.bc_ltu, 0, 1, 0, 0, 0, 0, 0)); //  +<
+    this.opcodeValues.set(eOpcode.oc_lte, setOpcodeValue(eValueType.op_lte, 9, eByteCode.bc_lte, 0, 1, 0, 0, 1, 0, 0)); //  <=
+    this.opcodeValues.set(eOpcode.oc_flte, setOpcodeValue(eValueType.op_flte, 9, eByteCode.bc_flte, 0, 1, 0, 0, 1, 0, 1)); //  <=.
+    this.opcodeValues.set(eOpcode.oc_lteu, setOpcodeValue(eValueType.op_lteu, 9, eByteCode.bc_lteu, 0, 1, 0, 0, 0, 0, 0)); //  +<=
+    this.opcodeValues.set(eOpcode.oc_e, setOpcodeValue(eValueType.op_e, 9, eByteCode.bc_e, 0, 1, 0, 0, 1, 0, 0)); //  ==
+    this.opcodeValues.set(eOpcode.oc_fe, setOpcodeValue(eValueType.op_fe, 9, eByteCode.bc_fe, 0, 1, 0, 0, 1, 0, 1)); //  ==.
+    this.opcodeValues.set(eOpcode.oc_ne, setOpcodeValue(eValueType.op_ne, 9, eByteCode.bc_ne, 0, 1, 0, 0, 1, 0, 0)); //  <>
+    this.opcodeValues.set(eOpcode.oc_fne, setOpcodeValue(eValueType.op_fne, 9, eByteCode.bc_fne, 0, 1, 0, 0, 1, 0, 1)); //  <>.
+    this.opcodeValues.set(eOpcode.oc_gte, setOpcodeValue(eValueType.op_gte, 9, eByteCode.bc_gte, 0, 1, 0, 0, 1, 0, 0)); //  >=
+    this.opcodeValues.set(eOpcode.oc_fgte, setOpcodeValue(eValueType.op_fgte, 9, eByteCode.bc_fgte, 0, 1, 0, 0, 1, 0, 1)); //  >=.
+    this.opcodeValues.set(eOpcode.oc_gteu, setOpcodeValue(eValueType.op_gteu, 9, eByteCode.bc_gteu, 0, 1, 0, 0, 0, 0, 0)); //  +>=
+    this.opcodeValues.set(eOpcode.oc_gt, setOpcodeValue(eValueType.op_gt, 9, eByteCode.bc_gt, 0, 1, 0, 0, 1, 0, 0)); //  >
+    this.opcodeValues.set(eOpcode.oc_fgt, setOpcodeValue(eValueType.op_fgt, 9, eByteCode.bc_fgt, 0, 1, 0, 0, 1, 0, 1)); //  >.
+    this.opcodeValues.set(eOpcode.oc_gtu, setOpcodeValue(eValueType.op_gtu, 9, eByteCode.bc_gtu, 0, 1, 0, 0, 0, 0, 0)); //  +>
+    this.opcodeValues.set(eOpcode.oc_ltegt, setOpcodeValue(eValueType.op_ltegt, 9, eByteCode.bc_ltegt, 0, 1, 0, 0, 1, 0, 0)); //  <=>
+    this.opcodeValues.set(eOpcode.oc_lognot, setOpcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 1, 0)); //  !!
+    this.opcodeValues.set(eOpcode.oc_lognot_name, setOpcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 0, 0)); //  NOT
+    this.opcodeValues.set(eOpcode.oc_logand, setOpcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 1, 0)); //  &&
+    this.opcodeValues.set(eOpcode.oc_logand_name, setOpcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 0, 0)); //  AND
+    this.opcodeValues.set(eOpcode.oc_logxor, setOpcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 1, 0)); //  ^^
+    this.opcodeValues.set(eOpcode.oc_logxor_name, setOpcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 0, 0)); //  XOR
+    this.opcodeValues.set(eOpcode.oc_logor, setOpcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 1, 0)); //  ||
+    this.opcodeValues.set(eOpcode.oc_logor_name, setOpcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 0, 0)); //  OR
+    this.opcodeValues.set(eOpcode.oc_ternary, setOpcodeValue(eValueType.op_ternary, 14, 0, 1, 0, 0, 1, 0, 0, 0)); //  ?
     //
     // generated Assembly codes table load
     //		---------------------------------------------------------------------------------------
-    this.asmcodeValues.set(eAsmcode.ac_ror, asmcodeValue(0b000000000, 0b11, eValueType.operand_ds)); // 	ROR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_rol, asmcodeValue(0b000000100, 0b11, eValueType.operand_ds)); // 	ROL	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_shr, asmcodeValue(0b000001000, 0b11, eValueType.operand_ds)); // 	SHR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_shl, asmcodeValue(0b000001100, 0b11, eValueType.operand_ds)); // 	SHL	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_rcr, asmcodeValue(0b000010000, 0b11, eValueType.operand_ds)); // 	RCR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_rcl, asmcodeValue(0b000010100, 0b11, eValueType.operand_ds)); // 	RCL	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sar, asmcodeValue(0b000011000, 0b11, eValueType.operand_ds)); // 	SAR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sal, asmcodeValue(0b000011100, 0b11, eValueType.operand_ds)); // 	SAL	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_add, asmcodeValue(0b000100000, 0b11, eValueType.operand_ds)); // 	ADD	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_addx, asmcodeValue(0b000100100, 0b11, eValueType.operand_ds)); // 	ADDX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_adds, asmcodeValue(0b000101000, 0b11, eValueType.operand_ds)); // 	ADDS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_addsx, asmcodeValue(0b000101100, 0b11, eValueType.operand_ds)); // 	ADDSX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sub, asmcodeValue(0b000110000, 0b11, eValueType.operand_ds)); // 	SUB	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_subx, asmcodeValue(0b000110100, 0b11, eValueType.operand_ds)); // 	SUBX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_subs, asmcodeValue(0b000111000, 0b11, eValueType.operand_ds)); // 	SUBS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_subsx, asmcodeValue(0b000111100, 0b11, eValueType.operand_ds)); // 	SUBSX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmp, asmcodeValue(0b001000000, 0b11, eValueType.operand_ds)); // 	CMP	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmpx, asmcodeValue(0b001000100, 0b11, eValueType.operand_ds)); // 	CMPX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmps, asmcodeValue(0b001001000, 0b11, eValueType.operand_ds)); // 	CMPS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmpsx, asmcodeValue(0b001001100, 0b11, eValueType.operand_ds)); // 	CMPSX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmpr, asmcodeValue(0b001010000, 0b11, eValueType.operand_ds)); // 	CMPR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmpm, asmcodeValue(0b001010100, 0b11, eValueType.operand_ds)); // 	CMPM	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_subr, asmcodeValue(0b001011000, 0b11, eValueType.operand_ds)); // 	SUBR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_cmpsub, asmcodeValue(0b001011100, 0b11, eValueType.operand_ds)); // 	CMPSUB	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_fge, asmcodeValue(0b001100000, 0b11, eValueType.operand_ds)); // 	FGE	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_fle, asmcodeValue(0b001100100, 0b11, eValueType.operand_ds)); // 	FLE	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_fges, asmcodeValue(0b001101000, 0b11, eValueType.operand_ds)); // 	FGES	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_fles, asmcodeValue(0b001101100, 0b11, eValueType.operand_ds)); // 	FLES	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sumc, asmcodeValue(0b001110000, 0b11, eValueType.operand_ds)); // 	SUMC	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sumnc, asmcodeValue(0b001110100, 0b11, eValueType.operand_ds)); // 	SUMNC	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sumz, asmcodeValue(0b001111000, 0b11, eValueType.operand_ds)); // 	SUMZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sumnz, asmcodeValue(0b001111100, 0b11, eValueType.operand_ds)); // 	SUMNZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitl, asmcodeValue(0b010000000, 0b00, eValueType.operand_bitx)); // 	BITL	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bith, asmcodeValue(0b010000100, 0b00, eValueType.operand_bitx)); // 	BITH	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitc, asmcodeValue(0b010001000, 0b00, eValueType.operand_bitx)); // 	BITC	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitnc, asmcodeValue(0b010001100, 0b00, eValueType.operand_bitx)); // 	BITNC	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitz, asmcodeValue(0b010010000, 0b00, eValueType.operand_bitx)); // 	BITZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitnz, asmcodeValue(0b010010100, 0b00, eValueType.operand_bitx)); // 	BITNZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitrnd, asmcodeValue(0b010011000, 0b00, eValueType.operand_bitx)); // 	BITRND	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_bitnot, asmcodeValue(0b010011100, 0b00, eValueType.operand_bitx)); // 	BITNOT	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_testb, asmcodeValue(0b010000000, 0b00, eValueType.operand_testb)); // 	TESTB	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_testbn, asmcodeValue(0b010000100, 0b00, eValueType.operand_testb)); // 	TESTBN	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_and, asmcodeValue(0b010100000, 0b11, eValueType.operand_ds)); // 	AND	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_andn, asmcodeValue(0b010100100, 0b11, eValueType.operand_ds)); // 	ANDN	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_or, asmcodeValue(0b010101000, 0b11, eValueType.operand_ds)); // 	OR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_xor, asmcodeValue(0b010101100, 0b11, eValueType.operand_ds)); // 	XOR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxc, asmcodeValue(0b010110000, 0b11, eValueType.operand_ds)); // 	MUXC	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxnc, asmcodeValue(0b010110100, 0b11, eValueType.operand_ds)); // 	MUXNC	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxz, asmcodeValue(0b010111000, 0b11, eValueType.operand_ds)); // 	MUXZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxnz, asmcodeValue(0b010111100, 0b11, eValueType.operand_ds)); // 	MUXNZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_mov, asmcodeValue(0b011000000, 0b11, eValueType.operand_ds)); // 	MOV	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_not, asmcodeValue(0b011000100, 0b11, eValueType.operand_du)); // 	NOT	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_abs, asmcodeValue(0b011001000, 0b11, eValueType.operand_du)); // 	ABS	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_neg, asmcodeValue(0b011001100, 0b11, eValueType.operand_du)); // 	NEG	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_negc, asmcodeValue(0b011010000, 0b11, eValueType.operand_du)); // 	NEGC	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_negnc, asmcodeValue(0b011010100, 0b11, eValueType.operand_du)); // 	NEGNC	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_negz, asmcodeValue(0b011011000, 0b11, eValueType.operand_du)); // 	NEGZ	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_negnz, asmcodeValue(0b011011100, 0b11, eValueType.operand_du)); // 	NEGNZ	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_incmod, asmcodeValue(0b011100000, 0b11, eValueType.operand_ds)); // 	INCMOD	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_decmod, asmcodeValue(0b011100100, 0b11, eValueType.operand_ds)); // 	DECMOD	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_zerox, asmcodeValue(0b011101000, 0b11, eValueType.operand_ds)); // 	ZEROX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_signx, asmcodeValue(0b011101100, 0b11, eValueType.operand_ds)); // 	SIGNX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_encod, asmcodeValue(0b011110000, 0b11, eValueType.operand_du)); // 	ENCOD	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_ones, asmcodeValue(0b011110100, 0b11, eValueType.operand_du)); // 	ONES	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_test, asmcodeValue(0b011111000, 0b11, eValueType.operand_du)); // 	TEST	D,{S/#}
-    this.asmcodeValues.set(eAsmcode.ac_testn, asmcodeValue(0b011111100, 0b11, eValueType.operand_ds)); // 	TESTN	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_setnib, asmcodeValue(0b100000000, 0b00, eValueType.operand_ds3set)); // 	SETNIB	{D,}S/#{,#0..7}
-    this.asmcodeValues.set(eAsmcode.ac_getnib, asmcodeValue(0b100001000, 0b00, eValueType.operand_ds3get)); // 	GETNIB	D{,S/#,#0..7}
-    this.asmcodeValues.set(eAsmcode.ac_rolnib, asmcodeValue(0b100010000, 0b00, eValueType.operand_ds3get)); // 	ROLNIB	D{,S/#,#0..7}
-    this.asmcodeValues.set(eAsmcode.ac_setbyte, asmcodeValue(0b100011000, 0b00, eValueType.operand_ds2set)); // 	SETBYTE	{D,}S/#{,#0..3}
-    this.asmcodeValues.set(eAsmcode.ac_getbyte, asmcodeValue(0b100011100, 0b00, eValueType.operand_ds2get)); // 	GETBYTE	D{,S/#,#0..3}
-    this.asmcodeValues.set(eAsmcode.ac_rolbyte, asmcodeValue(0b100100000, 0b00, eValueType.operand_ds2get)); // 	ROLBYTE	D{,S/#,#0..3}
-    this.asmcodeValues.set(eAsmcode.ac_setword, asmcodeValue(0b100100100, 0b00, eValueType.operand_ds1set)); // 	SETWORD	{D,}S/#{,#0..1}
-    this.asmcodeValues.set(eAsmcode.ac_getword, asmcodeValue(0b100100110, 0b00, eValueType.operand_ds1get)); // 	GETWORD	D{,S/#,#0..1}
-    this.asmcodeValues.set(eAsmcode.ac_rolword, asmcodeValue(0b100101000, 0b00, eValueType.operand_ds1get)); // 	ROLWORD	D{,S/#,#0..1}
-    this.asmcodeValues.set(eAsmcode.ac_altsn, asmcodeValue(0b100101010, 0b00, eValueType.operand_duiz)); // 	ALTSN	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altgn, asmcodeValue(0b100101011, 0b00, eValueType.operand_duiz)); // 	ALTGN	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altsb, asmcodeValue(0b100101100, 0b00, eValueType.operand_duiz)); // 	ALTSB	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altgb, asmcodeValue(0b100101101, 0b00, eValueType.operand_duiz)); // 	ALTGB	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altsw, asmcodeValue(0b100101110, 0b00, eValueType.operand_duiz)); // 	ALTSW	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altgw, asmcodeValue(0b100101111, 0b00, eValueType.operand_duiz)); // 	ALTGW	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altr, asmcodeValue(0b100110000, 0b00, eValueType.operand_duiz)); // 	ALTR	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altd, asmcodeValue(0b100110001, 0b00, eValueType.operand_duiz)); // 	ALTD	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_alts, asmcodeValue(0b100110010, 0b00, eValueType.operand_duiz)); // 	ALTS	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_altb, asmcodeValue(0b100110011, 0b00, eValueType.operand_duiz)); // 	ALTB	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_alti, asmcodeValue(0b100110100, 0b00, eValueType.operand_duii)); // 	ALTI	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_setr, asmcodeValue(0b100110101, 0b00, eValueType.operand_ds)); // 	SETR	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_setd, asmcodeValue(0b100110110, 0b00, eValueType.operand_ds)); // 	SETD	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sets, asmcodeValue(0b100110111, 0b00, eValueType.operand_ds)); // 	SETS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_decod, asmcodeValue(0b100111000, 0b00, eValueType.operand_du)); // 	DECOD	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_bmask, asmcodeValue(0b100111001, 0b00, eValueType.operand_du)); // 	BMASK	D{,S/#}
-    this.asmcodeValues.set(eAsmcode.ac_crcbit, asmcodeValue(0b100111010, 0b00, eValueType.operand_ds)); // 	CRCBIT	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_crcnib, asmcodeValue(0b100111011, 0b00, eValueType.operand_ds)); // 	CRCNIB	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxnits, asmcodeValue(0b100111100, 0b00, eValueType.operand_ds)); // 	MUXNITS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxnibs, asmcodeValue(0b100111101, 0b00, eValueType.operand_ds)); // 	MUXNIBS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muxq, asmcodeValue(0b100111110, 0b00, eValueType.operand_ds)); // 	MUXQ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_movbyts, asmcodeValue(0b100111111, 0b00, eValueType.operand_ds)); // 	MOVBYTS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_mul, asmcodeValue(0b101000000, 0b01, eValueType.operand_ds)); // 	MUL	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_muls, asmcodeValue(0b101000010, 0b01, eValueType.operand_ds)); // 	MULS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_sca, asmcodeValue(0b101000100, 0b01, eValueType.operand_ds)); // 	SCA	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_scas, asmcodeValue(0b101000110, 0b01, eValueType.operand_ds)); // 	SCAS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_addpix, asmcodeValue(0b101001000, 0b00, eValueType.operand_ds)); // 	ADDPIX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_mulpix, asmcodeValue(0b101001001, 0b00, eValueType.operand_ds)); // 	MULPIX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_blnpix, asmcodeValue(0b101001010, 0b00, eValueType.operand_ds)); // 	BLNPIX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_mixpix, asmcodeValue(0b101001011, 0b00, eValueType.operand_ds)); // 	MIXPIX	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_addct1, asmcodeValue(0b101001100, 0b00, eValueType.operand_ds)); // 	ADDCT1	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_addct2, asmcodeValue(0b101001101, 0b00, eValueType.operand_ds)); // 	ADDCT2	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_addct3, asmcodeValue(0b101001110, 0b00, eValueType.operand_ds)); // 	ADDCT3	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_wmlong, asmcodeValue(0b101001111, 0b00, eValueType.operand_dsp)); // 	WMLONG_	D,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_rqpin, asmcodeValue(0b101010000, 0b10, eValueType.operand_ds)); // 	RQPIN	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_rdpin, asmcodeValue(0b101010001, 0b10, eValueType.operand_ds)); // 	RDPIN	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_rdlut, asmcodeValue(0b101010100, 0b11, eValueType.operand_dsp)); // 	RDLUT	D,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_rdbyte, asmcodeValue(0b101011000, 0b11, eValueType.operand_dsp)); // 	RDBYTE	D,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_rdword, asmcodeValue(0b101011100, 0b11, eValueType.operand_dsp)); // 	RDWORD	D,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_rdlong, asmcodeValue(0b101100000, 0b11, eValueType.operand_dsp)); // 	RDLONG	D,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_callpa, asmcodeValue(0b101101000, 0b00, eValueType.operand_lsj)); // 	CALLPA	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_callpb, asmcodeValue(0b101101010, 0b00, eValueType.operand_lsj)); // 	CALLPB	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_djz, asmcodeValue(0b101101100, 0b00, eValueType.operand_dsj)); // 	DJZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_djnz, asmcodeValue(0b101101101, 0b00, eValueType.operand_dsj)); // 	DJNZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_djf, asmcodeValue(0b101101110, 0b00, eValueType.operand_dsj)); // 	DJF	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_djnf, asmcodeValue(0b101101111, 0b00, eValueType.operand_dsj)); // 	DJNF	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_ijz, asmcodeValue(0b101110000, 0b00, eValueType.operand_dsj)); // 	IJZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_ijnz, asmcodeValue(0b101110001, 0b00, eValueType.operand_dsj)); // 	IJNZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjz, asmcodeValue(0b101110010, 0b00, eValueType.operand_dsj)); // 	TJZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjnz, asmcodeValue(0b101110011, 0b00, eValueType.operand_dsj)); // 	TJNZ	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjf, asmcodeValue(0b101110100, 0b00, eValueType.operand_dsj)); // 	TJF	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjnf, asmcodeValue(0b101110101, 0b00, eValueType.operand_dsj)); // 	TJNF	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjs, asmcodeValue(0b101110110, 0b00, eValueType.operand_dsj)); // 	TJS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjns, asmcodeValue(0b101110111, 0b00, eValueType.operand_dsj)); // 	TJNS	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_tjv, asmcodeValue(0b101111000, 0b00, eValueType.operand_dsj)); // 	TJV	D,S/#
-    this.asmcodeValues.set(eAsmcode.ac_jint, asmcodeValue(0b000000000, 0b00, eValueType.operand_jpoll)); // 	JINT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jct1, asmcodeValue(0b000000001, 0b00, eValueType.operand_jpoll)); // 	JCT1	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jct2, asmcodeValue(0b000000010, 0b00, eValueType.operand_jpoll)); // 	JCT2	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jct3, asmcodeValue(0b000000011, 0b00, eValueType.operand_jpoll)); // 	JCT3	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jse1, asmcodeValue(0b000000100, 0b00, eValueType.operand_jpoll)); // 	JSE1	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jse2, asmcodeValue(0b000000101, 0b00, eValueType.operand_jpoll)); // 	JSE2	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jse3, asmcodeValue(0b000000110, 0b00, eValueType.operand_jpoll)); // 	JSE3	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jse4, asmcodeValue(0b000000111, 0b00, eValueType.operand_jpoll)); // 	JSE4	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jpat, asmcodeValue(0b000001000, 0b00, eValueType.operand_jpoll)); // 	JPAT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jfbw, asmcodeValue(0b000001001, 0b00, eValueType.operand_jpoll)); // 	JFBW	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jxmt, asmcodeValue(0b000001010, 0b00, eValueType.operand_jpoll)); // 	JXMT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jxfi, asmcodeValue(0b000001011, 0b00, eValueType.operand_jpoll)); // 	JXFI	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jxro, asmcodeValue(0b000001100, 0b00, eValueType.operand_jpoll)); // 	JXRO	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jxrl, asmcodeValue(0b000001101, 0b00, eValueType.operand_jpoll)); // 	JXRL	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jatn, asmcodeValue(0b000001110, 0b00, eValueType.operand_jpoll)); // 	JATN	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jqmt, asmcodeValue(0b000001111, 0b00, eValueType.operand_jpoll)); // 	JQMT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnint, asmcodeValue(0b000010000, 0b00, eValueType.operand_jpoll)); // 	JNINT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnct1, asmcodeValue(0b000010001, 0b00, eValueType.operand_jpoll)); // 	JNCT1	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnct2, asmcodeValue(0b000010010, 0b00, eValueType.operand_jpoll)); // 	JNCT2	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnct3, asmcodeValue(0b000010011, 0b00, eValueType.operand_jpoll)); // 	JNCT3	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnse1, asmcodeValue(0b000010100, 0b00, eValueType.operand_jpoll)); // 	JNSE1	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnse2, asmcodeValue(0b000010101, 0b00, eValueType.operand_jpoll)); // 	JNSE2	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnse3, asmcodeValue(0b000010110, 0b00, eValueType.operand_jpoll)); // 	JNSE3	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnse4, asmcodeValue(0b000010111, 0b00, eValueType.operand_jpoll)); // 	JNSE4	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnpat, asmcodeValue(0b000011000, 0b00, eValueType.operand_jpoll)); // 	JNPAT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnfbw, asmcodeValue(0b000011001, 0b00, eValueType.operand_jpoll)); // 	JNFBW	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnxmt, asmcodeValue(0b000011010, 0b00, eValueType.operand_jpoll)); // 	JNXMT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnxfi, asmcodeValue(0b000011011, 0b00, eValueType.operand_jpoll)); // 	JNXFI	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnxro, asmcodeValue(0b000011100, 0b00, eValueType.operand_jpoll)); // 	JNXRO	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnxrl, asmcodeValue(0b000011101, 0b00, eValueType.operand_jpoll)); // 	JNXRL	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnatn, asmcodeValue(0b000011110, 0b00, eValueType.operand_jpoll)); // 	JNATN	S/#
-    this.asmcodeValues.set(eAsmcode.ac_jnqmt, asmcodeValue(0b000011111, 0b00, eValueType.operand_jpoll)); // 	JNQMT	S/#
-    this.asmcodeValues.set(eAsmcode.ac_setpat, asmcodeValue(0b101111110, 0b00, eValueType.operand_ls)); // 	SETPAT	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_wrpin, asmcodeValue(0b110000000, 0b00, eValueType.operand_ls)); // 	WRPIN	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_wxpin, asmcodeValue(0b110000010, 0b00, eValueType.operand_ls)); // 	WXPIN	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_wypin, asmcodeValue(0b110000100, 0b00, eValueType.operand_ls)); // 	WYPIN	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_wrlut, asmcodeValue(0b110000110, 0b00, eValueType.operand_lsp)); // 	WRLUT	D/#,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_wrbyte, asmcodeValue(0b110001000, 0b00, eValueType.operand_lsp)); // 	WRBYTE	D/#,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_wrword, asmcodeValue(0b110001010, 0b00, eValueType.operand_lsp)); // 	WRWORD	D/#,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_wrlong, asmcodeValue(0b110001100, 0b00, eValueType.operand_lsp)); // 	WRLONG	D/#,S/#/PTRx
-    this.asmcodeValues.set(eAsmcode.ac_rdfast, asmcodeValue(0b110001110, 0b00, eValueType.operand_ls)); // 	RDFAST	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_wrfast, asmcodeValue(0b110010000, 0b00, eValueType.operand_ls)); // 	WRFAST	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_fblock, asmcodeValue(0b110010010, 0b00, eValueType.operand_ls)); // 	FBLOCK	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_xinit, asmcodeValue(0b110010100, 0b00, eValueType.operand_ls)); // 	XINIT	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_xzero, asmcodeValue(0b110010110, 0b00, eValueType.operand_ls)); // 	XZERO	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_xcont, asmcodeValue(0b110011000, 0b00, eValueType.operand_ls)); // 	XCONT	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_rep, asmcodeValue(0b110011010, 0b00, eValueType.operand_rep)); // 	REP	D/#/@,S/#
-    this.asmcodeValues.set(eAsmcode.ac_coginit, asmcodeValue(0b110011100, 0b10, eValueType.operand_ls)); // 	COGINIT	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_qmul, asmcodeValue(0b110100000, 0b00, eValueType.operand_ls)); // 	QMUL	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_qdiv, asmcodeValue(0b110100010, 0b00, eValueType.operand_ls)); // 	QDIV	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_qfrac, asmcodeValue(0b110100100, 0b00, eValueType.operand_ls)); // 	QFRAC	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_qsqrt, asmcodeValue(0b110100110, 0b00, eValueType.operand_ls)); // 	QSQRT	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_qrotate, asmcodeValue(0b110101000, 0b00, eValueType.operand_ls)); // 	QROTATE	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_qvector, asmcodeValue(0b110101010, 0b00, eValueType.operand_ls)); // 	QVECTOR	D/#,S/#
-    this.asmcodeValues.set(eAsmcode.ac_hubset, asmcodeValue(0b000000000, 0b00, eValueType.operand_l)); // 	HUBSET	D/#
-    this.asmcodeValues.set(eAsmcode.ac_cogid, asmcodeValue(0b000000001, 0b10, eValueType.operand_l)); // 	COGID	D/#
-    this.asmcodeValues.set(eAsmcode.ac_cogstop, asmcodeValue(0b000000011, 0b00, eValueType.operand_l)); // 	COGSTOP	D/#
-    this.asmcodeValues.set(eAsmcode.ac_locknew, asmcodeValue(0b000000100, 0b10, eValueType.operand_d)); // 	LOCKNEW	D
-    this.asmcodeValues.set(eAsmcode.ac_lockret, asmcodeValue(0b000000101, 0b00, eValueType.operand_l)); // 	LOCKRET	D/#
-    this.asmcodeValues.set(eAsmcode.ac_locktry, asmcodeValue(0b000000110, 0b10, eValueType.operand_l)); // 	LOCKTRY	D/#
-    this.asmcodeValues.set(eAsmcode.ac_lockrel, asmcodeValue(0b000000111, 0b10, eValueType.operand_l)); // 	LOCKREL	D/#
-    this.asmcodeValues.set(eAsmcode.ac_qlog, asmcodeValue(0b000001110, 0b00, eValueType.operand_l)); // 	QLOG	D/#
-    this.asmcodeValues.set(eAsmcode.ac_qexp, asmcodeValue(0b000001111, 0b00, eValueType.operand_l)); // 	QEXP	D/#
-    this.asmcodeValues.set(eAsmcode.ac_rfbyte, asmcodeValue(0b000010000, 0b11, eValueType.operand_d)); // 	RFBYTE	D
-    this.asmcodeValues.set(eAsmcode.ac_rfword, asmcodeValue(0b000010001, 0b11, eValueType.operand_d)); // 	RFWORD	D
-    this.asmcodeValues.set(eAsmcode.ac_rflong, asmcodeValue(0b000010010, 0b11, eValueType.operand_d)); // 	RFLONG	D
-    this.asmcodeValues.set(eAsmcode.ac_rfvar, asmcodeValue(0b000010011, 0b11, eValueType.operand_d)); // 	RFVAR	D
-    this.asmcodeValues.set(eAsmcode.ac_rfvars, asmcodeValue(0b000010100, 0b11, eValueType.operand_d)); // 	RFVARS	D
-    this.asmcodeValues.set(eAsmcode.ac_wfbyte, asmcodeValue(0b000010101, 0b00, eValueType.operand_l)); // 	WFBYTE	D/#
-    this.asmcodeValues.set(eAsmcode.ac_wfword, asmcodeValue(0b000010110, 0b00, eValueType.operand_l)); // 	WFWORD	D/#
-    this.asmcodeValues.set(eAsmcode.ac_wflong, asmcodeValue(0b000010111, 0b00, eValueType.operand_l)); // 	WFLONG	D/#
-    this.asmcodeValues.set(eAsmcode.ac_getqx, asmcodeValue(0b000011000, 0b11, eValueType.operand_d)); // 	GETQX	D
-    this.asmcodeValues.set(eAsmcode.ac_getqy, asmcodeValue(0b000011001, 0b11, eValueType.operand_d)); // 	GETQY	D
-    this.asmcodeValues.set(eAsmcode.ac_getct, asmcodeValue(0b000011010, 0b10, eValueType.operand_d)); // 	GETCT	D
-    this.asmcodeValues.set(eAsmcode.ac_getrnd, asmcodeValue(0b000011011, 0b11, eValueType.operand_de)); // 	GETRND	D
-    this.asmcodeValues.set(eAsmcode.ac_setdacs, asmcodeValue(0b000011100, 0b00, eValueType.operand_l)); // 	SETDACS	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setxfrq, asmcodeValue(0b000011101, 0b00, eValueType.operand_l)); // 	SETXFRQ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_getxacc, asmcodeValue(0b000011110, 0b00, eValueType.operand_d)); // 	GETXACC	D
-    this.asmcodeValues.set(eAsmcode.ac_waitx, asmcodeValue(0b000011111, 0b11, eValueType.operand_l)); // 	WAITX	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setse1, asmcodeValue(0b000100000, 0b00, eValueType.operand_l)); // 	SETSE1	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setse2, asmcodeValue(0b000100001, 0b00, eValueType.operand_l)); // 	SETSE2	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setse3, asmcodeValue(0b000100010, 0b00, eValueType.operand_l)); // 	SETSE3	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setse4, asmcodeValue(0b000100011, 0b00, eValueType.operand_l)); // 	SETSE4	D/#
-    this.asmcodeValues.set(eAsmcode.ac_pollint, asmcodeValue(0b000000000, 0b11, eValueType.operand_pollwait)); // 	POLLINT
-    this.asmcodeValues.set(eAsmcode.ac_pollct1, asmcodeValue(0b000000001, 0b11, eValueType.operand_pollwait)); // 	POLLCT1
-    this.asmcodeValues.set(eAsmcode.ac_pollct2, asmcodeValue(0b000000010, 0b11, eValueType.operand_pollwait)); // 	POLLCT2
-    this.asmcodeValues.set(eAsmcode.ac_pollct3, asmcodeValue(0b000000011, 0b11, eValueType.operand_pollwait)); // 	POLLCT3
-    this.asmcodeValues.set(eAsmcode.ac_pollse1, asmcodeValue(0b000000100, 0b11, eValueType.operand_pollwait)); // 	POLLSE1
-    this.asmcodeValues.set(eAsmcode.ac_pollse2, asmcodeValue(0b000000101, 0b11, eValueType.operand_pollwait)); // 	POLLSE2
-    this.asmcodeValues.set(eAsmcode.ac_pollse3, asmcodeValue(0b000000110, 0b11, eValueType.operand_pollwait)); // 	POLLSE3
-    this.asmcodeValues.set(eAsmcode.ac_pollse4, asmcodeValue(0b000000111, 0b11, eValueType.operand_pollwait)); // 	POLLSE4
-    this.asmcodeValues.set(eAsmcode.ac_pollpat, asmcodeValue(0b000001000, 0b11, eValueType.operand_pollwait)); // 	POLLPAT
-    this.asmcodeValues.set(eAsmcode.ac_pollfbw, asmcodeValue(0b000001001, 0b11, eValueType.operand_pollwait)); // 	POLLFBW
-    this.asmcodeValues.set(eAsmcode.ac_pollxmt, asmcodeValue(0b000001010, 0b11, eValueType.operand_pollwait)); // 	POLLXMT
-    this.asmcodeValues.set(eAsmcode.ac_pollxfi, asmcodeValue(0b000001011, 0b11, eValueType.operand_pollwait)); // 	POLLXFI
-    this.asmcodeValues.set(eAsmcode.ac_pollxro, asmcodeValue(0b000001100, 0b11, eValueType.operand_pollwait)); // 	POLLXRO
-    this.asmcodeValues.set(eAsmcode.ac_pollxrl, asmcodeValue(0b000001101, 0b11, eValueType.operand_pollwait)); // 	POLLXRL
-    this.asmcodeValues.set(eAsmcode.ac_pollatn, asmcodeValue(0b000001110, 0b11, eValueType.operand_pollwait)); // 	POLLATN
-    this.asmcodeValues.set(eAsmcode.ac_pollqmt, asmcodeValue(0b000001111, 0b11, eValueType.operand_pollwait)); // 	POLLQMT
-    this.asmcodeValues.set(eAsmcode.ac_waitint, asmcodeValue(0b000010000, 0b11, eValueType.operand_pollwait)); // 	WAITINT
-    this.asmcodeValues.set(eAsmcode.ac_waitct1, asmcodeValue(0b000010001, 0b11, eValueType.operand_pollwait)); // 	WAITCT1
-    this.asmcodeValues.set(eAsmcode.ac_waitct2, asmcodeValue(0b000010010, 0b11, eValueType.operand_pollwait)); // 	WAITCT2
-    this.asmcodeValues.set(eAsmcode.ac_waitct3, asmcodeValue(0b000010011, 0b11, eValueType.operand_pollwait)); // 	WAITCT3
-    this.asmcodeValues.set(eAsmcode.ac_waitse1, asmcodeValue(0b000010100, 0b11, eValueType.operand_pollwait)); // 	WAITSE1
-    this.asmcodeValues.set(eAsmcode.ac_waitse2, asmcodeValue(0b000010101, 0b11, eValueType.operand_pollwait)); // 	WAITSE2
-    this.asmcodeValues.set(eAsmcode.ac_waitse3, asmcodeValue(0b000010110, 0b11, eValueType.operand_pollwait)); // 	WAITSE3
-    this.asmcodeValues.set(eAsmcode.ac_waitse4, asmcodeValue(0b000010111, 0b11, eValueType.operand_pollwait)); // 	WAITSE4
-    this.asmcodeValues.set(eAsmcode.ac_waitpat, asmcodeValue(0b000011000, 0b11, eValueType.operand_pollwait)); // 	WAITPAT
-    this.asmcodeValues.set(eAsmcode.ac_waitfbw, asmcodeValue(0b000011001, 0b11, eValueType.operand_pollwait)); // 	WAITFBW
-    this.asmcodeValues.set(eAsmcode.ac_waitxmt, asmcodeValue(0b000011010, 0b11, eValueType.operand_pollwait)); // 	WAITXMT
-    this.asmcodeValues.set(eAsmcode.ac_waitxfi, asmcodeValue(0b000011011, 0b11, eValueType.operand_pollwait)); // 	WAITXFI
-    this.asmcodeValues.set(eAsmcode.ac_waitxro, asmcodeValue(0b000011100, 0b11, eValueType.operand_pollwait)); // 	WAITXRO
-    this.asmcodeValues.set(eAsmcode.ac_waitxrl, asmcodeValue(0b000011101, 0b11, eValueType.operand_pollwait)); // 	WAITXRL
-    this.asmcodeValues.set(eAsmcode.ac_waitatn, asmcodeValue(0b000011110, 0b11, eValueType.operand_pollwait)); // 	WAITATN
-    this.asmcodeValues.set(eAsmcode.ac_allowi, asmcodeValue(0b000100000, 0b00, eValueType.operand_pollwait)); // 	ALLOWI
-    this.asmcodeValues.set(eAsmcode.ac_stalli, asmcodeValue(0b000100001, 0b00, eValueType.operand_pollwait)); // 	STALLI
-    this.asmcodeValues.set(eAsmcode.ac_trgint1, asmcodeValue(0b000100010, 0b00, eValueType.operand_pollwait)); // 	TRGINT1
-    this.asmcodeValues.set(eAsmcode.ac_trgint2, asmcodeValue(0b000100011, 0b00, eValueType.operand_pollwait)); // 	TRGINT2
-    this.asmcodeValues.set(eAsmcode.ac_trgint3, asmcodeValue(0b000100100, 0b00, eValueType.operand_pollwait)); // 	TRGINT3
-    this.asmcodeValues.set(eAsmcode.ac_nixint1, asmcodeValue(0b000100101, 0b00, eValueType.operand_pollwait)); // 	NIXINT1
-    this.asmcodeValues.set(eAsmcode.ac_nixint2, asmcodeValue(0b000100110, 0b00, eValueType.operand_pollwait)); // 	NIXINT2
-    this.asmcodeValues.set(eAsmcode.ac_nixint3, asmcodeValue(0b000100111, 0b00, eValueType.operand_pollwait)); // 	NIXINT3
-    this.asmcodeValues.set(eAsmcode.ac_setint1, asmcodeValue(0b000100101, 0b00, eValueType.operand_l)); // 	SETINT1	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setint2, asmcodeValue(0b000100110, 0b00, eValueType.operand_l)); // 	SETINT2	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setint3, asmcodeValue(0b000100111, 0b00, eValueType.operand_l)); // 	SETINT3	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setq, asmcodeValue(0b000101000, 0b00, eValueType.operand_l)); // 	SETQ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setq2, asmcodeValue(0b000101001, 0b00, eValueType.operand_l)); // 	SETQ2	D/#
-    this.asmcodeValues.set(eAsmcode.ac_push, asmcodeValue(0b000101010, 0b00, eValueType.operand_l)); // 	PUSH	D/#
-    this.asmcodeValues.set(eAsmcode.ac_pop, asmcodeValue(0b000101011, 0b11, eValueType.operand_d)); // 	POP	D
-    this.asmcodeValues.set(eAsmcode.ac_jmprel, asmcodeValue(0b000110000, 0b00, eValueType.operand_l)); // 	JMPREL	D/#
-    this.asmcodeValues.set(eAsmcode.ac_skip, asmcodeValue(0b000110001, 0b00, eValueType.operand_l)); // 	SKIP	D/#
-    this.asmcodeValues.set(eAsmcode.ac_skipf, asmcodeValue(0b000110010, 0b00, eValueType.operand_l)); // 	SKIPF	D/#
-    this.asmcodeValues.set(eAsmcode.ac_execf, asmcodeValue(0b000110011, 0b00, eValueType.operand_l)); // 	EXECF	D/#
-    this.asmcodeValues.set(eAsmcode.ac_getptr, asmcodeValue(0b000110100, 0b00, eValueType.operand_d)); // 	GETPTR	D
-    this.asmcodeValues.set(eAsmcode.ac_getbrk, asmcodeValue(0b000110101, 0b11, eValueType.operand_getbrk)); // 	GETBRK	D
-    this.asmcodeValues.set(eAsmcode.ac_cogbrk, asmcodeValue(0b000110101, 0b00, eValueType.operand_l)); // 	COGBRK	D/#
-    this.asmcodeValues.set(eAsmcode.ac_brk, asmcodeValue(0b000110110, 0b00, eValueType.operand_l)); // 	BRK	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setluts, asmcodeValue(0b000110111, 0b00, eValueType.operand_l)); // 	SETLUTS	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setcy, asmcodeValue(0b000111000, 0b00, eValueType.operand_l)); // 	SETCY	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setci, asmcodeValue(0b000111001, 0b00, eValueType.operand_l)); // 	SETCI	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setcq, asmcodeValue(0b000111010, 0b00, eValueType.operand_l)); // 	SETCQ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setcfrq, asmcodeValue(0b000111011, 0b00, eValueType.operand_l)); // 	SETCFRQ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setcmod, asmcodeValue(0b000111100, 0b00, eValueType.operand_l)); // 	SETCMOD	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setpiv, asmcodeValue(0b000111101, 0b00, eValueType.operand_l)); // 	SETPIV	D/#
-    this.asmcodeValues.set(eAsmcode.ac_setpix, asmcodeValue(0b000111110, 0b00, eValueType.operand_l)); // 	SETPIX	D/#
-    this.asmcodeValues.set(eAsmcode.ac_cogatn, asmcodeValue(0b000111111, 0b00, eValueType.operand_l)); // 	COGATN	D/#
-    this.asmcodeValues.set(eAsmcode.ac_testp, asmcodeValue(0b001000000, 0b00, eValueType.operand_testp)); // 	TESTP	D/#
-    this.asmcodeValues.set(eAsmcode.ac_testpn, asmcodeValue(0b001000001, 0b00, eValueType.operand_testp)); // 	TESTPN	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirl, asmcodeValue(0b001000000, 0b00, eValueType.operand_pinop)); // 	DIRL	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirh, asmcodeValue(0b001000001, 0b00, eValueType.operand_pinop)); // 	DIRH	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirc, asmcodeValue(0b001000010, 0b00, eValueType.operand_pinop)); // 	DIRC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirnc, asmcodeValue(0b001000011, 0b00, eValueType.operand_pinop)); // 	DIRNC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirz, asmcodeValue(0b001000100, 0b00, eValueType.operand_pinop)); // 	DIRZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirnz, asmcodeValue(0b001000101, 0b00, eValueType.operand_pinop)); // 	DIRNZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirrnd, asmcodeValue(0b001000110, 0b00, eValueType.operand_pinop)); // 	DIRRND	D/#
-    this.asmcodeValues.set(eAsmcode.ac_dirnot, asmcodeValue(0b001000111, 0b00, eValueType.operand_pinop)); // 	DIRNOT	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outl, asmcodeValue(0b001001000, 0b00, eValueType.operand_pinop)); // 	OUTL	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outh, asmcodeValue(0b001001001, 0b00, eValueType.operand_pinop)); // 	OUTH	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outc, asmcodeValue(0b001001010, 0b00, eValueType.operand_pinop)); // 	OUTC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outnc, asmcodeValue(0b001001011, 0b00, eValueType.operand_pinop)); // 	OUTNC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outz, asmcodeValue(0b001001100, 0b00, eValueType.operand_pinop)); // 	OUTZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outnz, asmcodeValue(0b001001101, 0b00, eValueType.operand_pinop)); // 	OUTNZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outrnd, asmcodeValue(0b001001110, 0b00, eValueType.operand_pinop)); // 	OUTRND	D/#
-    this.asmcodeValues.set(eAsmcode.ac_outnot, asmcodeValue(0b001001111, 0b00, eValueType.operand_pinop)); // 	OUTNOT	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltl, asmcodeValue(0b001010000, 0b00, eValueType.operand_pinop)); // 	FLTL	D/#
-    this.asmcodeValues.set(eAsmcode.ac_flth, asmcodeValue(0b001010001, 0b00, eValueType.operand_pinop)); // 	FLTH	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltc, asmcodeValue(0b001010010, 0b00, eValueType.operand_pinop)); // 	FLTC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltnc, asmcodeValue(0b001010011, 0b00, eValueType.operand_pinop)); // 	FLTNC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltz, asmcodeValue(0b001010100, 0b00, eValueType.operand_pinop)); // 	FLTZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltnz, asmcodeValue(0b001010101, 0b00, eValueType.operand_pinop)); // 	FLTNZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltrnd, asmcodeValue(0b001010110, 0b00, eValueType.operand_pinop)); // 	FLTRND	D/#
-    this.asmcodeValues.set(eAsmcode.ac_fltnot, asmcodeValue(0b001010111, 0b00, eValueType.operand_pinop)); // 	FLTNOT	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvl, asmcodeValue(0b001011000, 0b00, eValueType.operand_pinop)); // 	DRVL	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvh, asmcodeValue(0b001011001, 0b00, eValueType.operand_pinop)); // 	DRVH	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvc, asmcodeValue(0b001011010, 0b00, eValueType.operand_pinop)); // 	DRVC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvnc, asmcodeValue(0b001011011, 0b00, eValueType.operand_pinop)); // 	DRVNC	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvz, asmcodeValue(0b001011100, 0b00, eValueType.operand_pinop)); // 	DRVZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvnz, asmcodeValue(0b001011101, 0b00, eValueType.operand_pinop)); // 	DRVNZ	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvrnd, asmcodeValue(0b001011110, 0b00, eValueType.operand_pinop)); // 	DRVRND	D/#
-    this.asmcodeValues.set(eAsmcode.ac_drvnot, asmcodeValue(0b001011111, 0b00, eValueType.operand_pinop)); // 	DRVNOT	D/#
-    this.asmcodeValues.set(eAsmcode.ac_splitb, asmcodeValue(0b001100000, 0b00, eValueType.operand_d)); // 	SPLITB	D
-    this.asmcodeValues.set(eAsmcode.ac_mergeb, asmcodeValue(0b001100001, 0b00, eValueType.operand_d)); // 	MERGEB	D
-    this.asmcodeValues.set(eAsmcode.ac_splitw, asmcodeValue(0b001100010, 0b00, eValueType.operand_d)); // 	SPLITW	D
-    this.asmcodeValues.set(eAsmcode.ac_mergew, asmcodeValue(0b001100011, 0b00, eValueType.operand_d)); // 	MERGEW	D
-    this.asmcodeValues.set(eAsmcode.ac_seussf, asmcodeValue(0b001100100, 0b00, eValueType.operand_d)); // 	SEUSSF	D
-    this.asmcodeValues.set(eAsmcode.ac_seussr, asmcodeValue(0b001100101, 0b00, eValueType.operand_d)); // 	SEUSSR	D
-    this.asmcodeValues.set(eAsmcode.ac_rgbsqz, asmcodeValue(0b001100110, 0b00, eValueType.operand_d)); // 	RGBSQZ	D
-    this.asmcodeValues.set(eAsmcode.ac_rgbexp, asmcodeValue(0b001100111, 0b00, eValueType.operand_d)); // 	RGBEXP	D
-    this.asmcodeValues.set(eAsmcode.ac_xoro32, asmcodeValue(0b001101000, 0b00, eValueType.operand_d)); // 	XORO32	D
-    this.asmcodeValues.set(eAsmcode.ac_rev, asmcodeValue(0b001101001, 0b00, eValueType.operand_d)); // 	REV	D
-    this.asmcodeValues.set(eAsmcode.ac_rczr, asmcodeValue(0b001101010, 0b11, eValueType.operand_d)); // 	RCZR	D
-    this.asmcodeValues.set(eAsmcode.ac_rczl, asmcodeValue(0b001101011, 0b11, eValueType.operand_d)); // 	RCZL	D
-    this.asmcodeValues.set(eAsmcode.ac_wrc, asmcodeValue(0b001101100, 0b00, eValueType.operand_d)); // 	WRC	D
-    this.asmcodeValues.set(eAsmcode.ac_wrnc, asmcodeValue(0b001101101, 0b00, eValueType.operand_d)); // 	WRNC	D
-    this.asmcodeValues.set(eAsmcode.ac_wrz, asmcodeValue(0b001101110, 0b00, eValueType.operand_d)); // 	WRZ	D
-    this.asmcodeValues.set(eAsmcode.ac_wrnz, asmcodeValue(0b001101111, 0b00, eValueType.operand_d)); // 	WRNZ	D
-    this.asmcodeValues.set(eAsmcode.ac_modcz, asmcodeValue(0b001101111, 0b11, eValueType.operand_cz)); // 	MODCZ	c,z
-    this.asmcodeValues.set(eAsmcode.ac_modc, asmcodeValue(0b001101111, 0b10, eValueType.operand_cz)); // 	MODC	c
-    this.asmcodeValues.set(eAsmcode.ac_modz, asmcodeValue(0b001101111, 0b01, eValueType.operand_cz)); // 	MODZ	z
-    this.asmcodeValues.set(eAsmcode.ac_setscp, asmcodeValue(0b001110000, 0b00, eValueType.operand_l)); // 	SETSCP	D/#
-    this.asmcodeValues.set(eAsmcode.ac_getscp, asmcodeValue(0b001110001, 0b00, eValueType.operand_d)); // 	GETSCP	D
-    this.asmcodeValues.set(eAsmcode.ac_jmp, asmcodeValue(0b110110000, 0b00, eValueType.operand_jmp)); // 	JMP	# <or> D
-    this.asmcodeValues.set(eAsmcode.ac_call, asmcodeValue(0b110110100, 0b00, eValueType.operand_call)); // 	CALL	# <or> D
-    this.asmcodeValues.set(eAsmcode.ac_calla, asmcodeValue(0b110111000, 0b00, eValueType.operand_call)); // 	CALLA	# <or> D
-    this.asmcodeValues.set(eAsmcode.ac_callb, asmcodeValue(0b110111100, 0b00, eValueType.operand_call)); // 	CALLB	# <or> D
-    this.asmcodeValues.set(eAsmcode.ac_calld, asmcodeValue(0b111000000, 0b00, eValueType.operand_calld)); // 	CALLD	reg,# / D,S
-    this.asmcodeValues.set(eAsmcode.ac_loc, asmcodeValue(0b111010000, 0b00, eValueType.operand_loc)); // 	LOC	reg,#
-    this.asmcodeValues.set(eAsmcode.ac_augs, asmcodeValue(0b111100000, 0b00, eValueType.operand_aug)); // 	AUGS	#
-    this.asmcodeValues.set(eAsmcode.ac_augd, asmcodeValue(0b111110000, 0b00, eValueType.operand_aug)); // 	AUGD	#
-    this.asmcodeValues.set(eAsmcode.ac_pusha, asmcodeValue(eValueType.pp_pusha, 0b00, eValueType.operand_pushpop)); // 	PUSHA	D/#	alias instructions
-    this.asmcodeValues.set(eAsmcode.ac_pushb, asmcodeValue(eValueType.pp_pushb, 0b00, eValueType.operand_pushpop)); // 	PUSHB	D/#
-    this.asmcodeValues.set(eAsmcode.ac_popa, asmcodeValue(eValueType.pp_popa, 0b11, eValueType.operand_pushpop)); // 	POPA	D
-    this.asmcodeValues.set(eAsmcode.ac_popb, asmcodeValue(eValueType.pp_popb, 0b11, eValueType.operand_pushpop)); // 	POPB	D
-    this.asmcodeValues.set(eAsmcode.ac_ret, asmcodeValue(0, 0b11, eValueType.operand_xlat)); // 	RET
-    this.asmcodeValues.set(eAsmcode.ac_reta, asmcodeValue(1, 0b11, eValueType.operand_xlat)); // 	RETA
-    this.asmcodeValues.set(eAsmcode.ac_retb, asmcodeValue(2, 0b11, eValueType.operand_xlat)); // 	RETB
-    this.asmcodeValues.set(eAsmcode.ac_reti0, asmcodeValue(3, 0b00, eValueType.operand_xlat)); // 	RETI0
-    this.asmcodeValues.set(eAsmcode.ac_reti1, asmcodeValue(4, 0b00, eValueType.operand_xlat)); // 	RETI1
-    this.asmcodeValues.set(eAsmcode.ac_reti2, asmcodeValue(5, 0b00, eValueType.operand_xlat)); // 	RETI2
-    this.asmcodeValues.set(eAsmcode.ac_reti3, asmcodeValue(6, 0b00, eValueType.operand_xlat)); // 	RETI3
-    this.asmcodeValues.set(eAsmcode.ac_resi0, asmcodeValue(7, 0b00, eValueType.operand_xlat)); // 	RESI0
-    this.asmcodeValues.set(eAsmcode.ac_resi1, asmcodeValue(8, 0b00, eValueType.operand_xlat)); // 	RESI1
-    this.asmcodeValues.set(eAsmcode.ac_resi2, asmcodeValue(9, 0b00, eValueType.operand_xlat)); // 	RESI2
-    this.asmcodeValues.set(eAsmcode.ac_resi3, asmcodeValue(10, 0b00, eValueType.operand_xlat)); // 	RESI3
-    this.asmcodeValues.set(eAsmcode.ac_xstop, asmcodeValue(11, 0b00, eValueType.operand_xlat)); // 	XSTOP
-    this.asmcodeValues.set(eAsmcode.ac_akpin, asmcodeValue(0, 0b00, eValueType.operand_akpin)); // 	AKPIN	S/#
-    this.asmcodeValues.set(eAsmcode.ac_asmclk, asmcodeValue(0, 0b00, eValueType.operand_asmclk)); // 	ASMCLK
-    this.asmcodeValues.set(eAsmcode.ac_nop, asmcodeValue(0b000000000, 0b00, eValueType.operand_nop)); // 	NOP
-    this.asmcodeValues.set(eAsmcode.ac_debug, asmcodeValue(0b000110110, 0b00, eValueType.operand_debug)); // 	DEBUG()
+    this.asmcodeValues.set(eAsmcode.ac_ror, setAsmcodeValue(0b000000000, 0b11, eValueType.operand_ds)); // 	ROR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_rol, setAsmcodeValue(0b000000100, 0b11, eValueType.operand_ds)); // 	ROL	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_shr, setAsmcodeValue(0b000001000, 0b11, eValueType.operand_ds)); // 	SHR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_shl, setAsmcodeValue(0b000001100, 0b11, eValueType.operand_ds)); // 	SHL	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_rcr, setAsmcodeValue(0b000010000, 0b11, eValueType.operand_ds)); // 	RCR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_rcl, setAsmcodeValue(0b000010100, 0b11, eValueType.operand_ds)); // 	RCL	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sar, setAsmcodeValue(0b000011000, 0b11, eValueType.operand_ds)); // 	SAR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sal, setAsmcodeValue(0b000011100, 0b11, eValueType.operand_ds)); // 	SAL	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_add, setAsmcodeValue(0b000100000, 0b11, eValueType.operand_ds)); // 	ADD	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_addx, setAsmcodeValue(0b000100100, 0b11, eValueType.operand_ds)); // 	ADDX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_adds, setAsmcodeValue(0b000101000, 0b11, eValueType.operand_ds)); // 	ADDS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_addsx, setAsmcodeValue(0b000101100, 0b11, eValueType.operand_ds)); // 	ADDSX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sub, setAsmcodeValue(0b000110000, 0b11, eValueType.operand_ds)); // 	SUB	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_subx, setAsmcodeValue(0b000110100, 0b11, eValueType.operand_ds)); // 	SUBX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_subs, setAsmcodeValue(0b000111000, 0b11, eValueType.operand_ds)); // 	SUBS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_subsx, setAsmcodeValue(0b000111100, 0b11, eValueType.operand_ds)); // 	SUBSX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmp, setAsmcodeValue(0b001000000, 0b11, eValueType.operand_ds)); // 	CMP	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmpx, setAsmcodeValue(0b001000100, 0b11, eValueType.operand_ds)); // 	CMPX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmps, setAsmcodeValue(0b001001000, 0b11, eValueType.operand_ds)); // 	CMPS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmpsx, setAsmcodeValue(0b001001100, 0b11, eValueType.operand_ds)); // 	CMPSX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmpr, setAsmcodeValue(0b001010000, 0b11, eValueType.operand_ds)); // 	CMPR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmpm, setAsmcodeValue(0b001010100, 0b11, eValueType.operand_ds)); // 	CMPM	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_subr, setAsmcodeValue(0b001011000, 0b11, eValueType.operand_ds)); // 	SUBR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_cmpsub, setAsmcodeValue(0b001011100, 0b11, eValueType.operand_ds)); // 	CMPSUB	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_fge, setAsmcodeValue(0b001100000, 0b11, eValueType.operand_ds)); // 	FGE	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_fle, setAsmcodeValue(0b001100100, 0b11, eValueType.operand_ds)); // 	FLE	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_fges, setAsmcodeValue(0b001101000, 0b11, eValueType.operand_ds)); // 	FGES	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_fles, setAsmcodeValue(0b001101100, 0b11, eValueType.operand_ds)); // 	FLES	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sumc, setAsmcodeValue(0b001110000, 0b11, eValueType.operand_ds)); // 	SUMC	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sumnc, setAsmcodeValue(0b001110100, 0b11, eValueType.operand_ds)); // 	SUMNC	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sumz, setAsmcodeValue(0b001111000, 0b11, eValueType.operand_ds)); // 	SUMZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sumnz, setAsmcodeValue(0b001111100, 0b11, eValueType.operand_ds)); // 	SUMNZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitl, setAsmcodeValue(0b010000000, 0b00, eValueType.operand_bitx)); // 	BITL	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bith, setAsmcodeValue(0b010000100, 0b00, eValueType.operand_bitx)); // 	BITH	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitc, setAsmcodeValue(0b010001000, 0b00, eValueType.operand_bitx)); // 	BITC	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitnc, setAsmcodeValue(0b010001100, 0b00, eValueType.operand_bitx)); // 	BITNC	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitz, setAsmcodeValue(0b010010000, 0b00, eValueType.operand_bitx)); // 	BITZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitnz, setAsmcodeValue(0b010010100, 0b00, eValueType.operand_bitx)); // 	BITNZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitrnd, setAsmcodeValue(0b010011000, 0b00, eValueType.operand_bitx)); // 	BITRND	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_bitnot, setAsmcodeValue(0b010011100, 0b00, eValueType.operand_bitx)); // 	BITNOT	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_testb, setAsmcodeValue(0b010000000, 0b00, eValueType.operand_testb)); // 	TESTB	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_testbn, setAsmcodeValue(0b010000100, 0b00, eValueType.operand_testb)); // 	TESTBN	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_and, setAsmcodeValue(0b010100000, 0b11, eValueType.operand_ds)); // 	AND	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_andn, setAsmcodeValue(0b010100100, 0b11, eValueType.operand_ds)); // 	ANDN	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_or, setAsmcodeValue(0b010101000, 0b11, eValueType.operand_ds)); // 	OR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_xor, setAsmcodeValue(0b010101100, 0b11, eValueType.operand_ds)); // 	XOR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxc, setAsmcodeValue(0b010110000, 0b11, eValueType.operand_ds)); // 	MUXC	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxnc, setAsmcodeValue(0b010110100, 0b11, eValueType.operand_ds)); // 	MUXNC	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxz, setAsmcodeValue(0b010111000, 0b11, eValueType.operand_ds)); // 	MUXZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxnz, setAsmcodeValue(0b010111100, 0b11, eValueType.operand_ds)); // 	MUXNZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_mov, setAsmcodeValue(0b011000000, 0b11, eValueType.operand_ds)); // 	MOV	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_not, setAsmcodeValue(0b011000100, 0b11, eValueType.operand_du)); // 	NOT	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_abs, setAsmcodeValue(0b011001000, 0b11, eValueType.operand_du)); // 	ABS	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_neg, setAsmcodeValue(0b011001100, 0b11, eValueType.operand_du)); // 	NEG	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_negc, setAsmcodeValue(0b011010000, 0b11, eValueType.operand_du)); // 	NEGC	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_negnc, setAsmcodeValue(0b011010100, 0b11, eValueType.operand_du)); // 	NEGNC	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_negz, setAsmcodeValue(0b011011000, 0b11, eValueType.operand_du)); // 	NEGZ	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_negnz, setAsmcodeValue(0b011011100, 0b11, eValueType.operand_du)); // 	NEGNZ	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_incmod, setAsmcodeValue(0b011100000, 0b11, eValueType.operand_ds)); // 	INCMOD	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_decmod, setAsmcodeValue(0b011100100, 0b11, eValueType.operand_ds)); // 	DECMOD	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_zerox, setAsmcodeValue(0b011101000, 0b11, eValueType.operand_ds)); // 	ZEROX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_signx, setAsmcodeValue(0b011101100, 0b11, eValueType.operand_ds)); // 	SIGNX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_encod, setAsmcodeValue(0b011110000, 0b11, eValueType.operand_du)); // 	ENCOD	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_ones, setAsmcodeValue(0b011110100, 0b11, eValueType.operand_du)); // 	ONES	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_test, setAsmcodeValue(0b011111000, 0b11, eValueType.operand_du)); // 	TEST	D,{S/#}
+    this.asmcodeValues.set(eAsmcode.ac_testn, setAsmcodeValue(0b011111100, 0b11, eValueType.operand_ds)); // 	TESTN	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_setnib, setAsmcodeValue(0b100000000, 0b00, eValueType.operand_ds3set)); // 	SETNIB	{D,}S/#{,#0..7}
+    this.asmcodeValues.set(eAsmcode.ac_getnib, setAsmcodeValue(0b100001000, 0b00, eValueType.operand_ds3get)); // 	GETNIB	D{,S/#,#0..7}
+    this.asmcodeValues.set(eAsmcode.ac_rolnib, setAsmcodeValue(0b100010000, 0b00, eValueType.operand_ds3get)); // 	ROLNIB	D{,S/#,#0..7}
+    this.asmcodeValues.set(eAsmcode.ac_setbyte, setAsmcodeValue(0b100011000, 0b00, eValueType.operand_ds2set)); // 	SETBYTE	{D,}S/#{,#0..3}
+    this.asmcodeValues.set(eAsmcode.ac_getbyte, setAsmcodeValue(0b100011100, 0b00, eValueType.operand_ds2get)); // 	GETBYTE	D{,S/#,#0..3}
+    this.asmcodeValues.set(eAsmcode.ac_rolbyte, setAsmcodeValue(0b100100000, 0b00, eValueType.operand_ds2get)); // 	ROLBYTE	D{,S/#,#0..3}
+    this.asmcodeValues.set(eAsmcode.ac_setword, setAsmcodeValue(0b100100100, 0b00, eValueType.operand_ds1set)); // 	SETWORD	{D,}S/#{,#0..1}
+    this.asmcodeValues.set(eAsmcode.ac_getword, setAsmcodeValue(0b100100110, 0b00, eValueType.operand_ds1get)); // 	GETWORD	D{,S/#,#0..1}
+    this.asmcodeValues.set(eAsmcode.ac_rolword, setAsmcodeValue(0b100101000, 0b00, eValueType.operand_ds1get)); // 	ROLWORD	D{,S/#,#0..1}
+    this.asmcodeValues.set(eAsmcode.ac_altsn, setAsmcodeValue(0b100101010, 0b00, eValueType.operand_duiz)); // 	ALTSN	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altgn, setAsmcodeValue(0b100101011, 0b00, eValueType.operand_duiz)); // 	ALTGN	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altsb, setAsmcodeValue(0b100101100, 0b00, eValueType.operand_duiz)); // 	ALTSB	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altgb, setAsmcodeValue(0b100101101, 0b00, eValueType.operand_duiz)); // 	ALTGB	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altsw, setAsmcodeValue(0b100101110, 0b00, eValueType.operand_duiz)); // 	ALTSW	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altgw, setAsmcodeValue(0b100101111, 0b00, eValueType.operand_duiz)); // 	ALTGW	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altr, setAsmcodeValue(0b100110000, 0b00, eValueType.operand_duiz)); // 	ALTR	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altd, setAsmcodeValue(0b100110001, 0b00, eValueType.operand_duiz)); // 	ALTD	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_alts, setAsmcodeValue(0b100110010, 0b00, eValueType.operand_duiz)); // 	ALTS	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_altb, setAsmcodeValue(0b100110011, 0b00, eValueType.operand_duiz)); // 	ALTB	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_alti, setAsmcodeValue(0b100110100, 0b00, eValueType.operand_duii)); // 	ALTI	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_setr, setAsmcodeValue(0b100110101, 0b00, eValueType.operand_ds)); // 	SETR	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_setd, setAsmcodeValue(0b100110110, 0b00, eValueType.operand_ds)); // 	SETD	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sets, setAsmcodeValue(0b100110111, 0b00, eValueType.operand_ds)); // 	SETS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_decod, setAsmcodeValue(0b100111000, 0b00, eValueType.operand_du)); // 	DECOD	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_bmask, setAsmcodeValue(0b100111001, 0b00, eValueType.operand_du)); // 	BMASK	D{,S/#}
+    this.asmcodeValues.set(eAsmcode.ac_crcbit, setAsmcodeValue(0b100111010, 0b00, eValueType.operand_ds)); // 	CRCBIT	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_crcnib, setAsmcodeValue(0b100111011, 0b00, eValueType.operand_ds)); // 	CRCNIB	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxnits, setAsmcodeValue(0b100111100, 0b00, eValueType.operand_ds)); // 	MUXNITS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxnibs, setAsmcodeValue(0b100111101, 0b00, eValueType.operand_ds)); // 	MUXNIBS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muxq, setAsmcodeValue(0b100111110, 0b00, eValueType.operand_ds)); // 	MUXQ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_movbyts, setAsmcodeValue(0b100111111, 0b00, eValueType.operand_ds)); // 	MOVBYTS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_mul, setAsmcodeValue(0b101000000, 0b01, eValueType.operand_ds)); // 	MUL	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_muls, setAsmcodeValue(0b101000010, 0b01, eValueType.operand_ds)); // 	MULS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_sca, setAsmcodeValue(0b101000100, 0b01, eValueType.operand_ds)); // 	SCA	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_scas, setAsmcodeValue(0b101000110, 0b01, eValueType.operand_ds)); // 	SCAS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_addpix, setAsmcodeValue(0b101001000, 0b00, eValueType.operand_ds)); // 	ADDPIX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_mulpix, setAsmcodeValue(0b101001001, 0b00, eValueType.operand_ds)); // 	MULPIX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_blnpix, setAsmcodeValue(0b101001010, 0b00, eValueType.operand_ds)); // 	BLNPIX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_mixpix, setAsmcodeValue(0b101001011, 0b00, eValueType.operand_ds)); // 	MIXPIX	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_addct1, setAsmcodeValue(0b101001100, 0b00, eValueType.operand_ds)); // 	ADDCT1	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_addct2, setAsmcodeValue(0b101001101, 0b00, eValueType.operand_ds)); // 	ADDCT2	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_addct3, setAsmcodeValue(0b101001110, 0b00, eValueType.operand_ds)); // 	ADDCT3	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_wmlong, setAsmcodeValue(0b101001111, 0b00, eValueType.operand_dsp)); // 	WMLONG_	D,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_rqpin, setAsmcodeValue(0b101010000, 0b10, eValueType.operand_ds)); // 	RQPIN	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_rdpin, setAsmcodeValue(0b101010001, 0b10, eValueType.operand_ds)); // 	RDPIN	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_rdlut, setAsmcodeValue(0b101010100, 0b11, eValueType.operand_dsp)); // 	RDLUT	D,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_rdbyte, setAsmcodeValue(0b101011000, 0b11, eValueType.operand_dsp)); // 	RDBYTE	D,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_rdword, setAsmcodeValue(0b101011100, 0b11, eValueType.operand_dsp)); // 	RDWORD	D,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_rdlong, setAsmcodeValue(0b101100000, 0b11, eValueType.operand_dsp)); // 	RDLONG	D,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_callpa, setAsmcodeValue(0b101101000, 0b00, eValueType.operand_lsj)); // 	CALLPA	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_callpb, setAsmcodeValue(0b101101010, 0b00, eValueType.operand_lsj)); // 	CALLPB	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_djz, setAsmcodeValue(0b101101100, 0b00, eValueType.operand_dsj)); // 	DJZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_djnz, setAsmcodeValue(0b101101101, 0b00, eValueType.operand_dsj)); // 	DJNZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_djf, setAsmcodeValue(0b101101110, 0b00, eValueType.operand_dsj)); // 	DJF	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_djnf, setAsmcodeValue(0b101101111, 0b00, eValueType.operand_dsj)); // 	DJNF	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_ijz, setAsmcodeValue(0b101110000, 0b00, eValueType.operand_dsj)); // 	IJZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_ijnz, setAsmcodeValue(0b101110001, 0b00, eValueType.operand_dsj)); // 	IJNZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjz, setAsmcodeValue(0b101110010, 0b00, eValueType.operand_dsj)); // 	TJZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjnz, setAsmcodeValue(0b101110011, 0b00, eValueType.operand_dsj)); // 	TJNZ	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjf, setAsmcodeValue(0b101110100, 0b00, eValueType.operand_dsj)); // 	TJF	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjnf, setAsmcodeValue(0b101110101, 0b00, eValueType.operand_dsj)); // 	TJNF	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjs, setAsmcodeValue(0b101110110, 0b00, eValueType.operand_dsj)); // 	TJS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjns, setAsmcodeValue(0b101110111, 0b00, eValueType.operand_dsj)); // 	TJNS	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_tjv, setAsmcodeValue(0b101111000, 0b00, eValueType.operand_dsj)); // 	TJV	D,S/#
+    this.asmcodeValues.set(eAsmcode.ac_jint, setAsmcodeValue(0b000000000, 0b00, eValueType.operand_jpoll)); // 	JINT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jct1, setAsmcodeValue(0b000000001, 0b00, eValueType.operand_jpoll)); // 	JCT1	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jct2, setAsmcodeValue(0b000000010, 0b00, eValueType.operand_jpoll)); // 	JCT2	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jct3, setAsmcodeValue(0b000000011, 0b00, eValueType.operand_jpoll)); // 	JCT3	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jse1, setAsmcodeValue(0b000000100, 0b00, eValueType.operand_jpoll)); // 	JSE1	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jse2, setAsmcodeValue(0b000000101, 0b00, eValueType.operand_jpoll)); // 	JSE2	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jse3, setAsmcodeValue(0b000000110, 0b00, eValueType.operand_jpoll)); // 	JSE3	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jse4, setAsmcodeValue(0b000000111, 0b00, eValueType.operand_jpoll)); // 	JSE4	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jpat, setAsmcodeValue(0b000001000, 0b00, eValueType.operand_jpoll)); // 	JPAT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jfbw, setAsmcodeValue(0b000001001, 0b00, eValueType.operand_jpoll)); // 	JFBW	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jxmt, setAsmcodeValue(0b000001010, 0b00, eValueType.operand_jpoll)); // 	JXMT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jxfi, setAsmcodeValue(0b000001011, 0b00, eValueType.operand_jpoll)); // 	JXFI	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jxro, setAsmcodeValue(0b000001100, 0b00, eValueType.operand_jpoll)); // 	JXRO	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jxrl, setAsmcodeValue(0b000001101, 0b00, eValueType.operand_jpoll)); // 	JXRL	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jatn, setAsmcodeValue(0b000001110, 0b00, eValueType.operand_jpoll)); // 	JATN	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jqmt, setAsmcodeValue(0b000001111, 0b00, eValueType.operand_jpoll)); // 	JQMT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnint, setAsmcodeValue(0b000010000, 0b00, eValueType.operand_jpoll)); // 	JNINT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnct1, setAsmcodeValue(0b000010001, 0b00, eValueType.operand_jpoll)); // 	JNCT1	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnct2, setAsmcodeValue(0b000010010, 0b00, eValueType.operand_jpoll)); // 	JNCT2	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnct3, setAsmcodeValue(0b000010011, 0b00, eValueType.operand_jpoll)); // 	JNCT3	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnse1, setAsmcodeValue(0b000010100, 0b00, eValueType.operand_jpoll)); // 	JNSE1	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnse2, setAsmcodeValue(0b000010101, 0b00, eValueType.operand_jpoll)); // 	JNSE2	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnse3, setAsmcodeValue(0b000010110, 0b00, eValueType.operand_jpoll)); // 	JNSE3	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnse4, setAsmcodeValue(0b000010111, 0b00, eValueType.operand_jpoll)); // 	JNSE4	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnpat, setAsmcodeValue(0b000011000, 0b00, eValueType.operand_jpoll)); // 	JNPAT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnfbw, setAsmcodeValue(0b000011001, 0b00, eValueType.operand_jpoll)); // 	JNFBW	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnxmt, setAsmcodeValue(0b000011010, 0b00, eValueType.operand_jpoll)); // 	JNXMT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnxfi, setAsmcodeValue(0b000011011, 0b00, eValueType.operand_jpoll)); // 	JNXFI	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnxro, setAsmcodeValue(0b000011100, 0b00, eValueType.operand_jpoll)); // 	JNXRO	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnxrl, setAsmcodeValue(0b000011101, 0b00, eValueType.operand_jpoll)); // 	JNXRL	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnatn, setAsmcodeValue(0b000011110, 0b00, eValueType.operand_jpoll)); // 	JNATN	S/#
+    this.asmcodeValues.set(eAsmcode.ac_jnqmt, setAsmcodeValue(0b000011111, 0b00, eValueType.operand_jpoll)); // 	JNQMT	S/#
+    this.asmcodeValues.set(eAsmcode.ac_setpat, setAsmcodeValue(0b101111110, 0b00, eValueType.operand_ls)); // 	SETPAT	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_wrpin, setAsmcodeValue(0b110000000, 0b00, eValueType.operand_ls)); // 	WRPIN	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_wxpin, setAsmcodeValue(0b110000010, 0b00, eValueType.operand_ls)); // 	WXPIN	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_wypin, setAsmcodeValue(0b110000100, 0b00, eValueType.operand_ls)); // 	WYPIN	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_wrlut, setAsmcodeValue(0b110000110, 0b00, eValueType.operand_lsp)); // 	WRLUT	D/#,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_wrbyte, setAsmcodeValue(0b110001000, 0b00, eValueType.operand_lsp)); // 	WRBYTE	D/#,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_wrword, setAsmcodeValue(0b110001010, 0b00, eValueType.operand_lsp)); // 	WRWORD	D/#,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_wrlong, setAsmcodeValue(0b110001100, 0b00, eValueType.operand_lsp)); // 	WRLONG	D/#,S/#/PTRx
+    this.asmcodeValues.set(eAsmcode.ac_rdfast, setAsmcodeValue(0b110001110, 0b00, eValueType.operand_ls)); // 	RDFAST	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_wrfast, setAsmcodeValue(0b110010000, 0b00, eValueType.operand_ls)); // 	WRFAST	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_fblock, setAsmcodeValue(0b110010010, 0b00, eValueType.operand_ls)); // 	FBLOCK	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_xinit, setAsmcodeValue(0b110010100, 0b00, eValueType.operand_ls)); // 	XINIT	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_xzero, setAsmcodeValue(0b110010110, 0b00, eValueType.operand_ls)); // 	XZERO	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_xcont, setAsmcodeValue(0b110011000, 0b00, eValueType.operand_ls)); // 	XCONT	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_rep, setAsmcodeValue(0b110011010, 0b00, eValueType.operand_rep)); // 	REP	D/#/@,S/#
+    this.asmcodeValues.set(eAsmcode.ac_coginit, setAsmcodeValue(0b110011100, 0b10, eValueType.operand_ls)); // 	COGINIT	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_qmul, setAsmcodeValue(0b110100000, 0b00, eValueType.operand_ls)); // 	QMUL	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_qdiv, setAsmcodeValue(0b110100010, 0b00, eValueType.operand_ls)); // 	QDIV	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_qfrac, setAsmcodeValue(0b110100100, 0b00, eValueType.operand_ls)); // 	QFRAC	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_qsqrt, setAsmcodeValue(0b110100110, 0b00, eValueType.operand_ls)); // 	QSQRT	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_qrotate, setAsmcodeValue(0b110101000, 0b00, eValueType.operand_ls)); // 	QROTATE	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_qvector, setAsmcodeValue(0b110101010, 0b00, eValueType.operand_ls)); // 	QVECTOR	D/#,S/#
+    this.asmcodeValues.set(eAsmcode.ac_hubset, setAsmcodeValue(0b000000000, 0b00, eValueType.operand_l)); // 	HUBSET	D/#
+    this.asmcodeValues.set(eAsmcode.ac_cogid, setAsmcodeValue(0b000000001, 0b10, eValueType.operand_l)); // 	COGID	D/#
+    this.asmcodeValues.set(eAsmcode.ac_cogstop, setAsmcodeValue(0b000000011, 0b00, eValueType.operand_l)); // 	COGSTOP	D/#
+    this.asmcodeValues.set(eAsmcode.ac_locknew, setAsmcodeValue(0b000000100, 0b10, eValueType.operand_d)); // 	LOCKNEW	D
+    this.asmcodeValues.set(eAsmcode.ac_lockret, setAsmcodeValue(0b000000101, 0b00, eValueType.operand_l)); // 	LOCKRET	D/#
+    this.asmcodeValues.set(eAsmcode.ac_locktry, setAsmcodeValue(0b000000110, 0b10, eValueType.operand_l)); // 	LOCKTRY	D/#
+    this.asmcodeValues.set(eAsmcode.ac_lockrel, setAsmcodeValue(0b000000111, 0b10, eValueType.operand_l)); // 	LOCKREL	D/#
+    this.asmcodeValues.set(eAsmcode.ac_qlog, setAsmcodeValue(0b000001110, 0b00, eValueType.operand_l)); // 	QLOG	D/#
+    this.asmcodeValues.set(eAsmcode.ac_qexp, setAsmcodeValue(0b000001111, 0b00, eValueType.operand_l)); // 	QEXP	D/#
+    this.asmcodeValues.set(eAsmcode.ac_rfbyte, setAsmcodeValue(0b000010000, 0b11, eValueType.operand_d)); // 	RFBYTE	D
+    this.asmcodeValues.set(eAsmcode.ac_rfword, setAsmcodeValue(0b000010001, 0b11, eValueType.operand_d)); // 	RFWORD	D
+    this.asmcodeValues.set(eAsmcode.ac_rflong, setAsmcodeValue(0b000010010, 0b11, eValueType.operand_d)); // 	RFLONG	D
+    this.asmcodeValues.set(eAsmcode.ac_rfvar, setAsmcodeValue(0b000010011, 0b11, eValueType.operand_d)); // 	RFVAR	D
+    this.asmcodeValues.set(eAsmcode.ac_rfvars, setAsmcodeValue(0b000010100, 0b11, eValueType.operand_d)); // 	RFVARS	D
+    this.asmcodeValues.set(eAsmcode.ac_wfbyte, setAsmcodeValue(0b000010101, 0b00, eValueType.operand_l)); // 	WFBYTE	D/#
+    this.asmcodeValues.set(eAsmcode.ac_wfword, setAsmcodeValue(0b000010110, 0b00, eValueType.operand_l)); // 	WFWORD	D/#
+    this.asmcodeValues.set(eAsmcode.ac_wflong, setAsmcodeValue(0b000010111, 0b00, eValueType.operand_l)); // 	WFLONG	D/#
+    this.asmcodeValues.set(eAsmcode.ac_getqx, setAsmcodeValue(0b000011000, 0b11, eValueType.operand_d)); // 	GETQX	D
+    this.asmcodeValues.set(eAsmcode.ac_getqy, setAsmcodeValue(0b000011001, 0b11, eValueType.operand_d)); // 	GETQY	D
+    this.asmcodeValues.set(eAsmcode.ac_getct, setAsmcodeValue(0b000011010, 0b10, eValueType.operand_d)); // 	GETCT	D
+    this.asmcodeValues.set(eAsmcode.ac_getrnd, setAsmcodeValue(0b000011011, 0b11, eValueType.operand_de)); // 	GETRND	D
+    this.asmcodeValues.set(eAsmcode.ac_setdacs, setAsmcodeValue(0b000011100, 0b00, eValueType.operand_l)); // 	SETDACS	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setxfrq, setAsmcodeValue(0b000011101, 0b00, eValueType.operand_l)); // 	SETXFRQ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_getxacc, setAsmcodeValue(0b000011110, 0b00, eValueType.operand_d)); // 	GETXACC	D
+    this.asmcodeValues.set(eAsmcode.ac_waitx, setAsmcodeValue(0b000011111, 0b11, eValueType.operand_l)); // 	WAITX	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setse1, setAsmcodeValue(0b000100000, 0b00, eValueType.operand_l)); // 	SETSE1	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setse2, setAsmcodeValue(0b000100001, 0b00, eValueType.operand_l)); // 	SETSE2	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setse3, setAsmcodeValue(0b000100010, 0b00, eValueType.operand_l)); // 	SETSE3	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setse4, setAsmcodeValue(0b000100011, 0b00, eValueType.operand_l)); // 	SETSE4	D/#
+    this.asmcodeValues.set(eAsmcode.ac_pollint, setAsmcodeValue(0b000000000, 0b11, eValueType.operand_pollwait)); // 	POLLINT
+    this.asmcodeValues.set(eAsmcode.ac_pollct1, setAsmcodeValue(0b000000001, 0b11, eValueType.operand_pollwait)); // 	POLLCT1
+    this.asmcodeValues.set(eAsmcode.ac_pollct2, setAsmcodeValue(0b000000010, 0b11, eValueType.operand_pollwait)); // 	POLLCT2
+    this.asmcodeValues.set(eAsmcode.ac_pollct3, setAsmcodeValue(0b000000011, 0b11, eValueType.operand_pollwait)); // 	POLLCT3
+    this.asmcodeValues.set(eAsmcode.ac_pollse1, setAsmcodeValue(0b000000100, 0b11, eValueType.operand_pollwait)); // 	POLLSE1
+    this.asmcodeValues.set(eAsmcode.ac_pollse2, setAsmcodeValue(0b000000101, 0b11, eValueType.operand_pollwait)); // 	POLLSE2
+    this.asmcodeValues.set(eAsmcode.ac_pollse3, setAsmcodeValue(0b000000110, 0b11, eValueType.operand_pollwait)); // 	POLLSE3
+    this.asmcodeValues.set(eAsmcode.ac_pollse4, setAsmcodeValue(0b000000111, 0b11, eValueType.operand_pollwait)); // 	POLLSE4
+    this.asmcodeValues.set(eAsmcode.ac_pollpat, setAsmcodeValue(0b000001000, 0b11, eValueType.operand_pollwait)); // 	POLLPAT
+    this.asmcodeValues.set(eAsmcode.ac_pollfbw, setAsmcodeValue(0b000001001, 0b11, eValueType.operand_pollwait)); // 	POLLFBW
+    this.asmcodeValues.set(eAsmcode.ac_pollxmt, setAsmcodeValue(0b000001010, 0b11, eValueType.operand_pollwait)); // 	POLLXMT
+    this.asmcodeValues.set(eAsmcode.ac_pollxfi, setAsmcodeValue(0b000001011, 0b11, eValueType.operand_pollwait)); // 	POLLXFI
+    this.asmcodeValues.set(eAsmcode.ac_pollxro, setAsmcodeValue(0b000001100, 0b11, eValueType.operand_pollwait)); // 	POLLXRO
+    this.asmcodeValues.set(eAsmcode.ac_pollxrl, setAsmcodeValue(0b000001101, 0b11, eValueType.operand_pollwait)); // 	POLLXRL
+    this.asmcodeValues.set(eAsmcode.ac_pollatn, setAsmcodeValue(0b000001110, 0b11, eValueType.operand_pollwait)); // 	POLLATN
+    this.asmcodeValues.set(eAsmcode.ac_pollqmt, setAsmcodeValue(0b000001111, 0b11, eValueType.operand_pollwait)); // 	POLLQMT
+    this.asmcodeValues.set(eAsmcode.ac_waitint, setAsmcodeValue(0b000010000, 0b11, eValueType.operand_pollwait)); // 	WAITINT
+    this.asmcodeValues.set(eAsmcode.ac_waitct1, setAsmcodeValue(0b000010001, 0b11, eValueType.operand_pollwait)); // 	WAITCT1
+    this.asmcodeValues.set(eAsmcode.ac_waitct2, setAsmcodeValue(0b000010010, 0b11, eValueType.operand_pollwait)); // 	WAITCT2
+    this.asmcodeValues.set(eAsmcode.ac_waitct3, setAsmcodeValue(0b000010011, 0b11, eValueType.operand_pollwait)); // 	WAITCT3
+    this.asmcodeValues.set(eAsmcode.ac_waitse1, setAsmcodeValue(0b000010100, 0b11, eValueType.operand_pollwait)); // 	WAITSE1
+    this.asmcodeValues.set(eAsmcode.ac_waitse2, setAsmcodeValue(0b000010101, 0b11, eValueType.operand_pollwait)); // 	WAITSE2
+    this.asmcodeValues.set(eAsmcode.ac_waitse3, setAsmcodeValue(0b000010110, 0b11, eValueType.operand_pollwait)); // 	WAITSE3
+    this.asmcodeValues.set(eAsmcode.ac_waitse4, setAsmcodeValue(0b000010111, 0b11, eValueType.operand_pollwait)); // 	WAITSE4
+    this.asmcodeValues.set(eAsmcode.ac_waitpat, setAsmcodeValue(0b000011000, 0b11, eValueType.operand_pollwait)); // 	WAITPAT
+    this.asmcodeValues.set(eAsmcode.ac_waitfbw, setAsmcodeValue(0b000011001, 0b11, eValueType.operand_pollwait)); // 	WAITFBW
+    this.asmcodeValues.set(eAsmcode.ac_waitxmt, setAsmcodeValue(0b000011010, 0b11, eValueType.operand_pollwait)); // 	WAITXMT
+    this.asmcodeValues.set(eAsmcode.ac_waitxfi, setAsmcodeValue(0b000011011, 0b11, eValueType.operand_pollwait)); // 	WAITXFI
+    this.asmcodeValues.set(eAsmcode.ac_waitxro, setAsmcodeValue(0b000011100, 0b11, eValueType.operand_pollwait)); // 	WAITXRO
+    this.asmcodeValues.set(eAsmcode.ac_waitxrl, setAsmcodeValue(0b000011101, 0b11, eValueType.operand_pollwait)); // 	WAITXRL
+    this.asmcodeValues.set(eAsmcode.ac_waitatn, setAsmcodeValue(0b000011110, 0b11, eValueType.operand_pollwait)); // 	WAITATN
+    this.asmcodeValues.set(eAsmcode.ac_allowi, setAsmcodeValue(0b000100000, 0b00, eValueType.operand_pollwait)); // 	ALLOWI
+    this.asmcodeValues.set(eAsmcode.ac_stalli, setAsmcodeValue(0b000100001, 0b00, eValueType.operand_pollwait)); // 	STALLI
+    this.asmcodeValues.set(eAsmcode.ac_trgint1, setAsmcodeValue(0b000100010, 0b00, eValueType.operand_pollwait)); // 	TRGINT1
+    this.asmcodeValues.set(eAsmcode.ac_trgint2, setAsmcodeValue(0b000100011, 0b00, eValueType.operand_pollwait)); // 	TRGINT2
+    this.asmcodeValues.set(eAsmcode.ac_trgint3, setAsmcodeValue(0b000100100, 0b00, eValueType.operand_pollwait)); // 	TRGINT3
+    this.asmcodeValues.set(eAsmcode.ac_nixint1, setAsmcodeValue(0b000100101, 0b00, eValueType.operand_pollwait)); // 	NIXINT1
+    this.asmcodeValues.set(eAsmcode.ac_nixint2, setAsmcodeValue(0b000100110, 0b00, eValueType.operand_pollwait)); // 	NIXINT2
+    this.asmcodeValues.set(eAsmcode.ac_nixint3, setAsmcodeValue(0b000100111, 0b00, eValueType.operand_pollwait)); // 	NIXINT3
+    this.asmcodeValues.set(eAsmcode.ac_setint1, setAsmcodeValue(0b000100101, 0b00, eValueType.operand_l)); // 	SETINT1	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setint2, setAsmcodeValue(0b000100110, 0b00, eValueType.operand_l)); // 	SETINT2	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setint3, setAsmcodeValue(0b000100111, 0b00, eValueType.operand_l)); // 	SETINT3	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setq, setAsmcodeValue(0b000101000, 0b00, eValueType.operand_l)); // 	SETQ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setq2, setAsmcodeValue(0b000101001, 0b00, eValueType.operand_l)); // 	SETQ2	D/#
+    this.asmcodeValues.set(eAsmcode.ac_push, setAsmcodeValue(0b000101010, 0b00, eValueType.operand_l)); // 	PUSH	D/#
+    this.asmcodeValues.set(eAsmcode.ac_pop, setAsmcodeValue(0b000101011, 0b11, eValueType.operand_d)); // 	POP	D
+    this.asmcodeValues.set(eAsmcode.ac_jmprel, setAsmcodeValue(0b000110000, 0b00, eValueType.operand_l)); // 	JMPREL	D/#
+    this.asmcodeValues.set(eAsmcode.ac_skip, setAsmcodeValue(0b000110001, 0b00, eValueType.operand_l)); // 	SKIP	D/#
+    this.asmcodeValues.set(eAsmcode.ac_skipf, setAsmcodeValue(0b000110010, 0b00, eValueType.operand_l)); // 	SKIPF	D/#
+    this.asmcodeValues.set(eAsmcode.ac_execf, setAsmcodeValue(0b000110011, 0b00, eValueType.operand_l)); // 	EXECF	D/#
+    this.asmcodeValues.set(eAsmcode.ac_getptr, setAsmcodeValue(0b000110100, 0b00, eValueType.operand_d)); // 	GETPTR	D
+    this.asmcodeValues.set(eAsmcode.ac_getbrk, setAsmcodeValue(0b000110101, 0b11, eValueType.operand_getbrk)); // 	GETBRK	D
+    this.asmcodeValues.set(eAsmcode.ac_cogbrk, setAsmcodeValue(0b000110101, 0b00, eValueType.operand_l)); // 	COGBRK	D/#
+    this.asmcodeValues.set(eAsmcode.ac_brk, setAsmcodeValue(0b000110110, 0b00, eValueType.operand_l)); // 	BRK	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setluts, setAsmcodeValue(0b000110111, 0b00, eValueType.operand_l)); // 	SETLUTS	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setcy, setAsmcodeValue(0b000111000, 0b00, eValueType.operand_l)); // 	SETCY	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setci, setAsmcodeValue(0b000111001, 0b00, eValueType.operand_l)); // 	SETCI	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setcq, setAsmcodeValue(0b000111010, 0b00, eValueType.operand_l)); // 	SETCQ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setcfrq, setAsmcodeValue(0b000111011, 0b00, eValueType.operand_l)); // 	SETCFRQ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setcmod, setAsmcodeValue(0b000111100, 0b00, eValueType.operand_l)); // 	SETCMOD	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setpiv, setAsmcodeValue(0b000111101, 0b00, eValueType.operand_l)); // 	SETPIV	D/#
+    this.asmcodeValues.set(eAsmcode.ac_setpix, setAsmcodeValue(0b000111110, 0b00, eValueType.operand_l)); // 	SETPIX	D/#
+    this.asmcodeValues.set(eAsmcode.ac_cogatn, setAsmcodeValue(0b000111111, 0b00, eValueType.operand_l)); // 	COGATN	D/#
+    this.asmcodeValues.set(eAsmcode.ac_testp, setAsmcodeValue(0b001000000, 0b00, eValueType.operand_testp)); // 	TESTP	D/#
+    this.asmcodeValues.set(eAsmcode.ac_testpn, setAsmcodeValue(0b001000001, 0b00, eValueType.operand_testp)); // 	TESTPN	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirl, setAsmcodeValue(0b001000000, 0b00, eValueType.operand_pinop)); // 	DIRL	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirh, setAsmcodeValue(0b001000001, 0b00, eValueType.operand_pinop)); // 	DIRH	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirc, setAsmcodeValue(0b001000010, 0b00, eValueType.operand_pinop)); // 	DIRC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirnc, setAsmcodeValue(0b001000011, 0b00, eValueType.operand_pinop)); // 	DIRNC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirz, setAsmcodeValue(0b001000100, 0b00, eValueType.operand_pinop)); // 	DIRZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirnz, setAsmcodeValue(0b001000101, 0b00, eValueType.operand_pinop)); // 	DIRNZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirrnd, setAsmcodeValue(0b001000110, 0b00, eValueType.operand_pinop)); // 	DIRRND	D/#
+    this.asmcodeValues.set(eAsmcode.ac_dirnot, setAsmcodeValue(0b001000111, 0b00, eValueType.operand_pinop)); // 	DIRNOT	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outl, setAsmcodeValue(0b001001000, 0b00, eValueType.operand_pinop)); // 	OUTL	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outh, setAsmcodeValue(0b001001001, 0b00, eValueType.operand_pinop)); // 	OUTH	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outc, setAsmcodeValue(0b001001010, 0b00, eValueType.operand_pinop)); // 	OUTC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outnc, setAsmcodeValue(0b001001011, 0b00, eValueType.operand_pinop)); // 	OUTNC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outz, setAsmcodeValue(0b001001100, 0b00, eValueType.operand_pinop)); // 	OUTZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outnz, setAsmcodeValue(0b001001101, 0b00, eValueType.operand_pinop)); // 	OUTNZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outrnd, setAsmcodeValue(0b001001110, 0b00, eValueType.operand_pinop)); // 	OUTRND	D/#
+    this.asmcodeValues.set(eAsmcode.ac_outnot, setAsmcodeValue(0b001001111, 0b00, eValueType.operand_pinop)); // 	OUTNOT	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltl, setAsmcodeValue(0b001010000, 0b00, eValueType.operand_pinop)); // 	FLTL	D/#
+    this.asmcodeValues.set(eAsmcode.ac_flth, setAsmcodeValue(0b001010001, 0b00, eValueType.operand_pinop)); // 	FLTH	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltc, setAsmcodeValue(0b001010010, 0b00, eValueType.operand_pinop)); // 	FLTC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltnc, setAsmcodeValue(0b001010011, 0b00, eValueType.operand_pinop)); // 	FLTNC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltz, setAsmcodeValue(0b001010100, 0b00, eValueType.operand_pinop)); // 	FLTZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltnz, setAsmcodeValue(0b001010101, 0b00, eValueType.operand_pinop)); // 	FLTNZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltrnd, setAsmcodeValue(0b001010110, 0b00, eValueType.operand_pinop)); // 	FLTRND	D/#
+    this.asmcodeValues.set(eAsmcode.ac_fltnot, setAsmcodeValue(0b001010111, 0b00, eValueType.operand_pinop)); // 	FLTNOT	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvl, setAsmcodeValue(0b001011000, 0b00, eValueType.operand_pinop)); // 	DRVL	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvh, setAsmcodeValue(0b001011001, 0b00, eValueType.operand_pinop)); // 	DRVH	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvc, setAsmcodeValue(0b001011010, 0b00, eValueType.operand_pinop)); // 	DRVC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvnc, setAsmcodeValue(0b001011011, 0b00, eValueType.operand_pinop)); // 	DRVNC	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvz, setAsmcodeValue(0b001011100, 0b00, eValueType.operand_pinop)); // 	DRVZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvnz, setAsmcodeValue(0b001011101, 0b00, eValueType.operand_pinop)); // 	DRVNZ	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvrnd, setAsmcodeValue(0b001011110, 0b00, eValueType.operand_pinop)); // 	DRVRND	D/#
+    this.asmcodeValues.set(eAsmcode.ac_drvnot, setAsmcodeValue(0b001011111, 0b00, eValueType.operand_pinop)); // 	DRVNOT	D/#
+    this.asmcodeValues.set(eAsmcode.ac_splitb, setAsmcodeValue(0b001100000, 0b00, eValueType.operand_d)); // 	SPLITB	D
+    this.asmcodeValues.set(eAsmcode.ac_mergeb, setAsmcodeValue(0b001100001, 0b00, eValueType.operand_d)); // 	MERGEB	D
+    this.asmcodeValues.set(eAsmcode.ac_splitw, setAsmcodeValue(0b001100010, 0b00, eValueType.operand_d)); // 	SPLITW	D
+    this.asmcodeValues.set(eAsmcode.ac_mergew, setAsmcodeValue(0b001100011, 0b00, eValueType.operand_d)); // 	MERGEW	D
+    this.asmcodeValues.set(eAsmcode.ac_seussf, setAsmcodeValue(0b001100100, 0b00, eValueType.operand_d)); // 	SEUSSF	D
+    this.asmcodeValues.set(eAsmcode.ac_seussr, setAsmcodeValue(0b001100101, 0b00, eValueType.operand_d)); // 	SEUSSR	D
+    this.asmcodeValues.set(eAsmcode.ac_rgbsqz, setAsmcodeValue(0b001100110, 0b00, eValueType.operand_d)); // 	RGBSQZ	D
+    this.asmcodeValues.set(eAsmcode.ac_rgbexp, setAsmcodeValue(0b001100111, 0b00, eValueType.operand_d)); // 	RGBEXP	D
+    this.asmcodeValues.set(eAsmcode.ac_xoro32, setAsmcodeValue(0b001101000, 0b00, eValueType.operand_d)); // 	XORO32	D
+    this.asmcodeValues.set(eAsmcode.ac_rev, setAsmcodeValue(0b001101001, 0b00, eValueType.operand_d)); // 	REV	D
+    this.asmcodeValues.set(eAsmcode.ac_rczr, setAsmcodeValue(0b001101010, 0b11, eValueType.operand_d)); // 	RCZR	D
+    this.asmcodeValues.set(eAsmcode.ac_rczl, setAsmcodeValue(0b001101011, 0b11, eValueType.operand_d)); // 	RCZL	D
+    this.asmcodeValues.set(eAsmcode.ac_wrc, setAsmcodeValue(0b001101100, 0b00, eValueType.operand_d)); // 	WRC	D
+    this.asmcodeValues.set(eAsmcode.ac_wrnc, setAsmcodeValue(0b001101101, 0b00, eValueType.operand_d)); // 	WRNC	D
+    this.asmcodeValues.set(eAsmcode.ac_wrz, setAsmcodeValue(0b001101110, 0b00, eValueType.operand_d)); // 	WRZ	D
+    this.asmcodeValues.set(eAsmcode.ac_wrnz, setAsmcodeValue(0b001101111, 0b00, eValueType.operand_d)); // 	WRNZ	D
+    this.asmcodeValues.set(eAsmcode.ac_modcz, setAsmcodeValue(0b001101111, 0b11, eValueType.operand_cz)); // 	MODCZ	c,z
+    this.asmcodeValues.set(eAsmcode.ac_modc, setAsmcodeValue(0b001101111, 0b10, eValueType.operand_cz)); // 	MODC	c
+    this.asmcodeValues.set(eAsmcode.ac_modz, setAsmcodeValue(0b001101111, 0b01, eValueType.operand_cz)); // 	MODZ	z
+    this.asmcodeValues.set(eAsmcode.ac_setscp, setAsmcodeValue(0b001110000, 0b00, eValueType.operand_l)); // 	SETSCP	D/#
+    this.asmcodeValues.set(eAsmcode.ac_getscp, setAsmcodeValue(0b001110001, 0b00, eValueType.operand_d)); // 	GETSCP	D
+    this.asmcodeValues.set(eAsmcode.ac_jmp, setAsmcodeValue(0b110110000, 0b00, eValueType.operand_jmp)); // 	JMP	# <or> D
+    this.asmcodeValues.set(eAsmcode.ac_call, setAsmcodeValue(0b110110100, 0b00, eValueType.operand_call)); // 	CALL	# <or> D
+    this.asmcodeValues.set(eAsmcode.ac_calla, setAsmcodeValue(0b110111000, 0b00, eValueType.operand_call)); // 	CALLA	# <or> D
+    this.asmcodeValues.set(eAsmcode.ac_callb, setAsmcodeValue(0b110111100, 0b00, eValueType.operand_call)); // 	CALLB	# <or> D
+    this.asmcodeValues.set(eAsmcode.ac_calld, setAsmcodeValue(0b111000000, 0b00, eValueType.operand_calld)); // 	CALLD	reg,# / D,S
+    this.asmcodeValues.set(eAsmcode.ac_loc, setAsmcodeValue(0b111010000, 0b00, eValueType.operand_loc)); // 	LOC	reg,#
+    this.asmcodeValues.set(eAsmcode.ac_augs, setAsmcodeValue(0b111100000, 0b00, eValueType.operand_aug)); // 	AUGS	#
+    this.asmcodeValues.set(eAsmcode.ac_augd, setAsmcodeValue(0b111110000, 0b00, eValueType.operand_aug)); // 	AUGD	#
+    this.asmcodeValues.set(eAsmcode.ac_pusha, setAsmcodeValue(eValueType.pp_pusha, 0b00, eValueType.operand_pushpop)); // 	PUSHA	D/#	alias instructions
+    this.asmcodeValues.set(eAsmcode.ac_pushb, setAsmcodeValue(eValueType.pp_pushb, 0b00, eValueType.operand_pushpop)); // 	PUSHB	D/#
+    this.asmcodeValues.set(eAsmcode.ac_popa, setAsmcodeValue(eValueType.pp_popa, 0b11, eValueType.operand_pushpop)); // 	POPA	D
+    this.asmcodeValues.set(eAsmcode.ac_popb, setAsmcodeValue(eValueType.pp_popb, 0b11, eValueType.operand_pushpop)); // 	POPB	D
+    this.asmcodeValues.set(eAsmcode.ac_ret, setAsmcodeValue(0, 0b11, eValueType.operand_xlat)); // 	RET
+    this.asmcodeValues.set(eAsmcode.ac_reta, setAsmcodeValue(1, 0b11, eValueType.operand_xlat)); // 	RETA
+    this.asmcodeValues.set(eAsmcode.ac_retb, setAsmcodeValue(2, 0b11, eValueType.operand_xlat)); // 	RETB
+    this.asmcodeValues.set(eAsmcode.ac_reti0, setAsmcodeValue(3, 0b00, eValueType.operand_xlat)); // 	RETI0
+    this.asmcodeValues.set(eAsmcode.ac_reti1, setAsmcodeValue(4, 0b00, eValueType.operand_xlat)); // 	RETI1
+    this.asmcodeValues.set(eAsmcode.ac_reti2, setAsmcodeValue(5, 0b00, eValueType.operand_xlat)); // 	RETI2
+    this.asmcodeValues.set(eAsmcode.ac_reti3, setAsmcodeValue(6, 0b00, eValueType.operand_xlat)); // 	RETI3
+    this.asmcodeValues.set(eAsmcode.ac_resi0, setAsmcodeValue(7, 0b00, eValueType.operand_xlat)); // 	RESI0
+    this.asmcodeValues.set(eAsmcode.ac_resi1, setAsmcodeValue(8, 0b00, eValueType.operand_xlat)); // 	RESI1
+    this.asmcodeValues.set(eAsmcode.ac_resi2, setAsmcodeValue(9, 0b00, eValueType.operand_xlat)); // 	RESI2
+    this.asmcodeValues.set(eAsmcode.ac_resi3, setAsmcodeValue(10, 0b00, eValueType.operand_xlat)); // 	RESI3
+    this.asmcodeValues.set(eAsmcode.ac_xstop, setAsmcodeValue(11, 0b00, eValueType.operand_xlat)); // 	XSTOP
+    this.asmcodeValues.set(eAsmcode.ac_akpin, setAsmcodeValue(0, 0b00, eValueType.operand_akpin)); // 	AKPIN	S/#
+    this.asmcodeValues.set(eAsmcode.ac_asmclk, setAsmcodeValue(0, 0b00, eValueType.operand_asmclk)); // 	ASMCLK
+    this.asmcodeValues.set(eAsmcode.ac_nop, setAsmcodeValue(0b000000000, 0b00, eValueType.operand_nop)); // 	NOP
+    this.asmcodeValues.set(eAsmcode.ac_debug, setAsmcodeValue(0b000110110, 0b00, eValueType.operand_debug)); // 	DEBUG()
     //
     // generated flexcode table load
     //
     //		flexcode	bytecode	params	results	pinfld	hubcode
     //		---------------------------------------------------------------------------------------
-    this.flexcodeValues.set(eFlexcode.fc_coginit, flexcodeValue(eByteCode.bc_coginit, 3, 0, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_coginit, setFlexcodeValue(eByteCode.bc_coginit, 3, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_coginit_push, flexcodeValue(eByteCode.bc_coginit_push, 3, 1, 0, 0));
-    this.flexcodeValues.set(eFlexcode.fc_cogstop, flexcodeValue(eByteCode.bc_cogstop, 1, 0, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_coginit_push, setFlexcodeValue(eByteCode.bc_coginit_push, 3, 1, 0, 0));
+    this.flexcodeValues.set(eFlexcode.fc_cogstop, setFlexcodeValue(eByteCode.bc_cogstop, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_cogid, flexcodeValue(eByteCode.bc_cogid, 0, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_cogid, setFlexcodeValue(eByteCode.bc_cogid, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_cogchk, flexcodeValue(eByteCode.bc_cogchk, 1, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_getrnd, flexcodeValue(eByteCode.bc_getrnd, 0, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_cogchk, setFlexcodeValue(eByteCode.bc_cogchk, 1, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_getrnd, setFlexcodeValue(eByteCode.bc_getrnd, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_getct, flexcodeValue(eByteCode.bc_getct, 0, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_getct, setFlexcodeValue(eByteCode.bc_getct, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_pollct, flexcodeValue(eByteCode.bc_pollct, 1, 1, 0, 0));
-    this.flexcodeValues.set(eFlexcode.fc_waitct, flexcodeValue(eByteCode.bc_waitct, 1, 0, 0, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinwrite, flexcodeValue(eByteCode.bc_pinwrite, 2, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinlow, flexcodeValue(eByteCode.bc_pinlow, 1, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinhigh, flexcodeValue(eByteCode.bc_pinhigh, 1, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pintoggle, flexcodeValue(eByteCode.bc_pintoggle, 1, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinfloat, flexcodeValue(eByteCode.bc_pinfloat, 1, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinread, flexcodeValue(eByteCode.bc_pinread, 1, 1, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinstart, flexcodeValue(eByteCode.bc_pinstart, 4, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_pinclear, flexcodeValue(eByteCode.bc_pinclear, 1, 0, 1, 0));
-    this.flexcodeValues.set(eFlexcode.fc_wrpin, flexcodeValue(eByteCode.bc_wrpin, 2, 0, 1, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_pollct, setFlexcodeValue(eByteCode.bc_pollct, 1, 1, 0, 0));
+    this.flexcodeValues.set(eFlexcode.fc_waitct, setFlexcodeValue(eByteCode.bc_waitct, 1, 0, 0, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinwrite, setFlexcodeValue(eByteCode.bc_pinwrite, 2, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinlow, setFlexcodeValue(eByteCode.bc_pinlow, 1, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinhigh, setFlexcodeValue(eByteCode.bc_pinhigh, 1, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pintoggle, setFlexcodeValue(eByteCode.bc_pintoggle, 1, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinfloat, setFlexcodeValue(eByteCode.bc_pinfloat, 1, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinread, setFlexcodeValue(eByteCode.bc_pinread, 1, 1, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinstart, setFlexcodeValue(eByteCode.bc_pinstart, 4, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_pinclear, setFlexcodeValue(eByteCode.bc_pinclear, 1, 0, 1, 0));
+    this.flexcodeValues.set(eFlexcode.fc_wrpin, setFlexcodeValue(eByteCode.bc_wrpin, 2, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_wxpin, flexcodeValue(eByteCode.bc_wxpin, 2, 0, 1, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_wxpin, setFlexcodeValue(eByteCode.bc_wxpin, 2, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_wypin, flexcodeValue(eByteCode.bc_wypin, 2, 0, 1, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_wypin, setFlexcodeValue(eByteCode.bc_wypin, 2, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_akpin, flexcodeValue(eByteCode.bc_akpin, 1, 0, 1, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_akpin, setFlexcodeValue(eByteCode.bc_akpin, 1, 0, 1, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_rdpin, flexcodeValue(eByteCode.bc_rdpin, 1, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_rdpin, setFlexcodeValue(eByteCode.bc_rdpin, 1, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_rqpin, flexcodeValue(eByteCode.bc_rqpin, 1, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_rqpin, setFlexcodeValue(eByteCode.bc_rqpin, 1, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_locknew, flexcodeValue(eByteCode.bc_locknew, 0, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_locknew, setFlexcodeValue(eByteCode.bc_locknew, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_lockret, flexcodeValue(eByteCode.bc_lockret, 1, 0, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_lockret, setFlexcodeValue(eByteCode.bc_lockret, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_locktry, flexcodeValue(eByteCode.bc_locktry, 1, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_locktry, setFlexcodeValue(eByteCode.bc_locktry, 1, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_lockrel, flexcodeValue(eByteCode.bc_lockrel, 1, 0, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_lockrel, setFlexcodeValue(eByteCode.bc_lockrel, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_lockchk, flexcodeValue(eByteCode.bc_lockchk, 1, 1, 0, 0));
-    this.flexcodeValues.set(eFlexcode.fc_cogatn, flexcodeValue(eByteCode.bc_cogatn, 1, 0, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_lockchk, setFlexcodeValue(eByteCode.bc_lockchk, 1, 1, 0, 0));
+    this.flexcodeValues.set(eFlexcode.fc_cogatn, setFlexcodeValue(eByteCode.bc_cogatn, 1, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_pollatn, flexcodeValue(eByteCode.bc_pollatn, 0, 1, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_pollatn, setFlexcodeValue(eByteCode.bc_pollatn, 0, 1, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_waitatn, flexcodeValue(eByteCode.bc_waitatn, 0, 0, 0, 0)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_waitatn, setFlexcodeValue(eByteCode.bc_waitatn, 0, 0, 0, 0)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_hubset, flexcodeValue(eByteCode.bc_hubset, 1, 0, 0, 1)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_hubset, setFlexcodeValue(eByteCode.bc_hubset, 1, 0, 0, 1)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_clkset, flexcodeValue(eByteCode.bc_clkset, 2, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_regexec, flexcodeValue(eByteCode.bc_regexec, 1, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_regload, flexcodeValue(eByteCode.bc_regload, 1, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_call, flexcodeValue(eByteCode.bc_call, 1, 0, 0, 1)); // (also asm instr.)
+    this.flexcodeValues.set(eFlexcode.fc_clkset, setFlexcodeValue(eByteCode.bc_clkset, 2, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_regexec, setFlexcodeValue(eByteCode.bc_regexec, 1, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_regload, setFlexcodeValue(eByteCode.bc_regload, 1, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_call, setFlexcodeValue(eByteCode.bc_call, 1, 0, 0, 1)); // (also asm instr.)
 
-    this.flexcodeValues.set(eFlexcode.fc_getregs, flexcodeValue(eByteCode.bc_getregs, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_setregs, flexcodeValue(eByteCode.bc_setregs, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_bytemove, flexcodeValue(eByteCode.bc_bytemove, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_bytefill, flexcodeValue(eByteCode.bc_bytefill, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_wordmove, flexcodeValue(eByteCode.bc_wordmove, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_wordfill, flexcodeValue(eByteCode.bc_wordfill, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_longmove, flexcodeValue(eByteCode.bc_longmove, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_longfill, flexcodeValue(eByteCode.bc_longfill, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_strsize, flexcodeValue(eByteCode.bc_strsize, 1, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_strcomp, flexcodeValue(eByteCode.bc_strcomp, 2, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_strcopy, flexcodeValue(eByteCode.bc_strcopy, 3, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_getcrc, flexcodeValue(eByteCode.bc_getcrc, 3, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_waitus, flexcodeValue(eByteCode.bc_waitus, 1, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_waitms, flexcodeValue(eByteCode.bc_waitms, 1, 0, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_getms, flexcodeValue(eByteCode.bc_getms, 0, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_getsec, flexcodeValue(eByteCode.bc_getsec, 0, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_muldiv64, flexcodeValue(eByteCode.bc_muldiv64, 3, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_qsin, flexcodeValue(eByteCode.bc_qsin, 3, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_qcos, flexcodeValue(eByteCode.bc_qcos, 3, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_rotxy, flexcodeValue(eByteCode.bc_rotxy, 3, 2, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_polxy, flexcodeValue(eByteCode.bc_polxy, 2, 2, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_xypol, flexcodeValue(eByteCode.bc_xypol, 2, 2, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_nan, flexcodeValue(eByteCode.bc_nan, 1, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_round, flexcodeValue(eByteCode.bc_round, 1, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_trunc, flexcodeValue(eByteCode.bc_trunc, 1, 1, 0, 1));
-    this.flexcodeValues.set(eFlexcode.fc_float, flexcodeValue(eByteCode.bc_float, 1, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_getregs, setFlexcodeValue(eByteCode.bc_getregs, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_setregs, setFlexcodeValue(eByteCode.bc_setregs, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_bytemove, setFlexcodeValue(eByteCode.bc_bytemove, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_bytefill, setFlexcodeValue(eByteCode.bc_bytefill, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_wordmove, setFlexcodeValue(eByteCode.bc_wordmove, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_wordfill, setFlexcodeValue(eByteCode.bc_wordfill, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_longmove, setFlexcodeValue(eByteCode.bc_longmove, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_longfill, setFlexcodeValue(eByteCode.bc_longfill, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_strsize, setFlexcodeValue(eByteCode.bc_strsize, 1, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_strcomp, setFlexcodeValue(eByteCode.bc_strcomp, 2, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_strcopy, setFlexcodeValue(eByteCode.bc_strcopy, 3, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_getcrc, setFlexcodeValue(eByteCode.bc_getcrc, 3, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_waitus, setFlexcodeValue(eByteCode.bc_waitus, 1, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_waitms, setFlexcodeValue(eByteCode.bc_waitms, 1, 0, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_getms, setFlexcodeValue(eByteCode.bc_getms, 0, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_getsec, setFlexcodeValue(eByteCode.bc_getsec, 0, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_muldiv64, setFlexcodeValue(eByteCode.bc_muldiv64, 3, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_qsin, setFlexcodeValue(eByteCode.bc_qsin, 3, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_qcos, setFlexcodeValue(eByteCode.bc_qcos, 3, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_rotxy, setFlexcodeValue(eByteCode.bc_rotxy, 3, 2, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_polxy, setFlexcodeValue(eByteCode.bc_polxy, 2, 2, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_xypol, setFlexcodeValue(eByteCode.bc_xypol, 2, 2, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_nan, setFlexcodeValue(eByteCode.bc_nan, 1, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_round, setFlexcodeValue(eByteCode.bc_round, 1, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_trunc, setFlexcodeValue(eByteCode.bc_trunc, 1, 1, 0, 1));
+    this.flexcodeValues.set(eFlexcode.fc_float, setFlexcodeValue(eByteCode.bc_float, 1, 1, 0, 1));
 
     // generated opcode table load
 
     //		oc		op		prec	bytecode	ternary	binary	unary	assign	float	alias	hubcode
-    this.opcodeValues.set(eOpcode.oc_bitnot, opcodeValue(eValueType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
-    this.opcodeValues.set(eOpcode.oc_neg, opcodeValue(eValueType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
-    this.opcodeValues.set(eOpcode.oc_fneg, opcodeValue(eValueType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub symbol)
-    this.opcodeValues.set(eOpcode.oc_abs, opcodeValue(eValueType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
-    this.opcodeValues.set(eOpcode.oc_fabs, opcodeValue(eValueType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS
-    this.opcodeValues.set(eOpcode.oc_encod, opcodeValue(eValueType.op_encod, 0, eByteCode.bc_encod, 0, 0, 1, 1, 0, 0, 0)); //  ENCOD
-    this.opcodeValues.set(eOpcode.oc_decod, opcodeValue(eValueType.op_decod, 0, eByteCode.bc_decod, 0, 0, 1, 1, 0, 0, 0)); //  DECOD
-    this.opcodeValues.set(eOpcode.oc_bmask, opcodeValue(eValueType.op_bmask, 0, eByteCode.bc_bmask, 0, 0, 1, 1, 0, 0, 0)); //  BMASK
-    this.opcodeValues.set(eOpcode.oc_ones, opcodeValue(eValueType.op_ones, 0, eByteCode.bc_ones, 0, 0, 1, 1, 0, 0, 0)); //  ONES
-    this.opcodeValues.set(eOpcode.oc_sqrt, opcodeValue(eValueType.op_sqrt, 0, eByteCode.bc_sqrt, 0, 0, 1, 1, 0, 0, 0)); //  SQRT
-    this.opcodeValues.set(eOpcode.oc_fsqrt, opcodeValue(eValueType.op_fsqrt, 0, eByteCode.bc_fsqrt, 0, 0, 1, 0, 1, 0, 1)); //  FSQRT
-    this.opcodeValues.set(eOpcode.oc_qlog, opcodeValue(eValueType.op_qlog, 0, eByteCode.bc_qlog, 0, 0, 1, 1, 0, 0, 0)); //  QLOG
-    this.opcodeValues.set(eOpcode.oc_qexp, opcodeValue(eValueType.op_qexp, 0, eByteCode.bc_qexp, 0, 0, 1, 1, 0, 0, 0)); //  QEXP
-    this.opcodeValues.set(eOpcode.oc_shr, opcodeValue(eValueType.op_shr, 1, eByteCode.bc_shr, 0, 1, 0, 1, 0, 0, 0)); //  >>
-    this.opcodeValues.set(eOpcode.oc_shl, opcodeValue(eValueType.op_shl, 1, eByteCode.bc_shl, 0, 1, 0, 1, 0, 0, 0)); //  <<
-    this.opcodeValues.set(eOpcode.oc_sar, opcodeValue(eValueType.op_sar, 1, eByteCode.bc_sar, 0, 1, 0, 1, 0, 0, 0)); //  SAR
-    this.opcodeValues.set(eOpcode.oc_ror, opcodeValue(eValueType.op_ror, 1, eByteCode.bc_ror, 0, 1, 0, 1, 0, 0, 0)); //  ROR
-    this.opcodeValues.set(eOpcode.oc_rol, opcodeValue(eValueType.op_rol, 1, eByteCode.bc_rol, 0, 1, 0, 1, 0, 0, 0)); //  ROL
-    this.opcodeValues.set(eOpcode.oc_rev, opcodeValue(eValueType.op_rev, 1, eByteCode.bc_rev, 0, 1, 0, 1, 0, 0, 0)); //  REV
-    this.opcodeValues.set(eOpcode.oc_zerox, opcodeValue(eValueType.op_zerox, 1, eByteCode.bc_zerox, 0, 1, 0, 1, 0, 0, 0)); //  ZEROX
-    this.opcodeValues.set(eOpcode.oc_signx, opcodeValue(eValueType.op_signx, 1, eByteCode.bc_signx, 0, 1, 0, 1, 0, 0, 0)); //  SIGNX
-    this.opcodeValues.set(eOpcode.oc_bitand, opcodeValue(eValueType.op_bitand, 2, eByteCode.bc_bitand, 0, 1, 0, 1, 0, 0, 0)); //  &
-    this.opcodeValues.set(eOpcode.oc_bitxor, opcodeValue(eValueType.op_bitxor, 3, eByteCode.bc_bitxor, 0, 1, 0, 1, 0, 0, 0)); //  ^
-    this.opcodeValues.set(eOpcode.oc_bitor, opcodeValue(eValueType.op_bitor, 4, eByteCode.bc_bitor, 0, 1, 0, 1, 0, 0, 0)); //  |
-    this.opcodeValues.set(eOpcode.oc_mul, opcodeValue(eValueType.op_mul, 5, eByteCode.bc_mul, 0, 1, 0, 1, 1, 0, 0)); //  *
-    this.opcodeValues.set(eOpcode.oc_fmul, opcodeValue(eValueType.op_fmul, 5, eByteCode.bc_fmul, 0, 1, 0, 0, 1, 0, 1)); //  *.
-    this.opcodeValues.set(eOpcode.oc_div, opcodeValue(eValueType.op_div, 5, eByteCode.bc_div, 0, 1, 0, 1, 1, 0, 0)); //  /
-    this.opcodeValues.set(eOpcode.oc_fdiv, opcodeValue(eValueType.op_fdiv, 5, eByteCode.bc_fdiv, 0, 1, 0, 0, 1, 0, 1)); //  /.
-    this.opcodeValues.set(eOpcode.oc_divu, opcodeValue(eValueType.op_divu, 5, eByteCode.bc_divu, 0, 1, 0, 1, 0, 0, 0)); //  +/
-    this.opcodeValues.set(eOpcode.oc_rem, opcodeValue(eValueType.op_rem, 5, eByteCode.bc_rem, 0, 1, 0, 1, 0, 0, 0)); //  //
-    this.opcodeValues.set(eOpcode.oc_remu, opcodeValue(eValueType.op_remu, 5, eByteCode.bc_remu, 0, 1, 0, 1, 0, 0, 0)); //  +//
-    this.opcodeValues.set(eOpcode.oc_sca, opcodeValue(eValueType.op_sca, 5, eByteCode.bc_sca, 0, 1, 0, 1, 0, 0, 0)); //  SCA
-    this.opcodeValues.set(eOpcode.oc_scas, opcodeValue(eValueType.op_scas, 5, eByteCode.bc_scas, 0, 1, 0, 1, 0, 0, 0)); //  SCAS
-    this.opcodeValues.set(eOpcode.oc_frac, opcodeValue(eValueType.op_frac, 5, eByteCode.bc_frac, 0, 1, 0, 1, 0, 0, 0)); //  FRAC
-    this.opcodeValues.set(eOpcode.oc_add, opcodeValue(eValueType.op_add, 6, eByteCode.bc_add, 0, 1, 0, 1, 1, 0, 0)); //  +
-    this.opcodeValues.set(eOpcode.oc_fadd, opcodeValue(eValueType.op_fadd, 6, eByteCode.bc_fadd, 0, 1, 0, 0, 1, 0, 1)); //  +.
-    this.opcodeValues.set(eOpcode.oc_sub, opcodeValue(eValueType.op_sub, 6, eByteCode.bc_sub, 0, 1, 0, 1, 1, 0, 0)); //  -
-    this.opcodeValues.set(eOpcode.oc_fsub, opcodeValue(eValueType.op_fsub, 6, eByteCode.bc_fsub, 0, 1, 0, 0, 1, 0, 1)); //  -.
-    this.opcodeValues.set(eOpcode.oc_fge, opcodeValue(eValueType.op_fge, 7, eByteCode.bc_fge, 0, 1, 0, 1, 1, 0, 0)); //  #>
-    this.opcodeValues.set(eOpcode.oc_fle, opcodeValue(eValueType.op_fle, 7, eByteCode.bc_fle, 0, 1, 0, 1, 1, 0, 0)); //  <#
-    this.opcodeValues.set(eOpcode.oc_addbits, opcodeValue(eValueType.op_addbits, 8, eByteCode.bc_addbits, 0, 1, 0, 1, 0, 0, 0)); //  ADDBITS
-    this.opcodeValues.set(eOpcode.oc_addpins, opcodeValue(eValueType.op_addpins, 8, eByteCode.bc_addpins, 0, 1, 0, 1, 0, 0, 0)); //  ADDPINS
-    this.opcodeValues.set(eOpcode.oc_lt, opcodeValue(eValueType.op_lt, 9, eByteCode.bc_lt, 0, 1, 0, 0, 1, 0, 0)); //  <
-    this.opcodeValues.set(eOpcode.oc_flt, opcodeValue(eValueType.op_flt, 9, eByteCode.bc_flt, 0, 1, 0, 0, 1, 0, 1)); //  <.
-    this.opcodeValues.set(eOpcode.oc_ltu, opcodeValue(eValueType.op_ltu, 9, eByteCode.bc_ltu, 0, 1, 0, 0, 0, 0, 0)); //  +<
-    this.opcodeValues.set(eOpcode.oc_lte, opcodeValue(eValueType.op_lte, 9, eByteCode.bc_lte, 0, 1, 0, 0, 1, 0, 0)); //  <=
-    this.opcodeValues.set(eOpcode.oc_flte, opcodeValue(eValueType.op_flte, 9, eByteCode.bc_flte, 0, 1, 0, 0, 1, 0, 1)); //  <=.
-    this.opcodeValues.set(eOpcode.oc_lteu, opcodeValue(eValueType.op_lteu, 9, eByteCode.bc_lteu, 0, 1, 0, 0, 0, 0, 0)); //  +<=
-    this.opcodeValues.set(eOpcode.oc_e, opcodeValue(eValueType.op_e, 9, eByteCode.bc_e, 0, 1, 0, 0, 1, 0, 0)); //  ==
-    this.opcodeValues.set(eOpcode.oc_fe, opcodeValue(eValueType.op_fe, 9, eByteCode.bc_fe, 0, 1, 0, 0, 1, 0, 1)); //  ==.
-    this.opcodeValues.set(eOpcode.oc_ne, opcodeValue(eValueType.op_ne, 9, eByteCode.bc_ne, 0, 1, 0, 0, 1, 0, 0)); //  <>
-    this.opcodeValues.set(eOpcode.oc_fne, opcodeValue(eValueType.op_fne, 9, eByteCode.bc_fne, 0, 1, 0, 0, 1, 0, 1)); //  <>.
-    this.opcodeValues.set(eOpcode.oc_gte, opcodeValue(eValueType.op_gte, 9, eByteCode.bc_gte, 0, 1, 0, 0, 1, 0, 0)); //  >=
-    this.opcodeValues.set(eOpcode.oc_fgte, opcodeValue(eValueType.op_fgte, 9, eByteCode.bc_fgte, 0, 1, 0, 0, 1, 0, 1)); //  >=.
-    this.opcodeValues.set(eOpcode.oc_gteu, opcodeValue(eValueType.op_gteu, 9, eByteCode.bc_gteu, 0, 1, 0, 0, 0, 0, 0)); //  +>=
-    this.opcodeValues.set(eOpcode.oc_gt, opcodeValue(eValueType.op_gt, 9, eByteCode.bc_gt, 0, 1, 0, 0, 1, 0, 0)); //  >
-    this.opcodeValues.set(eOpcode.oc_fgt, opcodeValue(eValueType.op_fgt, 9, eByteCode.bc_fgt, 0, 1, 0, 0, 1, 0, 1)); //  >.
-    this.opcodeValues.set(eOpcode.oc_gtu, opcodeValue(eValueType.op_gtu, 9, eByteCode.bc_gtu, 0, 1, 0, 0, 0, 0, 0)); //  +>
-    this.opcodeValues.set(eOpcode.oc_ltegt, opcodeValue(eValueType.op_ltegt, 9, eByteCode.bc_ltegt, 0, 1, 0, 0, 1, 0, 0)); //  <=>
-    this.opcodeValues.set(eOpcode.oc_lognot, opcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 1, 0)); //  !!
-    this.opcodeValues.set(eOpcode.oc_lognot_name, opcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 0, 0)); //  NOT
-    this.opcodeValues.set(eOpcode.oc_logand, opcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 1, 0)); //  &&
-    this.opcodeValues.set(eOpcode.oc_logand_name, opcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 0, 0)); //  AND
-    this.opcodeValues.set(eOpcode.oc_logxor, opcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 1, 0)); //  ^^
-    this.opcodeValues.set(eOpcode.oc_logxor_name, opcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 0, 0)); //  XOR
-    this.opcodeValues.set(eOpcode.oc_logor, opcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 1, 0)); //  ||
-    this.opcodeValues.set(eOpcode.oc_logor_name, opcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 0, 0)); //  OR
-    this.opcodeValues.set(eOpcode.oc_ternary, opcodeValue(eValueType.op_ternary, 14, 0, 1, 0, 0, 1, 0, 0, 0)); //  ?
+    this.opcodeValues.set(eOpcode.oc_bitnot, setOpcodeValue(eValueType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
+    this.opcodeValues.set(eOpcode.oc_neg, setOpcodeValue(eValueType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
+    this.opcodeValues.set(eOpcode.oc_fneg, setOpcodeValue(eValueType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub symbol)
+    this.opcodeValues.set(eOpcode.oc_abs, setOpcodeValue(eValueType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
+    this.opcodeValues.set(eOpcode.oc_fabs, setOpcodeValue(eValueType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS
+    this.opcodeValues.set(eOpcode.oc_encod, setOpcodeValue(eValueType.op_encod, 0, eByteCode.bc_encod, 0, 0, 1, 1, 0, 0, 0)); //  ENCOD
+    this.opcodeValues.set(eOpcode.oc_decod, setOpcodeValue(eValueType.op_decod, 0, eByteCode.bc_decod, 0, 0, 1, 1, 0, 0, 0)); //  DECOD
+    this.opcodeValues.set(eOpcode.oc_bmask, setOpcodeValue(eValueType.op_bmask, 0, eByteCode.bc_bmask, 0, 0, 1, 1, 0, 0, 0)); //  BMASK
+    this.opcodeValues.set(eOpcode.oc_ones, setOpcodeValue(eValueType.op_ones, 0, eByteCode.bc_ones, 0, 0, 1, 1, 0, 0, 0)); //  ONES
+    this.opcodeValues.set(eOpcode.oc_sqrt, setOpcodeValue(eValueType.op_sqrt, 0, eByteCode.bc_sqrt, 0, 0, 1, 1, 0, 0, 0)); //  SQRT
+    this.opcodeValues.set(eOpcode.oc_fsqrt, setOpcodeValue(eValueType.op_fsqrt, 0, eByteCode.bc_fsqrt, 0, 0, 1, 0, 1, 0, 1)); //  FSQRT
+    this.opcodeValues.set(eOpcode.oc_qlog, setOpcodeValue(eValueType.op_qlog, 0, eByteCode.bc_qlog, 0, 0, 1, 1, 0, 0, 0)); //  QLOG
+    this.opcodeValues.set(eOpcode.oc_qexp, setOpcodeValue(eValueType.op_qexp, 0, eByteCode.bc_qexp, 0, 0, 1, 1, 0, 0, 0)); //  QEXP
+    this.opcodeValues.set(eOpcode.oc_shr, setOpcodeValue(eValueType.op_shr, 1, eByteCode.bc_shr, 0, 1, 0, 1, 0, 0, 0)); //  >>
+    this.opcodeValues.set(eOpcode.oc_shl, setOpcodeValue(eValueType.op_shl, 1, eByteCode.bc_shl, 0, 1, 0, 1, 0, 0, 0)); //  <<
+    this.opcodeValues.set(eOpcode.oc_sar, setOpcodeValue(eValueType.op_sar, 1, eByteCode.bc_sar, 0, 1, 0, 1, 0, 0, 0)); //  SAR
+    this.opcodeValues.set(eOpcode.oc_ror, setOpcodeValue(eValueType.op_ror, 1, eByteCode.bc_ror, 0, 1, 0, 1, 0, 0, 0)); //  ROR
+    this.opcodeValues.set(eOpcode.oc_rol, setOpcodeValue(eValueType.op_rol, 1, eByteCode.bc_rol, 0, 1, 0, 1, 0, 0, 0)); //  ROL
+    this.opcodeValues.set(eOpcode.oc_rev, setOpcodeValue(eValueType.op_rev, 1, eByteCode.bc_rev, 0, 1, 0, 1, 0, 0, 0)); //  REV
+    this.opcodeValues.set(eOpcode.oc_zerox, setOpcodeValue(eValueType.op_zerox, 1, eByteCode.bc_zerox, 0, 1, 0, 1, 0, 0, 0)); //  ZEROX
+    this.opcodeValues.set(eOpcode.oc_signx, setOpcodeValue(eValueType.op_signx, 1, eByteCode.bc_signx, 0, 1, 0, 1, 0, 0, 0)); //  SIGNX
+    this.opcodeValues.set(eOpcode.oc_bitand, setOpcodeValue(eValueType.op_bitand, 2, eByteCode.bc_bitand, 0, 1, 0, 1, 0, 0, 0)); //  &
+    this.opcodeValues.set(eOpcode.oc_bitxor, setOpcodeValue(eValueType.op_bitxor, 3, eByteCode.bc_bitxor, 0, 1, 0, 1, 0, 0, 0)); //  ^
+    this.opcodeValues.set(eOpcode.oc_bitor, setOpcodeValue(eValueType.op_bitor, 4, eByteCode.bc_bitor, 0, 1, 0, 1, 0, 0, 0)); //  |
+    this.opcodeValues.set(eOpcode.oc_mul, setOpcodeValue(eValueType.op_mul, 5, eByteCode.bc_mul, 0, 1, 0, 1, 1, 0, 0)); //  *
+    this.opcodeValues.set(eOpcode.oc_fmul, setOpcodeValue(eValueType.op_fmul, 5, eByteCode.bc_fmul, 0, 1, 0, 0, 1, 0, 1)); //  *.
+    this.opcodeValues.set(eOpcode.oc_div, setOpcodeValue(eValueType.op_div, 5, eByteCode.bc_div, 0, 1, 0, 1, 1, 0, 0)); //  /
+    this.opcodeValues.set(eOpcode.oc_fdiv, setOpcodeValue(eValueType.op_fdiv, 5, eByteCode.bc_fdiv, 0, 1, 0, 0, 1, 0, 1)); //  /.
+    this.opcodeValues.set(eOpcode.oc_divu, setOpcodeValue(eValueType.op_divu, 5, eByteCode.bc_divu, 0, 1, 0, 1, 0, 0, 0)); //  +/
+    this.opcodeValues.set(eOpcode.oc_rem, setOpcodeValue(eValueType.op_rem, 5, eByteCode.bc_rem, 0, 1, 0, 1, 0, 0, 0)); //  //
+    this.opcodeValues.set(eOpcode.oc_remu, setOpcodeValue(eValueType.op_remu, 5, eByteCode.bc_remu, 0, 1, 0, 1, 0, 0, 0)); //  +//
+    this.opcodeValues.set(eOpcode.oc_sca, setOpcodeValue(eValueType.op_sca, 5, eByteCode.bc_sca, 0, 1, 0, 1, 0, 0, 0)); //  SCA
+    this.opcodeValues.set(eOpcode.oc_scas, setOpcodeValue(eValueType.op_scas, 5, eByteCode.bc_scas, 0, 1, 0, 1, 0, 0, 0)); //  SCAS
+    this.opcodeValues.set(eOpcode.oc_frac, setOpcodeValue(eValueType.op_frac, 5, eByteCode.bc_frac, 0, 1, 0, 1, 0, 0, 0)); //  FRAC
+    this.opcodeValues.set(eOpcode.oc_add, setOpcodeValue(eValueType.op_add, 6, eByteCode.bc_add, 0, 1, 0, 1, 1, 0, 0)); //  +
+    this.opcodeValues.set(eOpcode.oc_fadd, setOpcodeValue(eValueType.op_fadd, 6, eByteCode.bc_fadd, 0, 1, 0, 0, 1, 0, 1)); //  +.
+    this.opcodeValues.set(eOpcode.oc_sub, setOpcodeValue(eValueType.op_sub, 6, eByteCode.bc_sub, 0, 1, 0, 1, 1, 0, 0)); //  -
+    this.opcodeValues.set(eOpcode.oc_fsub, setOpcodeValue(eValueType.op_fsub, 6, eByteCode.bc_fsub, 0, 1, 0, 0, 1, 0, 1)); //  -.
+    this.opcodeValues.set(eOpcode.oc_fge, setOpcodeValue(eValueType.op_fge, 7, eByteCode.bc_fge, 0, 1, 0, 1, 1, 0, 0)); //  #>
+    this.opcodeValues.set(eOpcode.oc_fle, setOpcodeValue(eValueType.op_fle, 7, eByteCode.bc_fle, 0, 1, 0, 1, 1, 0, 0)); //  <#
+    this.opcodeValues.set(eOpcode.oc_addbits, setOpcodeValue(eValueType.op_addbits, 8, eByteCode.bc_addbits, 0, 1, 0, 1, 0, 0, 0)); //  ADDBITS
+    this.opcodeValues.set(eOpcode.oc_addpins, setOpcodeValue(eValueType.op_addpins, 8, eByteCode.bc_addpins, 0, 1, 0, 1, 0, 0, 0)); //  ADDPINS
+    this.opcodeValues.set(eOpcode.oc_lt, setOpcodeValue(eValueType.op_lt, 9, eByteCode.bc_lt, 0, 1, 0, 0, 1, 0, 0)); //  <
+    this.opcodeValues.set(eOpcode.oc_flt, setOpcodeValue(eValueType.op_flt, 9, eByteCode.bc_flt, 0, 1, 0, 0, 1, 0, 1)); //  <.
+    this.opcodeValues.set(eOpcode.oc_ltu, setOpcodeValue(eValueType.op_ltu, 9, eByteCode.bc_ltu, 0, 1, 0, 0, 0, 0, 0)); //  +<
+    this.opcodeValues.set(eOpcode.oc_lte, setOpcodeValue(eValueType.op_lte, 9, eByteCode.bc_lte, 0, 1, 0, 0, 1, 0, 0)); //  <=
+    this.opcodeValues.set(eOpcode.oc_flte, setOpcodeValue(eValueType.op_flte, 9, eByteCode.bc_flte, 0, 1, 0, 0, 1, 0, 1)); //  <=.
+    this.opcodeValues.set(eOpcode.oc_lteu, setOpcodeValue(eValueType.op_lteu, 9, eByteCode.bc_lteu, 0, 1, 0, 0, 0, 0, 0)); //  +<=
+    this.opcodeValues.set(eOpcode.oc_e, setOpcodeValue(eValueType.op_e, 9, eByteCode.bc_e, 0, 1, 0, 0, 1, 0, 0)); //  ==
+    this.opcodeValues.set(eOpcode.oc_fe, setOpcodeValue(eValueType.op_fe, 9, eByteCode.bc_fe, 0, 1, 0, 0, 1, 0, 1)); //  ==.
+    this.opcodeValues.set(eOpcode.oc_ne, setOpcodeValue(eValueType.op_ne, 9, eByteCode.bc_ne, 0, 1, 0, 0, 1, 0, 0)); //  <>
+    this.opcodeValues.set(eOpcode.oc_fne, setOpcodeValue(eValueType.op_fne, 9, eByteCode.bc_fne, 0, 1, 0, 0, 1, 0, 1)); //  <>.
+    this.opcodeValues.set(eOpcode.oc_gte, setOpcodeValue(eValueType.op_gte, 9, eByteCode.bc_gte, 0, 1, 0, 0, 1, 0, 0)); //  >=
+    this.opcodeValues.set(eOpcode.oc_fgte, setOpcodeValue(eValueType.op_fgte, 9, eByteCode.bc_fgte, 0, 1, 0, 0, 1, 0, 1)); //  >=.
+    this.opcodeValues.set(eOpcode.oc_gteu, setOpcodeValue(eValueType.op_gteu, 9, eByteCode.bc_gteu, 0, 1, 0, 0, 0, 0, 0)); //  +>=
+    this.opcodeValues.set(eOpcode.oc_gt, setOpcodeValue(eValueType.op_gt, 9, eByteCode.bc_gt, 0, 1, 0, 0, 1, 0, 0)); //  >
+    this.opcodeValues.set(eOpcode.oc_fgt, setOpcodeValue(eValueType.op_fgt, 9, eByteCode.bc_fgt, 0, 1, 0, 0, 1, 0, 1)); //  >.
+    this.opcodeValues.set(eOpcode.oc_gtu, setOpcodeValue(eValueType.op_gtu, 9, eByteCode.bc_gtu, 0, 1, 0, 0, 0, 0, 0)); //  +>
+    this.opcodeValues.set(eOpcode.oc_ltegt, setOpcodeValue(eValueType.op_ltegt, 9, eByteCode.bc_ltegt, 0, 1, 0, 0, 1, 0, 0)); //  <=>
+    this.opcodeValues.set(eOpcode.oc_lognot, setOpcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 1, 0)); //  !!
+    this.opcodeValues.set(eOpcode.oc_lognot_name, setOpcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 0, 0)); //  NOT
+    this.opcodeValues.set(eOpcode.oc_logand, setOpcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 1, 0)); //  &&
+    this.opcodeValues.set(eOpcode.oc_logand_name, setOpcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 0, 0)); //  AND
+    this.opcodeValues.set(eOpcode.oc_logxor, setOpcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 1, 0)); //  ^^
+    this.opcodeValues.set(eOpcode.oc_logxor_name, setOpcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 0, 0)); //  XOR
+    this.opcodeValues.set(eOpcode.oc_logor, setOpcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 1, 0)); //  ||
+    this.opcodeValues.set(eOpcode.oc_logor_name, setOpcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 0, 0)); //  OR
+    this.opcodeValues.set(eOpcode.oc_ternary, setOpcodeValue(eValueType.op_ternary, 14, 0, 1, 0, 0, 1, 0, 0, 0)); //  ?
 
     //
     // generated Automatic symbols table load

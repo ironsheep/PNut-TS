@@ -1,3 +1,4 @@
+
 CON
 	a = $FF00____
 	b = %10_10
@@ -10,6 +11,10 @@ CON
 	i = 1e+9
 	j = 1e-9
 '	k = 1e50   ' uncomment this to throw exception
+
+  {{doc comment
+  in multiple lines}} l = 5_000
+
 
 DAT
 	org
@@ -32,6 +37,11 @@ PRI index(x) : z
   if z.[31]			'test .
     z <<= 1			'test three-chr symbol <<=
 
-	{comment{nested comment}}
 	{{doc comment}}
+
 	'' doc comment
+
+  	{comment{nested comment}}
+
+' {{doc comment w/missing end   ' uncomment to throw exception
+x := 0
