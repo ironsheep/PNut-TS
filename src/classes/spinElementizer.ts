@@ -93,6 +93,9 @@ export class SpinElementizer {
     let typeFound: eElementType = eElementType.type_undefined;
     // eslint-disable-next-line prefer-const
     let valueFound: string | number = '';
+    //
+    // let's parse like spin example initially
+    //
 
     if (this.currCharacterIndex == 0) {
       const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
@@ -100,70 +103,37 @@ export class SpinElementizer {
     }
 
     // skip initial white space on opening line
-    const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
-    if (whiteSkipCount > 0) {
-      this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
-    }
+    this.skipLeadingWhiteSpace();
 
-    // if this line contains the start of a '{{..}}' doc comment then skip lines until close of comment
-    if (this.unprocessedLine.startsWith('{{')) {
-      let inDocBraceComment: boolean = true;
+    // if we are positioned at the start of a '...' line-continuation then skip lines until not at '...'
+    if (this.unprocessedLine.startsWith('...')) {
+      // NOTE: do loop handles case where '...'\n'...' (the doc-comments are on sequential line with/without leading spaces)
       do {
-        const closeOffset = this.unprocessedLine.substring(2).indexOf('}}');
-        if (closeOffset != -1) {
-          this.unprocessedLine = this.skipAhead(closeOffset + 4, this.unprocessedLine);
-          inDocBraceComment = false;
-        } else {
-          this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "{{..}}" skipping to next line`);
-          this.loadNextLine();
-          if (this.at_eof) {
-            //  [error_erbb]
-            throw new Error('Expected "}}"');
-          }
-        }
-      } while (inDocBraceComment);
-    }
-
-    // if this line contains the start of a '{.{..}.}' non-doc comment then skip lines until
-    //  close of possibly nested comment
-    /*
-    if (this.unprocessedLine.startsWith('{')) {
-      let inDocBraceComment: boolean = true;
-      do {
-        const closeOffset = this.unprocessedLine.substring(2).indexOf('}');
-        if (closeOffset != -1) {
-          this.unprocessedLine = this.skipAhead(closeOffset + 4, this.unprocessedLine);
-          inDocBraceComment = false;
-        } else {
-          this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "{{..}}" skipping to next line`);
-          this.loadNextLine();
-          if (this.at_eof) {
-            //  [error_erbb]
-            throw new Error('Expected "}}"');
-          }
-        }
-      } while (inDocBraceComment);
-    }
-    */
-
-    //
-    // let's parse like spin example initially
-    //
-    let skippingContinuations: boolean = true;
-    while (skippingContinuations) {
-      // skip white left edge
-      const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
-      if (whiteSkipCount > 0) {
-        this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
-      }
-      if (this.unprocessedLine.startsWith('...')) {
-        // handle line continuation
         this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "..." skipping to next line`);
         // force load of next line
         this.loadNextLine();
-      } else {
-        skippingContinuations = false;
-      }
+        this.skipLeadingWhiteSpace();
+      } while (this.unprocessedLine.startsWith('...'));
+    }
+
+    // if we are positioned at the start of a '{{..}}' doc comment then skip lines until close of comment
+    if (this.unprocessedLine.startsWith('{{')) {
+      // NOTE: do loop handles case where {{..}}{{..}} (the doc-comments are back to back with/without spaces in-between)
+      do {
+        const offsetToCharAfter: number = this.skipToLineWithDocCommentClose();
+        this.unprocessedLine = this.skipAhead(offsetToCharAfter, this.unprocessedLine);
+        this.skipLeadingWhiteSpace();
+      } while (this.unprocessedLine.startsWith('{{'));
+    }
+
+    // if we are positioned at the start of a '{.{..}.}' non-doc comment then skip lines until
+    if (this.unprocessedLine.startsWith('{')) {
+      // NOTE: do loop handles case where {..}{..} (the nondoc-comments are back to back with/without spaces in-between)
+      do {
+        const offsetToCharAfter: number = this.skipToLineWithNonDocCommentClose();
+        this.unprocessedLine = this.skipAhead(offsetToCharAfter, this.unprocessedLine);
+        this.skipLeadingWhiteSpace();
+      } while (this.unprocessedLine.startsWith('{'));
     }
 
     // past line continuations, now determine what we see next
@@ -309,6 +279,109 @@ export class SpinElementizer {
       this.logMessage(''); // blank line
     }
     return elementsFound;
+  }
+
+  private skipLeadingWhiteSpace() {
+    // if there is leading whitespace on this line, skip past it
+    const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
+    if (whiteSkipCount > 0) {
+      this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
+    }
+  }
+
+  private skipToLineWithDocCommentClose(): number {
+    // we are at a '{{' doc-comment open...
+    //   let's locate close '}}' so we can avoid the entire comment
+    //   first we locate the line containing the close then we return the
+    //   offset to the character just past the close
+    let offsetPastClose: number = 0;
+    let inDocBraceComment: boolean = true;
+    let sameLine: boolean = true;
+    this.unprocessedLine = this.unprocessedLine.substring(2);
+    do {
+      const closeOffset = this.unprocessedLine.indexOf('}}');
+      if (closeOffset != -1) {
+        offsetPastClose = closeOffset + (sameLine ? 4 : 2);
+        inDocBraceComment = false;
+      } else {
+        this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "{{..}}" skipping to next line`);
+        this.loadNextLine();
+        sameLine = false;
+        if (this.at_eof) {
+          //  [error_erbb]
+          throw new Error('Expected "}}"');
+        }
+      }
+    } while (inDocBraceComment);
+    return offsetPastClose;
+  }
+
+  private skipToLineWithNonDocCommentClose(): number {
+    // we are at a '{' nondoc-comment open...
+    //   let's locate close '}' so we can avoid the entire comment
+    //   first we locate the line containing the close then we return the
+    //   offset to the character just past the close
+    //  BUT these can be nested!!!  so we are looking for the outer close of the nested set
+    let offsetPastClose: number = 0;
+    let nestingDepth: number = 1; // we start at one since we are at '{'
+    let inDocBraceComment: boolean = true;
+    let sameLine: boolean = true;
+    this.unprocessedLine = this.unprocessedLine.substring(1);
+    do {
+      // is there an { or } on the rest of this line
+      const [charOffset, charFound] = this.firstBraceOpenOrClose(this.unprocessedLine);
+      if (charOffset != -1) {
+        if (charFound == '{') {
+          // we have another open, we are nested
+          nestingDepth += 1;
+        } else {
+          // we have a close
+          nestingDepth -= 1;
+        }
+        if (nestingDepth == 0) {
+          offsetPastClose = charOffset + (sameLine ? 2 : 1); // to go past '}'
+          inDocBraceComment = false;
+        } else {
+          this.unprocessedLine = this.unprocessedLine.substring(charOffset + 1);
+        }
+      } else {
+        // nope, get next line
+        this.logMessage(`  -- Ln#{${this.sourceLineNumber}} found "{.." skipping to next line`);
+        this.loadNextLine();
+        sameLine = false;
+        // if no more lines the report missing close comment
+        if (this.at_eof) {
+          //  [error_erb]
+          throw new Error('Expected "}"');
+        }
+      }
+    } while (inDocBraceComment);
+    return offsetPastClose;
+  }
+
+  private firstBraceOpenOrClose(line: string): [number, string] {
+    let charFound: string = '{';
+    let foundOffset: number = -1;
+    const openOffset: number = line.indexOf('{');
+    const closeOffset: number = line.indexOf('}');
+    let useOpen: boolean = false;
+    if (closeOffset == -1) {
+      useOpen = true;
+    } else if (openOffset == -1) {
+      useOpen = false;
+    } else if (openOffset < closeOffset) {
+      useOpen = true;
+    } else {
+      useOpen = false;
+    }
+    if (useOpen) {
+      charFound = '{';
+      foundOffset = openOffset;
+    } else {
+      charFound = '}';
+      foundOffset = closeOffset;
+    }
+    return [foundOffset, charFound];
   }
 
   private lineNumberString(lineIndex: number, characterIndex: number): string {
