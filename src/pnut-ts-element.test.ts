@@ -43,7 +43,7 @@ test('CLI generates correct element listings', () => {
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
 
     // Read the golden file
-    const goldenFSpec = path.join(dirPath, `${basename}-GOLD.elem`);
+    const goldenFSpec = path.join(dirPath, `${basename}.elem.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
 
     // Compare the output to the golden file, ignoring lines that start with '# Run:'
