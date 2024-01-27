@@ -14,6 +14,11 @@ export interface iSpinSymbol {
   value: number;
 }
 
+interface iKeyValuePair {
+  name: string;
+  value: eValueType | number;
+}
+
 enum SYMBOLS {
   ABS = 'ABS',
   FABS = 'FABS',
@@ -2768,6 +2773,160 @@ export class SpinSymbolTables {
       findResult = this.find_symbol_s1.find((symbol) => symbol.symbol === searchString);
     }
     return findResult;
+  }
+
+  public regressionInternalTableValuePairString(): string[] {
+    const resultStrings: string[] = [];
+    let kvPairs: iKeyValuePair[] = [];
+    let stringList: string[] = [];
+    //
+    // now display our tables in this order
+    // TABLE: ac_
+    stringList = this.regressionAcValuePairStrings();
+    this.addStringArPairsToResultStrings(stringList, resultStrings);
+    // TABLE: bc_
+    kvPairs = this.regressionFilterAndGetValue('bc_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: block_
+    kvPairs = this.regressionFilterAndGetValue('block_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: dc_
+    kvPairs = this.regressionFilterAndGetValue('dc_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: dd_
+    resultStrings.push(' dd_  TBA');
+    resultStrings.push('');
+    // TABLE: dir_
+    kvPairs = this.regressionFilterAndGetValue('dir_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: disop_
+    resultStrings.push(' disop_  TBA');
+    resultStrings.push('');
+    // TABLE: fc_
+    stringList = this.regressionFcValuePairStrings();
+    this.addStringArPairsToResultStrings(stringList, resultStrings);
+    // TABLE: if_
+    kvPairs = this.regressionFilterAndGetValue('if_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: info_
+    kvPairs = this.regressionFilterAndGetValue('info_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: oc_
+    stringList = this.regressionOpValuePairStrings();
+    this.addStringArPairsToResultStrings(stringList, resultStrings);
+    // TABLE: op_
+    kvPairs = this.regressionFilterAndGetValue('op_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: operand_
+    kvPairs = this.regressionFilterAndGetValue('operand_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: pp_
+    kvPairs = this.regressionFilterAndGetValue('pp_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: type_
+    kvPairs = this.regressionFilterAndGetValue('type_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
+    // TABLE: unused1
+    // TABLE: unused2
+    return resultStrings;
+  }
+
+  private addPairsToResultStrings(pairs: iKeyValuePair[], resultStrings: string[]): void {
+    for (const element of pairs) {
+      const keyValuePair: string = this.regressionString(element.name, element.value);
+      resultStrings.push(keyValuePair);
+    }
+    resultStrings.push('');
+  }
+
+  private addStringArPairsToResultStrings(pairs: string[], resultStrings: string[]): void {
+    for (const keyValuePair of pairs) {
+      resultStrings.push(keyValuePair);
+    }
+    resultStrings.push('');
+  }
+
+  public regressionAcValuePairStrings(): string[] {
+    const resultStrings: string[] = [];
+    const ac_keys: string[] = Object.keys(eAsmcode)
+      .filter((key) => isNaN(Number(key)))
+      .sort();
+    for (const stringKey of ac_keys) {
+      const enumKey = eAsmcode[stringKey as keyof typeof eAsmcode];
+      const value: number | undefined = this.asmcodeValues.get(enumKey);
+      //this.logMessage(`- got ${enumKey} = ${value}`);
+      if (value) {
+        resultStrings.push(this.regressionString(stringKey, value));
+        //this.logMessage(`- returning [${newPair}]`);
+      }
+    }
+
+    return resultStrings;
+  }
+
+  public regressionFcValuePairStrings(): string[] {
+    const resultStrings: string[] = [];
+    const ac_keys: string[] = Object.keys(eFlexcode)
+      .filter((key) => isNaN(Number(key)))
+      .sort();
+    for (const stringKey of ac_keys) {
+      const enumKey = eFlexcode[stringKey as keyof typeof eFlexcode];
+      const value: number | undefined = this.flexcodeValues.get(enumKey);
+      //this.logMessage(`- got ${enumKey} = ${value}`);
+      if (value) {
+        resultStrings.push(this.regressionString(stringKey, value));
+        //this.logMessage(`- returning [${newPair}]`);
+      }
+    }
+
+    return resultStrings;
+  }
+
+  public regressionOpValuePairStrings(): string[] {
+    const resultStrings: string[] = [];
+    const ac_keys: string[] = Object.keys(eOpcode)
+      .filter((key) => isNaN(Number(key)))
+      .sort();
+    for (const stringKey of ac_keys) {
+      const enumKey = eOpcode[stringKey as keyof typeof eOpcode];
+      const value: number | undefined = this.opcodeValues.get(enumKey);
+      //this.logMessage(`- got ${enumKey} = ${value}`);
+      if (value) {
+        resultStrings.push(this.regressionString(stringKey, value));
+        //this.logMessage(`- returning [${newPair}]`);
+      }
+    }
+    return resultStrings;
+  }
+
+  private regressionFilterAndGetValue(prefix: string): iKeyValuePair[] {
+    const result: iKeyValuePair[] = [];
+    if (prefix == 'type_') {
+      for (const key in eElementType) {
+        if (Object.prototype.hasOwnProperty.call(eElementType, key) && key.startsWith(prefix)) {
+          result.push({ name: key, value: eElementType[key as keyof typeof eElementType] });
+        }
+      }
+    } else if (prefix == 'bc_') {
+      for (const key in eByteCode) {
+        if (Object.prototype.hasOwnProperty.call(eByteCode, key) && key.startsWith(prefix)) {
+          result.push({ name: key, value: eByteCode[key as keyof typeof eByteCode] });
+        }
+      }
+    } else {
+      for (const key in eValueType) {
+        if (Object.prototype.hasOwnProperty.call(eValueType, key) && key.startsWith(prefix)) {
+          result.push({ name: key, value: eValueType[key as keyof typeof eValueType] });
+        }
+      }
+    }
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    return result;
+  }
+
+  private regressionString(name: string, value: number): string {
+    const newPair: string = `${name}  0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
+    return newPair;
   }
 
   private opcodeValue(opcodeId: eOpcode): number {

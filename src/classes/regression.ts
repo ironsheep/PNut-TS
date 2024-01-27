@@ -8,6 +8,7 @@ import fs from 'fs';
 // spin compile resolver
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
+import { SpinSymbolTables } from './parseUtils';
 
 export class RegressionReporter {
   private context: Context;
@@ -56,6 +57,47 @@ export class RegressionReporter {
       itemNbr++;
     }
     stream.write('# ---------------------------------------\n');
+
+    // Close the stream
+    stream.end();
+  }
+
+  public writeTableReport(dirName: string, fileName: string) {
+    const fileBasename = path.basename(fileName, '.spin2');
+    const outFilename = path.join(dirName, `${fileBasename}.tabl`);
+    // Create a write stream
+    this.logMessage(`* writing report to ${outFilename}`);
+    const stream = fs.createWriteStream(outFilename);
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    // Write each element to the file
+    stream.write(`; Report for regression testing\n`);
+    stream.write(`; Run: ${formattedDate}\n#\n`);
+    stream.write('; ---------------------------------------\n');
+    stream.write(`; - Internal table values\n`);
+    stream.write('; ---------------------------------------\n');
+
+    const pnutSymbolTables: SpinSymbolTables = new SpinSymbolTables(this.context);
+    pnutSymbolTables.enableLogging();
+    //
+    // now display our tables in this order
+    // ac_, bc_, block_, dc_, dd_, dir_, disop_, fc_, if_, info_ , oc_,
+    //   op_, operand_, pp_, type_, unused1, unused2
+    const acPairs: string[] = pnutSymbolTables.regressionInternalTableValuePairString();
+    //this.logMessage(`- received ${acPairs.length} strings`);
+    for (const keyValuePair of acPairs) {
+      if (keyValuePair.length == 0) {
+        stream.write(`;\n`);
+        continue;
+      }
+      stream.write(`${keyValuePair}\n`);
+    }
+
+    stream.write('; ---------------------------------------\n');
 
     // Close the stream
     stream.end();

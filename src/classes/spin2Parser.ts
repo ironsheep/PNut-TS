@@ -6,11 +6,9 @@
 
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
-import { eElementType } from './types';
 import { SymbolTable } from './symbolTable';
 import { SpinElementizer } from './spinElementizer';
 import { SpinElement } from './spinElement';
-import { toFloatString } from '../utils/float32';
 import { RegressionReporter } from './regression';
 
 // src/classes/spin2Parser.ts

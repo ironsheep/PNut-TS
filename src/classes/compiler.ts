@@ -6,12 +6,13 @@
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { Spin2Parser } from './spin2Parser';
+import { RegressionReporter } from './regression';
 
 // src/classes/compiler.ts
 
 export class Compiler {
   private context: Context;
-  private spinDocument: SpinDocument | undefined;
+  private srcFile: SpinDocument | undefined;
   private spin2Parser: Spin2Parser | undefined;
 
   constructor(ctx: Context) {
@@ -19,10 +20,15 @@ export class Compiler {
   }
 
   public Compile(spinFile: SpinDocument) {
-    this.spinDocument = spinFile;
+    this.srcFile = spinFile;
     // if we have a vlid file then let's parse it and generate code
-    if (this.spinDocument.validFile) {
-      this.spin2Parser = new Spin2Parser(this.context, this.spinDocument);
+    if (this.context.reportOptions.writeTablesReport) {
+      const reporter: RegressionReporter = new RegressionReporter(this.context);
+      reporter.writeTableReport(this.srcFile.dirName, this.srcFile.fileName);
+    }
+
+    if (this.srcFile.validFile) {
+      this.spin2Parser = new Spin2Parser(this.context, this.srcFile);
 
       // here we make calls to the P2* methods (e.g., this.spin2Parser.P2Compile1(), , etc.)
       try {
@@ -30,7 +36,7 @@ export class Compiler {
         //this.spin2Parser.P2Compile1();
       } catch (error: unknown) {
         if (error instanceof Error) {
-          const filename: string = this.spinDocument.fileName;
+          const filename: string = this.srcFile.fileName;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
           this.context.logger.compilerErrorMsg(`${filename}:${sourceLineNumber}:error:${error.message}`);
           //if (error.stack) {
