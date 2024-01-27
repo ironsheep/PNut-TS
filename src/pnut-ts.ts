@@ -27,6 +27,7 @@ export class PNutInTypeScript {
   private compiler: Compiler = new Compiler(this.context);
   private spinDocument: SpinDocument | undefined = undefined;
   private shouldAbort: boolean = false;
+  private requiresFilename: boolean = false;
 
   constructor() {
     process.stdout.on('error', (error: Error) => {
@@ -84,6 +85,7 @@ export class PNutInTypeScript {
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
 
     if (this.options.regression) {
+      this.requiresFilename = true;
       const choices: string[] = this.options.regression;
       //this.context.logger.verboseMsg(`* Regression: [${choices}]`);
       if (choices.includes('element')) {
@@ -97,6 +99,7 @@ export class PNutInTypeScript {
     }
 
     if (this.options.log) {
+      this.requiresFilename = true;
       const choices: string[] = this.options.log;
       //this.context.logger.verboseMsg(`* log: [${choices}]`);
       const wantsAll: boolean = choices.includes('all');
@@ -114,17 +117,6 @@ export class PNutInTypeScript {
       }
     }
 
-    const filename: string = this.options.filename;
-    //this.context.logger.progressMsg(`grab filename`);
-
-    if (filename !== undefined && filename !== '') {
-      this.context.logger.verboseMsg(`Working with file [${filename}]`);
-      this.spinDocument = new SpinDocument(filename);
-    } else {
-      this.context.logger.errorMsg('Missing filename argument');
-      this.shouldAbort = true;
-    }
-
     if (this.options.both) {
       this.context.logger.verboseMsg('have BOTH: enabling FLASH and DEBUG');
       this.options.debug = true;
@@ -135,21 +127,42 @@ export class PNutInTypeScript {
     if (this.options.debug) {
       this.context.logger.progressMsg('Compiling with DEBUG');
       this.context.compileOptions.enableDebug = true;
+      this.requiresFilename = true;
     }
 
     if (this.options.flash) {
       this.context.logger.progressMsg('Downloading to FLASH');
       this.context.compileOptions.writeFlash = true;
+      this.requiresFilename = true;
     }
 
     if (this.options.ram) {
       this.context.logger.progressMsg('Downloading to RAM');
       this.context.compileOptions.writeRAM = true;
+      this.requiresFilename = true;
     }
 
     if (this.options.ram && this.options.flash) {
       this.context.logger.errorMsg('Please only use one of -f and -r');
       this.shouldAbort = true;
+    }
+
+    if (this.options.compile) {
+      this.requiresFilename = true;
+    }
+
+    const filename: string = this.options.filename;
+
+    if (filename !== undefined && filename !== '') {
+      this.context.logger.verboseMsg(`Working with file [${filename}]`);
+      this.spinDocument = new SpinDocument(filename);
+    } else {
+      if (this.requiresFilename) {
+        console.log('arguments: %O', this.program.args);
+        console.log('options: %o', this.program.opts());
+        this.context.logger.errorMsg('Missing filename argument');
+        this.shouldAbort = true;
+      }
     }
 
     if (this.options.compile) {
