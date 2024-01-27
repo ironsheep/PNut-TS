@@ -92,7 +92,7 @@ export class SpinElement {
       valueInterp = `(${toFloatString(this.value)})`;
     } else if (this.valueIsNumber) {
       if (this.isOperation) {
-        valueInterp = `(0x${this.value.toString(16)})`;
+        valueInterp = `(0x${this.value.toString(16).toUpperCase()})`;
       } else {
         valueInterp = `(${this.value})`;
       }

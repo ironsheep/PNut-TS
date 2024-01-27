@@ -11,6 +11,7 @@ import { SymbolTable } from './symbolTable';
 import { SpinElementizer } from './spinElementizer';
 import { SpinElement } from './spinElement';
 import { toFloatString } from '../utils/float32';
+import { RegressionReporter } from './regression';
 
 // src/classes/spin2Parser.ts
 
@@ -66,6 +67,12 @@ export class Spin2Parser {
     }
     this.logMessage('\\ ---------------------------------------');
     this.logMessage(''); // blank line
+
+    // if regression reporting enabled then generate the report
+    if (this.context.reportOptions.writeElementsReport) {
+      const reporter: RegressionReporter = new RegressionReporter(this.context);
+      reporter.writeElementReport(this.srcFile.dirName, this.srcFile.fileName, element_list);
+    }
   }
 
   public P2Compile1() {

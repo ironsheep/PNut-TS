@@ -15,6 +15,7 @@ export interface LogOptions {
 }
 export interface ReportOptions {
   writeTablesReport: boolean; // write elementizer
+  writeElementsReport: boolean; // write elementizer
 }
 
 export interface CompileOptions {
@@ -39,6 +40,6 @@ export function createContext(): Context {
     logger: new Logger(),
     compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
     logOptions: { logElementizer: false, logParser: false, logResolver: false },
-    reportOptions: { writeTablesReport: false }
+    reportOptions: { writeTablesReport: false, writeElementsReport: false }
   };
 }

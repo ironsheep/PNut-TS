@@ -35,10 +35,8 @@ export class SpinElementizer {
   private currCharacterIndex: number = 0;
   private symbolLineNumber: number = 0;
   private symbolCharacterOffset: number = 0;
-  private currflags: number = 0;
   private currentTextLine: TextLine;
   private unprocessedLine: string = '';
-  private source_flags: number = 0;
   private at_eof: boolean = false;
   private at_eol: boolean = false;
   private symbol_tables: SpinSymbolTables;
@@ -247,10 +245,7 @@ export class SpinElementizer {
         }
         this.unprocessedLine = this.skipAhead(knownOperator.charsUsed, this.unprocessedLine);
       } else {
-        // NEW: report error bad character....  we added a new Unknown type to be able to do this
-        typeFound = eElementType.type_unknown;
-        valueFound = this.unprocessedLine.charAt(0);
-        this.unprocessedLine = this.skipAhead(1, this.unprocessedLine);
+        // NEW: generate exception on  bad character....  we added a new Unknown type to be able to do this
         // [error_uc]
         throw new Error(`Unrecognized character [${valueFound}]($${this.unprocessedLine.charCodeAt(0).toString(16)})`);
       }

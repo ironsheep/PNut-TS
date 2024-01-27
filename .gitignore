@@ -186,3 +186,4 @@ alias.sh
 HOLD/
 *.tar.gz
 REF/
+*.elem

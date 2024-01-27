@@ -1,0 +1,38 @@
+CON
+	a = $FF00
+	b = %1010
+	c = %%3210
+	d = %"abcd"
+	d1 = %"abc"
+	'd2 = %"abcde"  ' uncomment to cause exception
+	e = 100
+	'f = 1.0
+	'g = 1.0e6
+	'h = -1.0E-6
+	'i = 1e9
+	'j = 1e-9
+
+DAT
+	org
+pasm	drvnot	#0
+	jmp	#$-1		'test $
+
+PUB hypot(x,y) : z
+
+  z,_ := xypol(x,y)		'test _
+
+PRI index(x) : z
+
+  z := lookupz(x :	...	'test ... and two-chr symbol :=
+	@"Apples",	...
+	@"Oranges",	...
+	@"Pears",	...
+	@"Bananas",	...
+	-1..-9)			'test ..
+
+  if z.[31]			'test .
+    z <<= 1			'test three-chr symbol <<=
+
+	{comment{nested comment}}
+	{{doc comment}}
+	'' doc comment

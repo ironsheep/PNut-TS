@@ -4,7 +4,7 @@
 
 // src/pnut-ts.ts
 'use strict';
-import { Command, type OptionValues } from 'commander';
+import { Command, Option, type OptionValues } from 'commander';
 import { Context, createContext } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
@@ -64,11 +64,10 @@ export class PNutInTypeScript {
       .option('-b, --both', 'compile with DEBUG, download to FLASH and run')
       .option('-c, --compile', 'compile file')
       .option('-d, --debug', 'compile with DEBUG')
-      .option('-e, --elementizer', 'log elementizer efforts')
-      .option('-p, --parser', 'log parser efforts')
-      .option('-r, --resolver', 'log resolver efforts')
       .option('-f, --flash', 'download to FLASH and run')
       .option('-r, --ram', 'download to RAM and run')
+      .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver']))
+      .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables']))
       .option('-v, --verbose', 'output verbose messages');
 
     this.context.logger.setProgramName(this.program.name());
@@ -78,22 +77,41 @@ export class PNutInTypeScript {
     //this.context.logger.progressMsg(`after parse()`);
 
     this.options = { ...this.options, ...this.program.opts() };
-
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
     }
 
-    if (this.options.elementizer) {
-      this.context.logger.verboseMsg('LOG: elementizer');
-      this.context.logOptions.logElementizer = true;
+    this.context.logger.verboseMsg(`* args[${this.program.args}]`);
+
+    if (this.options.regression) {
+      const choices: string[] = this.options.regression;
+      //this.context.logger.verboseMsg(`* Regression: [${choices}]`);
+      if (choices.includes('element')) {
+        this.context.reportOptions.writeElementsReport = true;
+        this.context.logger.verboseMsg('Gen: Element Report');
+      }
+      if (choices.includes('tables')) {
+        this.context.reportOptions.writeTablesReport = true;
+        this.context.logger.verboseMsg('Gen: Tables Report');
+      }
     }
-    if (this.options.parser) {
-      this.context.logger.verboseMsg('LOG: parser');
-      this.context.logOptions.logParser = true;
-    }
-    if (this.options.resolver) {
-      this.context.logger.verboseMsg('LOG: resolver');
-      this.context.logOptions.logResolver = true;
+
+    if (this.options.log) {
+      const choices: string[] = this.options.log;
+      //this.context.logger.verboseMsg(`* log: [${choices}]`);
+      const wantsAll: boolean = choices.includes('all');
+      if (choices.includes('elements') || wantsAll) {
+        this.context.logOptions.logElementizer = true;
+        this.context.logger.verboseMsg('Elementizer logging');
+      }
+      if (choices.includes('parser') || wantsAll) {
+        this.context.logOptions.logParser = true;
+        this.context.logger.verboseMsg('Parser logging');
+      }
+      if (choices.includes('resolver') || wantsAll) {
+        this.context.logOptions.logResolver = true;
+        this.context.logger.verboseMsg('Resolver logging');
+      }
     }
 
     const filename: string = this.options.filename;

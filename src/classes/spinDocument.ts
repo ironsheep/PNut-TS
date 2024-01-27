@@ -76,6 +76,9 @@ export class SpinDocument {
   get fileName(): string {
     return this.fileBaseName;
   }
+  get dirName(): string {
+    return this.docFolder;
+  }
 
   get lineCount(): number {
     return this.rawLines.length;
