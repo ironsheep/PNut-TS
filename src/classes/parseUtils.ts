@@ -2794,14 +2794,14 @@ export class SpinSymbolTables {
     kvPairs = this.regressionFilterAndGetValue('dc_');
     this.addPairsToResultStrings(kvPairs, resultStrings);
     // TABLE: dd_
-    resultStrings.push(' dd_  TBA');
-    resultStrings.push('');
+    kvPairs = this.regressionFilterAndGetValue('dd_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
     // TABLE: dir_
     kvPairs = this.regressionFilterAndGetValue('dir_');
     this.addPairsToResultStrings(kvPairs, resultStrings);
     // TABLE: disop_
-    resultStrings.push(' disop_  TBA');
-    resultStrings.push('');
+    kvPairs = this.regressionFilterAndGetValue('disop_');
+    this.addPairsToResultStrings(kvPairs, resultStrings);
     // TABLE: fc_
     stringList = this.regressionFcValuePairStrings();
     this.addStringArPairsToResultStrings(stringList, resultStrings);

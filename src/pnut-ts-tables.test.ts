@@ -46,12 +46,16 @@ test('CLI generates correct element listings', () => {
     const goldenFSpec = path.join(dirPath, `${basename}.tabl.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
 
-    // Compare the output to the golden file, ignoring lines that start with '# Run:'
+    // Compare the output to the golden file, ignoring lines that start with
+    //  '#' which are comments
+    //  ';' which are comments
+    //  'type_end_file' which is a type new to Pnut_TS
+    //  'unused' which are unused in Pnut
 
-    const stringsToExclude = ['# Run:', ';'];
+    const stringsToExclude = ['#', ';', 'type_end_file', 'unused'];
 
     const reportFiltered = reportContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
-    const goldenFiltered = goldenContentLines.filter((line) => !line.startsWith('# Run:'));
+    const goldenFiltered = goldenContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
 
     // Compare the output to the golden file
     if (reportFiltered.join('\n') === goldenFiltered.join('\n')) {
