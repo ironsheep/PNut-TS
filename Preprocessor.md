@@ -4,7 +4,7 @@
 
 [![License: MIT][license-shield]](LICENSE)
 
-![NodeJS][node-basge]
+![NodeJS][node-badge]
 
 [![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
 
@@ -15,6 +15,7 @@
 Pnut-TS has a pre-processor that understands a few primitive directives:
 
 - `#define`
+- `#undef`
 - `#ifdef / #ifndef / #else / #endif`
 - `#elseifdef / #elseifndef`
 - `#error / #warn`
@@ -31,9 +32,9 @@ If you are seeing the similarity to FlexSpin directive set you are correct! This
 #define FOO hello
 ```
 
-Defines a new macro `FOO` with the value `hello`. Whenever the symbol `FOO` appears in the text, the preprocessor will substitute `hello`.
+Defines a new symbol `FOO` with the value `hello`. Whenever the symbol `FOO` appears in the text, the preprocessor will substitute `hello`.
 
-Note that unlike the traditional preprocessors, this preprocessor does not accept arguments. Only simple defines are permitted.
+Note that unlike the traditional preprocessors, **this preprocessor** does not accept arguments. Only simple defines are permitted.
 
 Also note that this preprocessor is case insensitive, just like spin.
 
@@ -61,9 +62,23 @@ Introduces a conditional compilation section, which is only compiled if the symb
 
 Introduces a conditional compilation section, which is only compiled if the symbol after the `#ifndef` is _not_ defined.
 
+```c++
+#ifndef __P2__
+'' propeller 1 code goes here
+#else
+'' propeller 2 code goes here
+#endif
+```
+
+*Pardon this non-traditional example, but you get the point, right?*
+
 #### \#else
 
 Switches the meaning of conditional compilation.
+
+#### \#endif
+
+Ends the conditional compilation if clause.
 
 #### \#elseifdef {symbol}
 
@@ -109,6 +124,11 @@ Removes the definition of a symbol, e.g. to undefine `FOO` do:
 #undef FOO
 ```
 
+Removes the user-defined symbol FOO if it was defined.
+
+Note that #undef will do anything if one of our built-in symbols was named.
+
+
 ## Predefined Symbols
 
 There are several predefined symbols:
@@ -145,7 +165,11 @@ Follow these links for more information:
 ### [Copyright](copyright) | [License](LICENSE)
 
 [maintenance-shield]: https://img.shields.io/badge/maintainer-stephen%40ironsheep%2ebiz-blue.svg?style=for-the-badge
+
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
+
 [Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
+
 [Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
-[node-basge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
+
+[node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
