@@ -188,3 +188,6 @@ HOLD/
 REF/
 *.elem
 *.tabl
+TEST/preprocessTESTs/condCode.pre
+TEST/preprocessTESTs/include.pre
+TEST/tablesTESTs/dumpTables.tabl

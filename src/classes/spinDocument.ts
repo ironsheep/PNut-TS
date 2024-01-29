@@ -8,9 +8,12 @@
 
 import * as path from 'path';
 
-import { isSpin1File, isSpin2File, fileExists, fileSpecFromURI, loadFileAsString } from '../utils/files';
+import { isSpin1File, isSpin2File, fileExists, dirExists, fileSpecFromURI, loadFileAsString } from '../utils/files';
 import { TextLine } from './textLine';
 import { Context } from '../utils/context';
+import { SymbolTable } from './symbolTable';
+import { eElementType } from './types';
+import { RegressionReporter } from './regression';
 
 export enum eEOLType {
   EOL_Unknown,
@@ -24,17 +27,43 @@ export enum eLangaugeId {
   LID_SPIN2
 }
 
+export interface iError {
+  sourceLineIndex: number;
+  characterOffset: number;
+  message: string;
+}
+
 /**
  * The SpinDocument class represents a Spin document, providing methods to analyze and manipulate the document's content.
  */
 export class SpinDocument {
+  private ctx: Context | undefined = undefined;
+  // raw lines from file
   private readonly rawLines: string[] = [];
+  // remaining lines are preprocessing
+  private readonly preprocessedLines: TextLine[] = [];
+  // description of file
   private readonly eolType: eEOLType = eEOLType.EOL_Unknown;
   private readonly langId: eLangaugeId = eLangaugeId.LID_Unknown;
   private readonly docFolder: string;
   private readonly fileBaseName: string;
   private haveFile: boolean = false;
-  private ctx: Context | undefined = undefined;
+  // preprocessor data
+  private incFolder: string = '';
+  private preProcSymbols: SymbolTable = new SymbolTable();
+  // preprocess state information
+  private headerComments: string[] = [];
+  private trailerComments: string[] = [];
+  private gatheringHeaderComment: boolean = true;
+  private gatheringTrailerComment: boolean = true;
+  private inDocComment: boolean = false;
+  private inNonDocComment: boolean = false;
+  // Pnut_TS version number handling for this .spin2 file
+  private defualtVersion: number = 41;
+  private legalVersions: number[] = [41, 43];
+  private requiredVersion: number = 0;
+  // errors reported while processing file
+  private errorsfound: iError[] = [];
 
   constructor(fileSpec: string) {
     // record file name and location
@@ -56,15 +85,251 @@ export class SpinDocument {
         this.rawLines = fileContents.split(/\r?\n/);
       }
     }
+
+    this.preloadSymbolTable();
+  }
+
+  public defineSymbol(newSymbol: string, value: string | number): void {
+    this.logMessage(`* defineSymbol(${newSymbol})`);
+    this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
+  }
+
+  public undefineSymbol(oldSymbol: string): void {
+    this.logMessage(`* undefineSymbol(${oldSymbol})`);
+    this.preProcSymbols.remove(oldSymbol);
+  }
+
+  public setIncludePath(includeDir: string): void {
+    this.logMessage(`* setIncludePath(${includeDir})`);
+    let newIncludePath: string = includeDir;
+    if (dirExists(includeDir)) {
+      this.incFolder = newIncludePath;
+    } else {
+      newIncludePath = path.join(this.dirName, includeDir);
+      if (dirExists(includeDir)) {
+        this.incFolder = newIncludePath;
+      }
+    }
+    if (this.incFolder.length > 0) {
+      this.logMessage(`- processing includes from [${this.incFolder}]`);
+    }
+  }
+
+  get versionNumber(): number {
+    // return the Spin language version required by this file
+    return this.requiredVersion == 0 ? this.defualtVersion : this.requiredVersion;
   }
 
   public setDebugContext(context: Context): void {
     this.ctx = context;
+    this.logMessage('* setDebugContext()');
+  }
+
+  public preProcess(): void {
+    // Gather header (doc-only and non-doc) comments and trailer (doc-only) comments
+    // From header (doc-only and non-doc) comments identify required version if any version
+    // Process raw-lines into file content lines w/original line numbers based on #ifdef/#ifndef, etc. directives
+    this.logMessage('* preProcess()');
+    for (let index = 0; index < this.rawLines.length; index++) {
+      let inConditionalCode: boolean = false;
+      let skipThisline: boolean = false;
+      let ifSideKeepsCode: boolean = false;
+      let inIfSide: boolean = false;
+      const currLine = this.rawLines[index];
+      if (currLine.startsWith("'")) {
+        // have single line non-doc or doc comment
+        this.recordComment(currLine);
+      } else if (this.inNonDocComment) {
+        // handle {..{..}..}
+      } else if (this.inDocComment) {
+        // handle {{..}}
+        this.recordComment(currLine);
+        if (currLine.includes('}}')) {
+          this.inDocComment = false;
+        }
+      } else if (currLine.startsWith('#')) {
+        // handle preprocessor #directive
+        this.gatheringHeaderComment = false; // no more gathering once we hit text
+        if (currLine.startsWith('#define')) {
+          // parse #define {symbol} {value}
+          const [symbol, value] = this.getSymbolValue(currLine);
+          if (symbol) {
+            this.preProcSymbols.add(symbol, eElementType.type_con, value);
+          } else {
+            // ERROR bad statement
+            this.reportError(`#define is missing symbol name`, index, 0);
+          }
+        } else if (currLine.startsWith('#undef')) {
+          // parse #undef {symbol}
+          const symbol = this.getSymbolName(currLine);
+          if (symbol) {
+            if (!this.preProcSymbols.remove(symbol)) {
+              // ERROR no such symbol
+              this.reportError(`#undef symbol [${symbol}] not found`, index, 0);
+            }
+          } else {
+            // ERROR bad statement
+            this.reportError(`#undef is missing symbol name`, index, 0);
+          }
+        } else if (currLine.startsWith('#ifdef') || currLine.startsWith('#elseifdef')) {
+          // parse #ifdef {symbol}
+          // parse #elseifdef {symbol}
+          const symbol = this.getSymbolName(currLine);
+          if (symbol) {
+            inConditionalCode = true;
+            if (this.preProcSymbols.exists(symbol)) {
+              // found symbol... we are keeping code
+              ifSideKeepsCode = true;
+              inIfSide = true;
+            } else {
+              ifSideKeepsCode = false;
+              inIfSide = true;
+            }
+          } else {
+            // ERROR bad statement
+            this.reportError(`#directive is missing symbol name`, index, 0);
+          }
+        } else if (currLine.startsWith('#ifndef') || currLine.startsWith('#elseifndef')) {
+          // parse #ifndef {symbol}
+          // parse #elseifndef {symbol}
+          const symbol = this.getSymbolName(currLine);
+          if (symbol) {
+            inConditionalCode = true;
+            if (this.preProcSymbols.exists(symbol)) {
+              // found symbol... we are keeping code
+              ifSideKeepsCode = false;
+              inIfSide = true;
+            } else {
+              ifSideKeepsCode = true;
+              inIfSide = true;
+            }
+          } else {
+            // ERROR bad statement
+            this.reportError(`#directive is missing symbol name`, index, 0);
+          }
+        } else if (currLine.startsWith('#else')) {
+          // parse #else
+          if (inConditionalCode) {
+            inIfSide = false;
+          } else {
+            // ERROR missing preceeding #if*...
+            this.reportError(`#else without earlier #if*...`, index, 0);
+          }
+        } else if (currLine.startsWith('#endif')) {
+          // parse #endif
+          if (inConditionalCode) {
+            inConditionalCode = false;
+          } else {
+            // ERROR missing preceeding #if*...
+            this.reportError(`#endif without earlier #if*...`, index, 0);
+          }
+        } else if (currLine.startsWith('#error')) {
+          // parse #error
+          const message: string = currLine.substring(7);
+          this.reportError(`ERROR: ${message}`, index, 0);
+        } else if (currLine.startsWith('#warn')) {
+          // parse #warn
+          const message: string = currLine.substring(7);
+          this.reportError(`WARNING: ${message}`, index, 0);
+        } else {
+          // generate error! vs. throwing exception
+          let lineParts = currLine.split(/ \t\r\n/).filter(Boolean);
+          if (lineParts.length == 0) {
+            lineParts = [currLine];
+          }
+          this.reportError(`Unknown #directive: [${lineParts[0]}]`, index, 0);
+        }
+        skipThisline = true;
+      } else if (currLine.startsWith('{{')) {
+        // handle start of doc-comment {{..}}
+        if (!currLine.substring(2).includes('}}')) {
+          this.inDocComment = true;
+        }
+        if (this.gatheringHeaderComment) {
+          this.headerComments.push(currLine);
+        }
+      } else if (currLine.startsWith('{')) {
+        // handle preprocessor directive
+        this.inNonDocComment = true;
+        // FIXME: TODO: COPY CODE FROM OUR ELEMENTIZER!!!
+      } else {
+        // have code line
+        this.gatheringHeaderComment = false; // no more gathering once we hit text
+        this.gatheringTrailerComment = true; // from here on out, we are...
+        this.trailerComments = []; // but every non-comment line we clear all we have so we only get final comments
+      }
+
+      // ifSideKeepsCode || inIfSide
+      //     true             false    skip = true
+      //     true             true     skip = false
+      //     false            false    skip = false
+      //     false            true     skip = true
+      if (!skipThisline) {
+        if (inConditionalCode) {
+          skipThisline = (ifSideKeepsCode && inIfSide) || (!ifSideKeepsCode && !inIfSide) ? false : true;
+        }
+      }
+
+      if (!skipThisline) {
+        this.preprocessedLines.push(new TextLine(currLine, index));
+      }
+    }
+    // if regression testing the emit our preprocessing result
+    if (this.ctx?.reportOptions.writePreprocessReport) {
+      this.logMessage('* writePreprocessReport()');
+      const reporter: RegressionReporter = new RegressionReporter(this.ctx);
+      reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
+    }
+  }
+
+  private recordComment(line: string) {
+    if (this.gatheringHeaderComment) {
+      this.headerComments.push(line);
+    } else if (this.gatheringTrailerComment) {
+      this.trailerComments.push(line);
+    }
+  }
+
+  public reportError(message: string, lineIndex: number, characterOffset: number) {
+    // record a new error
+    const errorReport: iError = {
+      message: message,
+      sourceLineIndex: lineIndex,
+      characterOffset: characterOffset
+    };
+    this.errorsfound.push(errorReport);
+  }
+
+  get errors(): iError[] {
+    // return list of all errors found
+    return this.errorsfound;
+  }
+
+  private getSymbolName(line: string): string | undefined {
+    const lineParts = line.split(/ \t\r\n/).filter(Boolean);
+    let symbol: string | undefined = undefined;
+    if (lineParts.length > 1) {
+      symbol = lineParts[1];
+    }
+    return symbol;
+  }
+
+  private getSymbolValue(line: string): [string | undefined, string] {
+    const lineParts = line.split(/ \t\r\n/).filter(Boolean);
+    let symbol: string | undefined = undefined;
+    let value: string = '1';
+    if (lineParts.length > 1) {
+      symbol = lineParts[1];
+      if (lineParts.length > 2) {
+        value = lineParts[2];
+      }
+    }
+    return [symbol, value];
   }
 
   private logMessage(message: string): void {
     if (this.ctx) {
-      if (this.ctx.logOptions.logElementizer) {
+      if (this.ctx.logOptions.logElementizer || this.ctx.logOptions.logPreprocessor) {
         this.ctx.logger.logMessage(message);
       }
     }
@@ -112,5 +377,31 @@ export class SpinDocument {
     // return object with additional details about this line
     const desiredLine: TextLine = desiredString != null ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
     return desiredLine;
+  }
+
+  private preloadSymbolTable() {
+    const now = new Date();
+    // Outputs: YYYY-MM-DD
+    const formattedDate = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    // Outputs: HH:MM
+    const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const baseSymbols: { [key: string]: number | string } = {};
+    // build list of internal symbols
+    baseSymbols['__propeller__'] = 1;
+    baseSymbols['__P2__'] = 1;
+    baseSymbols['__propeller2__'] = 1;
+    baseSymbols['__PNUT_TS__'] = 1;
+    baseSymbols['__DATE__'] = formattedDate;
+    baseSymbols['__FILE__'] = 1;
+    baseSymbols['__TIME__'] = formattedTime;
+    if (this.ctx?.compileOptions.enableDebug) {
+      baseSymbols['__DEBUG__'] = 1;
+    }
+    // populate our symbol table with this list
+    for (const symbolKey of Object.keys(baseSymbols)) {
+      const value = baseSymbols[symbolKey];
+      this.preProcSymbols.add(symbolKey, eElementType.type_con, value);
+    }
   }
 }

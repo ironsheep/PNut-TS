@@ -12,10 +12,12 @@ export interface LogOptions {
   logElementizer: boolean; // write elementizer log
   logParser: boolean; // write parser log
   logResolver: boolean; // write resolver log
+  logPreprocessor: boolean; // write preprocessor log
 }
 export interface ReportOptions {
   writeTablesReport: boolean; // write elementizer
   writeElementsReport: boolean; // write elementizer
+  writePreprocessReport: boolean;
 }
 
 export interface CompileOptions {
@@ -39,7 +41,7 @@ export function createContext(): Context {
     currentFolder: process.cwd(),
     logger: new Logger(),
     compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
-    logOptions: { logElementizer: false, logParser: false, logResolver: false },
-    reportOptions: { writeTablesReport: false, writeElementsReport: false }
+    logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
+    reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false }
   };
 }

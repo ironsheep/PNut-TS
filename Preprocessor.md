@@ -122,12 +122,8 @@ This is TBD but here's the placeholder / initial thought...
 | `__P2__`           | only defined if compiling for Propeller 2                               |
 | `__propeller2__`   | only defined if compiling for Propeller 2                               |
 | `__PNUTTS__`       | indicates that the `Pnut-TS` compiler is used                           |
-| `__PNUTTS_MAJOR__` | always defined to the Pnut-TS major version number (e.g. "5" in 5.9.26) |
-| `__PNUTTS_MINOR__` | always defined to the Pnut-TS minor version number (e.g. "9" in 5.9.26) |
-| `__PNUTTS_REV__`   | always defined to the Pnut-TS revision number (e.g. "26" in 5.9.26)     |
 | `__DATE__`         | a string containing the date when compilation was begun                 |
-| `__FILE__`         | a string giving the current file being compiled                         |
-| `__LINE__`         | the current source line number                                          |
+| `__FILE__`         | a string giving the current file being compiled                         ||
 | `__TIME__`         | a string containing the time when compilation was begun                 |
 | `__VERSION__`      | a string containing the full version of Pnut-TS in use                  |
 | `__DEBUG__`        | only if debugging is enabled (-g or -gbrk given)                        |

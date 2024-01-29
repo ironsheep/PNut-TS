@@ -22,6 +22,7 @@ module.exports.root = __dirname;
 export class PNutInTypeScript {
   private readonly program = new Command();
   private options: OptionValues = this.program.opts();
+  private version: string = '0.0.0';
   private argsArray: string[] = [];
   private context: Context = createContext();
   private compiler: Compiler = new Compiler(this.context);
@@ -55,7 +56,7 @@ export class PNutInTypeScript {
   public run(): number {
     this.program
       .name('Pnut-TS')
-      .version('0.0.0', '-V, --version', 'output the version number')
+      .version(this.version, '-V, --version', 'output the version number')
       .usage('[optons] filename')
       .description('Propeller2 spin compiler/downloader')
       .arguments('[filename]')
@@ -67,8 +68,11 @@ export class PNutInTypeScript {
       .option('-d, --debug', 'compile with DEBUG')
       .option('-f, --flash', 'download to FLASH and run')
       .option('-r, --ram', 'download to RAM and run')
-      .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver']))
-      .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables']))
+      .option('-I, --Include <dir>', 'add preprocessor include directory')
+      .option('-U, --Undefine <symbol>', 'undefine (remove) preprocessor symbol')
+      .option('-D, --Define <symbol>', 'define (add) preprocessor symbol')
+      .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
+      .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'preproc']))
       .option('-v, --verbose', 'output verbose messages');
 
     this.context.logger.setProgramName(this.program.name());
@@ -78,8 +82,13 @@ export class PNutInTypeScript {
     //this.context.logger.progressMsg(`after parse()`);
 
     this.options = { ...this.options, ...this.program.opts() };
+
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
+    }
+    if (process.argv.length < 2) {
+      this.program.help();
+      process.exit(0);
     }
 
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
@@ -87,6 +96,7 @@ export class PNutInTypeScript {
     if (this.options.regression) {
       this.requiresFilename = true;
       const choices: string[] = this.options.regression;
+      this.context.logger.verboseMsg('MODE: Regression Testing');
       //this.context.logger.verboseMsg(`* Regression: [${choices}]`);
       if (choices.includes('element')) {
         this.context.reportOptions.writeElementsReport = true;
@@ -96,11 +106,16 @@ export class PNutInTypeScript {
         this.context.reportOptions.writeTablesReport = true;
         this.context.logger.verboseMsg('Gen: Tables Report');
       }
+      if (choices.includes('prepproc')) {
+        this.context.reportOptions.writePreprocessReport = true;
+        this.context.logger.verboseMsg('Gen: preProcessor Report');
+      }
     }
 
     if (this.options.log) {
       this.requiresFilename = true;
       const choices: string[] = this.options.log;
+      this.context.logger.verboseMsg('MODE: Logging');
       //this.context.logger.verboseMsg(`* log: [${choices}]`);
       const wantsAll: boolean = choices.includes('all');
       if (choices.includes('elements') || wantsAll) {
@@ -114,6 +129,10 @@ export class PNutInTypeScript {
       if (choices.includes('resolver') || wantsAll) {
         this.context.logOptions.logResolver = true;
         this.context.logger.verboseMsg('Resolver logging');
+      }
+      if (choices.includes('prepproc')) {
+        this.context.logOptions.logPreprocessor = true;
+        this.context.logger.verboseMsg('PreProcessor logging');
       }
     }
 
@@ -152,10 +171,34 @@ export class PNutInTypeScript {
     }
 
     const filename: string = this.options.filename;
+    let includeDir: string = '';
+    if (this.options.Include) {
+      includeDir = this.options.Include;
+    }
+    let newSymbol: string = '';
+    if (this.options.Define) {
+      newSymbol = this.options.Define;
+    }
+    let oldSymbol: string = '';
+    if (this.options.Undefine) {
+      oldSymbol = this.options.Undefine;
+    }
 
     if (filename !== undefined && filename !== '') {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
       this.spinDocument = new SpinDocument(filename);
+      this.spinDocument.setDebugContext(this.context);
+      this.spinDocument.defineSymbol('__VERSION__', this.version);
+
+      if (this.options.Include) {
+        this.spinDocument.setIncludePath(includeDir);
+      }
+      if (this.options.Define) {
+        this.spinDocument.defineSymbol(newSymbol, 1);
+      }
+      if (this.options.Undefine) {
+        this.spinDocument.undefineSymbol(oldSymbol);
+      }
     } else {
       if (this.requiresFilename) {
         console.log('arguments: %O', this.program.args);
@@ -166,21 +209,23 @@ export class PNutInTypeScript {
     }
 
     if (this.options.compile) {
-      this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       this.context.compileOptions.compile = true;
       if (!this.spinDocument || !this.spinDocument.validFile) {
         this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file`);
         this.shouldAbort = true;
       }
+
+      this.context.logger.logMessage('');
+      this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]`);
+      this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]`);
+      this.context.logger.logMessage('');
     }
-    if (this.options.compile) {
-      this.context.logger.logMessage('\n');
-      this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]\n`);
-      this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]\n`);
-      this.context.logger.logMessage('\n');
-    }
-    if (!this.shouldAbort && this.spinDocument) {
-      this.compiler.Compile(this.spinDocument);
+    if (!this.shouldAbort && this.spinDocument && this.options.compile) {
+      this.context.logger.verboseMsg(`Compiling file [${filename}]`);
+      this.spinDocument.preProcess();
+      if (!this.context.reportOptions.writePreprocessReport) {
+        this.compiler.Compile(this.spinDocument);
+      }
     }
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);

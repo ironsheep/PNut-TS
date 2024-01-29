@@ -9,6 +9,7 @@ import fs from 'fs';
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { SpinSymbolTables } from './parseUtils';
+import { TextLine } from './textLine';
 
 export class RegressionReporter {
   private context: Context;
@@ -98,6 +99,34 @@ export class RegressionReporter {
     }
 
     stream.write('; ---------------------------------------\n');
+
+    // Close the stream
+    stream.end();
+  }
+
+  public writeProprocessResults(dirName: string, fileName: string, lines: TextLine[]) {
+    const fileBasename = path.basename(fileName, '.spin2');
+    const outFilename = path.join(dirName, `${fileBasename}.pre`);
+    // Create a write stream
+    this.logMessage(`* writing report to ${outFilename}`);
+    const stream = fs.createWriteStream(outFilename);
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    // Write each element to the file
+    stream.write(`' Report for regression testing\n`);
+    stream.write(`' Run: ${formattedDate}\n#\n`);
+    stream.write(`' ---------------------------------------\n`);
+
+    //this.logMessage(`- received ${acPairs.length} strings`);
+    for (const testLine of lines) {
+      stream.write(`${testLine.sourceLineNumber}: ${testLine.text}\n`);
+    }
+
+    stream.write(`' ---------------------------------------\n`);
 
     // Close the stream
     stream.end();

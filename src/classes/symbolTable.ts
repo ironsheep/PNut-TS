@@ -36,11 +36,22 @@ export class SymbolTable {
    * @param {number} symbolValue
    * @memberof SymbolTable
    */
-  public enter_symbol(symbolName: string, symbolType: eElementType, symbolValue: number) {
-    if (!this.symbol_exists(symbolName)) {
-      const newSymbol: iSymbol = { name: symbolName, type: symbolType, value: symbolValue };
-      this.symbols.set(symbolName, newSymbol);
+  public add(symbolName: string, symbolType: eElementType, symbolValue: number | string) {
+    const nameKey: string = symbolName.toUpperCase();
+    if (!this.exists(nameKey)) {
+      const newSymbol: iSymbol = { name: nameKey, type: symbolType, value: symbolValue };
+      this.symbols.set(nameKey, newSymbol);
     }
+  }
+
+  public remove(symbolName: string): boolean {
+    const nameKey: string = symbolName.toUpperCase();
+    let removeStatus: boolean = false;
+    if (this.exists(nameKey)) {
+      this.symbols.delete(nameKey);
+      removeStatus = true;
+    }
+    return removeStatus;
   }
 
   /**
@@ -50,8 +61,9 @@ export class SymbolTable {
    * @return {*}  {(iSymbol | undefined)}
    * @memberof SymbolTable
    */
-  public find_symbol(symbolName: string): iSymbol | undefined {
-    return this.symbols.get(symbolName);
+  public get(symbolName: string): iSymbol | undefined {
+    const nameKey: string = symbolName.toUpperCase();
+    return this.symbols.get(nameKey);
   }
 
   /**
@@ -61,8 +73,9 @@ export class SymbolTable {
    * @return {*}  {boolean}
    * @memberof SymbolTable
    */
-  public symbol_exists(symbolName: string): boolean {
-    return this.symbols.has(symbolName);
+  public exists(symbolName: string): boolean {
+    const nameKey: string = symbolName.toUpperCase();
+    return this.symbols.has(nameKey);
   }
 
   /**

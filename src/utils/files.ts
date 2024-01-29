@@ -98,6 +98,15 @@ export function fileExists(pathSpec: string): boolean {
   return existsStatus;
 }
 
+export function dirExists(pathSpec: string): boolean {
+  let existsStatus: boolean = false;
+  if (fs.existsSync(pathSpec)) {
+    // File exists in path
+    existsStatus = true;
+  }
+  return existsStatus;
+}
+
 /**
  * loads the content of a file.
  * @param {string} fileSpec - The path to the file.

@@ -1,0 +1,44 @@
+'' =================================================================================================
+''   Purpose.... Regression TEST: ifdef'd code test
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Jan 2024
+'' =================================================================================================
+' NOTE: this file is processed twice once with no directives and once with -DCLOCK_300MHZ directive
+
+#define CLOCK_200MHZ
+
+CON { timing }
+
+  CLK_FREQ = 335_000_000                                        ' system freq as a constant
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+#ifdef CLOCK_300MHZ
+#undef CLOCK_200MHZ
+
+  CLK_FREQ = 200_000_000                                        ' system freq as a constant
+
+#endif
+
+#ifdef CLOCK_200MHZ
+
+  CLK_FREQ = 200_000_000                                        ' system freq as a constant
+
+#endif
+
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+
+CON { license }
+{{
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2024 Iron Sheep Productions, LLC
+
+  Permission is hereby granted... dummy license block for test purposes
+ =================================================================================================
+}}
