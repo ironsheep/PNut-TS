@@ -4,7 +4,7 @@
 
 // src/pnut-ts.test.ts
 
-import { PNutInTypeScript } from './pnut-ts';
+import { PNutInTypeScript } from '../../pnut-ts';
 
 describe('PNutInTypeScript', () => {
   const write: any = process.stdout.write;

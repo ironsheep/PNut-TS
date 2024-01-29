@@ -191,3 +191,4 @@ REF/
 TEST/preprocessTESTs/condCode.pre
 TEST/preprocessTESTs/include.pre
 TEST/tablesTESTs/dumpTables.tabl
+*.pre

@@ -4,8 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import glob from 'glob';
 
-const dirPath = path.resolve(__dirname, '../TEST/preprocessTESTs');
-const toolPath = path.resolve(__dirname, '../dist');
+// test lives in <rootDir>/src/tests/SHORT
+const dirPath = path.resolve(__dirname, '../../../TEST/SHORT/tablesTESTs');
+const toolPath = path.resolve(__dirname, '../../../dist');
 
 describe('Test directory existence', () => {
   test('Test directory should exist', () => {
@@ -17,15 +18,15 @@ describe('Test directory existence', () => {
   });
 });
 
-test('CLI generates correct parser output', () => {
-  // Get all .spin2 files in the ./TEST/element/ directory
+test('CLI generates correct element listings', () => {
+  // Get all .spin2 files in the ./TEST/tablesTESTs/ directory
 
   const files = glob.sync(`${dirPath}/*.spin2`);
 
   let passCount = 0;
   const failList = [];
 
-  const options: string = '--regression preproc -- ';
+  const options: string = '--regression tables -- ';
 
   // Iterate over each .spin2 file
   for (const file of files) {
@@ -39,11 +40,11 @@ test('CLI generates correct parser output', () => {
       console.error(`Error running PNut-TS: ${error}`);
     }
     // Read the generated output file
-    const reportFSpec = path.join(dirPath, `${basename}.pre`);
+    const reportFSpec = path.join(dirPath, `${basename}.tabl`);
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
 
     // Read the golden file
-    const goldenFSpec = path.join(dirPath, `${basename}.pre.GOLD`);
+    const goldenFSpec = path.join(dirPath, `${basename}.tabl.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
 
     // Compare the output to the golden file, ignoring lines that start with

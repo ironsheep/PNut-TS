@@ -4,8 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import glob from 'glob';
 
-const dirPath = path.resolve(__dirname, '../TEST/elementizerTESTs');
-const toolPath = path.resolve(__dirname, '../dist');
+// test lives in <rootDir>/src/tests/SHORT
+const dirPath = path.resolve(__dirname, '../../../TEST/SHORT/elementizerTESTs');
+const toolPath = path.resolve(__dirname, '../../../dist');
 
 describe('Test directory existence', () => {
   test('Test directory should exist', () => {
