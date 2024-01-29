@@ -8,7 +8,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { SpinDocument } from '../classes/spinDocument';
+//import { SpinDocument } from '../classes/spinDocument';
 
 export function libraryDir(): string {
   return './lib';
