@@ -47,7 +47,6 @@ export class SpinElementizer {
     this.srcFile = spinCode;
     this.symbol_tables = new SpinSymbolTables(ctx);
     if (this.context.logOptions.logElementizer) {
-      this.srcFile.setDebugContext(this.context);
       this.symbol_tables.enableLogging();
     }
     // dummy load of next line (replaced by loadNextLine())

@@ -37,7 +37,8 @@ export interface iError {
  * The SpinDocument class represents a Spin document, providing methods to analyze and manipulate the document's content.
  */
 export class SpinDocument {
-  private ctx: Context | undefined = undefined;
+  private ctx: Context;
+  private isLogging: boolean = false;
   // raw lines from file
   private readonly rawLines: string[] = [];
   // remaining lines are preprocessing
@@ -65,8 +66,12 @@ export class SpinDocument {
   // errors reported while processing file
   private errorsfound: iError[] = [];
 
-  constructor(fileSpec: string) {
+  constructor(ctx: Context, fileSpec: string) {
     // record file name and location
+    this.ctx = ctx;
+    if (this.ctx.logOptions.logPreprocessor) {
+      this.isLogging = true;
+    }
     const bFileFound: boolean = fileExists(fileSpec);
     this.docFolder = bFileFound ? path.dirname(fileSpecFromURI(fileSpec)) : '';
     this.fileBaseName = bFileFound ? path.basename(fileSpecFromURI(fileSpec)) : '';
@@ -83,24 +88,27 @@ export class SpinDocument {
         const fileContents: string = loadFileAsString(fileSpec);
         this.eolType = fileContents.includes('\r\n') ? eEOLType.EOL_CRLF : eEOLType.EOL_LF_ONLY;
         this.rawLines = fileContents.split(/\r?\n/);
+        this.logMessage(`CODE: loaded [${this.fileBaseName}] from [${this.docFolder}]`);
       }
+    } else {
+      this.logMessage(`CODE: ERROR failed to load [${this.fileBaseName}] from [${this.docFolder}]`);
     }
 
     this.preloadSymbolTable();
   }
 
   public defineSymbol(newSymbol: string, value: string | number): void {
-    this.logMessage(`* defineSymbol(${newSymbol})`);
+    this.logMessage(`CODE: defineSymbol(${newSymbol})=[${value}]`);
     this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
   }
 
   public undefineSymbol(oldSymbol: string): void {
-    this.logMessage(`* undefineSymbol(${oldSymbol})`);
+    this.logMessage(`CODE: undefineSymbol(${oldSymbol})`);
     this.preProcSymbols.remove(oldSymbol);
   }
 
   public setIncludePath(includeDir: string): void {
-    this.logMessage(`* setIncludePath(${includeDir})`);
+    this.logMessage(`CODE: setIncludePath(${includeDir})`);
     let newIncludePath: string = includeDir;
     if (dirExists(includeDir)) {
       this.incFolder = newIncludePath;
@@ -111,7 +119,7 @@ export class SpinDocument {
       }
     }
     if (this.incFolder.length > 0) {
-      this.logMessage(`- processing includes from [${this.incFolder}]`);
+      this.logMessage(`CODE: processing includes from [${this.incFolder}]`);
     }
   }
 
@@ -120,27 +128,22 @@ export class SpinDocument {
     return this.requiredVersion == 0 ? this.defualtVersion : this.requiredVersion;
   }
 
-  public setDebugContext(context: Context): void {
-    this.ctx = context;
-    this.logMessage('* setDebugContext()');
-  }
-
   public preProcess(): void {
     // Gather header (doc-only and non-doc) comments and trailer (doc-only) comments
     // From header (doc-only and non-doc) comments identify required version if any version
     // Process raw-lines into file content lines w/original line numbers based on #ifdef/#ifndef, etc. directives
-    this.logMessage('* preProcess()');
+    this.logMessage('CODE: preProcess()');
     for (let index = 0; index < this.rawLines.length; index++) {
-      let inConditionalCode: boolean = false;
+      let inPreProcIForIFNOT: boolean = false;
       let skipThisline: boolean = false;
-      let ifSideKeepsCode: boolean = false;
-      let inIfSide: boolean = false;
+      let thisSideKeepsCode: boolean = false;
       const currLine = this.rawLines[index];
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
         this.recordComment(currLine);
       } else if (this.inNonDocComment) {
         // handle {..{..}..}
+        // FIXME: TODO: add missing code
       } else if (this.inDocComment) {
         // handle {{..}}
         this.recordComment(currLine);
@@ -154,6 +157,7 @@ export class SpinDocument {
           // parse #define {symbol} {value}
           const [symbol, value] = this.getSymbolValue(currLine);
           if (symbol) {
+            this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
             this.preProcSymbols.add(symbol, eElementType.type_con, value);
           } else {
             // ERROR bad statement
@@ -163,12 +167,18 @@ export class SpinDocument {
           // parse #undef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            if (!this.preProcSymbols.remove(symbol)) {
-              // ERROR no such symbol
-              this.reportError(`#undef symbol [${symbol}] not found`, index, 0);
+            if ((inPreProcIForIFNOT && thisSideKeepsCode) || !inPreProcIForIFNOT) {
+              if (!this.preProcSymbols.remove(symbol)) {
+                // ERROR no such symbol
+                this.reportError(`#undef symbol [${symbol}] not found`, index, 0);
+              } else {
+                this.logMessage(`CODE: removed symbol [${symbol}]`);
+              }
+            } else {
+              // ignore this code since in conditional code
+              this.logMessage(`CODE: NOT keeping code SKIP [${currLine}]`);
             }
           } else {
-            // ERROR bad statement
             this.reportError(`#undef is missing symbol name`, index, 0);
           }
         } else if (currLine.startsWith('#ifdef') || currLine.startsWith('#elseifdef')) {
@@ -176,15 +186,18 @@ export class SpinDocument {
           // parse #elseifdef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            inConditionalCode = true;
+            inPreProcIForIFNOT = true;
+            this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
             if (this.preProcSymbols.exists(symbol)) {
-              // found symbol... we are keeping code
-              ifSideKeepsCode = true;
-              inIfSide = true;
+              this.logMessage(`CODE: have symbol [${symbol}]`);
+              // found symbol... we are keeping code from IF side
+              thisSideKeepsCode = true;
             } else {
-              ifSideKeepsCode = false;
-              inIfSide = true;
+              // symbol doesn't exist keep code from ELSE side
+              this.logMessage(`CODE: don't have symbol [${symbol}]`);
+              thisSideKeepsCode = false;
             }
+            this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
           } else {
             // ERROR bad statement
             this.reportError(`#directive is missing symbol name`, index, 0);
@@ -194,31 +207,36 @@ export class SpinDocument {
           // parse #elseifndef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            inConditionalCode = true;
+            inPreProcIForIFNOT = true;
+            this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
             if (this.preProcSymbols.exists(symbol)) {
-              // found symbol... we are keeping code
-              ifSideKeepsCode = false;
-              inIfSide = true;
+              // found symbol... we are keeping code from ELSE side
+              this.logMessage(`CODE: don't have symbol [${symbol}]`);
+              thisSideKeepsCode = false;
             } else {
-              ifSideKeepsCode = true;
-              inIfSide = true;
+              // symbol doesn't exist keep code from IF side
+              this.logMessage(`CODE: have symbol [${symbol}]`);
+              thisSideKeepsCode = true;
             }
+            this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
           } else {
             // ERROR bad statement
             this.reportError(`#directive is missing symbol name`, index, 0);
           }
         } else if (currLine.startsWith('#else')) {
           // parse #else
-          if (inConditionalCode) {
-            inIfSide = false;
+          if (inPreProcIForIFNOT) {
+            thisSideKeepsCode = !thisSideKeepsCode;
+            this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
           } else {
             // ERROR missing preceeding #if*...
             this.reportError(`#else without earlier #if*...`, index, 0);
           }
         } else if (currLine.startsWith('#endif')) {
           // parse #endif
-          if (inConditionalCode) {
-            inConditionalCode = false;
+          if (inPreProcIForIFNOT) {
+            inPreProcIForIFNOT = false;
+            this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
           } else {
             // ERROR missing preceeding #if*...
             this.reportError(`#endif without earlier #if*...`, index, 0);
@@ -233,7 +251,7 @@ export class SpinDocument {
           this.reportError(`WARNING: ${message}`, index, 0);
         } else {
           // generate error! vs. throwing exception
-          let lineParts = currLine.split(/ \t\r\n/).filter(Boolean);
+          let lineParts = this.splitLineOnWhiteSpace(currLine);
           if (lineParts.length == 0) {
             lineParts = [currLine];
           }
@@ -265,20 +283,35 @@ export class SpinDocument {
       //     false            false    skip = false
       //     false            true     skip = true
       if (!skipThisline) {
-        if (inConditionalCode) {
-          skipThisline = (ifSideKeepsCode && inIfSide) || (!ifSideKeepsCode && !inIfSide) ? false : true;
+        if (inPreProcIForIFNOT) {
+          skipThisline = thisSideKeepsCode ? false : true;
         }
       }
 
       if (!skipThisline) {
+        this.logMessage(`CODE: Line KEEP [${currLine}]`);
         this.preprocessedLines.push(new TextLine(currLine, index));
+      } else {
+        this.logMessage(`CODE: Line SKIP [${currLine}]`);
       }
     }
+
+    this.dumpErrors(); // report on errors if any found
     // if regression testing the emit our preprocessing result
     if (this.ctx?.reportOptions.writePreprocessReport) {
-      this.logMessage('* writePreprocessReport()');
+      this.logMessage('CODE: writePreprocessReport()');
       const reporter: RegressionReporter = new RegressionReporter(this.ctx);
       reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
+    }
+  }
+
+  private dumpErrors() {
+    if (this.errorsfound.length > 0) {
+      this.logMessage(''); // blank line
+    }
+    for (let index = 0; index < this.errorsfound.length; index++) {
+      const error = this.errorsfound[index];
+      this.logMessage(`ERROR: Ln#${error.sourceLineIndex + 1}: ${error.message}`);
     }
   }
 
@@ -297,6 +330,7 @@ export class SpinDocument {
       sourceLineIndex: lineIndex,
       characterOffset: characterOffset
     };
+    this.logMessage(`CODE: new error: Ln#${lineIndex + 1}: ${message}`);
     this.errorsfound.push(errorReport);
   }
 
@@ -305,8 +339,15 @@ export class SpinDocument {
     return this.errorsfound;
   }
 
+  private splitLineOnWhiteSpace(line: string): string[] {
+    const lineParts = line.split(/[ \t\r\n]/).filter(Boolean);
+    //this.logMessage(`CODE: (DBG) splitLineOnWhiteSpace(${line})`);
+    //this.logMessage(`CODE: (DBG) lineParts=[${lineParts}](${lineParts.length})`);
+    return lineParts;
+  }
+
   private getSymbolName(line: string): string | undefined {
-    const lineParts = line.split(/ \t\r\n/).filter(Boolean);
+    const lineParts = this.splitLineOnWhiteSpace(line);
     let symbol: string | undefined = undefined;
     if (lineParts.length > 1) {
       symbol = lineParts[1];
@@ -315,7 +356,7 @@ export class SpinDocument {
   }
 
   private getSymbolValue(line: string): [string | undefined, string] {
-    const lineParts = line.split(/ \t\r\n/).filter(Boolean);
+    const lineParts = this.splitLineOnWhiteSpace(line);
     let symbol: string | undefined = undefined;
     let value: string = '1';
     if (lineParts.length > 1) {
@@ -328,10 +369,8 @@ export class SpinDocument {
   }
 
   private logMessage(message: string): void {
-    if (this.ctx) {
-      if (this.ctx.logOptions.logElementizer || this.ctx.logOptions.logPreprocessor) {
-        this.ctx.logger.logMessage(message);
-      }
+    if (this.isLogging) {
+      this.ctx.logger.logMessage(message);
     }
   }
   get validFile(): boolean {
@@ -401,6 +440,7 @@ export class SpinDocument {
     // populate our symbol table with this list
     for (const symbolKey of Object.keys(baseSymbols)) {
       const value = baseSymbols[symbolKey];
+      this.logMessage(`CODE: new sym [${symbolKey}]=[${value}]`);
       this.preProcSymbols.add(symbolKey, eElementType.type_con, value);
     }
   }

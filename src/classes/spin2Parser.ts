@@ -30,9 +30,6 @@ export class Spin2Parser {
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
     this.srcFile = spinCode;
-    if (this.context.logOptions.logElementizer) {
-      this.srcFile.setDebugContext(this.context);
-    }
     this.elementizer = new SpinElementizer(ctx, spinCode);
   }
 

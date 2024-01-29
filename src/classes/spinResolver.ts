@@ -15,9 +15,6 @@ export class SpinResolver {
   constructor(ctx: Context, elementList: SpinElement[]) {
     this.context = ctx;
     this.spinElements = elementList;
-    if (this.context.logOptions.logResolver) {
-      //this.srcFile.setDebugContext(this.context);
-    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

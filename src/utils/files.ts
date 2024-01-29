@@ -25,6 +25,7 @@ export function workingDir(): string {
  * @returns {SpinDocument} A SpinDocument object representing the loaded Spin2 file.
  * @throws {Error} If the file does not exist or cannot be read.
  */
+/*
 export function loadSpin2File(filename: string): SpinDocument | undefined {
   let desiredDocument: SpinDocument | undefined = undefined;
   if (isSpin2File(filename)) {
@@ -42,6 +43,7 @@ export function loadSpin2File(filename: string): SpinDocument | undefined {
   }
   return desiredDocument;
 }
+*/
 
 /**
  * filters interferring characters from URI form of fileSpec returning just a fileSpec

@@ -122,8 +122,11 @@ export class RegressionReporter {
     stream.write(`' ---------------------------------------\n`);
 
     //this.logMessage(`- received ${acPairs.length} strings`);
+    let index: number = 0;
     for (const testLine of lines) {
-      stream.write(`${testLine.sourceLineNumber}: ${testLine.text}\n`);
+      const indexStr: string = index.toString().padStart(3, '0');
+      stream.write(`[${indexStr}] ${testLine.sourceLineNumber}: ${testLine.text}\n`);
+      index += 1;
     }
 
     stream.write(`' ---------------------------------------\n`);

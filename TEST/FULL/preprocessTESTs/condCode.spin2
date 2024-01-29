@@ -7,18 +7,16 @@
 ''   Started.... Jan 2024
 '' =================================================================================================
 ' NOTE: this file is processed twice once with no directives and once with -DCLOCK_300MHZ directive
+' {Spin2_v43}
 
 #define CLOCK_200MHZ
 
 CON { timing }
 
-  CLK_FREQ = 335_000_000                                        ' system freq as a constant
-  _clkfreq = CLK_FREQ                                           ' set system clock
-
 #ifdef CLOCK_300MHZ
 #undef CLOCK_200MHZ
 
-  CLK_FREQ = 200_000_000                                        ' system freq as a constant
+  CLK_FREQ = 300_000_000                                        ' system freq as a constant
 
 #endif
 

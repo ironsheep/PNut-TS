@@ -106,7 +106,7 @@ export class PNutInTypeScript {
         this.context.reportOptions.writeTablesReport = true;
         this.context.logger.verboseMsg('Gen: Tables Report');
       }
-      if (choices.includes('prepproc')) {
+      if (choices.includes('preproc')) {
         this.context.reportOptions.writePreprocessReport = true;
         this.context.logger.verboseMsg('Gen: preProcessor Report');
       }
@@ -130,7 +130,7 @@ export class PNutInTypeScript {
         this.context.logOptions.logResolver = true;
         this.context.logger.verboseMsg('Resolver logging');
       }
-      if (choices.includes('prepproc')) {
+      if (choices.includes('preproc')) {
         this.context.logOptions.logPreprocessor = true;
         this.context.logger.verboseMsg('PreProcessor logging');
       }
@@ -186,8 +186,7 @@ export class PNutInTypeScript {
 
     if (filename !== undefined && filename !== '') {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
-      this.spinDocument = new SpinDocument(filename);
-      this.spinDocument.setDebugContext(this.context);
+      this.spinDocument = new SpinDocument(this.context, filename);
       this.spinDocument.defineSymbol('__VERSION__', this.version);
 
       if (this.options.Include) {
