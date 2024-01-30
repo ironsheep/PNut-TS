@@ -1,4 +1,4 @@
-# Pnut reimplementation in TypeScript (Pnut-TS)
+# Pnut reimplementation in TypeScript (Pnut-TS)<br>The Pnut-TS Preprocessor
 
 ![Project Maintenance][maintenance-shield]
 
@@ -9,6 +9,18 @@
 [![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
 
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
+
+## Pnut-TS Preprocessor Comamnd line options
+
+A couple of command line options affect the proprocessing:
+
+| Option | Effect | 
+| --- | --- | 
+| <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  #elseifdef` or `#elseifndef` statements |
+| <PRE>-U \<symbol></PRE>  | Prevents a subsequent `#define <symbol>` found in the .spin2 code from having any effect
+| <PRE>-I \<directory></PRE>  | set the folder to search within for `#include "filename(.spin2)" statements
+
+**NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means all #included files and all files specified in the OBJ block of each compiled object.
 
 ## Preprocessor Directives
 
@@ -74,19 +86,19 @@ Introduces a conditional compilation section, which is only compiled if the symb
 
 #### \#else
 
-Switches the meaning of conditional compilation.
+Switches the meaning of conditional compilation. Must be preceeded by a `#ifdef` or a `#ifndef`.
 
 #### \#endif
 
-Ends the conditional compilation if clause.
+Ends the conditional compilation `#ifdef` or `#ifndef` clause.
 
 #### \#elseifdef {symbol}
 
-A combination of `#else` and `#ifdef`.
+A combination of `#else` and `#ifdef`. Must be preceeded by a `#ifdef` or a `#ifndef`.
 
 #### \#elseifndef {symbol}
 
-A combination of `#else` and `#ifndef`.
+A combination of `#else` and `#ifndef`. Must be preceeded by a `#ifdef` or a `#ifndef`.
 
 #### \#error {msg}
 
@@ -100,17 +112,15 @@ Prints an error message. Mainly used in conditional compilation to report an unh
 
 #### \#include {filename}
 
-NOTE: this is NOT initially supported in the initial PNUTTS release but will be in a future release.
-
-**-- NOT SUPPORTED at this time --**
-
 Includes a file. The contents of the file are placed in the compilation just as if everything in that file was typed into the original file instead. This is often used
 
 ```c++
 #include "foo.spin2"
 ```
 
-Included files are searched for in the same directory as the file that contains the `#include`.
+Included files are searched for in the same directory as the file that contains the `#include`. Or, alternatively, in an include directory provided by the compilation `-I <dir>` clause on the command line.
+
+NOTE: if the .spin2 suffix is not present on the filename provide in the include statement it will be appended to the name given before opening the file.  Meaning all included files will only be .spin2 files.
 
 #### \#warn {msg}
 

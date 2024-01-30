@@ -97,6 +97,11 @@ export class SpinDocument {
     // load our predefined symbols with values
     this.preloadSymbolTable();
 
+    // set include folder if provided from the command line
+    if (this.ctx.preProcessorOptions.includeFolder.length > 0) {
+      this.setIncludePath(this.ctx.preProcessorOptions.includeFolder);
+    }
+
     // add any symbols arriving from the command line
     const cliDefinedSymbols: string[] = this.ctx.preProcessorOptions.defSymbols;
     if (cliDefinedSymbols.length > 0) {
@@ -109,27 +114,33 @@ export class SpinDocument {
 
   public defineSymbol(newSymbol: string, value: string | number): void {
     this.logMessage(`CODE: defSymbol(${newSymbol})=[${value}]`);
-    this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
+    if (!this.preProcSymbols.exists(newSymbol)) {
+      this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
+    } else {
+      this.logMessage(`CODE: symbol(${newSymbol}) already exists, add skipped`);
+    }
   }
 
-  private undefineSymbol(oldSymbol: string): void {
-    this.logMessage(`CODE: undefSymbol(${oldSymbol})`);
-    this.preProcSymbols.remove(oldSymbol);
+  private undefineSymbol(oldSymbol: string): boolean {
+    let removeStatus: boolean = false;
+    if (this.preProcSymbols.exists(oldSymbol)) {
+      this.logMessage(`CODE: undefSymbol(${oldSymbol})`);
+      this.preProcSymbols.remove(oldSymbol);
+      removeStatus = true;
+    }
+    return removeStatus;
   }
 
   public setIncludePath(includeDir: string): void {
-    this.logMessage(`CODE: setIncludePath(${includeDir})`);
-    let newIncludePath: string = includeDir;
-    if (dirExists(includeDir)) {
+    //this.logMessage(`CODE: setIncludePath(${includeDir})`);
+    // is inc-folder
+    const newIncludePath: string = path.join(this.dirName, includeDir);
+    if (dirExists(newIncludePath)) {
       this.incFolder = newIncludePath;
+      //this.logMessage(`CODE: IncludePath(${newIncludePath}) exists!`);
+      this.logMessage(`CODE: Processing includes from [${this.incFolder}]`);
     } else {
-      newIncludePath = path.join(this.dirName, includeDir);
-      if (dirExists(includeDir)) {
-        this.incFolder = newIncludePath;
-      }
-    }
-    if (this.incFolder.length > 0) {
-      this.logMessage(`CODE: processing includes from [${this.incFolder}]`);
+      this.logMessage(`CODE: ERROR: failed locate incFolder [${newIncludePath}]`);
     }
   }
 
@@ -170,7 +181,7 @@ export class SpinDocument {
             const canAdd: boolean = this.ctx.preProcessorOptions.undefSymbols.includes(symbol) ? false : true;
             if (canAdd) {
               this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
-              this.preProcSymbols.add(symbol, eElementType.type_con, value);
+              this.defineSymbol(symbol, value);
             } else {
               this.logMessage(`#define of [${symbol}] prevented by "-U ${symbol}" on command line`);
             }
@@ -184,7 +195,7 @@ export class SpinDocument {
           if (symbol) {
             // this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIFNOT=(${inPreProcIForIFNOT}), thisSideKeepsCode=(${thisSideKeepsCode})`);
             if ((inPreProcIForIFNOT && thisSideKeepsCode) || !inPreProcIForIFNOT) {
-              if (!this.preProcSymbols.remove(symbol)) {
+              if (!this.undefineSymbol(symbol)) {
                 // ERROR no such symbol
                 this.reportError(`#undef symbol [${symbol}] not found`, index, 0);
               } else {
@@ -489,8 +500,7 @@ export class SpinDocument {
     // populate our symbol table with this list
     for (const symbolKey of Object.keys(baseSymbols)) {
       const value = baseSymbols[symbolKey];
-      this.logMessage(`CODE: new sym [${symbolKey}]=[${value}]`);
-      this.preProcSymbols.add(symbolKey, eElementType.type_con, value);
+      this.defineSymbol(symbolKey, value);
     }
   }
 }

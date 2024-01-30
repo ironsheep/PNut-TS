@@ -8,8 +8,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-//import { SpinDocument } from '../classes/spinDocument';
-
 export function libraryDir(): string {
   return './lib';
 }
@@ -17,33 +15,6 @@ export function libraryDir(): string {
 export function workingDir(): string {
   return '.';
 }
-
-/**
- * Loads a Spin2 file into memory.
- * NOTE: The local directory is searched first then the built-in library path is searched
- * @param {string} filename - The name of the Spin2 file to load.
- * @returns {SpinDocument} A SpinDocument object representing the loaded Spin2 file.
- * @throws {Error} If the file does not exist or cannot be read.
- */
-/*
-export function loadSpin2File(filename: string): SpinDocument | undefined {
-  let desiredDocument: SpinDocument | undefined = undefined;
-  if (isSpin2File(filename)) {
-    // is it in our current directory?
-    let fileSpec: string = path.join(workingDir(), filename);
-    if (fileExists(fileSpec)) {
-      desiredDocument = new SpinDocument(fileSpec);
-    } else {
-      // no, is it in our LIB directory?
-      fileSpec = path.join(libraryDir(), filename);
-      if (fileExists(fileSpec)) {
-        desiredDocument = new SpinDocument(fileSpec);
-      }
-    }
-  }
-  return desiredDocument;
-}
-*/
 
 /**
  * filters interferring characters from URI form of fileSpec returning just a fileSpec
