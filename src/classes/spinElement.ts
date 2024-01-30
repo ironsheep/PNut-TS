@@ -70,6 +70,102 @@ export class SpinElement {
     return this._type == eElementType.type_comma && this._midStringComma == true;
   }
 
+  //
+  // special for type_op: elements
+  //
+  get operation(): number {
+    // returns the op_* value
+    let desiredValue: number = 0;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v1 parm (v1 << 0) 8 bits
+      desiredValue = this._value & 0xff; // 8 ls-bits
+    }
+    return desiredValue;
+  }
+
+  get precedence(): number {
+    // returns the op_* value
+    let desiredValue: number = 0;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v2 parm (v2 << 8) 8 bits
+      desiredValue = (this._value >> 8) & 0xff; // 8 ls-bits after shift
+    }
+    return desiredValue;
+  }
+
+  get bytecode(): number {
+    // returns the op_* value
+    let desiredValue: number = 0;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v3 parm (v3 << 16) 8 bits
+      desiredValue = (this._value >> 16) & 0xff; // 8 ls-bits after shift
+    }
+    return desiredValue;
+  }
+
+  get isTernary(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v4 parm (v4 << 24)
+      status = this._value & (1 << 24) ? true : false;
+    }
+    return status;
+  }
+
+  get isBinary(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v5 parm (v5 << 25)
+      status = this._value & (1 << 25) ? true : false;
+    }
+    return status;
+  }
+
+  get isUnary(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v6 parm (v6 << 26)
+      status = this._value & (1 << 26) ? true : false;
+    }
+    return status;
+  }
+
+  get isAssign(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v7 parm (v7 << 27)
+      status = this._value & (1 << 27) ? true : false;
+    }
+    return status;
+  }
+
+  get isFloat(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v8 parm (v8 << 28)
+      status = this._value & (1 << 28) ? true : false;
+    }
+    return status;
+  }
+
+  get isAlias(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v9 parm (v9 << 29)
+      status = this._value & (1 << 29) ? true : false;
+    }
+    return status;
+  }
+
+  get isHubcode(): boolean {
+    let status: boolean = false;
+    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+      // macro v10 parm (v10 << 30)
+      status = this._value & (1 << 30) ? true : false;
+    }
+    return status;
+  }
+
   set midStringComma(enable: boolean) {
     if (this._type == eElementType.type_comma) {
       this._midStringComma = enable;
