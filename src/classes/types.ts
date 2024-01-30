@@ -107,55 +107,7 @@ export function getElementTypeString(value: eElementType): string {
   return eElementType[value];
 }
 
-export enum eValueType {
-  value_undefined, // no value determined
-  //
-  // Blocks
-  //
-  block_con = 0, // 0x00
-  block_obj = 1, // 0x01
-  block_var = 2, // 0x02
-  block_pub = 3, // 0x03
-  block_pri = 4, // 0x04
-  block_dat = 5, // 0x05
-  //
-  // Directives
-  //
-  dir_orgh = 0, // 0x00
-  dir_alignw = 1, // 0x01
-  dir_alignl = 2, // 0x02
-  dir_org = 3, // 0x03
-  dir_orgf = 4, // 0x04
-  dir_res = 5, // 0x05
-  dir_fit = 6, // 0x06
-  //
-  // Ifs
-  //
-  if_never = 0, // 0x00
-  if_nc_and_nz = 1, // 0x01
-  if_nc_and_z = 2, // 0x02
-  if_nc = 3, // 0x03
-  if_c_and_nz = 4, // 0x04
-  if_nz = 5, // 0x05
-  if_c_ne_z = 6, // 0x06
-  if_nc_or_nz = 7, // 0x07
-  if_c_and_z = 8, // 0x08
-  if_c_eq_z = 9, // 0x09
-  if_z = 10, // 0x0a
-  if_nc_or_z = 11, // 0x0b
-  if_c = 12, // 0x0c
-  if_c_or_nz = 13, // 0x0d
-  if_c_or_z = 14, // 0x0e
-  if_always = 15, // 0x0f
-  //
-  // Info types
-  //
-  info_con = 0, // 0x00 data0 = value (must be followed by info_con_float)
-  info_con_float = 1, // 0x01 data0 = value
-  info_dat = 2, // 0x02 data0/1 = obj start/finish
-  info_dat_symbol = 3, // 0x03 data0 = offset, data1 = size
-  info_pub = 4, // 0x04 data0/1 = obj start/finish, data2/3 = name start/finish
-  info_pri = 5, // 0x05 data0/1 = obj start/finish, data2/3 = name start/finish
+export enum eOperationType {
   //
   //
   // Operators
@@ -244,7 +196,58 @@ export enum eValueType {
   op_logand = 60, // 0x3c &&, AND		binary		11	-
   op_logxor = 61, // 0x3d ^^, XOR		binary		12	-
   op_logor = 62, // 0x3e ||, OR		binary		13	-
-  op_ternary = 63, // 0x3f ? (:)		ternary		14	-
+  op_ternary = 63 // 0x3f ? (:)		ternary		14	-
+}
+
+export enum eValueType {
+  value_undefined = 0, // no value determined
+  //
+  // Blocks
+  //
+  block_con = 0, // 0x00
+  block_obj = 1, // 0x01
+  block_var = 2, // 0x02
+  block_pub = 3, // 0x03
+  block_pri = 4, // 0x04
+  block_dat = 5, // 0x05
+  //
+  // Directives
+  //
+  dir_orgh = 0, // 0x00
+  dir_alignw = 1, // 0x01
+  dir_alignl = 2, // 0x02
+  dir_org = 3, // 0x03
+  dir_orgf = 4, // 0x04
+  dir_res = 5, // 0x05
+  dir_fit = 6, // 0x06
+  //
+  // Ifs
+  //
+  if_never = 0, // 0x00
+  if_nc_and_nz = 1, // 0x01
+  if_nc_and_z = 2, // 0x02
+  if_nc = 3, // 0x03
+  if_c_and_nz = 4, // 0x04
+  if_nz = 5, // 0x05
+  if_c_ne_z = 6, // 0x06
+  if_nc_or_nz = 7, // 0x07
+  if_c_and_z = 8, // 0x08
+  if_c_eq_z = 9, // 0x09
+  if_z = 10, // 0x0a
+  if_nc_or_z = 11, // 0x0b
+  if_c = 12, // 0x0c
+  if_c_or_nz = 13, // 0x0d
+  if_c_or_z = 14, // 0x0e
+  if_always = 15, // 0x0f
+  //
+  // Info types
+  //
+  info_con = 0, // 0x00 data0 = value (must be followed by info_con_float)
+  info_con_float = 1, // 0x01 data0 = value
+  info_dat = 2, // 0x02 data0/1 = obj start/finish
+  info_dat_symbol = 3, // 0x03 data0 = offset, data1 = size
+  info_pub = 4, // 0x04 data0/1 = obj start/finish, data2/3 = name start/finish
+  info_pri = 5, // 0x05 data0/1 = obj start/finish, data2/3 = name start/finish
   //
   // Assembly push/pops
   //

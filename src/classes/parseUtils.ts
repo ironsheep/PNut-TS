@@ -5,7 +5,7 @@
 
 // a collection of generally useful functions for parsing spin
 
-import { eElementType, eValueType, eByteCode } from './types';
+import { eElementType, eValueType, eByteCode, eOperationType } from './types';
 import { Context } from '../utils/context';
 
 export interface iSpinSymbol {
@@ -1013,74 +1013,74 @@ export class SpinSymbolTables {
     // generated opcode table load
 
     //		oc		op		prec	bytecode	ternary	binary	unary	assign	float	alias	hubcode
-    this.opcodeValues.set(eOpcode.oc_bitnot, setOpcodeValue(eValueType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
-    this.opcodeValues.set(eOpcode.oc_neg, setOpcodeValue(eValueType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
-    this.opcodeValues.set(eOpcode.oc_fneg, setOpcodeValue(eValueType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub sym)
-    this.opcodeValues.set(eOpcode.oc_abs, setOpcodeValue(eValueType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
-    this.opcodeValues.set(eOpcode.oc_fabs, setOpcodeValue(eValueType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS
-    this.opcodeValues.set(eOpcode.oc_encod, setOpcodeValue(eValueType.op_encod, 0, eByteCode.bc_encod, 0, 0, 1, 1, 0, 0, 0)); //  ENCOD
-    this.opcodeValues.set(eOpcode.oc_decod, setOpcodeValue(eValueType.op_decod, 0, eByteCode.bc_decod, 0, 0, 1, 1, 0, 0, 0)); //  DECOD
-    this.opcodeValues.set(eOpcode.oc_bmask, setOpcodeValue(eValueType.op_bmask, 0, eByteCode.bc_bmask, 0, 0, 1, 1, 0, 0, 0)); //  BMASK
-    this.opcodeValues.set(eOpcode.oc_ones, setOpcodeValue(eValueType.op_ones, 0, eByteCode.bc_ones, 0, 0, 1, 1, 0, 0, 0)); //  ONES
-    this.opcodeValues.set(eOpcode.oc_sqrt, setOpcodeValue(eValueType.op_sqrt, 0, eByteCode.bc_sqrt, 0, 0, 1, 1, 0, 0, 0)); //  SQRT
-    this.opcodeValues.set(eOpcode.oc_fsqrt, setOpcodeValue(eValueType.op_fsqrt, 0, eByteCode.bc_fsqrt, 0, 0, 1, 0, 1, 0, 1)); //  FSQRT
-    this.opcodeValues.set(eOpcode.oc_qlog, setOpcodeValue(eValueType.op_qlog, 0, eByteCode.bc_qlog, 0, 0, 1, 1, 0, 0, 0)); //  QLOG
-    this.opcodeValues.set(eOpcode.oc_qexp, setOpcodeValue(eValueType.op_qexp, 0, eByteCode.bc_qexp, 0, 0, 1, 1, 0, 0, 0)); //  QEXP
-    this.opcodeValues.set(eOpcode.oc_shr, setOpcodeValue(eValueType.op_shr, 1, eByteCode.bc_shr, 0, 1, 0, 1, 0, 0, 0)); //  >>
-    this.opcodeValues.set(eOpcode.oc_shl, setOpcodeValue(eValueType.op_shl, 1, eByteCode.bc_shl, 0, 1, 0, 1, 0, 0, 0)); //  <<
-    this.opcodeValues.set(eOpcode.oc_sar, setOpcodeValue(eValueType.op_sar, 1, eByteCode.bc_sar, 0, 1, 0, 1, 0, 0, 0)); //  SAR
-    this.opcodeValues.set(eOpcode.oc_ror, setOpcodeValue(eValueType.op_ror, 1, eByteCode.bc_ror, 0, 1, 0, 1, 0, 0, 0)); //  ROR
-    this.opcodeValues.set(eOpcode.oc_rol, setOpcodeValue(eValueType.op_rol, 1, eByteCode.bc_rol, 0, 1, 0, 1, 0, 0, 0)); //  ROL
-    this.opcodeValues.set(eOpcode.oc_rev, setOpcodeValue(eValueType.op_rev, 1, eByteCode.bc_rev, 0, 1, 0, 1, 0, 0, 0)); //  REV
-    this.opcodeValues.set(eOpcode.oc_zerox, setOpcodeValue(eValueType.op_zerox, 1, eByteCode.bc_zerox, 0, 1, 0, 1, 0, 0, 0)); //  ZEROX
-    this.opcodeValues.set(eOpcode.oc_signx, setOpcodeValue(eValueType.op_signx, 1, eByteCode.bc_signx, 0, 1, 0, 1, 0, 0, 0)); //  SIGNX
-    this.opcodeValues.set(eOpcode.oc_bitand, setOpcodeValue(eValueType.op_bitand, 2, eByteCode.bc_bitand, 0, 1, 0, 1, 0, 0, 0)); //  &
-    this.opcodeValues.set(eOpcode.oc_bitxor, setOpcodeValue(eValueType.op_bitxor, 3, eByteCode.bc_bitxor, 0, 1, 0, 1, 0, 0, 0)); //  ^
-    this.opcodeValues.set(eOpcode.oc_bitor, setOpcodeValue(eValueType.op_bitor, 4, eByteCode.bc_bitor, 0, 1, 0, 1, 0, 0, 0)); //  |
-    this.opcodeValues.set(eOpcode.oc_mul, setOpcodeValue(eValueType.op_mul, 5, eByteCode.bc_mul, 0, 1, 0, 1, 1, 0, 0)); //  *
-    this.opcodeValues.set(eOpcode.oc_fmul, setOpcodeValue(eValueType.op_fmul, 5, eByteCode.bc_fmul, 0, 1, 0, 0, 1, 0, 1)); //  *.
-    this.opcodeValues.set(eOpcode.oc_div, setOpcodeValue(eValueType.op_div, 5, eByteCode.bc_div, 0, 1, 0, 1, 1, 0, 0)); //  /
-    this.opcodeValues.set(eOpcode.oc_fdiv, setOpcodeValue(eValueType.op_fdiv, 5, eByteCode.bc_fdiv, 0, 1, 0, 0, 1, 0, 1)); //  /.
-    this.opcodeValues.set(eOpcode.oc_divu, setOpcodeValue(eValueType.op_divu, 5, eByteCode.bc_divu, 0, 1, 0, 1, 0, 0, 0)); //  +/
-    this.opcodeValues.set(eOpcode.oc_rem, setOpcodeValue(eValueType.op_rem, 5, eByteCode.bc_rem, 0, 1, 0, 1, 0, 0, 0)); //  //
-    this.opcodeValues.set(eOpcode.oc_remu, setOpcodeValue(eValueType.op_remu, 5, eByteCode.bc_remu, 0, 1, 0, 1, 0, 0, 0)); //  +//
-    this.opcodeValues.set(eOpcode.oc_sca, setOpcodeValue(eValueType.op_sca, 5, eByteCode.bc_sca, 0, 1, 0, 1, 0, 0, 0)); //  SCA
-    this.opcodeValues.set(eOpcode.oc_scas, setOpcodeValue(eValueType.op_scas, 5, eByteCode.bc_scas, 0, 1, 0, 1, 0, 0, 0)); //  SCAS
-    this.opcodeValues.set(eOpcode.oc_frac, setOpcodeValue(eValueType.op_frac, 5, eByteCode.bc_frac, 0, 1, 0, 1, 0, 0, 0)); //  FRAC
-    this.opcodeValues.set(eOpcode.oc_add, setOpcodeValue(eValueType.op_add, 6, eByteCode.bc_add, 0, 1, 0, 1, 1, 0, 0)); //  +
-    this.opcodeValues.set(eOpcode.oc_fadd, setOpcodeValue(eValueType.op_fadd, 6, eByteCode.bc_fadd, 0, 1, 0, 0, 1, 0, 1)); //  +.
-    this.opcodeValues.set(eOpcode.oc_sub, setOpcodeValue(eValueType.op_sub, 6, eByteCode.bc_sub, 0, 1, 0, 1, 1, 0, 0)); //  -
-    this.opcodeValues.set(eOpcode.oc_fsub, setOpcodeValue(eValueType.op_fsub, 6, eByteCode.bc_fsub, 0, 1, 0, 0, 1, 0, 1)); //  -.
-    this.opcodeValues.set(eOpcode.oc_fge, setOpcodeValue(eValueType.op_fge, 7, eByteCode.bc_fge, 0, 1, 0, 1, 1, 0, 0)); //  #>
-    this.opcodeValues.set(eOpcode.oc_fle, setOpcodeValue(eValueType.op_fle, 7, eByteCode.bc_fle, 0, 1, 0, 1, 1, 0, 0)); //  <#
-    this.opcodeValues.set(eOpcode.oc_addbits, setOpcodeValue(eValueType.op_addbits, 8, eByteCode.bc_addbits, 0, 1, 0, 1, 0, 0, 0)); //  ADDBITS
-    this.opcodeValues.set(eOpcode.oc_addpins, setOpcodeValue(eValueType.op_addpins, 8, eByteCode.bc_addpins, 0, 1, 0, 1, 0, 0, 0)); //  ADDPINS
-    this.opcodeValues.set(eOpcode.oc_lt, setOpcodeValue(eValueType.op_lt, 9, eByteCode.bc_lt, 0, 1, 0, 0, 1, 0, 0)); //  <
-    this.opcodeValues.set(eOpcode.oc_flt, setOpcodeValue(eValueType.op_flt, 9, eByteCode.bc_flt, 0, 1, 0, 0, 1, 0, 1)); //  <.
-    this.opcodeValues.set(eOpcode.oc_ltu, setOpcodeValue(eValueType.op_ltu, 9, eByteCode.bc_ltu, 0, 1, 0, 0, 0, 0, 0)); //  +<
-    this.opcodeValues.set(eOpcode.oc_lte, setOpcodeValue(eValueType.op_lte, 9, eByteCode.bc_lte, 0, 1, 0, 0, 1, 0, 0)); //  <=
-    this.opcodeValues.set(eOpcode.oc_flte, setOpcodeValue(eValueType.op_flte, 9, eByteCode.bc_flte, 0, 1, 0, 0, 1, 0, 1)); //  <=.
-    this.opcodeValues.set(eOpcode.oc_lteu, setOpcodeValue(eValueType.op_lteu, 9, eByteCode.bc_lteu, 0, 1, 0, 0, 0, 0, 0)); //  +<=
-    this.opcodeValues.set(eOpcode.oc_e, setOpcodeValue(eValueType.op_e, 9, eByteCode.bc_e, 0, 1, 0, 0, 1, 0, 0)); //  ==
-    this.opcodeValues.set(eOpcode.oc_fe, setOpcodeValue(eValueType.op_fe, 9, eByteCode.bc_fe, 0, 1, 0, 0, 1, 0, 1)); //  ==.
-    this.opcodeValues.set(eOpcode.oc_ne, setOpcodeValue(eValueType.op_ne, 9, eByteCode.bc_ne, 0, 1, 0, 0, 1, 0, 0)); //  <>
-    this.opcodeValues.set(eOpcode.oc_fne, setOpcodeValue(eValueType.op_fne, 9, eByteCode.bc_fne, 0, 1, 0, 0, 1, 0, 1)); //  <>.
-    this.opcodeValues.set(eOpcode.oc_gte, setOpcodeValue(eValueType.op_gte, 9, eByteCode.bc_gte, 0, 1, 0, 0, 1, 0, 0)); //  >=
-    this.opcodeValues.set(eOpcode.oc_fgte, setOpcodeValue(eValueType.op_fgte, 9, eByteCode.bc_fgte, 0, 1, 0, 0, 1, 0, 1)); //  >=.
-    this.opcodeValues.set(eOpcode.oc_gteu, setOpcodeValue(eValueType.op_gteu, 9, eByteCode.bc_gteu, 0, 1, 0, 0, 0, 0, 0)); //  +>=
-    this.opcodeValues.set(eOpcode.oc_gt, setOpcodeValue(eValueType.op_gt, 9, eByteCode.bc_gt, 0, 1, 0, 0, 1, 0, 0)); //  >
-    this.opcodeValues.set(eOpcode.oc_fgt, setOpcodeValue(eValueType.op_fgt, 9, eByteCode.bc_fgt, 0, 1, 0, 0, 1, 0, 1)); //  >.
-    this.opcodeValues.set(eOpcode.oc_gtu, setOpcodeValue(eValueType.op_gtu, 9, eByteCode.bc_gtu, 0, 1, 0, 0, 0, 0, 0)); //  +>
-    this.opcodeValues.set(eOpcode.oc_ltegt, setOpcodeValue(eValueType.op_ltegt, 9, eByteCode.bc_ltegt, 0, 1, 0, 0, 1, 0, 0)); //  <=>
-    this.opcodeValues.set(eOpcode.oc_lognot, setOpcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 1, 0)); //  !!
-    this.opcodeValues.set(eOpcode.oc_lognot_name, setOpcodeValue(eValueType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 0, 0)); //  NOT
-    this.opcodeValues.set(eOpcode.oc_logand, setOpcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 1, 0)); //  &&
-    this.opcodeValues.set(eOpcode.oc_logand_name, setOpcodeValue(eValueType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 0, 0)); //  AND
-    this.opcodeValues.set(eOpcode.oc_logxor, setOpcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 1, 0)); //  ^^
-    this.opcodeValues.set(eOpcode.oc_logxor_name, setOpcodeValue(eValueType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 0, 0)); //  XOR
-    this.opcodeValues.set(eOpcode.oc_logor, setOpcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 1, 0)); //  ||
-    this.opcodeValues.set(eOpcode.oc_logor_name, setOpcodeValue(eValueType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 0, 0)); //  OR
-    this.opcodeValues.set(eOpcode.oc_ternary, setOpcodeValue(eValueType.op_ternary, 14, 0, 1, 0, 0, 1, 0, 0, 0)); //  ?
+    this.opcodeValues.set(eOpcode.oc_bitnot, setOpcodeValue(eOperationType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
+    this.opcodeValues.set(eOpcode.oc_neg, setOpcodeValue(eOperationType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
+    this.opcodeValues.set(eOpcode.oc_fneg, setOpcodeValue(eOperationType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub sym)
+    this.opcodeValues.set(eOpcode.oc_abs, setOpcodeValue(eOperationType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
+    this.opcodeValues.set(eOpcode.oc_fabs, setOpcodeValue(eOperationType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS
+    this.opcodeValues.set(eOpcode.oc_encod, setOpcodeValue(eOperationType.op_encod, 0, eByteCode.bc_encod, 0, 0, 1, 1, 0, 0, 0)); //  ENCOD
+    this.opcodeValues.set(eOpcode.oc_decod, setOpcodeValue(eOperationType.op_decod, 0, eByteCode.bc_decod, 0, 0, 1, 1, 0, 0, 0)); //  DECOD
+    this.opcodeValues.set(eOpcode.oc_bmask, setOpcodeValue(eOperationType.op_bmask, 0, eByteCode.bc_bmask, 0, 0, 1, 1, 0, 0, 0)); //  BMASK
+    this.opcodeValues.set(eOpcode.oc_ones, setOpcodeValue(eOperationType.op_ones, 0, eByteCode.bc_ones, 0, 0, 1, 1, 0, 0, 0)); //  ONES
+    this.opcodeValues.set(eOpcode.oc_sqrt, setOpcodeValue(eOperationType.op_sqrt, 0, eByteCode.bc_sqrt, 0, 0, 1, 1, 0, 0, 0)); //  SQRT
+    this.opcodeValues.set(eOpcode.oc_fsqrt, setOpcodeValue(eOperationType.op_fsqrt, 0, eByteCode.bc_fsqrt, 0, 0, 1, 0, 1, 0, 1)); //  FSQRT
+    this.opcodeValues.set(eOpcode.oc_qlog, setOpcodeValue(eOperationType.op_qlog, 0, eByteCode.bc_qlog, 0, 0, 1, 1, 0, 0, 0)); //  QLOG
+    this.opcodeValues.set(eOpcode.oc_qexp, setOpcodeValue(eOperationType.op_qexp, 0, eByteCode.bc_qexp, 0, 0, 1, 1, 0, 0, 0)); //  QEXP
+    this.opcodeValues.set(eOpcode.oc_shr, setOpcodeValue(eOperationType.op_shr, 1, eByteCode.bc_shr, 0, 1, 0, 1, 0, 0, 0)); //  >>
+    this.opcodeValues.set(eOpcode.oc_shl, setOpcodeValue(eOperationType.op_shl, 1, eByteCode.bc_shl, 0, 1, 0, 1, 0, 0, 0)); //  <<
+    this.opcodeValues.set(eOpcode.oc_sar, setOpcodeValue(eOperationType.op_sar, 1, eByteCode.bc_sar, 0, 1, 0, 1, 0, 0, 0)); //  SAR
+    this.opcodeValues.set(eOpcode.oc_ror, setOpcodeValue(eOperationType.op_ror, 1, eByteCode.bc_ror, 0, 1, 0, 1, 0, 0, 0)); //  ROR
+    this.opcodeValues.set(eOpcode.oc_rol, setOpcodeValue(eOperationType.op_rol, 1, eByteCode.bc_rol, 0, 1, 0, 1, 0, 0, 0)); //  ROL
+    this.opcodeValues.set(eOpcode.oc_rev, setOpcodeValue(eOperationType.op_rev, 1, eByteCode.bc_rev, 0, 1, 0, 1, 0, 0, 0)); //  REV
+    this.opcodeValues.set(eOpcode.oc_zerox, setOpcodeValue(eOperationType.op_zerox, 1, eByteCode.bc_zerox, 0, 1, 0, 1, 0, 0, 0)); //  ZEROX
+    this.opcodeValues.set(eOpcode.oc_signx, setOpcodeValue(eOperationType.op_signx, 1, eByteCode.bc_signx, 0, 1, 0, 1, 0, 0, 0)); //  SIGNX
+    this.opcodeValues.set(eOpcode.oc_bitand, setOpcodeValue(eOperationType.op_bitand, 2, eByteCode.bc_bitand, 0, 1, 0, 1, 0, 0, 0)); //  &
+    this.opcodeValues.set(eOpcode.oc_bitxor, setOpcodeValue(eOperationType.op_bitxor, 3, eByteCode.bc_bitxor, 0, 1, 0, 1, 0, 0, 0)); //  ^
+    this.opcodeValues.set(eOpcode.oc_bitor, setOpcodeValue(eOperationType.op_bitor, 4, eByteCode.bc_bitor, 0, 1, 0, 1, 0, 0, 0)); //  |
+    this.opcodeValues.set(eOpcode.oc_mul, setOpcodeValue(eOperationType.op_mul, 5, eByteCode.bc_mul, 0, 1, 0, 1, 1, 0, 0)); //  *
+    this.opcodeValues.set(eOpcode.oc_fmul, setOpcodeValue(eOperationType.op_fmul, 5, eByteCode.bc_fmul, 0, 1, 0, 0, 1, 0, 1)); //  *.
+    this.opcodeValues.set(eOpcode.oc_div, setOpcodeValue(eOperationType.op_div, 5, eByteCode.bc_div, 0, 1, 0, 1, 1, 0, 0)); //  /
+    this.opcodeValues.set(eOpcode.oc_fdiv, setOpcodeValue(eOperationType.op_fdiv, 5, eByteCode.bc_fdiv, 0, 1, 0, 0, 1, 0, 1)); //  /.
+    this.opcodeValues.set(eOpcode.oc_divu, setOpcodeValue(eOperationType.op_divu, 5, eByteCode.bc_divu, 0, 1, 0, 1, 0, 0, 0)); //  +/
+    this.opcodeValues.set(eOpcode.oc_rem, setOpcodeValue(eOperationType.op_rem, 5, eByteCode.bc_rem, 0, 1, 0, 1, 0, 0, 0)); //  //
+    this.opcodeValues.set(eOpcode.oc_remu, setOpcodeValue(eOperationType.op_remu, 5, eByteCode.bc_remu, 0, 1, 0, 1, 0, 0, 0)); //  +//
+    this.opcodeValues.set(eOpcode.oc_sca, setOpcodeValue(eOperationType.op_sca, 5, eByteCode.bc_sca, 0, 1, 0, 1, 0, 0, 0)); //  SCA
+    this.opcodeValues.set(eOpcode.oc_scas, setOpcodeValue(eOperationType.op_scas, 5, eByteCode.bc_scas, 0, 1, 0, 1, 0, 0, 0)); //  SCAS
+    this.opcodeValues.set(eOpcode.oc_frac, setOpcodeValue(eOperationType.op_frac, 5, eByteCode.bc_frac, 0, 1, 0, 1, 0, 0, 0)); //  FRAC
+    this.opcodeValues.set(eOpcode.oc_add, setOpcodeValue(eOperationType.op_add, 6, eByteCode.bc_add, 0, 1, 0, 1, 1, 0, 0)); //  +
+    this.opcodeValues.set(eOpcode.oc_fadd, setOpcodeValue(eOperationType.op_fadd, 6, eByteCode.bc_fadd, 0, 1, 0, 0, 1, 0, 1)); //  +.
+    this.opcodeValues.set(eOpcode.oc_sub, setOpcodeValue(eOperationType.op_sub, 6, eByteCode.bc_sub, 0, 1, 0, 1, 1, 0, 0)); //  -
+    this.opcodeValues.set(eOpcode.oc_fsub, setOpcodeValue(eOperationType.op_fsub, 6, eByteCode.bc_fsub, 0, 1, 0, 0, 1, 0, 1)); //  -.
+    this.opcodeValues.set(eOpcode.oc_fge, setOpcodeValue(eOperationType.op_fge, 7, eByteCode.bc_fge, 0, 1, 0, 1, 1, 0, 0)); //  #>
+    this.opcodeValues.set(eOpcode.oc_fle, setOpcodeValue(eOperationType.op_fle, 7, eByteCode.bc_fle, 0, 1, 0, 1, 1, 0, 0)); //  <#
+    this.opcodeValues.set(eOpcode.oc_addbits, setOpcodeValue(eOperationType.op_addbits, 8, eByteCode.bc_addbits, 0, 1, 0, 1, 0, 0, 0)); //  ADDBITS
+    this.opcodeValues.set(eOpcode.oc_addpins, setOpcodeValue(eOperationType.op_addpins, 8, eByteCode.bc_addpins, 0, 1, 0, 1, 0, 0, 0)); //  ADDPINS
+    this.opcodeValues.set(eOpcode.oc_lt, setOpcodeValue(eOperationType.op_lt, 9, eByteCode.bc_lt, 0, 1, 0, 0, 1, 0, 0)); //  <
+    this.opcodeValues.set(eOpcode.oc_flt, setOpcodeValue(eOperationType.op_flt, 9, eByteCode.bc_flt, 0, 1, 0, 0, 1, 0, 1)); //  <.
+    this.opcodeValues.set(eOpcode.oc_ltu, setOpcodeValue(eOperationType.op_ltu, 9, eByteCode.bc_ltu, 0, 1, 0, 0, 0, 0, 0)); //  +<
+    this.opcodeValues.set(eOpcode.oc_lte, setOpcodeValue(eOperationType.op_lte, 9, eByteCode.bc_lte, 0, 1, 0, 0, 1, 0, 0)); //  <=
+    this.opcodeValues.set(eOpcode.oc_flte, setOpcodeValue(eOperationType.op_flte, 9, eByteCode.bc_flte, 0, 1, 0, 0, 1, 0, 1)); //  <=.
+    this.opcodeValues.set(eOpcode.oc_lteu, setOpcodeValue(eOperationType.op_lteu, 9, eByteCode.bc_lteu, 0, 1, 0, 0, 0, 0, 0)); //  +<=
+    this.opcodeValues.set(eOpcode.oc_e, setOpcodeValue(eOperationType.op_e, 9, eByteCode.bc_e, 0, 1, 0, 0, 1, 0, 0)); //  ==
+    this.opcodeValues.set(eOpcode.oc_fe, setOpcodeValue(eOperationType.op_fe, 9, eByteCode.bc_fe, 0, 1, 0, 0, 1, 0, 1)); //  ==.
+    this.opcodeValues.set(eOpcode.oc_ne, setOpcodeValue(eOperationType.op_ne, 9, eByteCode.bc_ne, 0, 1, 0, 0, 1, 0, 0)); //  <>
+    this.opcodeValues.set(eOpcode.oc_fne, setOpcodeValue(eOperationType.op_fne, 9, eByteCode.bc_fne, 0, 1, 0, 0, 1, 0, 1)); //  <>.
+    this.opcodeValues.set(eOpcode.oc_gte, setOpcodeValue(eOperationType.op_gte, 9, eByteCode.bc_gte, 0, 1, 0, 0, 1, 0, 0)); //  >=
+    this.opcodeValues.set(eOpcode.oc_fgte, setOpcodeValue(eOperationType.op_fgte, 9, eByteCode.bc_fgte, 0, 1, 0, 0, 1, 0, 1)); //  >=.
+    this.opcodeValues.set(eOpcode.oc_gteu, setOpcodeValue(eOperationType.op_gteu, 9, eByteCode.bc_gteu, 0, 1, 0, 0, 0, 0, 0)); //  +>=
+    this.opcodeValues.set(eOpcode.oc_gt, setOpcodeValue(eOperationType.op_gt, 9, eByteCode.bc_gt, 0, 1, 0, 0, 1, 0, 0)); //  >
+    this.opcodeValues.set(eOpcode.oc_fgt, setOpcodeValue(eOperationType.op_fgt, 9, eByteCode.bc_fgt, 0, 1, 0, 0, 1, 0, 1)); //  >.
+    this.opcodeValues.set(eOpcode.oc_gtu, setOpcodeValue(eOperationType.op_gtu, 9, eByteCode.bc_gtu, 0, 1, 0, 0, 0, 0, 0)); //  +>
+    this.opcodeValues.set(eOpcode.oc_ltegt, setOpcodeValue(eOperationType.op_ltegt, 9, eByteCode.bc_ltegt, 0, 1, 0, 0, 1, 0, 0)); //  <=>
+    this.opcodeValues.set(eOpcode.oc_lognot, setOpcodeValue(eOperationType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 1, 0)); //  !!
+    this.opcodeValues.set(eOpcode.oc_lognot_name, setOpcodeValue(eOperationType.op_lognot, 10, eByteCode.bc_lognot, 0, 0, 1, 1, 0, 0, 0)); //  NOT
+    this.opcodeValues.set(eOpcode.oc_logand, setOpcodeValue(eOperationType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 1, 0)); //  &&
+    this.opcodeValues.set(eOpcode.oc_logand_name, setOpcodeValue(eOperationType.op_logand, 11, eByteCode.bc_logand, 0, 1, 0, 1, 0, 0, 0)); //  AND
+    this.opcodeValues.set(eOpcode.oc_logxor, setOpcodeValue(eOperationType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 1, 0)); //  ^^
+    this.opcodeValues.set(eOpcode.oc_logxor_name, setOpcodeValue(eOperationType.op_logxor, 12, eByteCode.bc_logxor, 0, 1, 0, 1, 0, 0, 0)); //  XOR
+    this.opcodeValues.set(eOpcode.oc_logor, setOpcodeValue(eOperationType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 1, 0)); //  ||
+    this.opcodeValues.set(eOpcode.oc_logor_name, setOpcodeValue(eOperationType.op_logor, 13, eByteCode.bc_logor, 0, 1, 0, 1, 0, 0, 0)); //  OR
+    this.opcodeValues.set(eOpcode.oc_ternary, setOpcodeValue(eOperationType.op_ternary, 14, 0, 1, 0, 0, 1, 0, 0, 0)); //  ?
 
     this.find_symbol_s1 = [
       // find_symbol_s1

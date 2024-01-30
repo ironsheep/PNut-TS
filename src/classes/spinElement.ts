@@ -4,7 +4,7 @@
 // src/classes/parseUtils.ts
 
 import { eElementType, getElementTypeString } from './types';
-import { toFloatString } from '../utils/float32';
+import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
 
@@ -89,7 +89,7 @@ export class SpinElement {
     if (this.isEndOfLine) {
       valueInterp = '';
     } else if (this.isConstantFloat) {
-      valueInterp = `(${toFloatString(this.value)})`;
+      valueInterp = `(${float32ToString(this.value)})`;
     } else if (this.valueIsNumber) {
       if (this.isOperation) {
         valueInterp = `(0x${this.value.toString(16).toUpperCase()})`;

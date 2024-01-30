@@ -3,7 +3,7 @@
 
 // src/classes/spinElementizer.ts
 
-import { toSinglePrecisionFloat, toSinglePrecisionHex, toFloatString } from '../utils/float32';
+import { stringToFloat32, float32ToHexString, float32ToString } from '../utils/float32';
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { eElementType, getElementTypeString } from './types';
@@ -251,7 +251,7 @@ export class SpinElementizer {
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
     const elemTypeStr: string = getElementTypeString(typeFound);
-    const valueToDisplay: string | number = typeFound == eElementType.type_con_float ? toFloatString(valueFound) : valueFound;
+    const valueToDisplay: string | number = typeFound == eElementType.type_con_float ? float32ToString(valueFound) : valueFound;
     // return our 1 iElement within an array
     if (returningSingleEntry) {
       const lineNbrString: string = this.lineNumberString(this.symbolLineNumber, this.symbolCharacterOffset);
@@ -579,19 +579,19 @@ export class SpinElementizer {
     let didMatch: boolean = false;
     const float1NumberMatch = line.match(isFloat1NumberRegEx);
     if (float1NumberMatch) {
-      interpValue = toSinglePrecisionFloat(float1NumberMatch[0].replace('_', ''));
+      interpValue = stringToFloat32(float1NumberMatch[0].replace('_', ''));
       charsUsed = float1NumberMatch[0].length;
       didMatch = true;
     } else {
       const float2NumberMatch = line.match(isFloat2NumberRegEx);
       if (float2NumberMatch) {
-        interpValue = toSinglePrecisionFloat(float2NumberMatch[0].replace('_', ''));
+        interpValue = stringToFloat32(float2NumberMatch[0].replace('_', ''));
         charsUsed = float2NumberMatch[0].length;
         didMatch = true;
       } else {
         const float3NumberMatch = line.match(isFloat3NumberRegEx);
         if (float3NumberMatch) {
-          interpValue = toSinglePrecisionFloat(float3NumberMatch[0].replace('_', ''));
+          interpValue = stringToFloat32(float3NumberMatch[0].replace('_', ''));
           charsUsed = float3NumberMatch[0].length;
           didMatch = true;
         }
@@ -599,11 +599,11 @@ export class SpinElementizer {
     }
     if (didMatch) {
       // Validate it's a legal floating point number
-      if (toSinglePrecisionHex(interpValue) == '7f800000') {
+      if (float32ToHexString(interpValue) == '7f800000') {
         // [error_fpcmbw]
         throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
       }
-      const floatValueStr: string = `0x${toSinglePrecisionHex(interpValue)}`;
+      const floatValueStr: string = `0x${float32ToHexString(interpValue)}`;
       this.logMessage(`  -- decimalFloatConversion(${line}) = interpValue=(${floatValueStr})`);
     }
     return [didMatch, charsUsed, interpValue];
