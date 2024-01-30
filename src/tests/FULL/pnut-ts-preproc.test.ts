@@ -40,10 +40,12 @@ test('CLI generates correct parser output', () => {
     }
     // Read the generated output file
     const reportFSpec = path.join(dirPath, `${basename}.pre`);
+    // remvoe newlines and trailing whitespace on each line
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split(/\s?\n/);
 
     // Read the golden file
     const goldenFSpec = path.join(dirPath, `${basename}.pre.GOLD`);
+    // remvoe newlines and trailing whitespace on each line
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s?\n/);
 
     // Compare the output to the golden file, ignoring lines that start with
