@@ -16,11 +16,11 @@ A couple of command line options affect the proprocessing:
 
 | Option | Effect | 
 | --- | --- | 
-| <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  #elseifdef` or `#elseifndef` statements |
+| <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements |
 | <PRE>-U \<symbol></PRE>  | Prevents a subsequent `#define <symbol>` found in the .spin2 code from having any effect
 | <PRE>-I \<directory></PRE>  | set the folder to search within for `#include "filename(.spin2)" statements
 
-**NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means all #included files and all files specified in the OBJ block of each compiled object.
+**NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means that the compilation of all #included files and all files specified in the OBJ block of each object will be affected by the -D and -U options.
 
 ## Preprocessor Directives
 
