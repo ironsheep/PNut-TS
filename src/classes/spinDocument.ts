@@ -133,10 +133,10 @@ export class SpinDocument {
     // From header (doc-only and non-doc) comments identify required version if any version
     // Process raw-lines into file content lines w/original line numbers based on #ifdef/#ifndef, etc. directives
     this.logMessage('CODE: preProcess()');
+    let inPreProcIForIFNOT: boolean = false;
+    let thisSideKeepsCode: boolean = false;
     for (let index = 0; index < this.rawLines.length; index++) {
-      let inPreProcIForIFNOT: boolean = false;
       let skipThisline: boolean = false;
-      let thisSideKeepsCode: boolean = false;
       const currLine = this.rawLines[index];
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
@@ -167,6 +167,7 @@ export class SpinDocument {
           // parse #undef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
+            this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIFNOT=(${inPreProcIForIFNOT}), thisSideKeepsCode=(${thisSideKeepsCode})`);
             if ((inPreProcIForIFNOT && thisSideKeepsCode) || !inPreProcIForIFNOT) {
               if (!this.preProcSymbols.remove(symbol)) {
                 // ERROR no such symbol
@@ -184,10 +185,10 @@ export class SpinDocument {
         } else if (currLine.startsWith('#ifdef') || currLine.startsWith('#elseifdef')) {
           // parse #ifdef {symbol}
           // parse #elseifdef {symbol}
+          inPreProcIForIFNOT = true;
+          this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            inPreProcIForIFNOT = true;
-            this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
             if (this.preProcSymbols.exists(symbol)) {
               this.logMessage(`CODE: have symbol [${symbol}]`);
               // found symbol... we are keeping code from IF side
@@ -205,10 +206,10 @@ export class SpinDocument {
         } else if (currLine.startsWith('#ifndef') || currLine.startsWith('#elseifndef')) {
           // parse #ifndef {symbol}
           // parse #elseifndef {symbol}
+          inPreProcIForIFNOT = true;
+          this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            inPreProcIForIFNOT = true;
-            this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
             if (this.preProcSymbols.exists(symbol)) {
               // found symbol... we are keeping code from ELSE side
               this.logMessage(`CODE: don't have symbol [${symbol}]`);
@@ -234,13 +235,12 @@ export class SpinDocument {
           }
         } else if (currLine.startsWith('#endif')) {
           // parse #endif
-          if (inPreProcIForIFNOT) {
-            inPreProcIForIFNOT = false;
-            this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
-          } else {
+          if (!inPreProcIForIFNOT) {
             // ERROR missing preceeding #if*...
             this.reportError(`#endif without earlier #if*...`, index, 0);
           }
+          inPreProcIForIFNOT = false;
+          this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
         } else if (currLine.startsWith('#error')) {
           // parse #error
           const message: string = currLine.substring(7);
@@ -432,7 +432,7 @@ export class SpinDocument {
     baseSymbols['__propeller2__'] = 1;
     baseSymbols['__PNUT_TS__'] = 1;
     baseSymbols['__DATE__'] = formattedDate;
-    baseSymbols['__FILE__'] = 1;
+    baseSymbols['__FILE__'] = this.fileBaseName;
     baseSymbols['__TIME__'] = formattedTime;
     if (this.ctx?.compileOptions.enableDebug) {
       baseSymbols['__DEBUG__'] = 1;

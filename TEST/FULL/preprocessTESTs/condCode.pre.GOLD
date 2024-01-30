@@ -1,0 +1,39 @@
+' Report for regression testing
+' Run: 01/30/2024
+#
+' ---------------------------------------
+[000] 1: '' =================================================================================================
+[001] 2: ''   Purpose.... Regression TEST: ifdef'd code test
+[002] 3: ''   Authors.... Stephen M Moraco
+[003] 4: ''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
+[004] 5: ''               -- see below for terms of use
+[005] 6: ''   E-mail..... stephen@ironsheep.biz
+[006] 7: ''   Started.... Jan 2024
+[007] 8: '' =================================================================================================
+[008] 9: ' NOTE: this file is processed twice once with no directives and once with -DCLOCK_300MHZ directive
+[009] 10: ' {Spin2_v43}
+[010] 11:
+[011] 13:
+[012] 14: CON { timing }
+[013] 15:
+[014] 22:
+[015] 24:
+[016] 25:   CLK_FREQ = 200_000_000                                        ' system freq as a constant
+[017] 26:
+[018] 28:
+[019] 29:   _clkfreq = CLK_FREQ                                           ' set system clock
+[020] 30:
+[021] 31:
+[022] 32: CON { license }
+[023] 33: {{
+[024] 34:
+[025] 35:  -------------------------------------------------------------------------------------------------
+[026] 36:   MIT License
+[027] 37:
+[028] 38:   Copyright (c) 2024 Iron Sheep Productions, LLC
+[029] 39:
+[030] 40:   Permission is hereby granted... dummy license block for test purposes
+[031] 41:  =================================================================================================
+[032] 42: }}
+[033] 43:
+' ---------------------------------------
