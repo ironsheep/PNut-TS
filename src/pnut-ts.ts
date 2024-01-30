@@ -174,30 +174,25 @@ export class PNutInTypeScript {
     let includeDir: string = '';
     if (this.options.Include) {
       includeDir = this.options.Include;
+      this.context.preProcessorOptions.includeFolder = includeDir;
     }
     let newSymbol: string = '';
     if (this.options.Define) {
       newSymbol = this.options.Define;
+      // internally all Preprocessor symbols are UPPER CASE
+      this.context.preProcessorOptions.defSymbols.push(newSymbol.toUpperCase());
     }
     let oldSymbol: string = '';
     if (this.options.Undefine) {
       oldSymbol = this.options.Undefine;
+      // internally all Preprocessor symbols are UPPER CASE
+      this.context.preProcessorOptions.undefSymbols.push(oldSymbol.toUpperCase());
     }
 
     if (filename !== undefined && filename !== '') {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
       this.spinDocument = new SpinDocument(this.context, filename);
       this.spinDocument.defineSymbol('__VERSION__', this.version);
-
-      if (this.options.Include) {
-        this.spinDocument.setIncludePath(includeDir);
-      }
-      if (this.options.Define) {
-        this.spinDocument.defineSymbol(newSymbol, 1);
-      }
-      if (this.options.Undefine) {
-        this.spinDocument.undefineSymbol(oldSymbol);
-      }
     } else {
       if (this.requiresFilename) {
         console.log('arguments: %O', this.program.args);

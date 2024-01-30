@@ -20,6 +20,12 @@ export interface ReportOptions {
   writePreprocessReport: boolean;
 }
 
+export interface PreProcessorOptions {
+  defSymbols: string[]; // symbols from -Dsymbol
+  undefSymbols: string[]; // symbols from -Usymbol
+  includeFolder: string;
+}
+
 export interface CompileOptions {
   writeFlash: boolean; // after compile, load to flash and run
   writeRAM: boolean; // after compile, load to RAM and run
@@ -33,6 +39,7 @@ export interface Context {
   compileOptions: CompileOptions;
   logOptions: LogOptions;
   reportOptions: ReportOptions;
+  preProcessorOptions: PreProcessorOptions;
 }
 
 export function createContext(): Context {
@@ -42,6 +49,7 @@ export function createContext(): Context {
     logger: new Logger(),
     compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
     logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
-    reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false }
+    reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false },
+    preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolder: '' }
   };
 }

@@ -94,16 +94,26 @@ export class SpinDocument {
       this.logMessage(`CODE: ERROR failed to load [${this.fileBaseName}] from [${this.docFolder}]`);
     }
 
+    // load our predefined symbols with values
     this.preloadSymbolTable();
+
+    // add any symbols arriving from the command line
+    const cliDefinedSymbols: string[] = this.ctx.preProcessorOptions.defSymbols;
+    if (cliDefinedSymbols.length > 0) {
+      for (let index = 0; index < cliDefinedSymbols.length; index++) {
+        const newSymbolName = cliDefinedSymbols[index];
+        this.defineSymbol(newSymbolName, 1);
+      }
+    }
   }
 
   public defineSymbol(newSymbol: string, value: string | number): void {
-    this.logMessage(`CODE: defineSymbol(${newSymbol})=[${value}]`);
+    this.logMessage(`CODE: defSymbol(${newSymbol})=[${value}]`);
     this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
   }
 
-  public undefineSymbol(oldSymbol: string): void {
-    this.logMessage(`CODE: undefineSymbol(${oldSymbol})`);
+  private undefineSymbol(oldSymbol: string): void {
+    this.logMessage(`CODE: undefSymbol(${oldSymbol})`);
     this.preProcSymbols.remove(oldSymbol);
   }
 
@@ -157,8 +167,13 @@ export class SpinDocument {
           // parse #define {symbol} {value}
           const [symbol, value] = this.getSymbolValue(currLine);
           if (symbol) {
-            this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
-            this.preProcSymbols.add(symbol, eElementType.type_con, value);
+            const canAdd: boolean = this.ctx.preProcessorOptions.undefSymbols.includes(symbol) ? false : true;
+            if (canAdd) {
+              this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
+              this.preProcSymbols.add(symbol, eElementType.type_con, value);
+            } else {
+              this.logMessage(`#define of [${symbol}] prevented by "-U ${symbol}" on command line`);
+            }
           } else {
             // ERROR bad statement
             this.reportError(`#define is missing symbol name`, index, 0);
@@ -167,7 +182,7 @@ export class SpinDocument {
           // parse #undef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIFNOT=(${inPreProcIForIFNOT}), thisSideKeepsCode=(${thisSideKeepsCode})`);
+            // this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIFNOT=(${inPreProcIForIFNOT}), thisSideKeepsCode=(${thisSideKeepsCode})`);
             if ((inPreProcIForIFNOT && thisSideKeepsCode) || !inPreProcIForIFNOT) {
               if (!this.preProcSymbols.remove(symbol)) {
                 // ERROR no such symbol
@@ -185,50 +200,62 @@ export class SpinDocument {
         } else if (currLine.startsWith('#ifdef') || currLine.startsWith('#elseifdef')) {
           // parse #ifdef {symbol}
           // parse #elseifdef {symbol}
-          inPreProcIForIFNOT = true;
-          this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
-          const symbol = this.getSymbolName(currLine);
-          if (symbol) {
-            if (this.preProcSymbols.exists(symbol)) {
-              this.logMessage(`CODE: have symbol [${symbol}]`);
-              // found symbol... we are keeping code from IF side
-              thisSideKeepsCode = true;
+          const isElseForm: boolean = currLine.startsWith('#elseifdef');
+          if (isElseForm == false || (isElseForm == true && inPreProcIForIFNOT == true)) {
+            inPreProcIForIFNOT = true;
+            // this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
+            const symbol = this.getSymbolName(currLine);
+            if (symbol) {
+              if (this.preProcSymbols.exists(symbol)) {
+                this.logMessage(`CODE: have symbol [${symbol}]`);
+                // found symbol... we are keeping code from IF side
+                thisSideKeepsCode = true;
+              } else {
+                // symbol doesn't exist keep code from ELSE side
+                this.logMessage(`CODE: don't have symbol [${symbol}]`);
+                thisSideKeepsCode = false;
+              }
+              // this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
             } else {
-              // symbol doesn't exist keep code from ELSE side
-              this.logMessage(`CODE: don't have symbol [${symbol}]`);
-              thisSideKeepsCode = false;
+              // ERROR bad statement
+              this.reportError(`#directive is missing symbol name`, index, 0);
             }
-            this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
           } else {
-            // ERROR bad statement
-            this.reportError(`#directive is missing symbol name`, index, 0);
+            // ERROR missing preceeding #if*...
+            this.reportError(`#elseifdef without earlier #if*...`, index, 0);
           }
         } else if (currLine.startsWith('#ifndef') || currLine.startsWith('#elseifndef')) {
           // parse #ifndef {symbol}
           // parse #elseifndef {symbol}
-          inPreProcIForIFNOT = true;
-          this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
-          const symbol = this.getSymbolName(currLine);
-          if (symbol) {
-            if (this.preProcSymbols.exists(symbol)) {
-              // found symbol... we are keeping code from ELSE side
-              this.logMessage(`CODE: don't have symbol [${symbol}]`);
-              thisSideKeepsCode = false;
+          const isElseForm: boolean = currLine.startsWith('#elseifndef');
+          if (isElseForm == false || (isElseForm == true && inPreProcIForIFNOT == true)) {
+            inPreProcIForIFNOT = true;
+            // this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
+            const symbol = this.getSymbolName(currLine);
+            if (symbol) {
+              if (this.preProcSymbols.exists(symbol)) {
+                // found symbol... we are keeping code from ELSE side
+                this.logMessage(`CODE: don't have symbol [${symbol}]`);
+                thisSideKeepsCode = false;
+              } else {
+                // symbol doesn't exist keep code from IF side
+                this.logMessage(`CODE: have symbol [${symbol}]`);
+                thisSideKeepsCode = true;
+              }
+              // this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
             } else {
-              // symbol doesn't exist keep code from IF side
-              this.logMessage(`CODE: have symbol [${symbol}]`);
-              thisSideKeepsCode = true;
+              // ERROR bad statement
+              this.reportError(`#directive is missing symbol name`, index, 0);
             }
-            this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
           } else {
-            // ERROR bad statement
-            this.reportError(`#directive is missing symbol name`, index, 0);
+            // ERROR missing preceeding #if*...
+            this.reportError(`#elseifndef without earlier #if*...`, index, 0);
           }
         } else if (currLine.startsWith('#else')) {
           // parse #else
           if (inPreProcIForIFNOT) {
             thisSideKeepsCode = !thisSideKeepsCode;
-            this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
+            // this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
           } else {
             // ERROR missing preceeding #if*...
             this.reportError(`#else without earlier #if*...`, index, 0);
@@ -240,7 +267,7 @@ export class SpinDocument {
             this.reportError(`#endif without earlier #if*...`, index, 0);
           }
           inPreProcIForIFNOT = false;
-          this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
+          // this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
         } else if (currLine.startsWith('#error')) {
           // parse #error
           const message: string = currLine.substring(7);
@@ -289,14 +316,16 @@ export class SpinDocument {
       }
 
       if (!skipThisline) {
-        this.logMessage(`CODE: Line KEEP [${currLine}]`);
+        //this.logMessage(`CODE: Line KEEP [${currLine}]`);
         this.preprocessedLines.push(new TextLine(currLine, index));
       } else {
-        this.logMessage(`CODE: Line SKIP [${currLine}]`);
+        //this.logMessage(`CODE: Line SKIP [${currLine}]`);
       }
     }
+    this.getVersionFromHeader(this.headerComments);
 
     this.dumpErrors(); // report on errors if any found
+
     // if regression testing the emit our preprocessing result
     if (this.ctx?.reportOptions.writePreprocessReport) {
       this.logMessage('CODE: writePreprocessReport()');
@@ -341,8 +370,8 @@ export class SpinDocument {
 
   private splitLineOnWhiteSpace(line: string): string[] {
     const lineParts = line.split(/[ \t\r\n]/).filter(Boolean);
-    //this.logMessage(`CODE: (DBG) splitLineOnWhiteSpace(${line})`);
-    //this.logMessage(`CODE: (DBG) lineParts=[${lineParts}](${lineParts.length})`);
+    // this.logMessage(`CODE: (DBG) splitLineOnWhiteSpace(${line})`);
+    // this.logMessage(`CODE: (DBG) lineParts=[${lineParts}](${lineParts.length})`);
     return lineParts;
   }
 
@@ -350,7 +379,8 @@ export class SpinDocument {
     const lineParts = this.splitLineOnWhiteSpace(line);
     let symbol: string | undefined = undefined;
     if (lineParts.length > 1) {
-      symbol = lineParts[1];
+      // internally all Preprocessor symbols are UPPER CASE
+      symbol = lineParts[1].toUpperCase();
     }
     return symbol;
   }
@@ -360,7 +390,8 @@ export class SpinDocument {
     let symbol: string | undefined = undefined;
     let value: string = '1';
     if (lineParts.length > 1) {
-      symbol = lineParts[1];
+      // internally all Preprocessor symbols are UPPER CASE
+      symbol = lineParts[1].toUpperCase();
       if (lineParts.length > 2) {
         value = lineParts[2];
       }
@@ -416,6 +447,24 @@ export class SpinDocument {
     // return object with additional details about this line
     const desiredLine: TextLine = desiredString != null ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
     return desiredLine;
+  }
+
+  private getVersionFromHeader(headerComments: string[]): void {
+    const spinLangVersionRegEx = /\{Spin2_v(\d{2,3})\}/;
+    for (let index = 0; index < headerComments.length; index++) {
+      const headerLine = headerComments[index];
+      const symbolMatch = headerLine.match(spinLangVersionRegEx);
+      // yields: symbolMatch=[{Spin2_v43},43](2), hdr=[' {Spin2_v43}]
+      if (symbolMatch) {
+        const possibleVersion = parseInt(symbolMatch[1]);
+        //this.logMessage(`- #${index + 1}: symbolMatch=[${symbolMatch}](${symbolMatch?.length}), hdr=[${headerLine}]`);
+        this.requiredVersion = this.legalVersions.includes(possibleVersion) ? possibleVersion : 0;
+        //this.logMessage(`  -- possibleVersion=(${possibleVersion}) -> requiredVersion=(${this.requiredVersion})`);
+        if (possibleVersion != this.requiredVersion) {
+          this.reportError(`ERROR: ${symbolMatch[0]}, ${possibleVersion} is not a legal Spin2 Language Version!`, index, 0);
+        }
+      }
+    }
   }
 
   private preloadSymbolTable() {

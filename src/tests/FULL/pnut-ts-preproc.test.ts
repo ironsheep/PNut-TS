@@ -40,11 +40,11 @@ test('CLI generates correct parser output', () => {
     }
     // Read the generated output file
     const reportFSpec = path.join(dirPath, `${basename}.pre`);
-    const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
+    const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split(/\s?\n/);
 
     // Read the golden file
     const goldenFSpec = path.join(dirPath, `${basename}.pre.GOLD`);
-    const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
+    const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s?\n/);
 
     // Compare the output to the golden file, ignoring lines that start with
     //  '#' which are comments
@@ -52,7 +52,7 @@ test('CLI generates correct parser output', () => {
     //  'type_end_file' which is a type new to Pnut_TS
     //  'unused' which are unused in Pnut
 
-    const stringsToExclude = ['#', ';', 'type_end_file', 'unused'];
+    const stringsToExclude = ['#', "'"];
 
     const reportFiltered = reportContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
     const goldenFiltered = goldenContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
@@ -66,6 +66,10 @@ test('CLI generates correct parser output', () => {
     }
   }
 
+  for (let index = 0; index < failList.length; index++) {
+    const fileName = failList[index];
+    console.log(`-FAIL(#${index + 1}): [${fileName}]`);
+  }
   //console.log(`Pass count: ${passCount}`);
   //console.log(`Fail list: ${failList}`);
 
