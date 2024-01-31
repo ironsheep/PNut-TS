@@ -15,10 +15,25 @@ We are re-implemting Pnut for Windows in a platform agnostic language.
 
 Pnut source is currently found in a Parallax Repo [P2_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public)
 
+## Table of Contents
+
+On this Page:
+
+- [Simplified project goals](#simplified-project-goals) 
+- [Accomplishments of this port effort](#accomplishments-of-this-port-effort) 
+- [Possible Futures](#possible-futures) 
+- [Typescript References](#typescript-references) 
+- [Extensions for viewing X86 code](#extensions-for-viewing-x86-code) 
+- [Repository Configuration](#repository-configuration) 
+
+Additional pages:
+
+- [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
+
+## Simplified project goals
+
 **Question**? This will be both P1 and P2 compiler, right?
 - Actually, this will be P2 until it is released then we'll contemplate adding P1
-
-### Simplified project goals
 
 - Replace all use of Delphi/Pascal, x86 assembly, and SmallBASIC with pure typescript.
 - Produce a command line tool (command line options may be slightly different)
