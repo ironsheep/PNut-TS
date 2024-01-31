@@ -18,20 +18,24 @@ describe('Test directory existence', () => {
   });
 });
 
-test('CLI generates correct parser output', () => {
+test('CLI generates correct preProcessor output', () => {
   // Get all .spin2 files in the ./TEST/element/ directory
 
   const files = glob.sync(`${dirPath}/*.spin2`);
 
   let passCount = 0;
   const failList = [];
-  const options: string = '--regression preproc --';
+  const options: string = '-c --regression preproc --';
 
   // Iterate over each .spin2 file
   for (const file of files) {
     // Run the CLI with the input file
     const basename = path.basename(file, '.spin2');
-    //console.log(`LOG basename=[${basename}]`);
+    const reportFSpec = path.join(dirPath, `${basename}.pre`);
+    // if the report file exists delete it before we start
+    if (fs.existsSync(reportFSpec)) {
+      fs.unlinkSync(reportFSpec);
+    }
 
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
@@ -39,13 +43,12 @@ test('CLI generates correct parser output', () => {
       console.error(`Error running PNut-TS: ${error}`);
     }
     // Read the generated output file
-    const reportFSpec = path.join(dirPath, `${basename}.pre`);
-    // remvoe newlines and trailing whitespace on each line
+    // remove newlines and trailing whitespace on each line
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split(/\s?\n/);
 
     // Read the golden file
     const goldenFSpec = path.join(dirPath, `${basename}.pre.GOLD`);
-    // remvoe newlines and trailing whitespace on each line
+    // remove newlines and trailing whitespace on each line
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s?\n/);
 
     // Compare the output to the golden file, ignoring lines that start with
