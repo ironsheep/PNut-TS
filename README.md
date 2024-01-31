@@ -13,15 +13,13 @@
 A joint project between Chip Gracey and Stephen M Moraco.
 We are re-implemting Pnut for Windows in a platform agnostic language.
 
-
-
 ## Table of Contents
 
 On this Page:
 
-- [Simplified project goals](#simplified-project-goals) 
-- [Accomplishments of this port effort](#accomplishments-of-this-port-effort) 
-- [Possible Futures](#possible-futures) 
+- [Simplified project goals](#simplified-project-goals)
+- [Accomplishments of this port effort](#accomplishments-of-this-port-effort)
+- [Possible Futures](#possible-futures)
 - [Typescript References](#typescript-references) - good references for studying TypeScript
 - [Extensions for viewing X86 code](#extensions-for-viewing-x86-code) - during the project we are porting x86 code. These extensions help us view the x86 code
 - [Repository Configuration](#repository-configuration) - more about this Repo.
@@ -57,7 +55,6 @@ Now that we have a compiler, how much more would it take to port:
 - The Debugger itself.
 - Port the P1 compiler, auto selecting it from this compiler when asked to process .spin files.
 
-
 ## Typescript References
 
 I'm usually learning as I go. I'm searching the web for best patterns of how to do "such and such". Here are a couple of quick links for getting good answers and for finding reference docs along with a few more that look to be useful:
@@ -76,7 +73,6 @@ I'm using the following extensions which make the viewing of the .asm Pnut .asm 
 - [Intel x86 Instruction Reference](https://marketplace.visualstudio.com/items?itemName=whiteout2.x86ex)
 
 Download these extensions then close all VSCode instances then open VSCode and they'll be working.
-
 
 ## Repository Configuration
 

@@ -14,8 +14,8 @@
 
 A couple of command line options affect the proprocessing:
 
-| Option | Effect | 
-| --- | --- | 
+| Option | Effect |
+| --- | --- |
 | <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements |
 | <PRE>-U \<symbol></PRE>  | Prevents a subsequent `#define <symbol>` found in the .spin2 code from having any effect
 | <PRE>-I \<directory></PRE>  | set the folder to search within for `#include "filename(.spin2)" statements
@@ -113,7 +113,7 @@ Prints an error message. Mainly used in conditional compilation to report an unh
 
 #### \#include "{filename}"
 
-Includes a file. The contents of the file are placed in the compilation just as if everything in that file was typed into the original file instead. 
+Includes a file. The contents of the file are placed in the compilation just as if everything in that file was typed into the original file instead.
 
 ```c++
 #include "foo.spin2"
