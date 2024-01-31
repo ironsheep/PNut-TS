@@ -19,9 +19,7 @@ export class RegressionReporter {
   constructor(ctx: Context) {
     this.context = ctx;
     if (this.context.logOptions.logResolver) {
-      if (this.context.reportOptions.writeElementsReport || this.context.reportOptions.writeTablesReport) {
-        this.loggingEnabled = true;
-      }
+      this.loggingEnabled = true;
     }
   }
 

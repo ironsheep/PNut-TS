@@ -127,22 +127,22 @@ export class PNutInTypeScript {
       // forward our REGRESSION TEST Options
       this.requiresFilename = true;
       const choices: string[] = this.options.regression;
-      this.context.logger.verboseMsg('MODE: Regression Testing');
+      this.context.logger.verboseMsg('MODE: Regression Testing- Gen Reports');
       if (choices.includes('element')) {
         this.context.reportOptions.writeElementsReport = true;
-        this.context.logger.verboseMsg('Gen: Element Report');
+        this.context.logger.verboseMsg('  Element Report');
       }
       if (choices.includes('tables')) {
         this.context.reportOptions.writeTablesReport = true;
-        this.context.logger.verboseMsg('Gen: Tables Report');
+        this.context.logger.verboseMsg('  Tables Report');
       }
       if (choices.includes('preproc')) {
         this.context.reportOptions.writePreprocessReport = true;
-        this.context.logger.verboseMsg('Gen: preProcessor Report');
+        this.context.logger.verboseMsg('  preProcessor Report');
       }
       if (choices.includes('resolver')) {
         this.context.reportOptions.writeResolverReport = true;
-        this.context.logger.verboseMsg('Gen: resolver Report');
+        this.context.logger.verboseMsg('  resolver Report');
       }
     }
 
@@ -155,19 +155,19 @@ export class PNutInTypeScript {
       const wantsAll: boolean = choices.includes('all');
       if (choices.includes('elements') || wantsAll) {
         this.context.logOptions.logElementizer = true;
-        this.context.logger.verboseMsg('Elementizer logging');
+        this.context.logger.verboseMsg('  Elementizer');
       }
       if (choices.includes('parser') || wantsAll) {
         this.context.logOptions.logParser = true;
-        this.context.logger.verboseMsg('Parser logging');
+        this.context.logger.verboseMsg('  Parser');
       }
       if (choices.includes('resolver') || wantsAll) {
         this.context.logOptions.logResolver = true;
-        this.context.logger.verboseMsg('Resolver logging');
+        this.context.logger.verboseMsg('  Resolver');
       }
       if (choices.includes('preproc')) {
         this.context.logOptions.logPreprocessor = true;
-        this.context.logger.verboseMsg('PreProcessor logging');
+        this.context.logger.verboseMsg('  PreProcessor');
       }
     }
 
@@ -282,24 +282,55 @@ export class PNutInTypeScript {
   }
 
   private runTestCode() {
-    return;
-    const parmA: number = 0xffffffff;
+    //return;
+    //const parmA: number = 0xffffffff;
+    //const parmA: number = 0x87654321;
+    const parmA: number = 0xedcba987;
+    //const parmA: number = -1;
+    //const parmA: number = 5;
     const parmB: number = 0x00000001;
-    let a: bigint = BigInt(parmA) & BigInt(0xffffffff);
+    const a: bigint = BigInt(parmA) & BigInt(0xffffffff);
     const b: bigint = BigInt(parmB) & BigInt(0xffffffff);
     //a &= BigInt(0xffffffff);
     //b &= BigInt(0xffffffff);
     //a &= BigInt(0x7ffffffffffff);
     //b &= BigInt(0x7ffffffffffff);
-    a = ((a << 32n) / b) & BigInt(0xffffffff);
+    //a = ((a << 32n) / b) & BigInt(0xffffffff);
+
+    const fa: number = Number(a);
+    //const logA: number = Math.log(fa) / Math.log(2.0);
+    //const logA2: number = Math.fround(Math.log2(fa) * Math.pow(2, 27));
+    //const logA2: number = Math.log2(Number(a)) * Math.pow(2, 27);
+    //const biA2: bigint = BigInt(Math.trunc(logA2));
+
+    // QLOG
+    //const biA = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
+
+    // QEXP
+    const biB = Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27))); // trunc ..E9, round ..EA
+    //const biB2 = Math.trunc(Number(a) / Math.pow(2, 27));
+
+    this.context.logger.logMessage(`fa=(${fa})`);
+    //this.context.logger.logMessage(`loga=(${logA})`);
+    //this.context.logger.logMessage(`biA=(${biA})`);
+    this.context.logger.logMessage(`biB=(${biB})`);
+    //this.context.logger.logMessage(`biB2=(${biB2})`);
+
+    //const ba2Hex = biA.toString(16).padStart(16, '0');
+    //const ba2HexGrouped = ba2Hex.replace(/(\w{4})/g, '$1_').slice(0, -1);
+    //this.context.logger.logMessage(` biA: 0x${ba2HexGrouped.toUpperCase()} a=(${biA})`);
+
+    const bb2Hex = biB.toString(16).padStart(16, '0');
+    const bb2HexGrouped = bb2Hex.replace(/(\w{4})/g, '$1_').slice(0, -1);
+    this.context.logger.logMessage(` biB: 0x${bb2HexGrouped.toUpperCase()} a=(${biB})`);
 
     const aHex = a.toString(16).padStart(16, '0');
-    const bHex = b.toString(16).padStart(16, '0');
     const aHexGrouped = aHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(`a: 0x${aHexGrouped.toUpperCase()} a=(${a})`);
+    this.context.logger.logMessage(`   a: 0x${aHexGrouped.toUpperCase()} a=(${a})`);
 
+    const bHex = b.toString(16).padStart(16, '0');
     const bHexGrouped = bHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(`b: 0x${bHexGrouped.toUpperCase()} b=(${b})`);
+    this.context.logger.logMessage(`   b: 0x${bHexGrouped.toUpperCase()} b=(${b})`);
   }
 }
 

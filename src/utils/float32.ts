@@ -4,6 +4,11 @@
 
 'use strict';
 // src/utils/float32.ts
+
+// BigInt -> Number
+// BigInt -> String
+// String -> Float32
+
 export function stringToFloat32(numStr: string): number {
   //
   // In this code, stringToFloat32 function takes a string, parses it to a float
@@ -35,7 +40,7 @@ export function stringToBigIntFloat32(numStr: string): bigint {
 }
 
 export function bigIntToHexString(float32BigInt: bigint): string {
-  return float32ToHexString(bigIntLs32bitsToNumber(float32BigInt));
+  return float32ToHexString(bigIntLs32bitsToFloat64(float32BigInt));
 }
 
 export function float32ToHexString(float32: number): string {
@@ -46,12 +51,19 @@ export function float32ToHexString(float32: number): string {
   return intView.toString(16);
 }
 
-export function bigIntLs32bitsToNumber(float32BigInt: bigint): number {
+export function float32ToString(float32: number | string): string {
+  const hexValue = float32ToHexString(typeof float32 === 'number' ? float32 : 0); // replace with your hex value
+  const float64Value = hexStringToFloat64(hexValue).toExponential(6);
+  return float64Value.toString();
+}
+
+export function bigIntLs32bitsToFloat64(float32BigInt: bigint): number {
   const leastSignificant32Bits = float32BigInt & BigInt(0xffffffff);
   return Number(leastSignificant32Bits);
 }
 
 export function bigIntToFloat64(float32BigInt: bigint): number {
+  // FIXME: this appears to NOT be working
   return hexStringToFloat64(bigIntToHexString(float32BigInt));
 }
 
@@ -61,10 +73,4 @@ export function hexStringToFloat64(hex: string): number {
   const dataView = new DataView(float32Array.buffer);
   dataView.setUint32(0, int);
   return dataView.getFloat32(0);
-}
-
-export function float32ToString(float32: number | string): string {
-  const hexValue = float32ToHexString(typeof float32 === 'number' ? float32 : 0); // replace with your hex value
-  const float64Value = hexStringToFloat64(hexValue).toExponential(6);
-  return float64Value.toString();
 }

@@ -11,7 +11,7 @@ import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
 import { eElementType, eOperationType } from './types';
-import { hexStringToFloat64, stringToBigIntFloat32, bigIntToHexString, bigIntLs32bitsToNumber, bigIntToFloat64 } from '../utils/float32';
+import { hexStringToFloat64, stringToBigIntFloat32, bigIntToHexString, bigIntLs32bitsToFloat64, bigIntToFloat64 } from '../utils/float32';
 
 export class SpinResolver {
   private context: Context;
@@ -130,13 +130,19 @@ export class SpinResolver {
         }
         break;
 
-      //case eOperationType.op_qlog:
-      //TODO: add our code here
-      //  break;
+      case eOperationType.op_qlog:
+        // if a is non-zero... then calculate else leave it at zero
+        if (a) {
+          a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
+        }
+        break;
 
-      //case eOperationType.op_qexp:
-      //TODO: add our code here
-      //  break;
+      case eOperationType.op_qexp:
+        // WARNING this result MAY cause binary differences in our output file! WARNING
+        //  consider this code if we see problems in our regression tests
+        //  it's all a matter of precision...
+        a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)))); // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
+        break;
 
       case eOperationType.op_shr:
         a = a >> bitCountFromB;
@@ -149,7 +155,6 @@ export class SpinResolver {
       case eOperationType.op_sar:
         {
           const isNeg: boolean = a & msb32Bit ? true : false;
-
           a = (((isNeg ? mask32Bit << 32n : 0n) | a) >> bitCountFromB) & mask32Bit;
         }
         break;
@@ -579,7 +584,7 @@ export class SpinResolver {
         break;
     }
     a &= mask32Bit;
-    return bigIntLs32bitsToNumber(a);
+    return bigIntLs32bitsToFloat64(a);
   }
 
   private signExtendFrom32Bit(value: bigint): bigint {
