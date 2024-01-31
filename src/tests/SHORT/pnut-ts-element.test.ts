@@ -26,21 +26,28 @@ test('CLI generates correct element listings', () => {
   let passCount = 0;
   const failList = [];
 
-  const options: string = '--regression element -- ';
+  const options: string = '-c --regression element -- ';
 
   // Iterate over each .spin2 file
   for (const file of files) {
     // Run the CLI with the input file
     const basename = path.basename(file, '.spin2');
-    //console.log(`LOG basename=[${basename}]`);
+    const reportFSpec = path.join(dirPath, `${basename}.elem`);
+    // if the report file exists delete it before we start
+    if (fs.existsSync(reportFSpec)) {
+      fs.unlinkSync(reportFSpec);
+    }
 
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
     } catch (error) {
       console.error(`Error running PNut-TS: ${error}`);
     }
+    // Ensure the file exists after the test run
+    if (!fs.existsSync(reportFSpec)) {
+      console.error(`PNut-TS: Failed to write output file [${reportFSpec}]`);
+    }
     // Read the generated output file
-    const reportFSpec = path.join(dirPath, `${basename}.elem`);
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
 
     // Read the golden file

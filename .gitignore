@@ -192,3 +192,7 @@ TEST/preprocessTESTs/condCode.pre
 TEST/preprocessTESTs/include.pre
 TEST/tablesTESTs/dumpTables.tabl
 *.pre
+*.tabl
+TEST/SHORT/tablesTESTs/goldenFiltered.txt
+TEST/SHORT/tablesTESTs/reportFiltered.txt
+TEST/SHORT/tablesTESTs/dumpTables.tabl

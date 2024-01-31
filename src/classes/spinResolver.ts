@@ -15,12 +15,14 @@ import { hexStringToFloat64, stringToBigIntFloat32, bigIntToHexString, bigIntLs3
 
 export class SpinResolver {
   private context: Context;
+  private isLogging: boolean = false;
   private spinElements: SpinElement[];
   private numberStack: NumberStack = new NumberStack();
 
   constructor(ctx: Context, elementList: SpinElement[]) {
     this.context = ctx;
     this.spinElements = elementList;
+    this.isLogging = this.context.logOptions.logResolver;
   }
 
   public testResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
@@ -619,7 +621,7 @@ export class SpinResolver {
   }
 
   private logMessage(message: string): void {
-    if (this.context.logOptions.logResolver) {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }

@@ -37,7 +37,7 @@ export interface iError {
  * The SpinDocument class represents a Spin document, providing methods to analyze and manipulate the document's content.
  */
 export class SpinDocument {
-  private ctx: Context;
+  private context: Context;
   private isLogging: boolean = false;
   // raw lines from file
   private readonly rawLines: string[] = [];
@@ -68,10 +68,8 @@ export class SpinDocument {
 
   constructor(ctx: Context, fileSpec: string) {
     // record file name and location
-    this.ctx = ctx;
-    if (this.ctx.logOptions.logPreprocessor) {
-      this.isLogging = true;
-    }
+    this.context = ctx;
+    this.isLogging = this.context.logOptions.logPreprocessor;
     const bFileFound: boolean = fileExists(fileSpec);
     this.docFolder = bFileFound ? path.dirname(fileSpecFromURI(fileSpec)) : '';
     this.fileBaseName = bFileFound ? path.basename(fileSpecFromURI(fileSpec)) : '';
@@ -98,14 +96,14 @@ export class SpinDocument {
     this.preloadSymbolTable();
 
     // set include folder if provided from the command line
-    if (this.ctx.preProcessorOptions.includeFolders.length > 0) {
-      for (const newFolder of this.ctx.preProcessorOptions.includeFolders) {
+    if (this.context.preProcessorOptions.includeFolders.length > 0) {
+      for (const newFolder of this.context.preProcessorOptions.includeFolders) {
         this.setIncludePath(newFolder);
       }
     }
 
     // add any symbols arriving from the command line
-    const cliDefinedSymbols: string[] = this.ctx.preProcessorOptions.defSymbols;
+    const cliDefinedSymbols: string[] = this.context.preProcessorOptions.defSymbols;
     if (cliDefinedSymbols.length > 0) {
       for (let index = 0; index < cliDefinedSymbols.length; index++) {
         const newSymbolName = cliDefinedSymbols[index];
@@ -186,7 +184,7 @@ export class SpinDocument {
           // parse #define {symbol} {value}
           const [symbol, value] = this.getSymbolValue(currLine);
           if (symbol) {
-            const canAdd: boolean = this.ctx.preProcessorOptions.undefSymbols.includes(symbol) ? false : true;
+            const canAdd: boolean = this.context.preProcessorOptions.undefSymbols.includes(symbol) ? false : true;
             if (canAdd) {
               this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
               this.defineSymbol(symbol, value);
@@ -303,7 +301,7 @@ export class SpinDocument {
             const filespec = locateIncludeFile(this.incFolders, this.dirName, filename);
             if (filespec) {
               // load file into spinDoc
-              const incSpinDocument = new SpinDocument(this.ctx, filespec);
+              const incSpinDocument = new SpinDocument(this.context, filespec);
               incSpinDocument.preProcess();
               // get parsed content from spinDoc inserting into current content in place of this line
               insertTextLines = incSpinDocument.allTextLines;
@@ -368,9 +366,9 @@ export class SpinDocument {
     this.dumpErrors(); // report on errors if any found
 
     // if regression testing the emit our preprocessing result
-    if (this.ctx?.reportOptions.writePreprocessReport) {
+    if (this.context?.reportOptions.writePreprocessReport) {
       this.logMessage('CODE: writePreprocessReport()');
-      const reporter: RegressionReporter = new RegressionReporter(this.ctx);
+      const reporter: RegressionReporter = new RegressionReporter(this.context);
       reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
     }
   }
@@ -463,7 +461,7 @@ export class SpinDocument {
 
   private logMessage(message: string): void {
     if (this.isLogging) {
-      this.ctx.logger.logMessage(message);
+      this.context.logger.logMessage(message);
     }
   }
   get validFile(): boolean {
@@ -555,7 +553,7 @@ export class SpinDocument {
     baseSymbols['__DATE__'] = formattedDate;
     baseSymbols['__FILE__'] = this.fileBaseName;
     baseSymbols['__TIME__'] = formattedTime;
-    if (this.ctx?.compileOptions.enableDebug) {
+    if (this.context?.compileOptions.enableDebug) {
       baseSymbols['__DEBUG__'] = 1;
     }
     // populate our symbol table with this list

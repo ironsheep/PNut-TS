@@ -2,5 +2,5 @@
   "name": "full suite of tests",
   "roots": ["<rootDir>/dist/tests/FULL/", "<rootDir>/dist/tests/SHORT/"],
   "testMatch": ["**/*.test.js"],
-  "verbose": true
+  "verbose": false
 }

@@ -13,14 +13,12 @@ import { TextLine } from './textLine';
 
 export class RegressionReporter {
   private context: Context;
-  private loggingEnabled: boolean = false;
+  private isLogging: boolean = false;
   private spinElements: SpinElement[] = [];
 
   constructor(ctx: Context) {
     this.context = ctx;
-    if (this.context.logOptions.logResolver) {
-      this.loggingEnabled = true;
-    }
+    this.isLogging = this.context.logOptions.logResolver;
   }
 
   public writeElementReport(dirName: string, fileName: string, elementList: SpinElement[]) {
@@ -134,7 +132,7 @@ export class RegressionReporter {
   }
 
   private logMessage(message: string): void {
-    if (this.loggingEnabled) {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }

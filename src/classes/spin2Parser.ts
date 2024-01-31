@@ -16,6 +16,7 @@ import { RegressionReporter } from './regression';
 // Internal types used for passing complex values
 export class Spin2Parser {
   private context: Context;
+  private isLogging: boolean = false;
   private srcFile: SpinDocument;
   private elementizer: SpinElementizer;
   private symbols_debug_hash_auto: SymbolTable = new SymbolTable();
@@ -31,6 +32,8 @@ export class Spin2Parser {
     this.context = ctx;
     this.srcFile = spinCode;
     this.elementizer = new SpinElementizer(ctx, spinCode);
+    this.isLogging = this.context.logOptions.logParser;
+    this.logMessage(`* Parser is logging`);
   }
 
   get sourceLineNumber(): number {
@@ -92,7 +95,7 @@ export class Spin2Parser {
   private back_element(): void {}
 
   private logMessage(message: string): void {
-    if (this.context.logOptions.logParser) {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }

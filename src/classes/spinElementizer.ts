@@ -30,6 +30,7 @@ interface iBuiltInSymbol {
 
 export class SpinElementizer {
   private context: Context;
+  private isLogging: boolean = false;
   private srcFile: SpinDocument;
   private currLineIndex: number = 0;
   private currCharacterIndex: number = 0;
@@ -46,7 +47,8 @@ export class SpinElementizer {
     this.context = ctx;
     this.srcFile = spinCode;
     this.symbol_tables = new SpinSymbolTables(ctx);
-    if (this.context.logOptions.logElementizer) {
+    this.isLogging = this.context.logOptions.logElementizer;
+    if (this.isLogging) {
       this.symbol_tables.enableLogging();
     }
     // dummy load of next line (replaced by loadNextLine())
@@ -398,7 +400,7 @@ export class SpinElementizer {
   }
 
   private logMessage(message: string): void {
-    if (this.context.logOptions.logElementizer) {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }

@@ -999,7 +999,7 @@ interface iBaseSymbolInfo {
 
 export class SpinSymbolTables {
   private context: Context;
-  private shouldLog: boolean = false;
+  private isLogging: boolean = false;
   private automatic_symbols = new Map<string, iBaseSymbolInfo>();
   private flexcodeValues = new Map<eFlexcode, number>();
   private asmcodeValues = new Map<eAsmcode, number>();
@@ -2732,11 +2732,11 @@ export class SpinSymbolTables {
 
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
-    this.shouldLog = enable;
+    this.isLogging = enable;
   }
 
   private logMessage(message: string): void {
-    if (this.shouldLog) {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }
@@ -2905,6 +2905,12 @@ export class SpinSymbolTables {
       for (const key in eElementType) {
         if (Object.prototype.hasOwnProperty.call(eElementType, key) && key.startsWith(prefix)) {
           result.push({ name: key, value: eElementType[key as keyof typeof eElementType] });
+        }
+      }
+    } else if (prefix == 'op_') {
+      for (const key in eOperationType) {
+        if (Object.prototype.hasOwnProperty.call(eOperationType, key) && key.startsWith(prefix)) {
+          result.push({ name: key, value: eOperationType[key as keyof typeof eOperationType] });
         }
       }
     } else if (prefix == 'bc_') {
