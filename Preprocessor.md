@@ -31,6 +31,7 @@ Pnut-TS has a pre-processor that understands a few primitive directives:
 - `#ifdef / #ifndef / #else / #endif`
 - `#elseifdef / #elseifndef`
 - `#error / #warn`
+- `#include`
 
 Here's more detail on each of the supported directives
 
@@ -110,17 +111,18 @@ Prints an error message. Mainly used in conditional compilation to report an unh
 #endif
 ```
 
-#### \#include {filename}
+#### \#include "{filename}"
 
-Includes a file. The contents of the file are placed in the compilation just as if everything in that file was typed into the original file instead. This is often used
+Includes a file. The contents of the file are placed in the compilation just as if everything in that file was typed into the original file instead. 
 
 ```c++
 #include "foo.spin2"
+#include "bar"
 ```
 
-Included files are searched for in the same directory as the file that contains the `#include`. Or, alternatively, in an include directory provided by the compilation `-I <dir>` clause on the command line.
+Included files are searched for in the same directory as the file that contains the `#include`. Or, alternatively, in an include directory provided by the compilation `-I <dir>` clause on the command line. If one or more include directories are specified then they will be searched first.
 
-NOTE: if the .spin2 suffix is not present on the filename provide in the include statement it will be appended to the name given before opening the file.  Meaning all included files will only be .spin2 files.
+NOTE: if the .spin2 suffix is not present on the filename provide in the include statement it will be appended to the name given before opening the file.  Meaning all included files will only be .spin2 files.  If any suffix is provided that is not .spin2 this will generate an error and stop the compile.
 
 #### \#warn {msg}
 

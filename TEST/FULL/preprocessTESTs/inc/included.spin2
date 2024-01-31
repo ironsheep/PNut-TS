@@ -1,12 +1,5 @@
-'' =================================================================================================
-''   Purpose.... Regression TEST: included code sample
-''   Authors.... Stephen M Moraco
-''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
-''               -- see below for terms of use
-''   E-mail..... stephen@ironsheep.biz
-''   Started.... Jan 2024
-'' =================================================================================================
-'' each object that includes this code gets the same methods
+'' --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+'' Included file content
 
 PUB methodOne(fstParm)
 
@@ -15,12 +8,6 @@ PUB methodTwo(fstParm)
 
 CON { license }
 {{
-
- -------------------------------------------------------------------------------------------------
-  MIT License
-
-  Copyright (c) 2024 Iron Sheep Productions, LLC
-
-  Permission is hereby granted... dummy license block for test purposes
- =================================================================================================
+  End of included content
+  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 }}

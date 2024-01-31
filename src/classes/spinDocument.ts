@@ -8,7 +8,7 @@
 
 import * as path from 'path';
 
-import { isSpin1File, isSpin2File, fileExists, dirExists, fileSpecFromURI, loadFileAsString } from '../utils/files';
+import { isSpin1File, isSpin2File, fileExists, dirExists, fileSpecFromURI, loadFileAsString, locateIncludeFile } from '../utils/files';
 import { TextLine } from './textLine';
 import { Context } from '../utils/context';
 import { SymbolTable } from './symbolTable';
@@ -50,7 +50,7 @@ export class SpinDocument {
   private readonly fileBaseName: string;
   private haveFile: boolean = false;
   // preprocessor data
-  private incFolder: string = '';
+  private incFolders: string[] = [];
   private preProcSymbols: SymbolTable = new SymbolTable();
   // preprocess state information
   private headerComments: string[] = [];
@@ -114,6 +114,11 @@ export class SpinDocument {
     }
   }
 
+  get allTextLines(): TextLine[] {
+    // return entire content of file
+    return this.preprocessedLines;
+  }
+
   public defineSymbol(newSymbol: string, value: string | number): void {
     this.logMessage(`CODE: defSymbol(${newSymbol})=[${value}]`);
     if (!this.preProcSymbols.exists(newSymbol)) {
@@ -138,9 +143,9 @@ export class SpinDocument {
     // is inc-folder
     const newIncludePath: string = path.join(this.dirName, includeDir);
     if (dirExists(newIncludePath)) {
-      this.incFolder = newIncludePath;
+      this.incFolders.push(newIncludePath);
       //this.logMessage(`CODE: IncludePath(${newIncludePath}) exists!`);
-      this.logMessage(`CODE: Processing includes from [${this.incFolder}]`);
+      this.logMessage(`CODE: Processing includes from [${newIncludePath}]`);
     } else {
       this.logMessage(`CODE: ERROR: failed locate incFolder [${newIncludePath}]`);
     }
@@ -158,6 +163,7 @@ export class SpinDocument {
     this.logMessage('CODE: preProcess()');
     let inPreProcIForIFNOT: boolean = false;
     let thisSideKeepsCode: boolean = false;
+    let insertTextLines: TextLine[] = [];
     for (let index = 0; index < this.rawLines.length; index++) {
       let skipThisline: boolean = false;
       const currLine = this.rawLines[index];
@@ -289,6 +295,22 @@ export class SpinDocument {
           // parse #warn
           const message: string = currLine.substring(7);
           this.reportError(`WARNING: ${message}`, index, 0);
+        } else if (currLine.startsWith('#include')) {
+          // handle #include "filename"
+          //  ensure suffix not present or must be ".spin2"
+          const filename = this.isolateFilename(currLine, index);
+          if (filename) {
+            const filespec = locateIncludeFile(this.incFolders, this.dirName, filename);
+            if (filespec) {
+              // load file into spinDoc
+              const incSpinDocument = new SpinDocument(this.ctx, filespec);
+              incSpinDocument.preProcess();
+              // get parsed content from spinDoc inserting into current content in place of this line
+              insertTextLines = incSpinDocument.allTextLines;
+            } else {
+              this.reportError(`File [${filename}] not found!`, index, 0);
+            }
+          }
         } else {
           // generate error! vs. throwing exception
           let lineParts = this.splitLineOnWhiteSpace(currLine);
@@ -334,6 +356,12 @@ export class SpinDocument {
       } else {
         //this.logMessage(`CODE: Line SKIP [${currLine}]`);
       }
+      if (insertTextLines.length > 0) {
+        for (const newTextLine of insertTextLines) {
+          this.preprocessedLines.push(newTextLine);
+        }
+        insertTextLines = [];
+      }
     }
     this.getVersionFromHeader(this.headerComments);
 
@@ -345,6 +373,27 @@ export class SpinDocument {
       const reporter: RegressionReporter = new RegressionReporter(this.ctx);
       reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
     }
+  }
+
+  private isolateFilename(currLine: string, index: number): string | undefined {
+    let isolatedFilename: string | undefined = undefined;
+    const match = currLine.match(/#include\s+"(.*)"/);
+    if (match) {
+      const filename = match[1];
+      const fileExtension = path.extname(filename);
+      //this.logMessage(`CODE: filename=[${filename}], fileExtension=[${fileExtension}]`);
+      if (fileExtension.length == 0) {
+        isolatedFilename = `${filename}.spin2`;
+      } else if (fileExtension.length > 0 && fileExtension.toLowerCase() === '.spin2') {
+        isolatedFilename = filename;
+      } else {
+        this.reportError(`Filetype [${fileExtension}] NOT supported, must be .spin2`, index, 0);
+      }
+    } else {
+      this.reportError(`Unable to get filename from #include ... (missing quotes?)`, index, 0);
+    }
+    this.logMessage(`CODE: isolatedFilename=[${isolatedFilename}]`);
+    return isolatedFilename;
   }
 
   private dumpErrors() {
@@ -372,7 +421,7 @@ export class SpinDocument {
       sourceLineIndex: lineIndex,
       characterOffset: characterOffset
     };
-    this.logMessage(`CODE: new error: Ln#${lineIndex + 1}: ${message}`);
+    //this.logMessage(`CODE: new error: Ln#${lineIndex + 1}: ${message}`);
     this.errorsfound.push(errorReport);
   }
 

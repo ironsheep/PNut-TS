@@ -80,15 +80,19 @@ export function fileExists(pathSpec: string): boolean {
  * @param {string} filename - the name of file to be located
  * @return {*}  {string|undefined} - returns the fileSpec of the file if found, else undefined
  */
-export function locateIncludeFile(includePath: string, currPath: string, filename: string): string | undefined {
+export function locateIncludeFile(includePaths: string[], currPath: string, filename: string): string | undefined {
   let locatedFSpec: string | undefined = undefined;
   if (isSpin2File(filename)) {
-    if (includePath.length > 0 && dirExists(includePath)) {
-      const fileSpec: string = path.join(includePath, filename);
-      if (fileExists(fileSpec)) {
-        locatedFSpec = fileSpec;
+    for (const includePath of includePaths) {
+      if (dirExists(includePath)) {
+        const fileSpec: string = path.join(includePath, filename);
+        if (fileExists(fileSpec)) {
+          locatedFSpec = fileSpec;
+          break;
+        }
       }
-    } else if (currPath.length > 0 && dirExists(currPath)) {
+    }
+    if (!locatedFSpec && currPath.length > 0 && dirExists(currPath)) {
       const fileSpec: string = path.join(currPath, filename);
       if (fileExists(fileSpec)) {
         locatedFSpec = fileSpec;
