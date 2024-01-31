@@ -19,11 +19,6 @@ import { SpinDocument } from './classes/spinDocument';
 //  fs.readFile(assets.root + '/bar.png', function(){/*whatever*/});
 module.exports.root = __dirname;
 
-function errorColor(str: string) {
-  // Add ANSI escape codes to display text in red.
-  return `\x1b[31m${str}\x1b[0m`;
-}
-
 export class PNutInTypeScript {
   private readonly program = new Command();
   private options: OptionValues = this.program.opts();
@@ -62,12 +57,12 @@ export class PNutInTypeScript {
     this.program
       .configureOutput({
         // Visibly override write routines as example!
-        writeOut: (str) => process.stdout.write(`PNut-TS: ${str}`),
-        writeErr: (str) => process.stdout.write(`PNut-TS: ${str}`),
+        writeOut: (str) => process.stdout.write(this.prefixName(str)),
+        writeErr: (str) => process.stdout.write(this.prefixName(str)),
         // Highlight errors in color.
-        outputError: (str, write) => write(errorColor(str))
+        outputError: (str, write) => write(this.errorColor(str))
       })
-      .name('PNut-TS')
+      .name('pnut-ts')
       .version(`v${this.version}`, '-V, --version', 'Output the version number')
       .usage('[optons] filename')
       .description('Propeller Spin2 compiler/downloader')
@@ -90,6 +85,19 @@ export class PNutInTypeScript {
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .option('-v, --verbose', 'Output verbose messages');
 
+    this.program.addHelpText('beforeAll', `$-`);
+
+    this.program.addHelpText(
+      'afterAll',
+      `$-
+      Example:
+         $ pnut-ts -c my-top-level.spin2         # compile leaving .binary
+         $ pnut-ts -c -l my-top-level.spin2      # compile file leaving .binary and .lst files
+         $ pnut-ts -c -d -r my-top-level.spin2   # compile file with Debug and run from RAM`
+    );
+
+    //this.program.showHelpAfterError('(add --help for additional information)');
+
     this.program.exitOverride(); // throw instead of exit
 
     this.context.logger.setProgramName(this.program.name());
@@ -100,8 +108,12 @@ export class PNutInTypeScript {
       if (error instanceof CommanderError) {
         //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
         if (error.name === 'CommanderError') {
-          this.context.logger.logMessage(``);
-          this.program.outputHelp();
+          this.context.logger.logMessage(``); // our blank line so prompt is not too close after output
+          //this.context.logger.logMessage(`  xyzzy `);
+          if (error.message !== '(outputHelp)') {
+            this.context.logger.logMessage(`  (See --help for available options)\n`);
+            //this.program.outputHelp();
+          }
         } else {
           this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
         }
@@ -279,6 +291,19 @@ export class PNutInTypeScript {
     // this.verboseMsg(optionsString);
     // this.progressMsg('Done');
     return 0;
+  }
+
+  private errorColor(str: string): string {
+    // Add ANSI escape codes to display text in red.
+    return `\x1b[31m${str}\x1b[0m`;
+  }
+
+  private prefixName(str: string): string {
+    if (str.startsWith('$-')) {
+      return `${str.substring(2)}`;
+    } else {
+      return `PNut-TS: ${str}`;
+    }
   }
 
   private runTestCode() {
