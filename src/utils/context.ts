@@ -18,6 +18,7 @@ export interface ReportOptions {
   writeTablesReport: boolean; // write elementizer
   writeElementsReport: boolean; // write elementizer
   writePreprocessReport: boolean;
+  writeResolverReport: boolean;
 }
 
 export interface PreProcessorOptions {
@@ -49,7 +50,7 @@ export function createContext(): Context {
     logger: new Logger(),
     compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
     logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
-    reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false },
+    reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false },
     preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolder: '' }
   };
 }

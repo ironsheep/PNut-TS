@@ -51,6 +51,10 @@ export function bigIntLs32bitsToNumber(float32BigInt: bigint): number {
   return Number(leastSignificant32Bits);
 }
 
+export function bigIntToFloat64(float32BigInt: bigint): number {
+  return hexStringToFloat64(bigIntToHexString(float32BigInt));
+}
+
 export function hexStringToFloat64(hex: string): number {
   const int = parseInt(hex, 16);
   const float32Array = new Float32Array(1);

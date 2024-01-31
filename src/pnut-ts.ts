@@ -63,6 +63,7 @@ export class PNutInTypeScript {
       .action((filename) => {
         this.options.filename = filename;
       })
+      .option('-?', 'show help for this command')
       .option('-b, --both', 'compile with DEBUG, download to FLASH and run')
       .option('-c, --compile', 'compile file')
       .option('-d, --debug', 'compile with DEBUG')
@@ -72,7 +73,7 @@ export class PNutInTypeScript {
       .option('-U, --Undefine <symbol>', 'undefine (remove) preprocessor symbol')
       .option('-D, --Define <symbol>', 'define (add) preprocessor symbol')
       .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
-      .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'preproc']))
+      .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .option('-v, --verbose', 'output verbose messages');
 
     this.context.logger.setProgramName(this.program.name());
@@ -86,10 +87,12 @@ export class PNutInTypeScript {
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
     }
-    if (process.argv.length < 2) {
+    if (process.argv.length < 1) {
       this.program.help();
       process.exit(0);
     }
+
+    this.runTestCode();
 
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
 
@@ -109,6 +112,10 @@ export class PNutInTypeScript {
       if (choices.includes('preproc')) {
         this.context.reportOptions.writePreprocessReport = true;
         this.context.logger.verboseMsg('Gen: preProcessor Report');
+      }
+      if (choices.includes('resolver')) {
+        this.context.reportOptions.writeResolverReport = true;
+        this.context.logger.verboseMsg('Gen: resolver Report');
       }
     }
 
@@ -225,6 +232,27 @@ export class PNutInTypeScript {
     // this.verboseMsg(optionsString);
     // this.progressMsg('Done');
     return 0;
+  }
+
+  private runTestCode() {
+    return;
+    const parmA: number = 0xffffffff;
+    const parmB: number = 0x00000001;
+    let a: bigint = BigInt(parmA) & BigInt(0xffffffff);
+    let b: bigint = BigInt(parmB) & BigInt(0xffffffff);
+    //a &= BigInt(0xffffffff);
+    //b &= BigInt(0xffffffff);
+    //a &= BigInt(0x7ffffffffffff);
+    //b &= BigInt(0x7ffffffffffff);
+    a = ((a << 32n) / b) & BigInt(0xffffffff);
+
+    const aHex = a.toString(16).padStart(16, '0');
+    const bHex = b.toString(16).padStart(16, '0');
+    const aHexGrouped = aHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
+    this.context.logger.logMessage(`a: 0x${aHexGrouped.toUpperCase()} a=(${a})`);
+
+    const bHexGrouped = bHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
+    this.context.logger.logMessage(`b: 0x${bHexGrouped.toUpperCase()} b=(${b})`);
   }
 }
 
