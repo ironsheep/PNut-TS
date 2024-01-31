@@ -32,27 +32,32 @@ Additional pages:
 There are many command line options with which you can control the compilation:
 
 ```
-Usage: Pnut-TS [optons] filename
+PNut-TS: Usage: PNut-TS [optons] filename
 
-Propeller2 spin compiler/downloader
+Propeller Spin2 compiler/downloader
 
 Options:
-  -V, --version               output the version number
-  -b, --both                  compile with DEBUG, download to FLASH and run
-  -c, --compile               compile file
-  -d, --debug                 compile with DEBUG
-  -f, --flash                 download to FLASH and run
-  -r, --ram                   download to RAM and run
-  -l, --list                  emit listing files (.lst) from compilation
-  -o, --output <name>         set output filename
-  -i, --interface             emit interface document files (.txt) during compilation
-  -I, --Include <dir...>      add preprocessor include directories
-  -U, --Undefine <symbol...>  undefine (remove) preprocessor symbol(s)
-  -D, --Define <symbol...>    define (add) preprocessor symbol(s)
-  --log <object...>           object (choices: "all", "elements", "parser", "resolver", "preproc")
-  --regression <testName...>  testName (choices: "element", "tables", "resolver", "preproc")
-  -v, --verbose               output verbose messages
+  -V, --version               Output the version number
+  -b, --both                  Compile with DEBUG, download to FLASH and run
+  -c, --compile               Compile file
+  -d, --debug                 Compile with DEBUG
+  -f, --flash                 Download to FLASH and run
+  -r, --ram                   Download to RAM and run
+  -l, --list                  Generate listing files (.lst) from compilation
+  -o, --output <name>         Specify output filename
+  -i, --interface             Generate interface document files (.txt) during
+                              compilation
+  -I, --Include <dir...>      Add preprocessor include directories
+  -U, --Undefine <symbol...>  Undefine (remove) preprocessor symbol(s)
+  -D, --Define <symbol...>    Define (add) preprocessor symbol(s)
+  --log <object...>           object (choices: "all", "elements", "parser",
+                              "resolver", "preproc")
+  --regression <testName...>  testName (choices: "element", "tables",
+                              "resolver", "preproc")
+  -v, --verbose               Output verbose messages
   -h, --help                  display help for command
+
+
 ```
 
 

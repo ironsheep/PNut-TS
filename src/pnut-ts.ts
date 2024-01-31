@@ -37,20 +37,20 @@ export class PNutInTypeScript {
 
   constructor() {
     process.stdout.on('error', (error: Error) => {
-      console.error(`Pnut-TS: An error occurred on stdout: "${error.message}", Aborting.`);
+      console.error(`PNut-TS: An error occurred on stdout: "${error.message}", Aborting.`);
       process.exit(1);
     });
 
     process.stderr.on('error', (error: Error) => {
-      console.error(`Pnut-TS: An error occurred on stderr: "${error.message}", Aborting.`);
+      console.error(`PNut-TS: An error occurred on stderr: "${error.message}", Aborting.`);
       process.exit(1);
     });
     process.stdout.on('close', () => {
-      console.log('Pnut-TS: stdout was closed');
+      console.log('PNut-TS: stdout was closed');
     });
 
     process.stderr.on('close', () => {
-      console.log('Pnut-TS: stderr was closed');
+      console.log('PNut-TS: stderr was closed');
     });
   }
 
@@ -62,33 +62,33 @@ export class PNutInTypeScript {
     this.program
       .configureOutput({
         // Visibly override write routines as example!
-        writeOut: (str) => process.stdout.write(`Pnut-TS: ${str}`),
-        writeErr: (str) => process.stdout.write(`Pnut-TS: ${str}`),
+        writeOut: (str) => process.stdout.write(`PNut-TS: ${str}`),
+        writeErr: (str) => process.stdout.write(`PNut-TS: ${str}`),
         // Highlight errors in color.
         outputError: (str, write) => write(errorColor(str))
       })
-      .name('Pnut-TS')
-      .version(`v${this.version}`, '-V, --version', 'output the version number')
+      .name('PNut-TS')
+      .version(`v${this.version}`, '-V, --version', 'Output the version number')
       .usage('[optons] filename')
-      .description('Propeller2 spin compiler/downloader')
+      .description('Propeller Spin2 compiler/downloader')
       .arguments('[filename]')
       .action((filename) => {
         this.options.filename = filename;
       })
-      .option('-b, --both', 'compile with DEBUG, download to FLASH and run')
-      .option('-c, --compile', 'compile file')
-      .option('-d, --debug', 'compile with DEBUG')
-      .option('-f, --flash', 'download to FLASH and run')
-      .option('-r, --ram', 'download to RAM and run')
-      .option('-l, --list', 'emit listing files (.lst) from compilation')
-      .option('-o, --output <name>', 'set output filename')
-      .option('-i, --interface', 'emit interface document files (.txt) during compilation')
-      .option('-I, --Include <dir...>', 'add preprocessor include directories')
-      .option('-U, --Undefine <symbol...>', 'undefine (remove) preprocessor symbol(s)')
-      .option('-D, --Define <symbol...>', 'define (add) preprocessor symbol(s)')
+      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
+      .option('-c, --compile', 'Compile file')
+      .option('-d, --debug', 'Compile with DEBUG')
+      .option('-f, --flash', 'Download to FLASH and run')
+      .option('-r, --ram', 'Download to RAM and run')
+      .option('-l, --list', 'Generate listing files (.lst) from compilation')
+      .option('-o, --output <name>', 'Specify output filename')
+      .option('-i, --interface', 'Generate interface document files (.txt) during compilation')
+      .option('-I, --Include <dir...>', 'Add preprocessor include directories')
+      .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
+      .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
       .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
-      .option('-v, --verbose', 'output verbose messages');
+      .option('-v, --verbose', 'Output verbose messages');
 
     this.program.exitOverride(); // throw instead of exit
 
@@ -118,7 +118,7 @@ export class PNutInTypeScript {
     }
 
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
-    this.runTestCode(); // for quick live testing...
+    //this.runTestCode(); // for quick live testing...
 
     this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
