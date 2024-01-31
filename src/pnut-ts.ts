@@ -4,7 +4,7 @@
 
 // src/pnut-ts.ts
 'use strict';
-import { Command, Option, type OptionValues } from 'commander';
+import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context, createContext } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
@@ -18,6 +18,11 @@ import { SpinDocument } from './classes/spinDocument';
 //  var assets = require('foo');
 //  fs.readFile(assets.root + '/bar.png', function(){/*whatever*/});
 module.exports.root = __dirname;
+
+function errorColor(str: string) {
+  // Add ANSI escape codes to display text in red.
+  return `\x1b[31m${str}\x1b[0m`;
+}
 
 export class PNutInTypeScript {
   private readonly program = new Command();
@@ -55,31 +60,55 @@ export class PNutInTypeScript {
 
   public run(): number {
     this.program
+      .configureOutput({
+        // Visibly override write routines as example!
+        writeOut: (str) => process.stdout.write(`Pnut-TS: ${str}`),
+        writeErr: (str) => process.stdout.write(`Pnut-TS: ${str}`),
+        // Highlight errors in color.
+        outputError: (str, write) => write(errorColor(str))
+      })
       .name('Pnut-TS')
-      .version(this.version, '-V, --version', 'output the version number')
+      .version(`v${this.version}`, '-V, --version', 'output the version number')
       .usage('[optons] filename')
       .description('Propeller2 spin compiler/downloader')
       .arguments('[filename]')
       .action((filename) => {
         this.options.filename = filename;
       })
-      .option('-?', 'show help for this command')
       .option('-b, --both', 'compile with DEBUG, download to FLASH and run')
       .option('-c, --compile', 'compile file')
       .option('-d, --debug', 'compile with DEBUG')
       .option('-f, --flash', 'download to FLASH and run')
       .option('-r, --ram', 'download to RAM and run')
-      .option('-I, --Include <dir>', 'add preprocessor include directory')
-      .option('-U, --Undefine <symbol>', 'undefine (remove) preprocessor symbol')
-      .option('-D, --Define <symbol>', 'define (add) preprocessor symbol')
+      .option('-l, --list', 'emit listing files (.lst) from compilation')
+      .option('-o, --output <name>', 'set output filename')
+      .option('-i, --interface', 'emit interface document files (.txt) during compilation')
+      .option('-I, --Include <dir...>', 'add preprocessor include directories')
+      .option('-U, --Undefine <symbol...>', 'undefine (remove) preprocessor symbol(s)')
+      .option('-D, --Define <symbol...>', 'define (add) preprocessor symbol(s)')
       .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .option('-v, --verbose', 'output verbose messages');
 
+    this.program.exitOverride(); // throw instead of exit
+
     this.context.logger.setProgramName(this.program.name());
     //this.context.logger.progressMsg(`after setting name`);
-
-    this.program.parse();
+    try {
+      this.program.parse();
+    } catch (error: unknown) {
+      if (error instanceof CommanderError) {
+        //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
+        if (error.name === 'CommanderError') {
+          this.context.logger.logMessage(``);
+          this.program.outputHelp();
+        } else {
+          this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
+        }
+      } else {
+        this.context.logger.logMessage(`Catch unknown error=[${error}]`);
+      }
+    }
     //this.context.logger.progressMsg(`after parse()`);
 
     this.options = { ...this.options, ...this.program.opts() };
@@ -87,20 +116,18 @@ export class PNutInTypeScript {
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
     }
-    if (process.argv.length < 1) {
-      this.program.help();
-      process.exit(0);
-    }
 
-    this.runTestCode();
+    // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
+    this.runTestCode(); // for quick live testing...
 
+    this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
 
     if (this.options.regression) {
+      // forward our REGRESSION TEST Options
       this.requiresFilename = true;
       const choices: string[] = this.options.regression;
       this.context.logger.verboseMsg('MODE: Regression Testing');
-      //this.context.logger.verboseMsg(`* Regression: [${choices}]`);
       if (choices.includes('element')) {
         this.context.reportOptions.writeElementsReport = true;
         this.context.logger.verboseMsg('Gen: Element Report');
@@ -120,6 +147,7 @@ export class PNutInTypeScript {
     }
 
     if (this.options.log) {
+      // forward our LOG Options
       this.requiresFilename = true;
       const choices: string[] = this.options.log;
       this.context.logger.verboseMsg('MODE: Logging');
@@ -141,6 +169,12 @@ export class PNutInTypeScript {
         this.context.logOptions.logPreprocessor = true;
         this.context.logger.verboseMsg('PreProcessor logging');
       }
+    }
+
+    if (this.options.output) {
+      // forward our Output Filename
+      const outFilename = this.options.output;
+      this.context.compileOptions.outputFilename = outFilename;
     }
 
     if (this.options.both) {
@@ -169,6 +203,7 @@ export class PNutInTypeScript {
     }
 
     if (this.options.ram && this.options.flash) {
+      //this.program.error('Please only use one of -f and -r');
       this.context.logger.errorMsg('Please only use one of -f and -r');
       this.shouldAbort = true;
     }
@@ -177,23 +212,35 @@ export class PNutInTypeScript {
       this.requiresFilename = true;
     }
 
-    const filename: string = this.options.filename;
-    let includeDir: string = '';
     if (this.options.Include) {
-      includeDir = this.options.Include;
-      this.context.preProcessorOptions.includeFolder = includeDir;
+      // forward  Include Folder name(s)
+      const includeDirs: string[] = this.options.Include;
+      for (const newFolder of includeDirs) {
+        this.context.preProcessorOptions.includeFolders.push(newFolder);
+      }
     }
-    let newSymbol: string = '';
+
     if (this.options.Define) {
-      newSymbol = this.options.Define;
+      // forward  Defined Symbol(s)
+      this.context.logger.verboseMsg(`* Def [${this.options.Define}]`);
       // internally all Preprocessor symbols are UPPER CASE
-      this.context.preProcessorOptions.defSymbols.push(newSymbol.toUpperCase());
+      for (const newSymbol of this.options.Define) {
+        this.context.preProcessorOptions.defSymbols.push(newSymbol.toUpperCase());
+      }
     }
-    let oldSymbol: string = '';
+
     if (this.options.Undefine) {
-      oldSymbol = this.options.Undefine;
+      // forward Symbol(s) to be Undefined
+      this.context.logger.verboseMsg(`* Undef [${this.options.Undefine}]`);
       // internally all Preprocessor symbols are UPPER CASE
-      this.context.preProcessorOptions.undefSymbols.push(oldSymbol.toUpperCase());
+      for (const newSymbol of this.options.Undefine) {
+        this.context.preProcessorOptions.undefSymbols.push(newSymbol.toUpperCase());
+      }
+    }
+
+    let filename: string | undefined = this.options.filename;
+    if (filename && filename.endsWith('.json')) {
+      filename = undefined;
     }
 
     if (filename !== undefined && filename !== '') {
@@ -239,7 +286,7 @@ export class PNutInTypeScript {
     const parmA: number = 0xffffffff;
     const parmB: number = 0x00000001;
     let a: bigint = BigInt(parmA) & BigInt(0xffffffff);
-    let b: bigint = BigInt(parmB) & BigInt(0xffffffff);
+    const b: bigint = BigInt(parmB) & BigInt(0xffffffff);
     //a &= BigInt(0xffffffff);
     //b &= BigInt(0xffffffff);
     //a &= BigInt(0x7ffffffffffff);

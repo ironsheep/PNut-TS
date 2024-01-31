@@ -13,7 +13,7 @@
 A joint project between Chip Gracey and Stephen M Moraco.
 We are re-implemting Pnut for Windows in a platform agnostic language.
 
-Pnut source is currently found in a Parallax Repo [P2_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public)
+
 
 ## Table of Contents
 
@@ -22,13 +22,14 @@ On this Page:
 - [Simplified project goals](#simplified-project-goals) 
 - [Accomplishments of this port effort](#accomplishments-of-this-port-effort) 
 - [Possible Futures](#possible-futures) 
-- [Typescript References](#typescript-references) 
-- [Extensions for viewing X86 code](#extensions-for-viewing-x86-code) 
-- [Repository Configuration](#repository-configuration) 
+- [Typescript References](#typescript-references) - good references for studying TypeScript
+- [Extensions for viewing X86 code](#extensions-for-viewing-x86-code) - during the project we are porting x86 code. These extensions help us view the x86 code
+- [Repository Configuration](#repository-configuration) - more about this Repo.
 
 Additional pages:
 
 - [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
+- [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
 
 ## Simplified project goals
 

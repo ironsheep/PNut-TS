@@ -98,8 +98,10 @@ export class SpinDocument {
     this.preloadSymbolTable();
 
     // set include folder if provided from the command line
-    if (this.ctx.preProcessorOptions.includeFolder.length > 0) {
-      this.setIncludePath(this.ctx.preProcessorOptions.includeFolder);
+    if (this.ctx.preProcessorOptions.includeFolders.length > 0) {
+      for (const newFolder of this.ctx.preProcessorOptions.includeFolders) {
+        this.setIncludePath(newFolder);
+      }
     }
 
     // add any symbols arriving from the command line
@@ -444,7 +446,7 @@ export class SpinDocument {
    * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range,
    * returns a TextLine object representing an empty line with a line number of -1.
    */
-  public lineAt(lineIndex: number): TextLine {
+  public lineAtOld(lineIndex: number): TextLine {
     let desiredString: string | undefined = undefined;
     if (lineIndex >= 0 && lineIndex < this.lineCount) {
       desiredString = this.rawLines[lineIndex];
@@ -457,6 +459,16 @@ export class SpinDocument {
     }
     // return object with additional details about this line
     const desiredLine: TextLine = desiredString != null ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
+    return desiredLine;
+  }
+
+  public lineAt(lineIndex: number): TextLine {
+    let desiredLine: TextLine = new TextLine('', -1);
+    if (lineIndex >= 0 && lineIndex < this.lineCount) {
+      desiredLine = this.preprocessedLines[lineIndex];
+      //this.logMessage(`DOC: lineAt(${lineIndex}) finds desiredString=[${desiredString}](${desiredString.length})`);
+    }
+    // return the with additional details about the line
     return desiredLine;
   }
 

@@ -24,7 +24,7 @@ export interface ReportOptions {
 export interface PreProcessorOptions {
   defSymbols: string[]; // symbols from -Dsymbol
   undefSymbols: string[]; // symbols from -Usymbol
-  includeFolder: string;
+  includeFolders: string[];
 }
 
 export interface CompileOptions {
@@ -32,6 +32,7 @@ export interface CompileOptions {
   writeRAM: boolean; // after compile, load to RAM and run
   compile: boolean; // compile file
   enableDebug: boolean; // compile with debug
+  outputFilename: string; // override output filename with this name
 }
 export interface Context {
   libraryFolder: string;
@@ -48,9 +49,9 @@ export function createContext(): Context {
     libraryFolder: path.join(__dirname, '../ext'),
     currentFolder: process.cwd(),
     logger: new Logger(),
-    compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false },
+    compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false, outputFilename: '' },
     logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
     reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false },
-    preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolder: '' }
+    preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolders: [] }
   };
 }
