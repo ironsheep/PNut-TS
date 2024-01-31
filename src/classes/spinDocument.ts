@@ -139,13 +139,17 @@ export class SpinDocument {
   public setIncludePath(includeDir: string): void {
     //this.logMessage(`CODE: setIncludePath(${includeDir})`);
     // is inc-folder
-    const newIncludePath: string = path.join(this.dirName, includeDir);
-    if (dirExists(newIncludePath)) {
-      this.incFolders.push(newIncludePath);
-      //this.logMessage(`CODE: IncludePath(${newIncludePath}) exists!`);
-      this.logMessage(`CODE: Processing includes from [${newIncludePath}]`);
+    if (!this.dirName.endsWith(includeDir)) {
+      const newIncludePath: string = path.join(this.dirName, includeDir);
+      if (dirExists(newIncludePath)) {
+        this.incFolders.push(newIncludePath);
+        //this.logMessage(`CODE: IncludePath(${newIncludePath}) exists!`);
+        this.logMessage(`CODE: Processing includes from [${newIncludePath}]`);
+      } else {
+        this.logMessage(`CODE: ERROR: failed locate incFolder [${newIncludePath}]`);
+      }
     } else {
-      this.logMessage(`CODE: ERROR: failed locate incFolder [${newIncludePath}]`);
+      this.logMessage(`CODE: INFO: skip add of INC from our current dir inc=[${includeDir}], curr=[${this.dirName}]`);
     }
   }
 

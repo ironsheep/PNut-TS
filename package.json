@@ -9,6 +9,7 @@
     "help": "npm run compile && dist/pnut-ts.js --help",
     "test": "jest -c jest-short-config.json",
     "test-full": "npm run compile && jest -c jest-full-config.json",
+    "test-full-only": "npm run compile && jest -c jest-full-only-config.json",
     "pretest": "npm run compile && npm run lint",
     "watch": "tsc -b -w",
     "lint": "eslint ./src --ext .ts,.tsx",

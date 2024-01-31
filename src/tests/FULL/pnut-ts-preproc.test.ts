@@ -25,7 +25,7 @@ test('CLI generates correct preProcessor output', () => {
 
   let passCount = 0;
   const failList = [];
-  const options: string = '-c --regression preproc --';
+  const options: string = '-c -I inc --regression preproc --';
 
   // Iterate over each .spin2 file
   for (const file of files) {
