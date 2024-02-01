@@ -1,11 +1,11 @@
 ' Report for resolver testing
 ' Run: 02/01/2024
-#
+'
 ' ---------------------------------------
 [001] 0x00000000, 0x00000000, op_bitnot     flt  = 0xFFFFFFFF
 [002] 0x55555555, 0x00000000, op_bitnot     flt  = 0xAAAAAAAA
 [003] 0xFFFFFFFF, 0x00000000, op_bitnot     flt  = 0x00000000
-[004] 0x00000000, 0x00000000, op_neg        flt  = 0x00000000
-[005] 0x55555555, 0x00000000, op_neg        flt  = 0xAAAAAAAB
-[006] 0x55555555, 0x00000000, op_neg        flt  = 0xAAAAAAAB
+[004] 0x00000000, 0x00000000, op_neg        flt  = 0xAAAAAAAA
+[005] 0x55555555, 0x00000000, op_neg        flt  = 0xAAAAAAAA
+[006] 0x55555555, 0x00000000, op_neg        flt  = 0xAAAAAAAA
 ' ---------------------------------------
