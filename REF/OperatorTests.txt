@@ -1,0 +1,305 @@
+; operation     a         b         result    isFloat/    throw/             symbol   type     preced  canFloat
+;                                             notFloat    noThrow
+
+op_bitnot       $00000000 $00000000 $ffffffff notFloat    noThrow    ;       !        unary    0       -
+op_bitnot       $12345678 $00000000 $EDCBA987 notFloat    noThrow    ;       !        unary    0       -
+op_bitnot       $ffffffff $00000000 $00000000 notFloat    noThrow    ;       !        unary    0       -
+
+
+op_neg          $3F800000 $00000000 $BF800000 isFloat     noThrow    ;       -        unary    0       yes
+op_neg          $BF800000 $00000000 $3F800000 isFloat     noThrow    ;       -        unary    0       yes
+
+op_neg          $00000000 $00000000 $00000000 notFloat    noThrow    ;       -        unary    0       yes
+op_neg          $00000001 $00000000 $FFFFFFFF notFloat    noThrow    ;       -        unary    0       yes
+op_neg          $80000000 $00000000 $80000000 notFloat    noThrow    ;       -        unary    0       yes
+
+op_fneg         $3F800000 $00000000 $BF800000 notFloat    noThrow    ;       -.       unary    0       -
+op_fneg         $BF800000 $00000000 $3F800000 notFloat    noThrow    ;       -.       unary    0       -
+
+
+op_abs          $3F800000 $00000000 $3F800000 isFloat     noThrow    ;       ABS      unary    0       yes
+op_abs          $BF800000 $00000000 $3F800000 isFloat     noThrow    ;       ABS      unary    0       yes
+
+op_abs          $FFFFFFFF $00000000 $00000001 notFloat    noThrow    ;       ABS      unary    0       yes
+op_abs          $00000001 $00000000 $00000001 notFloat    noThrow    ;       ABS      unary    0       yes
+op_abs          $80000000 $00000000 $80000000 notFloat    noThrow    ;       ABS      unary    0       yes
+
+op_fabs         $3F800000 $00000000 $3F800000 isFloat     noThrow    ;       FABS     unary    0       -
+op_fabs         $BF800000 $00000000 $3F800000 isFloat     noThrow    ;       FABS     unary    0       -
+
+
+op_encod        $00000000 $00000000 $00000000 notFloat    noThrow    ;       ENCOD    unary    0       -
+op_encod        $00000001 $00000000 $00000000 notFloat    noThrow    ;       ENCOD    unary    0       -
+op_encod        $00010000 $00000000 $00000010 notFloat    noThrow    ;       ENCOD    unary    0       -
+op_encod        $80000000 $00000000 $0000001f notFloat    noThrow    ;       ENCOD    unary    0       -
+
+op_decod        $F0000000 $00000000 $00000001 notFloat    noThrow    ;       DECOD    unary    0       -
+op_decod        $0FFFFFEC $00000000 $00001000 notFloat    noThrow    ;       DECOD    unary    0       -
+op_decod        $0000001F $00000000 $80000000 notFloat    noThrow    ;       DECOD    unary    0       -
+
+op_bmask        $00000000 $00000000 $00000001 notFloat    noThrow    ;       BMASK    unary    0       -
+op_bmask        $0FFFFFEC $00000000 $00001FFF notFloat    noThrow    ;       BMASK    unary    0       -
+op_bmask        $F00000FF $00000000 $FFFFFFFF notFloat    noThrow    ;       BMASK    unary    0       -
+
+op_ones         $00000000 $00000000 $00000000 notFloat    noThrow    ;       ONES     unary    0       -
+op_ones         $00100000 $00000000 $00000001 notFloat    noThrow    ;       ONES     unary    0       -
+op_ones         $12345678 $00000000 $0000000D notFloat    noThrow    ;       ONES     unary    0       -
+
+op_sqrt         $00000000 $00000000 $00000000 notFloat    noThrow    ;       SQRT     unary    0       -
+op_sqrt         $12345678 $00000000 $00004444 notFloat    noThrow    ;       SQRT     unary    0       -
+op_sqrt         $FFFFFFFF $00000000 $0000FFFF notFloat    noThrow    ;       SQRT     unary    0       -
+
+op_fsqrt        $49742400 $00000000 $447A0000 notFloat    noThrow    ;       FSQRT    unary    0       -
+op_fsqrt        $3F800000 $00000000 $3F800000 notFloat    noThrow    ;       FSQRT    unary    0       -
+op_fsqrt        $BF800000 $00000000 $00000000 notFloat    throw      ;       FSQRT    unary    0       -
+
+op_qlog         $00000000 $00000000 $00000000 notFloat    noThrow    ;       QLOG     unary    0       -
+op_qlog         $00000001 $00000000 $00000000 notFloat    noThrow    ;       QLOG     unary    0       -
+op_qlog         $0001E5E0 $00000000 $87654187 notFloat    noThrow    ;       QLOG     unary    0       -
+op_qlog         $FFFFFFFF $00000000 $FFFFFFFF notFloat    noThrow    ;       QLOG     unary    0       -
+
+op_qexp         $00000000 $00000000 $00000001 notFloat    noThrow    ;       QEXP     unary    0       -
+op_qexp         $87654321 $00000000 $0001E5E0 notFloat    noThrow    ;       QEXP     unary    0       -
+op_qexp         $EDCBA987 $00000000 $34DF5948 notFloat    noThrow    ;       QEXP     unary    0       -
+
+op_shr          $0000ABCD $00000008 $000000AB notFloat    noThrow    ;       >>       binary   1       -
+op_shr          $FFFFFFFF $FFFFFFFF $00000001 notFloat    noThrow    ;       >>       binary   1       -
+
+op_shl          $FFFFFFFF $FFFFFFFF $80000000 notFloat    noThrow    ;       <<       binary   1       -
+op_shl          $00000001 $000F0010 $00010000 notFloat    noThrow    ;       <<       binary   1       -
+
+op_sar          $80000000 $FFFFFFFF $FFFFFFFF notFloat    noThrow    ;       SAR      binary   1       -
+op_sar          $7FFFFFFF $F000000F $0000FFFF notFloat    noThrow    ;       SAR      binary   1       -
+
+op_ror          $87654321 $FFFFFFFF $0ECA8643 notFloat    noThrow    ;       ROR      binary   1       -
+op_ror          $87654321 $80000010 $43218765 notFloat    noThrow    ;       ROR      binary   1       -
+
+op_rol          $87654321 $FFFFFFFF $C3B2A190 notFloat    noThrow    ;       ROL      binary   1       -
+op_rol          $87654321 $80000008 $65432187 notFloat    noThrow    ;       ROL      binary   1       -
+
+op_rev          $87654321 $FFFFFFF0 $00010985 notFloat    noThrow    ;       REV      binary   1       -
+op_rev          $0000000F $00000000 $00000001 notFloat    noThrow    ;       REV      binary   1       -
+
+op_zerox        $87654321 $00F00010 $00014321 notFloat    noThrow    ;       ZEROX    binary   1       -
+op_zerox        $80000000 $F000001F $80000000 notFloat    noThrow    ;       ZEROX    binary   1       -
+
+op_signx        $87654321 $00F00010 $FFFF4321 notFloat    noThrow    ;       SIGNX    binary   1       -
+op_signx        $0000000A $FFFFFFE3 $FFFFFFFA notFloat    noThrow    ;       SIGNX    binary   1       -
+op_signx        $00000007 $FFFFFFE3 $00000007 notFloat    noThrow    ;       SIGNX    binary   1       -
+
+op_bitand       $F000F000 $87654321 $80004000 notFloat    noThrow    ;       &        binary   2       -
+op_bitand       $AAAAAAAA $5555AAAA $0000AAAA notFloat    noThrow    ;       &        binary   2       -
+
+op_bitxor       $F000FF00 $87654321 $7765BC21 notFloat    noThrow    ;       ^        binary   3       -
+op_bitxor       $AAAAAAAA $5555AAAA $FFFF0000 notFloat    noThrow    ;       ^        binary   3       -
+
+op_bitor        $AAAAAAAA $55555555 $FFFFFFFF notFloat    noThrow    ;       |        binary   4       -
+op_bitor        $87654321 $F0F0F0F0 $F7F5F3F1 notFloat    noThrow    ;       |        binary   4       -
+
+
+op_mul          $788DBF9A $3F800000 $788DBF9A isFloat     noThrow    ;       *        binary   5       yes
+op_mul          $788DBF9A $788DBF9A $00000000 isFloat     throw      ;       *        binary   5       yes
+
+op_mul          $FFFFFFFE $00000100 $FFFFFE00 notFloat    noThrow    ;       *        binary   5       yes
+op_mul          $12345678 $87654321 $70B88D78 notFloat    noThrow    ;       *        binary   5       yes
+
+op_fmul         $7DCCA14B $C1200000 $FF7FC99E notFloat    noThrow    ;       *.       binary   5       -
+op_fmul         $788DBF9A $788DBF9A $00000000 notFloat    throw      ;       *.       binary   5       -
+
+
+op_div          $7DCCA14B $BDCCCCCD $FF7FC99E isFloat     noThrow    ;       /        binary   5       yes
+op_div          $7DCCA14B $00000000 $00000000 isFloat     throw      ;       /        binary   5       yes
+op_div          $7149F2CA $0DA24260 $00000000 isFloat     throw      ;       /        binary   5       yes
+
+op_div          $00000064 $0000000A $0000000A notFloat    noThrow    ;       /        binary   5       yes
+op_div          $40000000 $00010000 $00004000 notFloat    noThrow    ;       /        binary   5       yes
+op_div          $40000000 $00000000 $00000000 notFloat    throw      ;       /        binary   5       yes
+
+op_fdiv         $C1C80000 $40E00000 $C0649249 notFloat    noThrow    ;       /.       binary   5       -
+op_fdiv         $7DCCA14B $00000000 $00000000 notFloat    throw      ;       /.       binary   5       -
+op_fdiv         $7149F2CA $0DA24260 $00000000 notFloat    throw      ;       /.       binary   5       -
+
+
+op_divu         $F8000000 $00000003 $52AAAAAA notFloat    noThrow    ;       +/       binary   5       -
+op_divu         $FFFFFFFF $3FFFFFFF $00000004 notFloat    noThrow    ;       +/       binary   5       -
+op_divu         $F8000000 $00000000 $00000000 notFloat    throw      ;       +/       binary   5       -
+
+op_rem          $40000000 $0000000D $0000000C notFloat    noThrow    ;       //       binary   5       -
+op_rem          $00001000 $00000100 $00000000 notFloat    noThrow    ;       //       binary   5       -
+op_rem          $00001000 $00000000 $00000000 notFloat    throw      ;       //       binary   5       -
+
+op_remu         $F8000000 $00000003 $00000002 notFloat    noThrow    ;       +//      binary   5       -
+op_remu         $FFFFFFFE $FFFFFFFF $FFFFFFFE notFloat    noThrow    ;       +//      binary   5       -
+op_remu         $FFFFFFFE $00000000 $00000000 notFloat    throw      ;       +//      binary   5       -
+
+op_sca          $80000000 $FFFFFFFF $7FFFFFFF notFloat    noThrow    ;       SCA      binary   5       -
+op_sca          $12345678 $87654321 $09A0CD05 notFloat    noThrow    ;       SCA      binary   5       -
+
+op_scas         $12345678 $87654321 $DDB1DA35 notFloat    noThrow    ;       SCAS     binary   5       -
+op_scas         $40000000 $12345678 $12345678 notFloat    noThrow    ;       SCAS     binary   5       -
+
+op_frac         $80000000 $90000000 $E38E38E3 notFloat    noThrow    ;       FRAC     binary   5       -
+op_frac         $00000001 $00000003 $55555555 notFloat    noThrow    ;       FRAC     binary   5       -
+op_frac         $00000003 $00000001 $00000000 notFloat    throw      ;       FRAC     binary   5       -
+op_frac         $00000003 $00000000 $00000000 notFloat    throw      ;       FRAC     binary   5       -
+
+
+op_add          $00000000 $00000000 $00000000 isFloat     noThrow    ;       +        binary   6       yes
+op_add          $7F7FC99E $7F7FC99E $00000000 isFloat     throw      ;       +        binary   6       yes
+
+op_add          $00000003 $00000004 $00000007 notFloat    noThrow    ;       +        binary   6       yes
+op_add          $FFFFFFFC $00000010 $0000000C notFloat    noThrow    ;       +        binary   6       yes
+
+op_fadd         $3F800000 $3F800000 $40000000 notFloat    noThrow    ;       +.       binary   6       -
+op_fadd         $7F7FC99E $7F7FC99E $00000000 notFloat    throw      ;       +.       binary   6       -
+
+
+op_sub          $42C80000 $42C60000 $3F800000 isFloat     noThrow    ;       -        binary   6       yes
+op_sub          $FF7FFFFF $77F684DF $00000000 isFloat     throw      ;       -        binary   6       yes
+
+op_sub          $00000100 $00000001 $000000FF notFloat    noThrow    ;       -        binary   6       yes
+op_sub          $FFFFFFF8 $FFFFFFF0 $00000008 notFloat    noThrow    ;       -        binary   6       yes
+
+op_fsub         $49742400 $4479C000 $4973E590 notFloat    noThrow    ;       -.       binary   6       -
+op_fsub         $FF7FFFFF $77F684DF $00000000 notFloat    throw      ;       -.       binary   6       -
+
+
+op_fge          $4479C000 $49742400 $49742400 isFloat     noThrow    ;       #>       binary   7       yes
+op_fge          $49742400 $4479C000 $49742400 isFloat     noThrow    ;       #>       binary   7       yes
+
+op_fge          $FFFFFFF0 $00000004 $00000004 notFloat    noThrow    ;       #>       binary   7       yes
+op_fge          $00000080 $FFFFF000 $00000080 notFloat    noThrow    ;       #>       binary   7       yes
+
+
+op_fle          $41A00000 $41200000 $41200000 isFloat     noThrow    ;       <#       binary   7       yes
+op_fle          $41200000 $41A00000 $41200000 isFloat     noThrow    ;       <#       binary   7       yes
+
+op_fle          $FFFFFF00 $FF000000 $FF000000 notFloat    noThrow    ;       <#       binary   7       yes
+op_fle          $FF000000 $FFFFFF00 $FF000000 notFloat    noThrow    ;       <#       binary   7       yes
+
+
+op_addbits      $FFFFFFF1 $FFFFFFF1 $00000231 notFloat    noThrow    ;       ADDBITS  binary   8       -
+op_addbits      $00000008 $00000003 $00000068 notFloat    noThrow    ;       ADDBITS  binary   8       -
+
+op_addpins      $FFFFFFE1 $FFFFFFF1 $00000461 notFloat    noThrow    ;       ADDPINS  binary   8       -
+op_addpins      $00000038 $00000010 $00000438 notFloat    noThrow    ;       ADDPINS  binary   8       -
+
+
+op_lt           $3F800000 $3F800000 $00000000 isFloat     noThrow    ;       <        binary   9       yes
+op_lt           $3F800000 $40000000 $3F800000 isFloat     noThrow    ;       <        binary   9       yes
+op_lt           $40000000 $3F800000 $00000000 isFloat     noThrow    ;       <        binary   9       yes
+
+op_lt           $00000001 $00000001 $00000000 notFloat    noThrow    ;       <        binary   9       yes
+op_lt           $00000001 $00000002 $FFFFFFFF notFloat    noThrow    ;       <        binary   9       yes
+op_lt           $00000002 $00000001 $00000000 notFloat    noThrow    ;       <        binary   9       yes
+
+op_flt          $3F800000 $3F800000 $00000000 notFloat    noThrow    ;       <.       binary   9       -
+op_flt          $3F800000 $40000000 $FFFFFFFF notFloat    noThrow    ;       <.       binary   9       -
+op_flt          $40000000 $3F800000 $00000000 notFloat    noThrow    ;       <.       binary   9       -
+
+
+op_ltu          $FFFFFFFF $FFFFFFFE $00000000 notFloat    noThrow    ;       +<       binary   9       -
+op_ltu          $00000000 $80000000 $FFFFFFFF notFloat    noThrow    ;       +<       binary   9       -
+op_ltu          $80000000 $00000000 $00000000 notFloat    noThrow    ;       +<       binary   9       -
+
+
+op_lte          $3F800000 $3F800000 $3F800000 isFloat     noThrow    ;       <=       binary   9       yes
+op_lte          $3F800000 $40000000 $3F800000 isFloat     noThrow    ;       <=       binary   9       yes
+op_lte          $40000000 $3F800000 $00000000 isFloat     noThrow    ;       <=       binary   9       yes
+
+op_lte          $00000001 $00000001 $FFFFFFFF notFloat    noThrow    ;       <=       binary   9       yes
+op_lte          $00000001 $00000002 $FFFFFFFF notFloat    noThrow    ;       <=       binary   9       yes
+op_lte          $00000002 $00000001 $00000000 notFloat    noThrow    ;       <=       binary   9       yes
+
+op_flte         $3F800000 $3F800000 $FFFFFFFF notFloat    noThrow    ;       <=.      binary   9       -
+op_flte         $3F800000 $40000000 $FFFFFFFF notFloat    noThrow    ;       <=.      binary   9       -
+op_flte         $40000000 $3F800000 $00000000 notFloat    noThrow    ;       <=.      binary   9       -
+
+
+op_lteu         $F0000000 $F0000000 $FFFFFFFF notFloat    noThrow    ;       +<=      binary   9       -
+op_lteu         $F0000000 $FF000000 $FFFFFFFF notFloat    noThrow    ;       +<=      binary   9       -
+op_lteu         $F0000000 $00000000 $00000000 notFloat    noThrow    ;       +<=      binary   9       -
+
+
+op_e            $3F800000 $3F800000 $3F800000 isFloat     noThrow    ;       ==       binary   9       yes
+op_e            $3F800000 $40000000 $00000000 isFloat     noThrow    ;       ==       binary   9       yes
+op_e            $40000000 $3F800000 $00000000 isFloat     noThrow    ;       ==       binary   9       yes
+
+op_e            $00000001 $00000001 $FFFFFFFF notFloat    noThrow    ;       ==       binary   9       yes
+op_e            $00000001 $00000002 $00000000 notFloat    noThrow    ;       ==       binary   9       yes
+op_e            $00000002 $00000001 $00000000 notFloat    noThrow    ;       ==       binary   9       yes
+
+op_fe           $3F800000 $3F800000 $3F800000 notFloat    noThrow    ;       ==.      binary   9       -
+op_fe           $3F800000 $40000000 $00000000 notFloat    noThrow    ;       ==.      binary   9       -
+op_fe           $40000000 $3F800000 $00000000 notFloat    noThrow    ;       ==.      binary   9       -
+
+
+op_ne           $3F800000 $3F800000 $00000000 isFloat     noThrow    ;       <>       binary   9       yes
+op_ne           $3F800000 $40000000 $3F800000 isFloat     noThrow    ;       <>       binary   9       yes
+op_ne           $40000000 $3F800000 $3F800000 isFloat     noThrow    ;       <>       binary   9       yes
+
+op_ne           $00000001 $00000001 $00000000 notFloat    noThrow    ;       <>       binary   9       yes
+op_ne           $00000001 $00000002 $FFFFFFFF notFloat    noThrow    ;       <>       binary   9       yes
+op_ne           $00000002 $00000001 $FFFFFFFF notFloat    noThrow    ;       <>       binary   9       yes
+
+op_fne          $3F800000 $3F800000 $00000000 notFloat    noThrow    ;       <>.      binary   9       -
+op_fne          $3F800000 $40000000 $FFFFFFFF notFloat    noThrow    ;       <>.      binary   9       -
+op_fne          $40000000 $3F800000 $FFFFFFFF notFloat    noThrow    ;       <>.      binary   9       -
+
+
+op_gte          $3F800000 $3F800000 $3F800000 isFloat     noThrow    ;       >=       binary   9       yes
+op_gte          $3F800000 $40000000 $00000000 isFloat     noThrow    ;       >=       binary   9       yes
+op_gte          $40000000 $3F800000 $3F800000 isFloat     noThrow    ;       >=       binary   9       yes
+
+op_gte          $00000001 $00000001 $FFFFFFFF notFloat    noThrow    ;       >=       binary   9       yes
+op_gte          $00000001 $00000002 $00000000 notFloat    noThrow    ;       >=       binary   9       yes
+op_gte          $00000002 $00000001 $FFFFFFFF notFloat    noThrow    ;       >=       binary   9       yes
+
+op_fgte         $3F800000 $3F800000 $FFFFFFFF notFloat    noThrow    ;       >=.      binary   9       -
+op_fgte         $3F800000 $40000000 $00000000 notFloat    noThrow    ;       >=.      binary   9       -
+op_fgte         $40000000 $3F800000 $FFFFFFFF notFloat    noThrow    ;       >=.      binary   9       -
+
+
+op_gteu         $80000000 $80000000 $FFFFFFFF notFloat    noThrow    ;       +>=      binary   9       -
+op_gteu         $80000000 $00000000 $FFFFFFFF notFloat    noThrow    ;       +>=      binary   9       -
+op_gteu         $00000000 $80000000 $00000000 notFloat    noThrow    ;       +>=      binary   9       -
+
+
+op_gt           $3F800000 $3F800000 $00000000 isFloat     noThrow    ;       >        binary   9       yes
+op_gt           $3F800000 $40000000 $00000000 isFloat     noThrow    ;       >        binary   9       yes
+op_gt           $40000000 $3F800000 $3F800000 isFloat     noThrow    ;       >        binary   9       yes
+
+op_gt           $00000001 $00000001 $00000000 notFloat    noThrow    ;       >        binary   9       yes
+op_gt           $00000001 $00000002 $00000000 notFloat    noThrow    ;       >        binary   9       yes
+op_gt           $00000002 $00000001 $FFFFFFFF notFloat    noThrow    ;       >        binary   9       yes
+
+op_fgt          $3F800000 $3F800000 $00000000 notFloat    noThrow    ;       >.       binary   9       -
+op_fgt          $3F800000 $40000000 $00000000 notFloat    noThrow    ;       >.       binary   9       -
+op_fgt          $40000000 $3F800000 $FFFFFFFF notFloat    noThrow    ;       >.       binary   9       -
+
+
+op_gtu          $80000000 $80000000 $00000000 notFloat    noThrow    ;       +>       binary   9       -
+op_gtu          $7FFFFFFF $80000000 $00000000 notFloat    noThrow    ;       +>       binary   9       -
+op_gtu          $80000000 $7FFFFFFF $FFFFFFFF notFloat    noThrow    ;       +>       binary   9       -
+
+
+op_ltegt        $BF800000 $3F800000 $BF800000 isFloat     noThrow    ;       <=>      binary   9       yes
+op_ltegt        $3F800000 $3F800000 $00000000 isFloat     noThrow    ;       <=>      binary   9       yes
+op_ltegt        $3F800000 $BF800000 $3F800000 isFloat     noThrow    ;       <=>      binary   9       yes
+
+op_ltegt        $FFFFFFFF $00000001 $FFFFFFFF notFloat    noThrow    ;       <=>      binary   9       yes
+op_ltegt        $00000001 $00000001 $00000000 notFloat    noThrow    ;       <=>      binary   9       yes
+op_ltegt        $00000001 $FFFFFFFF $00000001 notFloat    noThrow    ;       <=>      binary   9       yes
+
+
+op_lognot       $00000001 $00000000 $00000000 notFloat    noThrow    ;       !!, NOT  unary    10      -
+op_lognot       $00000000 $00000000 $FFFFFFFF notFloat    noThrow    ;       !!, NOT  unary    10      -
+
+op_logand       $00000001 $00000000 $00000000 notFloat    noThrow    ;       &&, AND  binary   11      -
+op_logand       $00000001 $00000001 $FFFFFFFF notFloat    noThrow    ;       &&, AND  binary   11      -
+
+op_logxor       $00000001 $00000001 $00000000 notFloat    noThrow    ;       ^^, XOR  binary   12      -
+op_logxor       $00000000 $00000001 $FFFFFFFF notFloat    noThrow    ;       ^^, XOR  binary   12      -
+
+op_logor        $00000000 $00000000 $00000000 notFloat    noThrow    ;       ||, OR   binary   13      -
+op_logor        $00000000 $00000001 $FFFFFFFF notFloat    noThrow    ;       ||, OR   binary   13      -

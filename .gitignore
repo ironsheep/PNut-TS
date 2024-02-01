@@ -185,7 +185,6 @@ alias.sh
 
 HOLD/
 *.tar.gz
-REF/
 *.elem
 *.tabl
 TEST/preprocessTESTs/condCode.pre
@@ -197,4 +196,5 @@ TEST/SHORT/tablesTESTs/goldenFiltered.txt
 TEST/SHORT/tablesTESTs/reportFiltered.txt
 TEST/SHORT/tablesTESTs/dumpTables.tabl
 *.resolv
-*.txt
+TEST/SHORT/tablesTESTs/dumpTables.resolv.GOLD.txt
+TEST/SHORT/tablesTESTs/dumpTables.resolv.txt
