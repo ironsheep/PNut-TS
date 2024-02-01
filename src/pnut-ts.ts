@@ -130,7 +130,7 @@ export class PNutInTypeScript {
     }
 
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
-    //this.runTestCode(); // for quick live testing...
+    this.runTestCode(); // for quick live testing...
 
     this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
@@ -306,7 +306,69 @@ export class PNutInTypeScript {
     }
   }
 
+  // --------------------------------------------
+  // PLEASE PARDON OUR STRAY TEST CODE BELOW HERE
+  // --------------------------------------------
+
+  private bigIntFloat32ToNumber(float32BigInt: bigint): number {
+    // Create a new ArrayBuffer with a size of 4 bytes
+    const buffer = new ArrayBuffer(4);
+    // Create a new DataView from the ArrayBuffer
+    const view = new DataView(buffer);
+    // Get the least significant 32 bits of the BigInt and set into the DataView
+    view.setUint32(0, Number(float32BigInt & BigInt(0xffffffff)), true); // true for little-endian
+    // Create a new Float32Array from the ArrayBuffer
+    const float32Array = new Float32Array(buffer);
+    // Return the first element of the Float32Array
+    return float32Array[0];
+  }
+
+  private numberToBigIntFloat32(float64: number): bigint {
+    // Create a new ArrayBuffer with a size of 4 bytes
+    const buffer = new ArrayBuffer(4);
+    // Create a new Float32Array from the ArrayBuffer
+    const float32Array = new Float32Array(buffer);
+    // Set the first element of the Float32Array to the number
+    float32Array[0] = float64;
+    // Create a new DataView from the ArrayBuffer
+    const view = new DataView(buffer);
+    // Return the 32 bits from that DataView as a BigInt
+    //   (note true is for little - endian)
+    return BigInt(view.getUint32(0, true));
+  }
+
   private runTestCode() {
+    return;
+    /*
+    let testValue: bigint = BigInt(0x3f800000);
+    let testResult: number = this.bigIntFloat32ToNumber(testValue);
+    this.context.logger.logMessage(`--->   testResult=(${testResult}) <---`);
+
+    testValue = BigInt(0x3fc00000);
+    testResult = this.bigIntFloat32ToNumber(testValue);
+    this.context.logger.logMessage(`--->   testResult2=(${testResult}) <---`);
+
+    testValue = BigInt(0xbfc00000);
+    testResult = this.bigIntFloat32ToNumber(testValue);
+    this.context.logger.logMessage(`--->   testResult2=(${testResult}) <---`);
+    this.context.logger.logMessage('');
+    */
+    let testValue: number = 1.5;
+    let testResult: bigint = this.numberToBigIntFloat32(testValue);
+
+    let biHex = testResult.toString(16).padStart(16, '0');
+    let biHexGrouped = biHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
+    this.context.logger.logMessage(` biB: 0x${biHexGrouped.toUpperCase()} a=(${testResult})`);
+
+    testValue = -1.5;
+    testResult = this.numberToBigIntFloat32(testValue);
+
+    biHex = testResult.toString(16).padStart(16, '0');
+    biHexGrouped = biHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
+    this.context.logger.logMessage(` biB: 0x${biHexGrouped.toUpperCase()} a=(${testResult})`);
+  }
+
+  private runTestCodeOld() {
     //return;
     //const parmA: number = 0xffffffff;
     //const parmA: number = 0x87654321;

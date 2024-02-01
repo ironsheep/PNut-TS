@@ -11,7 +11,7 @@ import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
 import { eElementType, eOperationType } from './types';
-import { hexStringToFloat64, stringToBigIntFloat32, bigIntToHexString, bigIntLs32bitsToFloat64, bigIntToFloat64 } from '../utils/float32';
+import { bigIntFloat32ToNumber, numberToBigIntFloat32 } from '../utils/float32';
 
 export class SpinResolver {
   private context: Context;
@@ -36,6 +36,8 @@ export class SpinResolver {
     const mask31Bit: bigint = BigInt(0x7fffffff);
     const true32Bit: bigint = BigInt(0xffffffff);
     const false32Bit: bigint = 0n;
+
+    this.logMessage(`resolver(${parmA}, ${parmB}) ${eOperationType[operation]} isFloat=(${isFloatInConstExpression})`);
 
     // conditioning the incoming params
     let a: bigint = BigInt(parmA);
@@ -97,7 +99,6 @@ export class SpinResolver {
           for (let index: bigint = 31n; index >= 0n; index--) {
             if (a & (1n << index)) {
               bitCount++;
-              break;
             }
           }
           a = bitCount;
@@ -124,11 +125,11 @@ export class SpinResolver {
             throw new Error(`Floating-point constant must be positive`);
           }
           // convert to internal from float32
-          const internalFloat64: number = bigIntToFloat64(a);
+          const internalFloat64: number = bigIntFloat32ToNumber(a);
           // get square root
           const internalSqRoot64: number = Math.sqrt(internalFloat64);
           // convert back to float32
-          a = stringToBigIntFloat32(internalSqRoot64.toString());
+          a = numberToBigIntFloat32(internalSqRoot64);
         }
         break;
 
@@ -219,11 +220,11 @@ export class SpinResolver {
         {
           if (isFloatInConstExpression) {
             // convert to internal from float32
-            let aInternalFloat64: number = bigIntToFloat64(a);
-            const bInternalFloat64: number = bigIntToFloat64(b);
+            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 *= bInternalFloat64;
             // convert back to float32
-            a = stringToBigIntFloat32(aInternalFloat64.toString());
+            a = numberToBigIntFloat32(aInternalFloat64);
           } else {
             a = (a * b) & mask32Bit;
           }
@@ -233,11 +234,11 @@ export class SpinResolver {
       case eOperationType.op_fmul: //  *.
         {
           // convert to internal from float32
-          let aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           aInternalFloat64 *= bInternalFloat64;
           // convert back to float32
-          a = stringToBigIntFloat32(aInternalFloat64.toString());
+          a = numberToBigIntFloat32(aInternalFloat64);
         }
         break;
 
@@ -250,11 +251,11 @@ export class SpinResolver {
               // [error_fpo]
               throw new Error(`Floating-point overflow`);
             }
-            let aInternalFloat64: number = bigIntToFloat64(a);
-            const bInternalFloat64: number = bigIntToFloat64(b);
+            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 /= bInternalFloat64;
             // convert back to float32
-            a = stringToBigIntFloat32(aInternalFloat64.toString());
+            a = numberToBigIntFloat32(aInternalFloat64);
           } else {
             if (b == 0n) {
               // [error_dbz]
@@ -272,11 +273,11 @@ export class SpinResolver {
             // [error_fpo]
             throw new Error(`Floating-point overflow`);
           }
-          let aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           aInternalFloat64 /= bInternalFloat64;
           // convert back to float32
-          a = stringToBigIntFloat32(aInternalFloat64.toString());
+          a = numberToBigIntFloat32(aInternalFloat64);
         }
         break;
 
@@ -328,11 +329,11 @@ export class SpinResolver {
         {
           // add b to a returning a
           if (isFloatInConstExpression) {
-            let aInternalFloat64: number = bigIntToFloat64(a);
-            const bInternalFloat64: number = bigIntToFloat64(b);
+            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 += bInternalFloat64;
             // convert back to float32
-            a = stringToBigIntFloat32(aInternalFloat64.toString());
+            a = numberToBigIntFloat32(aInternalFloat64);
           } else {
             a = (a + b) & mask32Bit;
           }
@@ -342,11 +343,11 @@ export class SpinResolver {
       case eOperationType.op_fadd: //  +.
         {
           // add b to a returning a
-          let aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           aInternalFloat64 += bInternalFloat64;
           // convert back to float32
-          a = stringToBigIntFloat32(aInternalFloat64.toString());
+          a = numberToBigIntFloat32(aInternalFloat64);
         }
         break;
 
@@ -354,11 +355,11 @@ export class SpinResolver {
         {
           // subtract b from a returning a
           if (isFloatInConstExpression) {
-            let aInternalFloat64: number = bigIntToFloat64(a);
-            const bInternalFloat64: number = bigIntToFloat64(b);
+            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 -= bInternalFloat64;
             // convert back to float32
-            a = stringToBigIntFloat32(aInternalFloat64.toString());
+            a = numberToBigIntFloat32(aInternalFloat64);
           } else {
             a = (a - b) & mask32Bit;
           }
@@ -367,11 +368,11 @@ export class SpinResolver {
 
       case eOperationType.op_fsub: //  -.
         {
-          let aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           aInternalFloat64 -= bInternalFloat64;
           // convert back to float32
-          a = stringToBigIntFloat32(aInternalFloat64.toString());
+          a = numberToBigIntFloat32(aInternalFloat64);
         }
         break;
 
@@ -379,11 +380,11 @@ export class SpinResolver {
         {
           // force a to be greater than or equal to b
           if (isFloatInConstExpression) {
-            let aInternalFloat64: number = bigIntToFloat64(a);
-            const bInternalFloat64: number = bigIntToFloat64(b);
+            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 = aInternalFloat64 < bInternalFloat64 ? bInternalFloat64 : aInternalFloat64;
             // convert back to float32
-            a = stringToBigIntFloat32(aInternalFloat64.toString());
+            a = numberToBigIntFloat32(aInternalFloat64);
           } else {
             a = this.signExtendFrom32Bit(a) < this.signExtendFrom32Bit(b) ? b : a;
           }
@@ -394,11 +395,11 @@ export class SpinResolver {
         {
           // force a to be less than or equal to b
           if (isFloatInConstExpression) {
-            let aInternalFloat64: number = bigIntToFloat64(a);
-            const bInternalFloat64: number = bigIntToFloat64(b);
+            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
+            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 = aInternalFloat64 > bInternalFloat64 ? bInternalFloat64 : aInternalFloat64;
             // convert back to float32
-            a = stringToBigIntFloat32(aInternalFloat64.toString());
+            a = numberToBigIntFloat32(aInternalFloat64);
           } else {
             a = this.signExtendFrom32Bit(a) > this.signExtendFrom32Bit(b) ? b : a;
           }
@@ -423,8 +424,8 @@ export class SpinResolver {
         //       runtime it returns all 1 bits or all 0 bits
 
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 < bInternalFloat64 ? float1p0 : 0n;
         } else {
           a = this.signExtendFrom32Bit(a) < this.signExtendFrom32Bit(b) ? true32Bit : false32Bit;
@@ -434,8 +435,8 @@ export class SpinResolver {
       case eOperationType.op_flt: //  <.
         {
           // this version returns True/False!!
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 < bInternalFloat64 ? true32Bit : false32Bit;
         }
         break;
@@ -447,8 +448,8 @@ export class SpinResolver {
 
       case eOperationType.op_lte: //  <=
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 <= bInternalFloat64 ? float1p0 : 0n;
         } else {
           a = this.signExtendFrom32Bit(a) <= this.signExtendFrom32Bit(b) ? true32Bit : false32Bit;
@@ -458,8 +459,8 @@ export class SpinResolver {
       case eOperationType.op_flte: //  <=.
         {
           // this version returns True/False!!
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 <= bInternalFloat64 ? true32Bit : false32Bit;
         }
         break;
@@ -470,8 +471,8 @@ export class SpinResolver {
 
       case eOperationType.op_e: //  ==
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 == bInternalFloat64 ? float1p0 : 0n;
         } else {
           a = a == b ? true32Bit : false32Bit;
@@ -481,16 +482,16 @@ export class SpinResolver {
       case eOperationType.op_fe: //  ==.
         {
           // this version returns True/False!!
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 == bInternalFloat64 ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_ne: //  <>
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 != bInternalFloat64 ? float1p0 : 0n;
         } else {
           a = a != b ? true32Bit : false32Bit;
@@ -500,16 +501,16 @@ export class SpinResolver {
       case eOperationType.op_fne: //  <>.
         {
           // this version returns True/False!!
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 != bInternalFloat64 ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_gte: //  >=
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 >= bInternalFloat64 ? float1p0 : 0n;
         } else {
           a = a >= b ? true32Bit : false32Bit;
@@ -519,8 +520,8 @@ export class SpinResolver {
       case eOperationType.op_fgte: //  >=.
         {
           // this version returns True/False!!
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 >= bInternalFloat64 ? true32Bit : false32Bit;
         }
         break;
@@ -531,8 +532,8 @@ export class SpinResolver {
 
       case eOperationType.op_gt: //  >
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 > bInternalFloat64 ? float1p0 : 0n;
         } else {
           a = a > b ? true32Bit : false32Bit;
@@ -542,8 +543,8 @@ export class SpinResolver {
       case eOperationType.op_fgt: //  >.
         {
           // this version returns True/False!!
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 > bInternalFloat64 ? true32Bit : false32Bit;
         }
         break;
@@ -554,8 +555,10 @@ export class SpinResolver {
 
       case eOperationType.op_ltegt: //  <=>
         if (isFloatInConstExpression) {
-          const aInternalFloat64: number = bigIntToFloat64(a);
-          const bInternalFloat64: number = bigIntToFloat64(b);
+          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
+          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
+          const testStatus: boolean = aInternalFloat64 < bInternalFloat64;
+          this.logMessage(` *** op_ltegt a(${aInternalFloat64}) < b(${bInternalFloat64}) = (${testStatus})`);
           a = aInternalFloat64 == bInternalFloat64 ? 0n : aInternalFloat64 < bInternalFloat64 ? float1p0 | msb32Bit : float1p0;
         } else {
           const extendedA = this.signExtendFrom32Bit(a);
@@ -585,8 +588,8 @@ export class SpinResolver {
         throw new Error(`this operation NOT YET IMPLEMENTED`);
         break;
     }
-    a &= mask32Bit;
-    return bigIntLs32bitsToFloat64(a);
+
+    return Number(a);
   }
 
   private signExtendFrom32Bit(value: bigint): bigint {
