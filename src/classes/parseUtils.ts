@@ -1014,7 +1014,7 @@ export class SpinSymbolTables {
 
     //		oc		op		prec	bytecode	ternary	binary	unary	assign	float	alias	hubcode
     this.opcodeValues.set(eOpcode.oc_bitnot, setOpcodeValue(eOperationType.op_bitnot, 0, eByteCode.bc_bitnot, 0, 0, 1, 1, 0, 0, 0)); //  !
-    this.opcodeValues.set(eOpcode.oc_neg, setOpcodeValue(eOperationType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub symbol)
+    this.opcodeValues.set(eOpcode.oc_neg, setOpcodeValue(eOperationType.op_neg, 0, eByteCode.bc_neg, 0, 0, 1, 1, 1, 0, 0)); //  -	(uses op_sub sym)
     this.opcodeValues.set(eOpcode.oc_fneg, setOpcodeValue(eOperationType.op_fneg, 0, eByteCode.bc_fneg, 0, 0, 1, 0, 1, 0, 1)); //  -.	(uses op_fsub sym)
     this.opcodeValues.set(eOpcode.oc_abs, setOpcodeValue(eOperationType.op_abs, 0, eByteCode.bc_abs, 0, 0, 1, 1, 1, 0, 0)); //  ABS
     this.opcodeValues.set(eOpcode.oc_fabs, setOpcodeValue(eOperationType.op_fabs, 0, eByteCode.bc_fabs, 0, 0, 1, 0, 1, 0, 1)); //  FABS

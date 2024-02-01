@@ -51,7 +51,7 @@ export class SpinResolver {
         // invert our 32bits
         a ^= mask32Bit;
         break;
-      case eOperationType.op_neg: // -
+      case eOperationType.op_neg: //  -	(uses op_sub sym)
         if (isFloatInConstExpression) {
           // our 32bit float  signbit in msb, 8 exponent bits, 23 mantissa bits
           a ^= msb32Bit;
@@ -59,20 +59,20 @@ export class SpinResolver {
           a = ((a ^ mask32Bit) + 1n) & mask32Bit;
         }
         break;
-      case eOperationType.op_fneg: // -.
+      case eOperationType.op_fneg: // -.	(uses op_fsub sym)
         a ^= msb32Bit;
         break;
-      case eOperationType.op_abs:
+      case eOperationType.op_abs: //  ABS
         if (isFloatInConstExpression) {
           a &= mask31Bit;
         } else {
           a = a & msb32Bit ? ((a ^ mask32Bit) + 1n) & mask32Bit : a;
         }
         break;
-      case eOperationType.op_fabs:
+      case eOperationType.op_fabs: //  FABS
         a &= mask31Bit;
         break;
-      case eOperationType.op_encod:
+      case eOperationType.op_encod: //  ENCOD
         {
           let bitPosition: bigint = 0n;
           for (let index: bigint = 31n; index >= 0n; index--) {
@@ -84,14 +84,14 @@ export class SpinResolver {
           a = bitPosition;
         }
         break;
-      case eOperationType.op_decod:
+      case eOperationType.op_decod: //  DECOD
         a = 1n << (a & 31n);
         break;
-      case eOperationType.op_bmask:
+      case eOperationType.op_bmask: //  BMASK
         a = mask32Bit >> (31n - (a & 31n));
         break;
 
-      case eOperationType.op_ones:
+      case eOperationType.op_ones: //  ONES
         {
           let bitCount: bigint = 0n;
           for (let index: bigint = 31n; index >= 0n; index--) {
@@ -104,7 +104,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_sqrt:
+      case eOperationType.op_sqrt: //  SQRT
         {
           let root: bigint = 0n;
           for (let index: bigint = 15n; index >= 0n; index--) {
@@ -117,7 +117,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fsqrt:
+      case eOperationType.op_fsqrt: //  FSQRT
         {
           if (a > msb32Bit) {
             // [error_fpcmbp]
@@ -132,43 +132,43 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_qlog:
+      case eOperationType.op_qlog: //  QLOG
         // if a is non-zero... then calculate else leave it at zero
         if (a) {
           a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
         }
         break;
 
-      case eOperationType.op_qexp:
+      case eOperationType.op_qexp: //  QEXP
         // WARNING this result MAY cause binary differences in our output file! WARNING
         //  consider this code if we see problems in our regression tests
         //  it's all a matter of precision...
         a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)))); // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
         break;
 
-      case eOperationType.op_shr:
+      case eOperationType.op_shr: //  >>
         a = a >> bitCountFromB;
         break;
 
-      case eOperationType.op_shl:
+      case eOperationType.op_shl: //  <<
         a = (a << bitCountFromB) & mask32Bit;
         break;
 
-      case eOperationType.op_sar:
+      case eOperationType.op_sar: //  SAR
         {
           const isNeg: boolean = a & msb32Bit ? true : false;
           a = (((isNeg ? mask32Bit << 32n : 0n) | a) >> bitCountFromB) & mask32Bit;
         }
         break;
 
-      case eOperationType.op_ror:
+      case eOperationType.op_ror: //  ROR
         {
           const doubleUp: bigint = (a << 32n) | a;
           a = (doubleUp >> bitCountFromB) & mask32Bit;
         }
         break;
 
-      case eOperationType.op_rol:
+      case eOperationType.op_rol: //  ROL
         {
           //
           const doubleUp: bigint = (a << 32n) | a;
@@ -176,7 +176,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_rev:
+      case eOperationType.op_rev: //  REV
         {
           // reverse b ls-bits of a
           let revValue: bigint = 0n;
@@ -188,12 +188,12 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_zerox:
+      case eOperationType.op_zerox: //  ZEROX
         // zero extend a from bit b
         a &= mask32Bit >> (31n - bitCountFromB);
         break;
 
-      case eOperationType.op_signx:
+      case eOperationType.op_signx: //  SIGNX
         // copy bit b of a to all higher bits of a
         {
           const isNeg: boolean = (a >> bitCountFromB) & 1n ? true : false;
@@ -202,19 +202,19 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_bitand:
+      case eOperationType.op_bitand: //  &
         a &= b;
         break;
 
-      case eOperationType.op_bitxor:
+      case eOperationType.op_bitxor: //  ^
         a ^= b;
         break;
 
-      case eOperationType.op_bitor:
+      case eOperationType.op_bitor: //  |
         a |= b;
         break;
 
-      case eOperationType.op_mul:
+      case eOperationType.op_mul: //  *
         // multiply a by b
         {
           if (isFloatInConstExpression) {
@@ -230,7 +230,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fmul:
+      case eOperationType.op_fmul: //  *.
         {
           // convert to internal from float32
           let aInternalFloat64: number = bigIntToFloat64(a);
@@ -241,7 +241,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_div:
+      case eOperationType.op_div: //  /
         // divide a by b
         {
           if (isFloatInConstExpression) {
@@ -265,7 +265,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fdiv:
+      case eOperationType.op_fdiv: //  /.
         {
           // convert to internal from float32
           if ((b & mask31Bit) == 0n) {
@@ -280,7 +280,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_divu:
+      case eOperationType.op_divu: //  +/
         if (b == 0n) {
           // [error_dbz]
           throw new Error(`Divide by zero`);
@@ -288,7 +288,7 @@ export class SpinResolver {
         a /= b;
         break;
 
-      case eOperationType.op_rem:
+      case eOperationType.op_rem: //  //
         if (b == 0n) {
           // [error_dbz]
           throw new Error(`Divide by zero`);
@@ -296,7 +296,7 @@ export class SpinResolver {
         a = this.signExtendFrom32Bit(a) % this.signExtendFrom32Bit(b) & mask32Bit;
         break;
 
-      case eOperationType.op_remu:
+      case eOperationType.op_remu: //  +//
         if (b == 0n) {
           // [error_dbz]
           throw new Error(`Divide by zero`);
@@ -304,15 +304,15 @@ export class SpinResolver {
         a %= b;
         break;
 
-      case eOperationType.op_sca:
+      case eOperationType.op_sca: //  SCA
         a = (a * b) >> 32n;
         break;
 
-      case eOperationType.op_scas:
+      case eOperationType.op_scas: //  SCAS
         a = ((this.signExtendFrom32Bit(a) * this.signExtendFrom32Bit(b)) >> 30n) & mask32Bit;
         break;
 
-      case eOperationType.op_frac:
+      case eOperationType.op_frac: //  FRAC
         if (b == 0n) {
           // [error_dbz]
           throw new Error(`Divide by zero`);
@@ -324,7 +324,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_add:
+      case eOperationType.op_add: //  +
         {
           // add b to a returning a
           if (isFloatInConstExpression) {
@@ -339,7 +339,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fadd:
+      case eOperationType.op_fadd: //  +.
         {
           // add b to a returning a
           let aInternalFloat64: number = bigIntToFloat64(a);
@@ -350,7 +350,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_sub:
+      case eOperationType.op_sub: //  -
         {
           // subtract b from a returning a
           if (isFloatInConstExpression) {
@@ -365,7 +365,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fsub:
+      case eOperationType.op_fsub: //  -.
         {
           let aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -375,7 +375,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fge:
+      case eOperationType.op_fge: //  #>
         {
           // force a to be greater than or equal to b
           if (isFloatInConstExpression) {
@@ -390,7 +390,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fle:
+      case eOperationType.op_fle: //  <#
         {
           // force a to be less than or equal to b
           if (isFloatInConstExpression) {
@@ -405,19 +405,19 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_addbits:
+      case eOperationType.op_addbits: //  ADDBITS
         // build bit-base (a) and bit-count (b) into a
         //  our 32-bit value: 00000000_00000000_000000bb_bbbaaaaa
         a = (a & 31n) | ((b & 31n) << 5n);
         break;
 
-      case eOperationType.op_addpins:
+      case eOperationType.op_addpins: //  ADDPINS
         // build pin-base (a) and pin-count (b) into a
         //  our 32-bit value: 00000000_00000000_00000bbb_bbaaaaaa
         a = (a & 63n) | ((b & 31n) << 6n);
         break;
 
-      case eOperationType.op_lt:
+      case eOperationType.op_lt: //  <
         // force a to be less than b
         // NOTE: in CON blocks return 1 or 0,
         //       runtime it returns all 1 bits or all 0 bits
@@ -431,7 +431,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_flt:
+      case eOperationType.op_flt: //  <.
         {
           // this version returns True/False!!
           const aInternalFloat64: number = bigIntToFloat64(a);
@@ -440,12 +440,12 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_ltu:
+      case eOperationType.op_ltu: //  +<
         // unsigned less than
         a = a < b ? true32Bit : false32Bit;
         break;
 
-      case eOperationType.op_lte:
+      case eOperationType.op_lte: //  <=
         if (isFloatInConstExpression) {
           const aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -455,7 +455,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_flte:
+      case eOperationType.op_flte: //  <=.
         {
           // this version returns True/False!!
           const aInternalFloat64: number = bigIntToFloat64(a);
@@ -464,11 +464,11 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_lteu:
+      case eOperationType.op_lteu: //  +<=
         a = a <= b ? true32Bit : false32Bit;
         break;
 
-      case eOperationType.op_e:
+      case eOperationType.op_e: //  ==
         if (isFloatInConstExpression) {
           const aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -478,7 +478,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fe:
+      case eOperationType.op_fe: //  ==.
         {
           // this version returns True/False!!
           const aInternalFloat64: number = bigIntToFloat64(a);
@@ -487,7 +487,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_ne:
+      case eOperationType.op_ne: //  <>
         if (isFloatInConstExpression) {
           const aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -497,7 +497,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fne:
+      case eOperationType.op_fne: //  <>.
         {
           // this version returns True/False!!
           const aInternalFloat64: number = bigIntToFloat64(a);
@@ -506,7 +506,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_gte:
+      case eOperationType.op_gte: //  >=
         if (isFloatInConstExpression) {
           const aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -516,7 +516,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fgte:
+      case eOperationType.op_fgte: //  >=.
         {
           // this version returns True/False!!
           const aInternalFloat64: number = bigIntToFloat64(a);
@@ -525,11 +525,11 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_gteu:
+      case eOperationType.op_gteu: //  +>=
         a = a >= b ? true32Bit : false32Bit;
         break;
 
-      case eOperationType.op_gt:
+      case eOperationType.op_gt: //  >
         if (isFloatInConstExpression) {
           const aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -539,7 +539,7 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_fgt:
+      case eOperationType.op_fgt: //  >.
         {
           // this version returns True/False!!
           const aInternalFloat64: number = bigIntToFloat64(a);
@@ -548,11 +548,11 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_gtu:
+      case eOperationType.op_gtu: //  +>
         a = a > b ? true32Bit : false32Bit;
         break;
 
-      case eOperationType.op_ltegt:
+      case eOperationType.op_ltegt: //  <=>
         if (isFloatInConstExpression) {
           const aInternalFloat64: number = bigIntToFloat64(a);
           const bInternalFloat64: number = bigIntToFloat64(b);
@@ -564,19 +564,19 @@ export class SpinResolver {
         }
         break;
 
-      case eOperationType.op_lognot:
+      case eOperationType.op_lognot: //  !!,  NOT
         a = a ? false32Bit : true32Bit;
         break;
 
-      case eOperationType.op_logand:
+      case eOperationType.op_logand: //  &&, AND
         a = a != 0n && b != 0n ? true32Bit : false32Bit;
         break;
 
-      case eOperationType.op_logxor:
+      case eOperationType.op_logxor: //  ^^, XOR
         a = (a == 0n && b != 0n) || (a != 0n && b == 0n) ? true32Bit : false32Bit;
         break;
 
-      case eOperationType.op_logor:
+      case eOperationType.op_logor: //  ||, OR
         a = a != 0n || b != 0n ? true32Bit : false32Bit;
         break;
 
