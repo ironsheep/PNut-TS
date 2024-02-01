@@ -225,6 +225,7 @@ export class SpinResolver {
             aInternalFloat64 *= bInternalFloat64;
             // convert back to float32
             a = numberToBigIntFloat32(aInternalFloat64);
+            this.checkOverflow(a);
           } else {
             a = (a * b) & mask32Bit;
           }
@@ -239,6 +240,7 @@ export class SpinResolver {
           aInternalFloat64 *= bInternalFloat64;
           // convert back to float32
           a = numberToBigIntFloat32(aInternalFloat64);
+          this.checkOverflow(a);
         }
         break;
 
@@ -249,6 +251,7 @@ export class SpinResolver {
             // convert to internal from float32
             if ((b & mask31Bit) == 0n) {
               // [error_fpo]
+              // (technically this is divide-by-zero attempted)
               throw new Error(`Floating-point overflow`);
             }
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
@@ -256,6 +259,7 @@ export class SpinResolver {
             aInternalFloat64 /= bInternalFloat64;
             // convert back to float32
             a = numberToBigIntFloat32(aInternalFloat64);
+            this.checkOverflow(a);
           } else {
             if (b == 0n) {
               // [error_dbz]
@@ -271,6 +275,7 @@ export class SpinResolver {
           // convert to internal from float32
           if ((b & mask31Bit) == 0n) {
             // [error_fpo]
+            // (technically this is divide-by-zero attempted)
             throw new Error(`Floating-point overflow`);
           }
           let aInternalFloat64: number = bigIntFloat32ToNumber(a);
@@ -278,6 +283,7 @@ export class SpinResolver {
           aInternalFloat64 /= bInternalFloat64;
           // convert back to float32
           a = numberToBigIntFloat32(aInternalFloat64);
+          this.checkOverflow(a);
         }
         break;
 
@@ -318,6 +324,7 @@ export class SpinResolver {
           // [error_dbz]
           throw new Error(`Divide by zero`);
         }
+        // our testing shows that this BigInt behavior is behaving like it's larger than 64 bits...
         a = (a << 32n) / b;
         if ((a >> 32n) & mask32Bit) {
           // [error_divo]
@@ -334,6 +341,7 @@ export class SpinResolver {
             aInternalFloat64 += bInternalFloat64;
             // convert back to float32
             a = numberToBigIntFloat32(aInternalFloat64);
+            this.checkOverflow(a);
           } else {
             a = (a + b) & mask32Bit;
           }
@@ -348,6 +356,7 @@ export class SpinResolver {
           aInternalFloat64 += bInternalFloat64;
           // convert back to float32
           a = numberToBigIntFloat32(aInternalFloat64);
+          this.checkOverflow(a);
         }
         break;
 
@@ -360,6 +369,7 @@ export class SpinResolver {
             aInternalFloat64 -= bInternalFloat64;
             // convert back to float32
             a = numberToBigIntFloat32(aInternalFloat64);
+            this.checkOverflow(a);
           } else {
             a = (a - b) & mask32Bit;
           }
@@ -373,6 +383,7 @@ export class SpinResolver {
           aInternalFloat64 -= bInternalFloat64;
           // convert back to float32
           a = numberToBigIntFloat32(aInternalFloat64);
+          this.checkOverflow(a);
         }
         break;
 
@@ -590,6 +601,13 @@ export class SpinResolver {
     }
 
     return Number(a);
+  }
+
+  private checkOverflow(value: bigint) {
+    if ((value & BigInt(0x7fffffff)) == BigInt(0x7f800000)) {
+      // [error_fpo]
+      throw new Error('Floating-point overflow');
+    }
   }
 
   private signExtendFrom32Bit(value: bigint): bigint {

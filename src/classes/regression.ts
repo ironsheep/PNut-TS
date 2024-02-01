@@ -173,8 +173,6 @@ export class RegressionReporter {
     //
     // generated resolver tests
 
-    // generated resolver tests
-
     //	 operation     a         b         result    isFloat/    throw/             symbol   type     preced  canFloat
     //	                                             notFloat    noThrow
     reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_bitnot, false); //        !        unary    0       -
@@ -333,6 +331,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x40000000, 0x12345678, eOperationType.op_scas, false); //        SCAS     binary   5       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(testResolver, 0x80000000, 0x90000000, eOperationType.op_frac, false); //        FRAC     binary   5       -
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000003, eOperationType.op_frac, false); //        FRAC     binary   5       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x00000003, 0x00000004, eOperationType.op_add, false); //        +        binary   6       yes
@@ -395,6 +395,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x00000000, 0x80000000, eOperationType.op_ltu, false); //        +<       binary   9       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(testResolver, 0x80000000, 0x00000000, eOperationType.op_ltu, false); //        +<       binary   9       -
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x3f800000, 0x40000000, eOperationType.op_lte, true); //        <=       binary   9       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x40000000, 0x3f800000, eOperationType.op_lte, true); //        <=       binary   9       yes
@@ -410,6 +412,8 @@ export class RegressionReporter {
     reportResult = this.executeTest(testResolver, 0x3f800000, 0x40000000, eOperationType.op_flte, false); //        <=.      binary   9       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0x40000000, 0x3f800000, eOperationType.op_flte, false); //        <=.      binary   9       -
+    resultStrings.push(reportResult);
+    reportResult = this.executeTest(testResolver, 0xf0000000, 0xf0000000, eOperationType.op_lteu, false); //        +<=      binary   9       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(testResolver, 0xf0000000, 0xff000000, eOperationType.op_lteu, false); //        +<=      binary   9       -
     resultStrings.push(reportResult);

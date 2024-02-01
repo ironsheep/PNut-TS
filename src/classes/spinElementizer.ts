@@ -601,6 +601,7 @@ export class SpinElementizer {
     }
     if (didMatch) {
       // Validate it's a legal floating point number
+      // FIXME: TODO: validate that float32ToHexString() is working correctly (or better way to do this?)
       if (float32ToHexString(interpValue) == '7f800000') {
         // [error_fpcmbw]
         throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
