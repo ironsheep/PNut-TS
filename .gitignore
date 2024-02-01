@@ -197,3 +197,4 @@ TEST/SHORT/tablesTESTs/goldenFiltered.txt
 TEST/SHORT/tablesTESTs/reportFiltered.txt
 TEST/SHORT/tablesTESTs/dumpTables.tabl
 *.resolv
+*.txt

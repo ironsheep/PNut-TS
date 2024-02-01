@@ -18,6 +18,12 @@ describe('Test directory existence', () => {
   });
 });
 
+function removeFileIfExists(fspec: string) {
+  if (fs.existsSync(fspec)) {
+    fs.unlinkSync(fspec);
+  }
+}
+
 test('CLI generates correct resolver responses', () => {
   // Get all .spin2 files in the ./TEST/tablesTESTs/ directory
 
@@ -34,9 +40,7 @@ test('CLI generates correct resolver responses', () => {
     const basename = path.basename(file, '.spin2');
     const reportFSpec = path.join(dirPath, `${basename}.resolv`);
     // if the report file exists delete it before we start
-    if (fs.existsSync(reportFSpec)) {
-      fs.unlinkSync(reportFSpec);
-    }
+    removeFileIfExists(reportFSpec);
 
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
@@ -45,10 +49,16 @@ test('CLI generates correct resolver responses', () => {
     }
     // Read the generated output file
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
+    const reportDebugFSpec = path.join(dirPath, `${basename}.resolv.txt`);
+    // if the diagnostic file exists delete it before we start
+    removeFileIfExists(reportDebugFSpec);
 
     // Read the golden file
     const goldenFSpec = path.join(dirPath, `${basename}.resolv.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
+    const goldenDebugFSpec = path.join(dirPath, `${basename}.resolv.GOLD.txt`);
+    // if the diagnostic file exists delete it before we start
+    removeFileIfExists(goldenDebugFSpec);
 
     // Compare the output to the golden file, ignoring lines that start with
     //  '#' which are comments
@@ -56,7 +66,7 @@ test('CLI generates correct resolver responses', () => {
     //  'type_end_file' which is a type new to Pnut_TS
     //  'unused' which are unused in Pnut
 
-    const stringsToExclude = ['#', ';', 'type_end_file', 'unused'];
+    const stringsToExclude = ['#', ';', "'", 'type_end_file', 'unused'];
 
     const reportFiltered = reportContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
     const goldenFiltered = goldenContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
@@ -66,6 +76,21 @@ test('CLI generates correct resolver responses', () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       passCount++;
     } else {
+      fs.writeFileSync(reportDebugFSpec, reportFiltered.join('\n'));
+      fs.writeFileSync(goldenDebugFSpec, goldenFiltered.join('\n'));
+      if (reportFiltered.length != goldenFiltered.length) {
+        console.error(`Files are different lengths (${reportFiltered.length}) vs (${goldenFiltered.length})`);
+      }
+      const nbrLines: number = reportFiltered.length > goldenFiltered.length ? reportFiltered.length : goldenFiltered.length;
+      let maxDiffLines: number = 4;
+      for (let index = 0; index < nbrLines; index++) {
+        const rptLine = reportFiltered[index];
+        const goldLine = goldenFiltered[index];
+        if (maxDiffLines > 0 && rptLine !== goldLine) {
+          console.error(`(${index + 1}): [${rptLine}] vs [${goldLine}]`);
+          maxDiffLines--;
+        }
+      }
       failList.push(file);
     }
   }

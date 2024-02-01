@@ -52,14 +52,14 @@ test('CLI generates correct table listings', () => {
     }
     // Read the generated output file
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
-    const reportDebugFSpec = path.join(dirPath, `${basename}.txt`);
+    const reportDebugFSpec = path.join(dirPath, `${basename}.tabl.txt`);
     // if the diagnostic file exists delete it before we start
     removeFileIfExists(reportDebugFSpec);
 
     // Read the golden file
     const goldenFSpec = path.join(dirPath, `${basename}.tabl.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
-    const goldenDebugFSpec = path.join(dirPath, `${basename}.txt`);
+    const goldenDebugFSpec = path.join(dirPath, `${basename}.tabl.GOLD.txt`);
     // if the diagnostic file exists delete it before we start
     removeFileIfExists(goldenDebugFSpec);
 
