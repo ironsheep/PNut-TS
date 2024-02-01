@@ -625,4 +625,11 @@ export class SpinResolver {
       this.context.logger.logMessage(message);
     }
   }
+
+  public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
+    // forward to whaterever the name becomes...
+    const endingValue: number = this.testResolver(parmA, parmB, operation, isFloatInConstExpression);
+    this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConstExpression}) => (${endingValue})`);
+    return endingValue;
+  }
 }

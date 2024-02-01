@@ -21,12 +21,19 @@ export class Compiler {
 
   public Compile(spinFile: SpinDocument) {
     this.srcFile = spinFile;
-    // if we have a vlid file then let's parse it and generate code
+    // if requested, run our internal-tables regression report generator
     if (this.context.reportOptions.writeTablesReport) {
       const reporter: RegressionReporter = new RegressionReporter(this.context);
       reporter.writeTableReport(this.srcFile.dirName, this.srcFile.fileName);
     }
 
+    // if requested, run our resolver regression test report generator
+    if (this.context.reportOptions.writeResolverReport) {
+      const reporter: RegressionReporter = new RegressionReporter(this.context);
+      reporter.runResolverRegression(this.srcFile.dirName, this.srcFile.fileName);
+    }
+
+    // if we have a valid file then let's parse it and generate code
     if (this.srcFile.validFile) {
       this.spin2Parser = new Spin2Parser(this.context, this.srcFile);
 

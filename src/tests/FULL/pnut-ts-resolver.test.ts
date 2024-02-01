@@ -26,13 +26,17 @@ test('CLI generates correct resolver responses', () => {
   let passCount = 0;
   const failList = [];
 
-  const options: string = '--regression resolver -- ';
+  const options: string = '-c --regression resolver -- ';
 
   // Iterate over each .spin2 file
   for (const file of files) {
     // Run the CLI with the input file
     const basename = path.basename(file, '.spin2');
-    //console.log(`LOG basename=[${basename}]`);
+    const reportFSpec = path.join(dirPath, `${basename}.resolv`);
+    // if the report file exists delete it before we start
+    if (fs.existsSync(reportFSpec)) {
+      fs.unlinkSync(reportFSpec);
+    }
 
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
@@ -40,7 +44,6 @@ test('CLI generates correct resolver responses', () => {
       console.error(`Error running PNut-TS: ${error}`);
     }
     // Read the generated output file
-    const reportFSpec = path.join(dirPath, `${basename}.resolv`);
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
 
     // Read the golden file
