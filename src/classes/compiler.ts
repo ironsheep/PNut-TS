@@ -40,6 +40,7 @@ export class Compiler {
       // here we make calls to the P2* methods (e.g., this.spin2Parser.P2Compile1(), , etc.)
       try {
         this.spin2Parser.testGetElementLoop();
+        this.spin2Parser.testResolver();
         //this.spin2Parser.P2Compile1();
       } catch (error: unknown) {
         if (error instanceof Error) {

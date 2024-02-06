@@ -13,8 +13,15 @@ export class NumberStack {
     this.stack.push(value);
   }
 
-  public pop(): number | undefined {
-    return this.stack.pop();
+  public pop(): number {
+    let poppedValue: number = 0;
+    const tempValue: number | undefined = this.stack.pop();
+    if (tempValue) {
+      poppedValue = tempValue;
+    } else {
+      throw new Error('NumberStack: attempted pop from empty stack');
+    }
+    return poppedValue;
   }
 
   public reset(): void {

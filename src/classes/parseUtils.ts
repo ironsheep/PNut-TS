@@ -1008,6 +1008,8 @@ export class SpinSymbolTables {
   private find_symbol_s2: iSpinSymbol[] = [];
   private find_symbol_s3: iSpinSymbol[] = [];
 
+  public readonly ternaryPrecedence = 14;
+
   constructor(ctx: Context) {
     this.context = ctx;
     // generated opcode table load
@@ -2935,7 +2937,7 @@ export class SpinSymbolTables {
     return newPair;
   }
 
-  private opcodeValue(opcodeId: eOpcode): number {
+  public opcodeValue(opcodeId: eOpcode): number {
     // retrieve the computed value for a given asmcode id
     let returnValue: number = 0;
     if (this.opcodeValues.has(opcodeId)) {

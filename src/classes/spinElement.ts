@@ -3,7 +3,7 @@
 
 // src/classes/parseUtils.ts
 
-import { eElementType, getElementTypeString } from './types';
+import { eElementType, eOperationType, getElementTypeString } from './types';
 import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
@@ -58,7 +58,7 @@ export class SpinElement {
     return this._type == eElementType.type_con_float;
   }
 
-  get isConstant(): boolean {
+  get isConstantInt(): boolean {
     return this._type == eElementType.type_con;
   }
 
@@ -68,6 +68,13 @@ export class SpinElement {
 
   get isMidStringComma(): boolean {
     return this._type == eElementType.type_comma && this._midStringComma == true;
+  }
+  get isPlus(): boolean {
+    return this._type == eElementType.type_op && (this._value === eOperationType.op_add || this._value === eOperationType.op_fadd);
+  }
+
+  get isSub(): boolean {
+    return this._type == eElementType.type_op && this._value === eOperationType.op_sub;
   }
 
   //
