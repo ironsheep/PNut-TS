@@ -17,7 +17,7 @@ export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
   private spinElements: SpinElement[];
-  private numberStack: NumberStack = new NumberStack();
+  //private numberStack: NumberStack = new NumberStack();
 
   constructor(ctx: Context, elementList: SpinElement[]) {
     this.context = ctx;
@@ -25,7 +25,7 @@ export class SpinResolver {
     this.isLogging = this.context.logOptions.logResolver;
   }
 
-  public testResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
+  public resolveOperation(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
     // runtime expression compiler (puts byte codes together to solve at runtime)
     //   calls compile time to reduce constants before emitting byte code
     // compile-time resolver - THIS CODE
@@ -649,7 +649,7 @@ export class SpinResolver {
 
   public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
     // forward to whaterever the name becomes...
-    const endingValue: number = this.testResolver(parmA, parmB, operation, isFloatInConstExpression);
+    const endingValue: number = this.resolveOperation(parmA, parmB, operation, isFloatInConstExpression);
     this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConstExpression}) => (${endingValue})`);
     return endingValue;
   }

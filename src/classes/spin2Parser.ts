@@ -14,6 +14,7 @@ import { eElementType, eOperationType } from './types';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { NumberStack } from './numberStack';
 import { bigIntFloat32ToNumber, numberToBigIntFloat32 } from '../utils/float32';
+import { SpinResolver } from './spinResolver';
 
 // src/classes/spin2Parser.ts
 
@@ -52,15 +53,19 @@ export class Spin2Parser {
   private mustResolve: boolean = false;
   private onlyIntAllowed: boolean = false;
   //
-  private numberStack: NumberStack = new NumberStack();
+  private numberStack: NumberStack;
+  private spinResolver: SpinResolver;
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
     this.srcFile = spinCode;
     this.elementizer = new SpinElementizer(ctx, spinCode);
+    this.numberStack = new NumberStack(ctx);
     this.spinSymbolTables = new SpinSymbolTables(ctx);
     this.isLogging = this.context.logOptions.logParser;
+    this.numberStack.enableLogging(this.isLogging);
     this.logMessage(`* Parser is logging`);
+    this.spinResolver = new SpinResolver(this.context, this.element_list);
   }
 
   get sourceLineNumber(): number {
@@ -71,6 +76,7 @@ export class Spin2Parser {
     // our list is in class objexct
     const element_list: SpinElement[] = this.element_list;
 
+    this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
     // now process list of elements, writing to our symbol tables
     // the dump symbol tables to listing file
   }
@@ -78,6 +84,7 @@ export class Spin2Parser {
   private resolveExp(precedence: number) {
     // leaves answer on stack
     let currPrecedence: number = precedence;
+    //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
     if (--currPrecedence < 0) {
       // we need to resove the term!
       let currElement: SpinElement;
@@ -85,7 +92,11 @@ export class Spin2Parser {
       // skip leading pluses
       do {
         currElement = this.getElement();
+        if (currElement.isPlus) {
+          this.logMessage(`* skipping + operator`);
+        }
       } while (currElement.isPlus);
+      this.logMessage(`* currElement=[${currElement.toString()}]`);
 
       // NOTE: we could move negation handling to here from within tryConstant()
       // attempt to get a constant
@@ -103,7 +114,12 @@ export class Spin2Parser {
           // our element is a unary operation
           this.checkDualModeOp(currElement); // (this IS in good place...)
           this.resolveExp(currElement.precedence);
-          // TODO: perform Unary
+          // Perform Unary
+          const aValue = this.numberStack.pop();
+          this.logMessage(`* Perform Unary a=(${aValue}), b=(0), op=[${eOperationType[currElement.operation]}]`);
+          const exprResult = this.spinResolver.resolveOperation(aValue, 0, currElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+          this.logMessage(`* Push result=(${exprResult})`);
+          this.numberStack.push(exprResult);
         } else if (currElement.type == eElementType.type_left) {
           this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
           this.getRightParen();
@@ -120,7 +136,9 @@ export class Spin2Parser {
         const nextElement = this.getElement();
         if (nextElement.isTernary) {
           // we have '?' op
+          this.logMessage(`* Have op ternary`);
           if (currPrecedence == this.spinSymbolTables.ternaryPrecedence) {
+            this.logMessage(`* Ternary Precedence`);
             // Perform Ternary
             this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // push true value
             this.getColon();
@@ -128,11 +146,12 @@ export class Spin2Parser {
             const falseValue = this.numberStack.pop();
             const trueValue = this.numberStack.pop();
             const decisionValue = this.numberStack.pop();
-            if (decisionValue != 0) {
-              this.numberStack.push(trueValue);
-            } else {
-              this.numberStack.push(falseValue);
-            }
+            this.logMessage(
+              `* Perform Binary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[nextElement.operation]}]`
+            );
+            const resultValue = decisionValue != 0 ? trueValue : falseValue;
+            this.numberStack.push(resultValue);
+            this.logMessage(`* Push result=(${resultValue})`);
             break; // done,  exit loop
           } else {
             // not a binary op
@@ -146,6 +165,12 @@ export class Spin2Parser {
             // we have binary precedence...
             this.resolveExp(currPrecedence); // push rhs value
             // TODO: this needs to perform binary
+            const bValue = this.numberStack.pop();
+            const aValue = this.numberStack.pop();
+            this.logMessage(`* Perform Binary a=(${aValue}), b=(${bValue}), op=[${eOperationType[nextElement.operation]}]`);
+            const exprResult = this.spinResolver.resolveOperation(aValue, bValue, nextElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+            this.logMessage(`* Push result=(${exprResult})`);
+            this.numberStack.push(exprResult);
             // let loop occur
           } else {
             // not a binary precedence
@@ -159,6 +184,7 @@ export class Spin2Parser {
         }
       }
     }
+    //this.logMessage(`resolveExp(${precedence}) - EXIT`);
   }
 
   private checkDualModeOp(element: SpinElement) {
@@ -169,6 +195,7 @@ export class Spin2Parser {
         throw new Error('Integer operator not allowed in floating-point expression');
       }
       this.mathMode = eMathMode.MM_IntMode;
+      this.logMessage(`* mathMode = Int`);
     }
   }
 
@@ -183,6 +210,7 @@ export class Spin2Parser {
     if (currElement.operation == eOperationType.op_neg) {
       // if the next element is a constant we can negate it
       const nextElement = this.getElement();
+      this.logMessage(`* nextElement=[${nextElement.toString()}]`);
       if (nextElement.isConstantInt) {
         // coerce element to negative value
         resultStatus.value = ((Number(nextElement.value) ^ 0xffffffff) + 1) & 0xffffffff;
@@ -212,8 +240,10 @@ export class Spin2Parser {
         this.checkFloatMode();
         this.getLeftParen();
         this.mathMode = eMathMode.MM_IntMode;
+        this.logMessage(`* mathMode = Int`);
         this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // places result on stack
         this.mathMode = eMathMode.MM_FloatMode;
+        this.logMessage(`* mathMode = Float`);
         this.getRightParen();
         const intValue = this.numberStack.pop(); // get result
         // convert uint32 to float
@@ -226,8 +256,10 @@ export class Spin2Parser {
         this.checkIntMode();
         this.getLeftParen();
         this.mathMode = eMathMode.MM_FloatMode;
+        this.logMessage(`* mathMode = Float`);
         this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // places result on stack
         this.mathMode = eMathMode.MM_IntMode;
+        this.logMessage(`* mathMode = Int`);
         this.getRightParen();
         const float32Value = this.numberStack.pop(); // get result
         // convert uint32 to float
@@ -243,8 +275,10 @@ export class Spin2Parser {
         this.checkIntMode();
         this.getLeftParen();
         this.mathMode = eMathMode.MM_FloatMode;
+        this.logMessage(`* mathMode = Float`);
         this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // places result on stack
         this.mathMode = eMathMode.MM_IntMode;
+        this.logMessage(`* mathMode = Int`);
         this.getRightParen();
         const float32Value = this.numberStack.pop(); // get result
         // convert uint32 to float
@@ -291,15 +325,17 @@ export class Spin2Parser {
       throw new Error('Floating-point not allowed in integer expression');
     } else {
       this.mathMode = eMathMode.MM_FloatMode;
+      this.logMessage(`* mathMode = Float`);
     }
   }
 
   private checkIntMode() {
-    if (this.mathMode == eMathMode.MM_IntMode) {
+    if (this.mathMode == eMathMode.MM_FloatMode) {
       // [error_inaifpe]
       throw new Error('Integer not allowed in floating-point expression');
     } else {
       this.mathMode = eMathMode.MM_IntMode;
+      this.logMessage(`* mathMode = Int`);
     }
   }
 
@@ -334,12 +370,12 @@ export class Spin2Parser {
   }
 
   private getElement(): SpinElement {
-    this.logMessage(`* Element Index=(${this.curr_element + 1})`);
+    //this.logMessage(`* Element Index=(${this.curr_element + 1})`);
     return this.element_list[this.curr_element++];
   }
 
   private backElement(): void {
-    this.logMessage(`* Element Index=(${this.curr_element - 1})`);
+    //this.logMessage(`* Element Index=(${this.curr_element - 1})`);
     this.curr_element--;
   }
 
@@ -362,8 +398,9 @@ export class Spin2Parser {
       const elemTypeStr: string = element.typeString();
       const flagInterp: string = element.isMidStringComma ? `, midString` : '';
       const valueInterp: string = element.valueString().length != 0 ? `, ${element.valueString()}` : '';
+      const opInterp: string = element.isOperation ? ` ${element.operationString()}` : '';
       this.logMessage(
-        ` (${index + 1}) -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}`
+        ` (${index + 1}) -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}`
       );
     }
     this.logMessage('\\ ---------------------------------------');

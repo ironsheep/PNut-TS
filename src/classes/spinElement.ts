@@ -70,11 +70,15 @@ export class SpinElement {
     return this._type == eElementType.type_comma && this._midStringComma == true;
   }
   get isPlus(): boolean {
-    return this._type == eElementType.type_op && (this._value === eOperationType.op_add || this._value === eOperationType.op_fadd);
+    return this._type == eElementType.type_op && (this.operation == eOperationType.op_add || this.operation == eOperationType.op_fadd);
   }
 
   get isSub(): boolean {
-    return this._type == eElementType.type_op && this._value === eOperationType.op_sub;
+    return this._type == eElementType.type_op && this.operation == eOperationType.op_sub;
+  }
+
+  public operationString(): string {
+    return eOperationType[this.operation];
   }
 
   //
@@ -209,5 +213,13 @@ export class SpinElement {
 
   public typeString(): string {
     return getElementTypeString(this._type);
+  }
+
+  public toString(): string {
+    const elemTypeStr: string = this.typeString();
+    const flagInterp: string = this.isMidStringComma ? `, midString` : '';
+    const valueInterp: string = this.valueString().length != 0 ? `, ${this.valueString()}` : '';
+    const opInterp: string = this.isOperation ? ` ${this.operationString()}` : '';
+    return `e:Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}`;
   }
 }

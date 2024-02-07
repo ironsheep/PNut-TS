@@ -463,7 +463,7 @@ export class SpinElementizer {
       searchString = line.substring(0, 3);
     }
     findResult = this.symbol_tables.operatorSymbol(searchString);
-    //this.logMessage(`- operatorConvert(${line})`);
+    this.logMessage(`- operatorConvert(${line}) lookfor=[${searchString}]`);
     if (findResult) {
       foundStatus = true;
       value = findResult.value;

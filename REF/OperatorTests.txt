@@ -229,7 +229,7 @@ op_e            $00000001 $00000001 $FFFFFFFF notFloat    noThrow    ;       == 
 op_e            $00000001 $00000002 $00000000 notFloat    noThrow    ;       ==       binary   9       yes
 op_e            $00000002 $00000001 $00000000 notFloat    noThrow    ;       ==       binary   9       yes
 
-op_fe           $3F800000 $3F800000 $3F800000 notFloat    noThrow    ;       ==.      binary   9       -
+op_fe           $3F800000 $3F800000 $FFFFFFFF notFloat    noThrow    ;       ==.      binary   9       -
 op_fe           $3F800000 $40000000 $00000000 notFloat    noThrow    ;       ==.      binary   9       -
 op_fe           $40000000 $3F800000 $00000000 notFloat    noThrow    ;       ==.      binary   9       -
 

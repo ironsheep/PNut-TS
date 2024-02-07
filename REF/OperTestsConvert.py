@@ -46,7 +46,6 @@ for line in lines:
     if(len(lineParts) != 6):
       print(f"ERROR match: Ln#{lineNbr}: [{lineWithComment[0]}] - found {len(lineParts)}")
     else:
-      if lineParts[1] != lineParts[2] or lineParts[2] != lineParts[3]:
         isThrow = True if lineParts[5] == 'throw' else False
         if isThrow:
           print(f"SKIP #{skipCtr}: THROW match: Ln#{lineNbr}: [{lineWithComment[0]}] - found {len(lineParts)}")

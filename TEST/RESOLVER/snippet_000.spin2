@@ -1,0 +1,23 @@
+'CON
+
+'  12.0 / 3.0
+
+'(5 + 7) * 2
+
+' (5 + -7)) * -2
+
+' +.+5 + 7 * +4 ' works!
+
+' 2 - 2 ? 5: 10' works!
+
+' 1 + decod 8 / 32' works!
+
+'!! 5 == 10 - 5
+
+'!! 5 <> 10 - 5
+
+'1 + 1.0
+
+'1.0 + 1
+
+1.0 +. 4.0  ' seems to cause a float32 leak (we let one get by without being masked?)

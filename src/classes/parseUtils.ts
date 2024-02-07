@@ -1099,7 +1099,9 @@ export class SpinSymbolTables {
       { symbol: '@', type: eElementType.type_at, value: 0 },
       { symbol: '~', type: eElementType.type_til, value: 0 },
       { symbol: '`', type: eElementType.type_tick, value: 0 },
+
       { symbol: '!', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_bitnot) },
+      //		syms	'-',	type_op,	oc_neg		(uses oc_sub symbol)
       { symbol: '&', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_bitand) },
       { symbol: '^', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_bitxor) },
       { symbol: '|', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_bitor) },
@@ -1137,7 +1139,14 @@ export class SpinSymbolTables {
       { symbol: '!!', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_lognot) },
       { symbol: '&&', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logand) },
       { symbol: '^^', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logxor) },
-      { symbol: '||', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logor) }
+      { symbol: '||', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_logor) },
+      //		syms	'-.',	type_op,	oc_fneg		(uses oc_fsub symbol)
+      { symbol: '<.', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_flt) },
+      { symbol: '>.', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fgt) },
+      { symbol: '+.', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fadd) },
+      { symbol: '-.', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fsub) },
+      { symbol: '*.', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fmul) },
+      { symbol: '/.', type: eElementType.type_op, value: this.opcodeValue(eOpcode.oc_fdiv) }
     ];
 
     this.find_symbol_s3 = [
@@ -2757,21 +2766,21 @@ export class SpinSymbolTables {
   }
 
   public operatorSymbol(possibleOperator: string): iSpinSymbol | undefined {
-    //this.logMessage(`- operatorSymbol(${possibleOperator})`);
+    this.logMessage(`- Utils operatorSymbol(${possibleOperator})`);
     let findResult: iSpinSymbol | undefined = undefined;
     let searchString: string = possibleOperator.substring(0, 3); // only 1st three chars
     if (searchString.length > 2) {
-      //this.logMessage(`  --  searchString=[${searchString}]`);
+      this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = this.find_symbol_s3.find((symbol) => symbol.symbol === searchString);
     }
     if (!findResult && searchString.length > 1) {
       searchString = possibleOperator.substring(0, 2);
-      //this.logMessage(`  --  searchString=[${searchString}]`);
+      this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = this.find_symbol_s2.find((symbol) => symbol.symbol === searchString);
     }
     if (!findResult && searchString.length > 0) {
       searchString = possibleOperator.substring(0, 1);
-      //this.logMessage(`  --  searchString=[${searchString}]`);
+      this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = this.find_symbol_s1.find((symbol) => symbol.symbol === searchString);
     }
     return findResult;

@@ -185,6 +185,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0xbf800000, 0x00000000, eOperationType.op_neg, true); //        -        unary    0       yes
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_neg, false); //        -        unary    0       yes
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000001, 0x00000000, eOperationType.op_neg, false); //        -        unary    0       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x80000000, 0x00000000, eOperationType.op_neg, false); //        -        unary    0       yes
@@ -207,6 +209,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0xbf800000, 0x00000000, eOperationType.op_fabs, true); //        FABS     unary    0       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_encod, false); //        ENCOD    unary    0       -
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000001, 0x00000000, eOperationType.op_encod, false); //        ENCOD    unary    0       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00010000, 0x00000000, eOperationType.op_encod, false); //        ENCOD    unary    0       -
@@ -225,9 +229,13 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0xf00000ff, 0x00000000, eOperationType.op_bmask, false); //        BMASK    unary    0       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_ones, false); //        ONES     unary    0       -
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00100000, 0x00000000, eOperationType.op_ones, false); //        ONES     unary    0       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x12345678, 0x00000000, eOperationType.op_ones, false); //        ONES     unary    0       -
+    resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_sqrt, false); //        SQRT     unary    0       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x12345678, 0x00000000, eOperationType.op_sqrt, false); //        SQRT     unary    0       -
     resultStrings.push(reportResult);
@@ -236,6 +244,8 @@ export class RegressionReporter {
     reportResult = this.executeTest(resolver, 0x49742400, 0x00000000, eOperationType.op_fsqrt, false); //        FSQRT    unary    0       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x3f800000, 0x00000000, eOperationType.op_fsqrt, false); //        FSQRT    unary    0       -
+    resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_qlog, false); //        QLOG     unary    0       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000001, 0x00000000, eOperationType.op_qlog, false); //        QLOG     unary    0       -
     resultStrings.push(reportResult);
@@ -335,6 +345,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000001, 0x00000003, eOperationType.op_frac, false); //        FRAC     binary   5       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_add, true); //        +        binary   6       yes
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000003, 0x00000004, eOperationType.op_add, false); //        +        binary   6       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0xfffffffc, 0x00000010, eOperationType.op_add, false); //        +        binary   6       yes
@@ -397,6 +409,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x80000000, 0x00000000, eOperationType.op_ltu, false); //        +<       binary   9       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x3f800000, 0x3f800000, eOperationType.op_lte, true); //        <=       binary   9       yes
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x3f800000, 0x40000000, eOperationType.op_lte, true); //        <=       binary   9       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x40000000, 0x3f800000, eOperationType.op_lte, true); //        <=       binary   9       yes
@@ -419,6 +433,8 @@ export class RegressionReporter {
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0xf0000000, 0x00000000, eOperationType.op_lteu, false); //        +<=      binary   9       -
     resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x3f800000, 0x3f800000, eOperationType.op_e, true); //        ==       binary   9       yes
+    resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x3f800000, 0x40000000, eOperationType.op_e, true); //        ==       binary   9       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x40000000, 0x3f800000, eOperationType.op_e, true); //        ==       binary   9       yes
@@ -428,6 +444,8 @@ export class RegressionReporter {
     reportResult = this.executeTest(resolver, 0x00000001, 0x00000002, eOperationType.op_e, false); //        ==       binary   9       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000002, 0x00000001, eOperationType.op_e, false); //        ==       binary   9       yes
+    resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x3f800000, 0x3f800000, eOperationType.op_fe, false); //        ==.      binary   9       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x3f800000, 0x40000000, eOperationType.op_fe, false); //        ==.      binary   9       -
     resultStrings.push(reportResult);
@@ -450,6 +468,8 @@ export class RegressionReporter {
     reportResult = this.executeTest(resolver, 0x3f800000, 0x40000000, eOperationType.op_fne, false); //        <>.      binary   9       -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x40000000, 0x3f800000, eOperationType.op_fne, false); //        <>.      binary   9       -
+    resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x3f800000, 0x3f800000, eOperationType.op_gte, true); //        >=       binary   9       yes
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x3f800000, 0x40000000, eOperationType.op_gte, true); //        >=       binary   9       yes
     resultStrings.push(reportResult);
@@ -520,6 +540,8 @@ export class RegressionReporter {
     reportResult = this.executeTest(resolver, 0x00000001, 0x00000001, eOperationType.op_logxor, false); //        ^^, XOR  binary   12      -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000000, 0x00000001, eOperationType.op_logxor, false); //        ^^, XOR  binary   12      -
+    resultStrings.push(reportResult);
+    reportResult = this.executeTest(resolver, 0x00000000, 0x00000000, eOperationType.op_logor, false); //        ||, OR   binary   13      -
     resultStrings.push(reportResult);
     reportResult = this.executeTest(resolver, 0x00000000, 0x00000001, eOperationType.op_logor, false); //        ||, OR   binary   13      -
     resultStrings.push(reportResult);

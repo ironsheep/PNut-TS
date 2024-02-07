@@ -12,6 +12,8 @@
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0xBF800000, 0x00000000, eOperationType.op_neg, true)   //        -        unary    0       yes
     resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_neg, false)   //        -        unary    0       yes
+    resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000000, eOperationType.op_neg, false)   //        -        unary    0       yes
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x80000000, 0x00000000, eOperationType.op_neg, false)   //        -        unary    0       yes
@@ -34,6 +36,8 @@
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0xBF800000, 0x00000000, eOperationType.op_fabs, true)   //        FABS     unary    0       -
     resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_encod, false)   //        ENCOD    unary    0       -
+    resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000000, eOperationType.op_encod, false)   //        ENCOD    unary    0       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00010000, 0x00000000, eOperationType.op_encod, false)   //        ENCOD    unary    0       -
@@ -52,9 +56,13 @@
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0xF00000FF, 0x00000000, eOperationType.op_bmask, false)   //        BMASK    unary    0       -
     resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_ones, false)   //        ONES     unary    0       -
+    resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00100000, 0x00000000, eOperationType.op_ones, false)   //        ONES     unary    0       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x12345678, 0x00000000, eOperationType.op_ones, false)   //        ONES     unary    0       -
+    resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_sqrt, false)   //        SQRT     unary    0       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x12345678, 0x00000000, eOperationType.op_sqrt, false)   //        SQRT     unary    0       -
     resultStrings.push(reportResult)
@@ -63,6 +71,8 @@
     reportResult = this.executeTest(testResolver, 0x49742400, 0x00000000, eOperationType.op_fsqrt, false)   //        FSQRT    unary    0       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x3F800000, 0x00000000, eOperationType.op_fsqrt, false)   //        FSQRT    unary    0       -
+    resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_qlog, false)   //        QLOG     unary    0       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000000, eOperationType.op_qlog, false)   //        QLOG     unary    0       -
     resultStrings.push(reportResult)
@@ -162,6 +172,8 @@
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000003, eOperationType.op_frac, false)   //        FRAC     binary   5       -
     resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_add, true)   //        +        binary   6       yes
+    resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000003, 0x00000004, eOperationType.op_add, false)   //        +        binary   6       yes
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0xFFFFFFFC, 0x00000010, eOperationType.op_add, false)   //        +        binary   6       yes
@@ -224,6 +236,8 @@
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x80000000, 0x00000000, eOperationType.op_ltu, false)   //        +<       binary   9       -
     resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x3F800000, 0x3F800000, eOperationType.op_lte, true)   //        <=       binary   9       yes
+    resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x3F800000, 0x40000000, eOperationType.op_lte, true)   //        <=       binary   9       yes
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x40000000, 0x3F800000, eOperationType.op_lte, true)   //        <=       binary   9       yes
@@ -246,6 +260,8 @@
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0xF0000000, 0x00000000, eOperationType.op_lteu, false)   //        +<=      binary   9       -
     resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x3F800000, 0x3F800000, eOperationType.op_e, true)   //        ==       binary   9       yes
+    resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x3F800000, 0x40000000, eOperationType.op_e, true)   //        ==       binary   9       yes
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x40000000, 0x3F800000, eOperationType.op_e, true)   //        ==       binary   9       yes
@@ -255,6 +271,8 @@
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000002, eOperationType.op_e, false)   //        ==       binary   9       yes
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000002, 0x00000001, eOperationType.op_e, false)   //        ==       binary   9       yes
+    resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x3F800000, 0x3F800000, eOperationType.op_fe, false)   //        ==.      binary   9       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x3F800000, 0x40000000, eOperationType.op_fe, false)   //        ==.      binary   9       -
     resultStrings.push(reportResult)
@@ -277,6 +295,8 @@
     reportResult = this.executeTest(testResolver, 0x3F800000, 0x40000000, eOperationType.op_fne, false)   //        <>.      binary   9       -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x40000000, 0x3F800000, eOperationType.op_fne, false)   //        <>.      binary   9       -
+    resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x3F800000, 0x3F800000, eOperationType.op_gte, true)   //        >=       binary   9       yes
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x3F800000, 0x40000000, eOperationType.op_gte, true)   //        >=       binary   9       yes
     resultStrings.push(reportResult)
@@ -347,6 +367,8 @@
     reportResult = this.executeTest(testResolver, 0x00000001, 0x00000001, eOperationType.op_logxor, false)   //        ^^, XOR  binary   12      -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000000, 0x00000001, eOperationType.op_logxor, false)   //        ^^, XOR  binary   12      -
+    resultStrings.push(reportResult)
+    reportResult = this.executeTest(testResolver, 0x00000000, 0x00000000, eOperationType.op_logor, false)   //        ||, OR   binary   13      -
     resultStrings.push(reportResult)
     reportResult = this.executeTest(testResolver, 0x00000000, 0x00000001, eOperationType.op_logor, false)   //        ||, OR   binary   13      -
     resultStrings.push(reportResult)
