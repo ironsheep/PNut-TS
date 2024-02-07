@@ -33,6 +33,8 @@ export interface CompileOptions {
   compile: boolean; // compile file
   enableDebug: boolean; // compile with debug
   outputFilename: string; // override output filename with this name
+  writeListing: boolean; // write compile report (.lst file)
+  listFilename: string; // write compile report to this file
 }
 export interface Context {
   libraryFolder: string;
@@ -49,7 +51,15 @@ export function createContext(): Context {
     libraryFolder: path.join(__dirname, '../ext'),
     currentFolder: process.cwd(),
     logger: new Logger(),
-    compileOptions: { writeFlash: false, writeRAM: false, compile: false, enableDebug: false, outputFilename: '' },
+    compileOptions: {
+      writeFlash: false,
+      writeRAM: false,
+      compile: false,
+      enableDebug: false,
+      outputFilename: '',
+      writeListing: false,
+      listFilename: ''
+    },
     logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
     reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false },
     preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolders: [] }

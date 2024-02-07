@@ -129,6 +129,10 @@ export class PNutInTypeScript {
       this.context.logger.enabledVerbose();
     }
 
+    if (this.options.list) {
+      this.context.compileOptions.writeListing = true;
+    }
+
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
     this.runTestCode(); // for quick live testing...
 
@@ -257,7 +261,12 @@ export class PNutInTypeScript {
 
     if (filename !== undefined && filename !== '') {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
+      // set up output filespec in case we are writing a listing file
+      const lstFilespec = filename.replace('.spin2', '.lst');
+      this.context.compileOptions.listFilename = lstFilespec;
+      // and load our .spin2 top-level file
       this.spinDocument = new SpinDocument(this.context, filename);
+      // TODO post symbols to conext object instead of top-level doc??
       this.spinDocument.defineSymbol('__VERSION__', this.version);
     } else {
       if (this.requiresFilename) {

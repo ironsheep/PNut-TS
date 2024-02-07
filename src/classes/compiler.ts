@@ -41,6 +41,7 @@ export class Compiler {
       try {
         this.spin2Parser.testGetElementLoop();
         this.spin2Parser.testResolver();
+
         //this.spin2Parser.P2Compile1();
       } catch (error: unknown) {
         if (error instanceof Error) {

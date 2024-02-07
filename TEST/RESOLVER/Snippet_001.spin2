@@ -1,0 +1,15 @@
+
+CON
+
+  CLK_FREQ = 335_000_000                                        ' system freq as a constant
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+
+   TEST_INT = 785
+   TEST_FLOAT = 6.6
+   INT_TRUNC = trunc(TEST_FLOAT)
+   INT_ROUND = round(TEST_FLOAT)
+   FLOAT_NEW = float(TEST_INT)
+
+
+DAT
