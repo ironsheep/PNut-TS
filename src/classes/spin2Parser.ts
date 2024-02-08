@@ -10,10 +10,7 @@ import { SpinDocument } from './spinDocument';
 import { SpinElementizer } from './spinElementizer';
 import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
-import { eElementType, eOperationType } from './types';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
-import { NumberStack } from './numberStack';
-import { bigIntFloat32ToNumber, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinResolver } from './spinResolver';
 
 // src/classes/spin2Parser.ts
