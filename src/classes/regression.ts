@@ -49,7 +49,7 @@ export class RegressionReporter {
         stream.write(''); // blank line
         currSourceLine = element.sourceLineIndex;
       }
-      stream.write(` (${itemNbr}) -- ${element.typeString()}\n`);
+      stream.write(` (${itemNbr}) -- ${element.toString()}\n`);
       itemNbr++;
     }
     stream.write('# ---------------------------------------\n');

@@ -1,5 +1,5 @@
 # Report for regression testing
-# Run: 01/25/2024
+# Run: 02/08/2024
 #
 # ---------------------------------------
 # - Showing 175 entries
@@ -27,24 +27,24 @@
  (21) -- Ln#7(12) type_end
  (22) -- Ln#8(1) type_undefined, "F"
  (23) -- Ln#8(3) type_equal
- (24) -- Ln#8(5) type_con_float, (1.000000e+0)
+ (24) -- Ln#8(5) type_con_float, (0x3F800000)
  (25) -- Ln#8(8) type_end
  (26) -- Ln#9(1) type_undefined, "G"
  (27) -- Ln#9(3) type_equal
- (28) -- Ln#9(5) type_con_float, (1.000000e+6)
+ (28) -- Ln#9(5) type_con_float, (0x49742400)
  (29) -- Ln#9(10) type_end
  (30) -- Ln#10(1) type_undefined, "H"
  (31) -- Ln#10(3) type_equal
- (32) -- Ln#10(5) type_op, (0x1A8B0624)
- (33) -- Ln#10(6) type_con_float, (1.000000e-6)
+ (32) -- Ln#10(5) type_op, (0x1A8B0624) op_sub
+ (33) -- Ln#10(6) type_con_float, (0x358637BD)
  (34) -- Ln#10(12) type_end
  (35) -- Ln#11(1) type_undefined, "I"
  (36) -- Ln#11(3) type_equal
- (37) -- Ln#11(5) type_con_float, (1.000000e+9)
+ (37) -- Ln#11(5) type_con_float, (0x4E6E6B28)
  (38) -- Ln#11(9) type_end
  (39) -- Ln#12(1) type_undefined, "J"
  (40) -- Ln#12(3) type_equal
- (41) -- Ln#12(5) type_con_float, (1.000000e-9)
+ (41) -- Ln#12(5) type_con_float, (0x3089705F)
  (42) -- Ln#12(9) type_end
  (43) -- Ln#16(22) type_undefined, "L"
  (44) -- Ln#16(24) type_equal
@@ -62,7 +62,7 @@
  (56) -- Ln#22(1) type_asm_inst, (37296)
  (57) -- Ln#22(5) type_pound
  (58) -- Ln#22(6) type_dollar
- (59) -- Ln#22(7) type_op, (0x1A8B0624)
+ (59) -- Ln#22(7) type_op, (0x1A8B0624) op_sub
  (60) -- Ln#22(8) type_con, (1)
  (61) -- Ln#22(11) type_end
  (62) -- Ln#24(0) type_block, (3)
@@ -154,10 +154,10 @@
  (148) -- Ln#34(7) type_comma, (0), midString
  (149) -- Ln#34(8) type_con, "s"
  (150) -- Ln#34(11) type_comma
- (151) -- Ln#35(1) type_op, (0x1A8B0624)
+ (151) -- Ln#35(1) type_op, (0x1A8B0624) op_sub
  (152) -- Ln#35(2) type_con, (1)
  (153) -- Ln#35(3) type_dotdot
- (154) -- Ln#35(5) type_op, (0x1A8B0624)
+ (154) -- Ln#35(5) type_op, (0x1A8B0624) op_sub
  (155) -- Ln#35(6) type_con, (9)
  (156) -- Ln#35(7) type_right
  (157) -- Ln#35(11) type_end
@@ -169,7 +169,7 @@
  (163) -- Ln#37(10) type_rightb
  (164) -- Ln#37(14) type_end
  (165) -- Ln#38(4) type_undefined, "Z"
- (166) -- Ln#38(6) type_op, (0xA83010E)
+ (166) -- Ln#38(6) type_op, (0xA83010E) op_shl
  (167) -- Ln#38(8) type_equal
  (168) -- Ln#38(10) type_con, (1)
  (169) -- Ln#38(14) type_end
