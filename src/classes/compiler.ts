@@ -21,13 +21,13 @@ export class Compiler {
 
   public Compile(spinFile: SpinDocument) {
     this.srcFile = spinFile;
-    // if requested, run our internal-tables regression report generator
+    // TESTING: if requested, run our internal-tables regression report generator
     if (this.context.reportOptions.writeTablesReport) {
       const reporter: RegressionReporter = new RegressionReporter(this.context);
       reporter.writeTableReport(this.srcFile.dirName, this.srcFile.fileName);
     }
 
-    // if requested, run our resolver regression test report generator
+    // TESTING: if requested, run our resolver regression test report generator
     if (this.context.reportOptions.writeResolverReport) {
       const reporter: RegressionReporter = new RegressionReporter(this.context);
       reporter.runResolverRegression(this.srcFile.dirName, this.srcFile.fileName);

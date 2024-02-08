@@ -165,7 +165,7 @@ export class RegressionReporter {
   }
 
   public runResolverRegression(dirName: string, fileName: string) {
-    const resolver: SpinResolver = new SpinResolver(this.context, []);
+    const resolver: SpinResolver = new SpinResolver(this.context);
     const resultStrings: string[] = [];
     let reportResult: string = '';
     //
