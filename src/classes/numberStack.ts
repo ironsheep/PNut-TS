@@ -11,7 +11,7 @@ import { Context } from '../utils/context';
 export class NumberStack {
   private context: Context;
   private isLogging: boolean = false;
-  private stack: number[] = [];
+  private stack: bigint[] = [];
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -22,17 +22,17 @@ export class NumberStack {
     this.isLogging = enable;
   }
 
-  public push(value: number) {
+  public push(value: bigint) {
     this.stack.push(value);
-    this.logMessage(`#STK: push[${this.stack.length - 1}] (${value})`);
+    this.logMessage(`#STK: push[${this.stack.length - 1}] (${this.float32ToHexString(value)})`);
   }
 
-  public pop(): number {
-    let poppedValue: number = 0;
-    const tempValue: number | undefined = this.stack.pop();
+  public pop(): bigint {
+    let poppedValue: bigint = 0n;
+    const tempValue: bigint | undefined = this.stack.pop();
     if (tempValue !== undefined) {
       poppedValue = tempValue;
-      this.logMessage(`#STK: pop[${this.stack.length}] (${poppedValue})`);
+      this.logMessage(`#STK: pop[${this.stack.length}] (${this.float32ToHexString(poppedValue)})`);
     } else {
       throw new Error('NumberStack: attempted pop from empty stack');
     }
@@ -41,6 +41,12 @@ export class NumberStack {
 
   public reset(): void {
     this.stack = [];
+  }
+
+  private float32ToHexString(float32: bigint): string {
+    // used by: spinElementizer.ts
+    const tempNumber: number = Number(float32 & BigInt(0xffffffff));
+    return `0x${tempNumber.toString(16).toUpperCase()}`;
   }
 
   private logMessage(message: string): void {

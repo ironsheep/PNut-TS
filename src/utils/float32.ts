@@ -5,7 +5,7 @@
 'use strict';
 // src/utils/float32.ts
 
-export function stringToFloat32(numStr: string): number {
+export function stringToFloat32(numStr: string): bigint {
   // used by: spinElementizer.ts
   //
   // In this code, stringToFloat32 function takes a string, parses it to a float
@@ -21,23 +21,24 @@ export function stringToFloat32(numStr: string): number {
   const float32Array = new Float32Array(1);
   float32Array[0] = parseFloat(numStr);
   const dataView = new DataView(float32Array.buffer);
-  return dataView.getFloat32(0);
+  //return dataView.getFloat32(0);
+  // Return the 32 bits from that DataView as a BigInt
+  //   (note true is for little - endian)
+  return BigInt(dataView.getUint32(0, true));
 }
 
-export function float32ToHexString(float32: number): string {
+export function float32ToHexString(float32: bigint): string {
   // used by: spinElementizer.ts
-  const float32Array = new Float32Array(1);
-  float32Array[0] = float32;
-  const dataView = new DataView(float32Array.buffer);
-  const intView = dataView.getUint32(0);
-  return intView.toString(16);
+  const tempNumber: number = Number(float32 & BigInt(0xffffffff));
+  return `0x${tempNumber.toString(16).toUpperCase()}`;
 }
 
-export function float32ToString(float32: number | string): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function float32ToString(float32: bigint | string): string {
   // used by: spinElement.ts, spinElementizer.ts
-  const hexValue = float32ToHexString(typeof float32 === 'number' ? float32 : 0); // replace with your hex value
-  const float64Value = hexStringToFloat64(hexValue).toExponential(6);
-  return float64Value.toString();
+  //const hexValue = float32ToHexString(typeof float32 === 'bigint' ? float32 : 0); // replace with your hex value
+  //const float64Value = hexStringToFloat64(hexValue).toExponential(6);
+  return ''; //float64Value.toString();
 }
 
 export function hexStringToFloat64(hex: string): number {
@@ -55,9 +56,9 @@ export function bigIntFloat32ToNumber(float32BigInt: bigint): number {
   // Create a new ArrayBuffer with a size of 4 bytes
   const buffer = new ArrayBuffer(4);
   // Create a new DataView from the ArrayBuffer
-  const view = new DataView(buffer);
+  const dataView = new DataView(buffer);
   // Get the least significant 32 bits of the BigInt and set into the DataView
-  view.setUint32(0, Number(float32BigInt & BigInt(0xffffffff)), true); // true for little-endian
+  dataView.setUint32(0, Number(float32BigInt & BigInt(0xffffffff)), true); // true for little-endian
   // Create a new Float32Array from the ArrayBuffer
   const float32Array = new Float32Array(buffer);
   // Return the first element of the Float32Array
@@ -72,8 +73,8 @@ export function numberToBigIntFloat32(float64: number): bigint {
   // Set the first element of the Float32Array to the number
   float32Array[0] = float64;
   // Create a new DataView from the ArrayBuffer
-  const view = new DataView(buffer);
+  const dataView = new DataView(buffer);
   // Return the 32 bits from that DataView as a BigInt
   //   (note true is for little - endian)
-  return BigInt(view.getUint32(0, true));
+  return BigInt(dataView.getUint32(0, true));
 }

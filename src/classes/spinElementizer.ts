@@ -15,14 +15,14 @@ import { SpinElement } from './spinElement';
 interface iKnownOperator {
   foundStatus: boolean;
   charsUsed: number;
-  value: number | string;
+  value: bigint | string;
   type: eElementType;
 }
 
 interface iBuiltInSymbol {
   foundStatus: boolean;
   charsUsed: number;
-  value: number | string;
+  value: bigint | string;
   type: eElementType;
 }
 
@@ -93,7 +93,7 @@ export class SpinElementizer {
     let returningSingleEntry: boolean = true;
     let typeFound: eElementType = eElementType.type_undefined;
     // eslint-disable-next-line prefer-const
-    let valueFound: string | number = '';
+    let valueFound: string | bigint = '';
     //
     // let's parse like spin example initially
     //
@@ -158,7 +158,7 @@ export class SpinElementizer {
           const elementChar: SpinElement = this.buildElement(eElementType.type_con, char, charOffset);
           elementsFound.push(elementChar);
           if (charIndex != endQuoteOffset) {
-            const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0, charOffset);
+            const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
             elementComma.midStringComma = true;
             elementsFound.push(elementComma);
           }
@@ -253,7 +253,7 @@ export class SpinElementizer {
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
     const elemTypeStr: string = getElementTypeString(typeFound);
-    const valueToDisplay: string | number = typeFound == eElementType.type_con_float ? float32ToString(valueFound) : valueFound;
+    const valueToDisplay: string | bigint = typeFound == eElementType.type_con_float ? float32ToString(valueFound) : valueFound;
     // return our 1 iElement within an array
     if (returningSingleEntry) {
       const lineNbrString: string = this.lineNumberString(this.symbolLineNumber, this.symbolCharacterOffset);
@@ -390,7 +390,7 @@ export class SpinElementizer {
     return `${lineIndex}(${characterIndex})`;
   }
 
-  private buildElement(type: eElementType, value: number | string, charOffset: number): SpinElement {
+  private buildElement(type: eElementType, value: bigint | string, charOffset: number): SpinElement {
     const newElement: SpinElement = new SpinElement(type, value, this.currentTextLine.sourceLineNumber - 1, charOffset);
     return newElement;
   }
@@ -431,14 +431,14 @@ export class SpinElementizer {
 
   private symbolConvert(symbolName: string): iBuiltInSymbol {
     let findResult: iSpinSymbol | undefined = undefined;
-    let value: string | number = '';
+    let value: string | bigint = '';
     let charsUsed: number = 0;
     let foundStatus: boolean = false;
     let type: eElementType = eElementType.type_undefined;
     findResult = this.symbol_tables.builtInSymbol(symbolName);
     if (findResult) {
       foundStatus = true;
-      value = findResult.value;
+      value = BigInt(findResult.value & 0xffffffff);
       charsUsed = findResult.symbol.length;
       type = findResult.type;
       const elemTypeStr: string = getElementTypeString(type);
@@ -450,7 +450,7 @@ export class SpinElementizer {
   }
 
   private operatorConvert(line: string): iKnownOperator {
-    let value: string | number = '';
+    let value: string | bigint = '';
     let charsUsed: number = 0;
     let foundStatus: boolean = false;
     let type: eElementType = eElementType.type_undefined;
@@ -466,7 +466,7 @@ export class SpinElementizer {
     this.logMessage(`- operatorConvert(${line}) lookfor=[${searchString}]`);
     if (findResult) {
       foundStatus = true;
-      value = findResult.value;
+      value = BigInt(findResult.value & 0xffffffff);
       charsUsed = findResult.symbol.length;
       type = findResult.type;
       const elemTypeStr: string = getElementTypeString(type);
@@ -489,8 +489,8 @@ export class SpinElementizer {
     return [charsUsed, interpValue];
   }
 
-  private packedAsciiConversion(line: string): [number, number] {
-    let interpValue: number = 0;
+  private packedAsciiConversion(line: string): [number, bigint] {
+    let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     const endOffset: number = line.substring(2).indexOf('"');
     if (endOffset != -1) {
@@ -500,7 +500,7 @@ export class SpinElementizer {
       const asciiStr = line.slice(2, endOffset + 2);
       if (asciiStr.length <= 4 && asciiStr.length != 0) {
         for (let i = 0; i < asciiStr.length; i++) {
-          interpValue |= asciiStr.charCodeAt(i) << (i * 8);
+          interpValue |= BigInt(asciiStr.charCodeAt(i) << (i * 8));
         }
         charsUsed = asciiStr.length + 3;
       } else {
@@ -518,14 +518,14 @@ export class SpinElementizer {
     return [charsUsed, interpValue];
   }
 
-  private quaternaryConversion(line: string): [number, number] {
+  private quaternaryConversion(line: string): [number, bigint] {
     const isQuaternaryNumberRegEx = /^%%([[0-3]+[0-3_]*)/;
-    let interpValue: number = 0;
+    let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     const quaternaryNumberMatch = line.match(isQuaternaryNumberRegEx);
     if (quaternaryNumberMatch) {
       const valueFound: string = quaternaryNumberMatch[0].substring(2);
-      interpValue = parseInt(valueFound.replace('_', ''), 4);
+      interpValue = BigInt(parseInt(valueFound.replace('_', ''), 4));
       charsUsed = quaternaryNumberMatch[0].length;
       // ensure that result fits in 32-bits
       this.logMessage(`  -- quaternaryConversion(${line}) = interpValue=(${interpValue})`);
@@ -534,15 +534,15 @@ export class SpinElementizer {
     return [charsUsed, interpValue];
   }
 
-  private binaryConversion(line: string): [number, number] {
+  private binaryConversion(line: string): [number, bigint] {
     const isBinaryNumberRegEx = /^%([[0-1]+[0-1_]*)/;
-    let interpValue: number = 0;
+    let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     const binaryNumberMatch = line.match(isBinaryNumberRegEx);
     if (binaryNumberMatch) {
       const valueFound: string = binaryNumberMatch[0].substring(1);
       //this.logMessage(`- binaryNumberMatch[0]=(${valueFound})`);
-      interpValue = parseInt(valueFound.replace('_', ''), 2);
+      interpValue = BigInt(parseInt(valueFound.replace('_', ''), 2));
       charsUsed = binaryNumberMatch[0].length;
       // ensure that result fits in 32-bits
       this.logMessage(`  -- binaryConversion(${line}) = interpValue=(${interpValue})`);
@@ -551,15 +551,15 @@ export class SpinElementizer {
     return [charsUsed, interpValue];
   }
 
-  private hexadecimalConversion(line: string): [number, number] {
+  private hexadecimalConversion(line: string): [number, bigint] {
     const isHexNumberRegEx = /^\$([[0-9A-Fa-f]+[0-9_A-Fa-f]*)/;
-    let interpValue: number = 0;
+    let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     const hexNumberMatch = line.match(isHexNumberRegEx);
     if (hexNumberMatch) {
       const valueFound: string = hexNumberMatch[0].substring(1);
       //this.logMessage(`- hexNumberMatch[0]=(${valueFound})`);
-      interpValue = parseInt(valueFound.replace('_', ''), 16);
+      interpValue = BigInt(parseInt(valueFound.replace('_', ''), 16));
       charsUsed = hexNumberMatch[0].length;
       // ensure that result fits in 32-bits
       this.logMessage(`  -- hexadecimalConversion(${line}) = interpValue=(${interpValue})`);
@@ -568,7 +568,7 @@ export class SpinElementizer {
     return [charsUsed, interpValue];
   }
 
-  private decimalFloatConversion(line: string): [boolean, number, number] {
+  private decimalFloatConversion(line: string): [boolean, number, bigint] {
     // we are parsing these
     //    = 1.4e5
     //    = 1e-5
@@ -576,7 +576,7 @@ export class SpinElementizer {
     const isFloat1NumberRegEx = /^\d+[\d_]*\.\d+[\d_]*[eE](\+\d|-\d|\d)[\d_]*/; // decimal and E
     const isFloat2NumberRegEx = /^\d+[\d_]*[eE](\+\d|-\d|\d)[\d_]*/; // no decimal but E
     const isFloat3NumberRegEx = /^\d+[\d_]*\.\d+[\d_]*/; // decimal no E
-    let interpValue: number = 0;
+    let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     let didMatch: boolean = false;
     const float1NumberMatch = line.match(isFloat1NumberRegEx);
@@ -602,7 +602,7 @@ export class SpinElementizer {
     if (didMatch) {
       // Validate it's a legal floating point number
       // FIXME: TODO: validate that float32ToHexString() is working correctly (or better way to do this?)
-      if (float32ToHexString(interpValue) == '7f800000') {
+      if (interpValue == BigInt(0x7f800000)) {
         // [error_fpcmbw]
         throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
       }
@@ -612,8 +612,8 @@ export class SpinElementizer {
     return [didMatch, charsUsed, interpValue];
   }
 
-  private decimalConversion(line: string): [boolean, number, number] {
-    let interpValue: number = 0;
+  private decimalConversion(line: string): [boolean, number, bigint] {
+    let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     let isFloat: boolean = false;
     // FloatConversion if fails then do nonFloat.
@@ -627,7 +627,7 @@ export class SpinElementizer {
       const isDecimalNumberRegEx = /^(\d+[\d_]*)/;
       const decimalNumberMatch = line.match(isDecimalNumberRegEx);
       if (decimalNumberMatch) {
-        interpValue = parseInt(decimalNumberMatch[0].replace('_', ''));
+        interpValue = BigInt(parseInt(decimalNumberMatch[0].replace('_', '')));
         charsUsed = decimalNumberMatch[0].length;
         // ensure that result fits in 32-bits
         this.logMessage(`  -- decimalConversion(${line}) = interpValue=(${interpValue})`);
@@ -637,8 +637,8 @@ export class SpinElementizer {
     return [isFloat, charsUsed, interpValue];
   }
 
-  private validate32BitInteger(value: number): void {
-    if (value > 4294967295 || value < -2147483648) {
+  private validate32BitInteger(value: bigint): void {
+    if (value > 0xffffffff) {
       this.context.logger.logErrorMessage(`The result (${value}) does not fit in 32 bits`);
       // [error_ce32b]
       throw new Error('Constant exceeds 32 bits');

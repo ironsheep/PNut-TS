@@ -49,10 +49,7 @@ export class RegressionReporter {
         stream.write(''); // blank line
         currSourceLine = element.sourceLineIndex;
       }
-      const elemTypeStr: string = element.typeString();
-      const flagInterp: string = element.isMidStringComma ? `, midString` : '';
-      const valueInterp: string = element.valueString().length != 0 ? `, ${element.valueString()}` : '';
-      stream.write(` (${itemNbr}) -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}\n`);
+      stream.write(` (${itemNbr}) -- ${element.typeString()}\n`);
       itemNbr++;
     }
     stream.write('# ---------------------------------------\n');

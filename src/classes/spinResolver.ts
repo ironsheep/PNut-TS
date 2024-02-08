@@ -11,12 +11,12 @@ import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
 import { eElementType, eOperationType } from './types';
-import { bigIntFloat32ToNumber, numberToBigIntFloat32 } from '../utils/float32';
+import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 
 // Internal types used for passing complex values
 interface iResolveReturn {
-  value: number;
+  value: bigint;
   isResolved: boolean;
 }
 
@@ -87,9 +87,9 @@ export class SpinResolver {
           this.resolveExp(currElement.precedence);
           // Perform Unary
           const aValue = this.numberStack.pop();
-          this.logMessage(`* Perform Unary a=(${aValue}), b=(0), op=[${eOperationType[currElement.operation]}]`);
-          const exprResult = this.resolveOperation(aValue, 0, currElement.operation, this.mathMode == eMathMode.MM_FloatMode);
-          this.logMessage(`* Push result=(${exprResult})`);
+          this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[currElement.operation]}]`);
+          const exprResult = this.resolveOperation(aValue, 0n, currElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+          this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
           this.numberStack.push(exprResult);
         } else if (currElement.type == eElementType.type_left) {
           this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
@@ -120,9 +120,9 @@ export class SpinResolver {
             this.logMessage(
               `* Perform Binary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[nextElement.operation]}]`
             );
-            const resultValue = decisionValue != 0 ? trueValue : falseValue;
+            const resultValue = decisionValue != 0n ? trueValue : falseValue;
             this.numberStack.push(resultValue);
-            this.logMessage(`* Push result=(${resultValue})`);
+            this.logMessage(`* Push result=(${float32ToHexString(resultValue)})`);
             break; // done,  exit loop
           } else {
             // not a binary op
@@ -138,9 +138,11 @@ export class SpinResolver {
             // TODO: this needs to perform binary
             const bValue = this.numberStack.pop();
             const aValue = this.numberStack.pop();
-            this.logMessage(`* Perform Binary a=(${aValue}), b=(${bValue}), op=[${eOperationType[nextElement.operation]}]`);
+            this.logMessage(
+              `* Perform Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[nextElement.operation]}]`
+            );
             const exprResult = this.resolveOperation(aValue, bValue, nextElement.operation, this.mathMode == eMathMode.MM_FloatMode);
-            this.logMessage(`* Push result=(${exprResult})`);
+            this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
             this.numberStack.push(exprResult);
             // let loop occur
           } else {
@@ -172,7 +174,7 @@ export class SpinResolver {
 
   private tryConstant(element: SpinElement): iResolveReturn {
     let currElement = element;
-    const resultStatus: iResolveReturn = { value: 0, isResolved: true };
+    const resultStatus: iResolveReturn = { value: 0n, isResolved: true };
     // this 'check_constant', now 'try_constant' in Pnut
     // trying to resolve spin2 constant
 
@@ -184,13 +186,14 @@ export class SpinResolver {
       this.logMessage(`* nextElement=[${nextElement.toString()}]`);
       if (nextElement.isConstantInt) {
         // coerce element to negative value
-        resultStatus.value = ((Number(nextElement.value) ^ 0xffffffff) + 1) & 0xffffffff;
+        resultStatus.value = (~nextElement.value + 1n) & BigInt(0xffffffff);
         this.checkIntMode(); // throw if we were float
         // if not set then set else
         // TODO: do we need to remove '-' from element list
       } else if (nextElement.isConstantFloat) {
         // coerce element to negative value
-        resultStatus.value = Number(nextElement.value) ^ 0x80000000;
+        // NOTE: ~~ this coerces the value to be a number
+        resultStatus.value = BigInt(nextElement.value) ^ BigInt(0x80000000);
         this.checkFloatMode(); // throw if we were int
         // if not set then set else
         // TODO: do we need to remove '-' from element list
@@ -201,10 +204,10 @@ export class SpinResolver {
     } else {
       // what else is our minus sign preceeding
       if (currElement.isConstantInt) {
-        resultStatus.value = Number(currElement.value);
+        resultStatus.value = BigInt(currElement.value);
         this.checkIntMode();
       } else if (currElement.isConstantFloat) {
-        resultStatus.value = Number(currElement.value);
+        resultStatus.value = BigInt(currElement.value);
         this.checkFloatMode();
       } else if (currElement.type == eElementType.type_float) {
         // have FLOAT()
@@ -218,9 +221,10 @@ export class SpinResolver {
         this.getRightParen();
         const intValue = this.numberStack.pop(); // get result
         // convert uint32 to float
-        const floatValue = Number(numberToBigIntFloat32(intValue));
+        // FIXME: TODO: this needs to make "1" into a 1.0
+        const floatValue: number = Number(intValue) / 1.0;
         // return the converted result
-        resultStatus.value = floatValue;
+        resultStatus.value = numberToBigIntFloat32(floatValue);
       } else if (currElement.type == eElementType.type_trunc) {
         // have TRUNC()
         // TODO: determine if we care about overflow checking... because we don't do any here
@@ -234,12 +238,12 @@ export class SpinResolver {
         this.getRightParen();
         const float32Value = this.numberStack.pop(); // get result
         // convert uint32 to float
-        const exponent = float32Value & 0x7f800000;
+        const exponent = float32Value & BigInt(0x7f800000);
         const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
         // truncate our float value
         const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
         // return the converted result
-        resultStatus.value = truncatedUInt32;
+        resultStatus.value = BigInt(truncatedUInt32);
       } else if (currElement.type == eElementType.type_round) {
         // have ROUND()
         // TODO: determine if we care about overflow checking... because we don't do any here
@@ -257,7 +261,7 @@ export class SpinResolver {
         // truncate our float value
         const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
         // return the converted result
-        resultStatus.value = roundedUInt32;
+        resultStatus.value = BigInt(roundedUInt32);
       } else {
         resultStatus.isResolved = false;
       }
@@ -317,7 +321,7 @@ export class SpinResolver {
       // replace our currElement with an oc_neg [sub-to-neg]
       currElement = new SpinElement(
         eElementType.type_op,
-        this.spinSymbolTables.opcodeValue(eOpcode.oc_neg),
+        BigInt(this.spinSymbolTables.opcodeValue(eOpcode.oc_neg)) & BigInt(0xffffffff),
         currElement.sourceLineIndex,
         currElement.sourceCharacterOffset
       );
@@ -332,7 +336,7 @@ export class SpinResolver {
       // replace our currElement with an oc_fneg [fsub-to-fneg]
       currElement = new SpinElement(
         eElementType.type_op,
-        this.spinSymbolTables.opcodeValue(eOpcode.oc_fneg),
+        BigInt(this.spinSymbolTables.opcodeValue(eOpcode.oc_fneg)) & BigInt(0xffffffff),
         currElement.sourceLineIndex,
         currElement.sourceCharacterOffset
       );
@@ -355,12 +359,12 @@ export class SpinResolver {
   //
   public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
     // forward to whaterever the name becomes...
-    const endingValue: number = this.resolveOperation(parmA, parmB, operation, isFloatInConstExpression);
+    const endingValue: number = Number(this.resolveOperation(BigInt(parmA), BigInt(parmB), operation, isFloatInConstExpression));
     this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConstExpression}) => (${endingValue})`);
     return endingValue;
   }
 
-  private resolveOperation(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
+  private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConstExpression: boolean): bigint {
     // runtime expression compiler (puts byte codes together to solve at runtime)
     //   calls compile time to reduce constants before emitting byte code
     // compile-time resolver - THIS CODE
@@ -372,11 +376,13 @@ export class SpinResolver {
     const true32Bit: bigint = BigInt(0xffffffff);
     const false32Bit: bigint = 0n;
 
-    this.logMessage(`resolver(${parmA}, ${parmB}) ${eOperationType[operation]} isFloat=(${isFloatInConstExpression})`);
+    this.logMessage(
+      `resolver(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConstExpression})`
+    );
 
     // conditioning the incoming params
-    let a: bigint = BigInt(parmA);
-    let b: bigint = BigInt(parmB);
+    let a: bigint = parmA;
+    let b: bigint = parmB;
     a &= mask32Bit;
     b &= mask32Bit;
 
@@ -935,7 +941,7 @@ export class SpinResolver {
         break;
     }
 
-    return Number(a);
+    return a;
   }
 
   private checkOverflow(value: bigint) {

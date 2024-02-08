@@ -1,21 +1,22 @@
 /** @format */
 'use strict';
 
+import { float32ToHexString } from '../utils/float32';
 // src/classes/parseUtils.ts
 
 import { eElementType, eOperationType, getElementTypeString } from './types';
-import { float32ToString } from '../utils/float32';
+//import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
 
 export class SpinElement {
   private _sourceLineIndex: number = 0;
   private _sourceCharacterOffset: number = 0;
-  private _value: number | string = '';
+  private _value: bigint | string = '';
   private _type: eElementType = eElementType.type_undefined;
   private _midStringComma: boolean = false; // valid only if type_comma
 
-  constructor(type: eElementType, value: number | string, lineIndex: number, charIndex: number) {
+  constructor(type: eElementType, value: bigint | string, lineIndex: number, charIndex: number) {
     this._type = type;
     this._value = value;
     this._sourceLineIndex = lineIndex;
@@ -26,7 +27,7 @@ export class SpinElement {
     return this._type;
   }
 
-  get value(): string | number {
+  get value(): string | bigint {
     return this._value;
   }
 
@@ -47,7 +48,7 @@ export class SpinElement {
   }
 
   get valueIsNumber(): boolean {
-    return typeof this._value === 'number';
+    return typeof this._value === 'bigint';
   }
 
   get valueIsString(): boolean {
@@ -78,18 +79,18 @@ export class SpinElement {
   }
 
   public operationString(): string {
-    return eOperationType[this.operation];
+    return eOperationType[this.operation] !== undefined ? eOperationType[this.operation] : '{OP-NOT-FOUND}';
   }
 
   //
   // special for type_op: elements
   //
-  get operation(): number {
+  get operation(): eOperationType {
     // returns the op_* value
-    let desiredValue: number = 0;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    let desiredValue: number = -1;
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v1 parm (v1 << 0) 8 bits
-      desiredValue = this._value & 0xff; // 8 ls-bits
+      desiredValue = Number(this._value & BigInt(0xff)); // 8 ls-bits
     }
     return desiredValue;
   }
@@ -97,9 +98,9 @@ export class SpinElement {
   get precedence(): number {
     // returns the op_* value
     let desiredValue: number = 0;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v2 parm (v2 << 8) 8 bits
-      desiredValue = (this._value >> 8) & 0xff; // 8 ls-bits after shift
+      desiredValue = Number((this._value >> 8n) & BigInt(0xff)); // 8 ls-bits after shift
     }
     return desiredValue;
   }
@@ -107,72 +108,72 @@ export class SpinElement {
   get bytecode(): number {
     // returns the op_* value
     let desiredValue: number = 0;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v3 parm (v3 << 16) 8 bits
-      desiredValue = (this._value >> 16) & 0xff; // 8 ls-bits after shift
+      desiredValue = Number((this._value >> 16n) & BigInt(0xff)); // 8 ls-bits after shift
     }
     return desiredValue;
   }
 
   get isTernary(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v4 parm (v4 << 24)
-      status = this._value & (1 << 24) ? true : false;
+      status = this._value & (1n << 24n) ? true : false;
     }
     return status;
   }
 
   get isBinary(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v5 parm (v5 << 25)
-      status = this._value & (1 << 25) ? true : false;
+      status = this._value & (1n << 25n) ? true : false;
     }
     return status;
   }
 
   get isUnary(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v6 parm (v6 << 26)
-      status = this._value & (1 << 26) ? true : false;
+      status = this._value & (1n << 26n) ? true : false;
     }
     return status;
   }
 
   get isAssign(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v7 parm (v7 << 27)
-      status = this._value & (1 << 27) ? true : false;
+      status = this._value & (1n << 27n) ? true : false;
     }
     return status;
   }
 
   get isFloat(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v8 parm (v8 << 28)
-      status = this._value & (1 << 28) ? true : false;
+      status = this._value & (1n << 28n) ? true : false;
     }
     return status;
   }
 
   get isAlias(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v9 parm (v9 << 29)
-      status = this._value & (1 << 29) ? true : false;
+      status = this._value & (1n << 29n) ? true : false;
     }
     return status;
   }
 
   get isHubcode(): boolean {
     let status: boolean = false;
-    if (this._type == eElementType.type_op && typeof this._value === 'number') {
+    if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v10 parm (v10 << 30)
-      status = this._value & (1 << 30) ? true : false;
+      status = this._value & (1n << 30n) ? true : false;
     }
     return status;
   }
@@ -196,7 +197,8 @@ export class SpinElement {
     if (this.isEndOfLine) {
       valueInterp = '';
     } else if (this.isConstantFloat) {
-      valueInterp = `(${float32ToString(this.value)})`;
+      const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
+      valueInterp = `(${float32ToHexString(valueBigInt)})`;
     } else if (this.valueIsNumber) {
       if (this.isOperation) {
         valueInterp = `(0x${this.value.toString(16).toUpperCase()})`;
@@ -220,6 +222,6 @@ export class SpinElement {
     const flagInterp: string = this.isMidStringComma ? `, midString` : '';
     const valueInterp: string = this.valueString().length != 0 ? `, ${this.valueString()}` : '';
     const opInterp: string = this.isOperation ? ` ${this.operationString()}` : '';
-    return `e:Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}`;
+    return `Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}`;
   }
 }
