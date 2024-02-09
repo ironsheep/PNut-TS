@@ -22,6 +22,7 @@ export class Spin2Parser {
   private elementizer: SpinElementizer;
   private spinSymbolTables: SpinSymbolTables;
   private spinElements: SpinElement[] = [];
+
   // private symbols_debug_hash_auto: SymbolTable = new SymbolTable();
   // private symbols_debug_hash_name: SymbolTable = new SymbolTable();
   // private symbols_hash_auto: SymbolTable = new SymbolTable();
@@ -93,22 +94,18 @@ export class Spin2Parser {
 
   public P2Compile1() {
     // TODO: we need code here
-    throw new Error('@ is not allowed for bitfields, use ^@ to get field pointer');
+    // NOTE: reset all symbol tables
+    this.spinResolver.compile_con_blocks_1st();
   }
 
   public P2Compile2() {
     // TODO: we need code here
+    this.spinResolver.compile_con_blocks_2nd();
   }
 
   public P2InsertInterpreter() {
     // TODO: we need code here
   }
-
-  private determine_mode(): boolean {
-    return false;
-  }
-
-  private reset_element(): void {}
 
   private logMessage(message: string): void {
     if (this.isLogging) {

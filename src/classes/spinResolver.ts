@@ -17,7 +17,8 @@ import { SpinSymbolTables, eOpcode } from './parseUtils';
 // Internal types used for passing complex values
 interface iResolveReturn {
   value: bigint;
-  isResolved: boolean;
+  isUnresolved: boolean;
+  isFloat: boolean;
 }
 
 enum eMathMode {
@@ -40,6 +41,11 @@ export class SpinResolver {
   private numberStack: NumberStack;
   private spinSymbolTables: SpinSymbolTables;
 
+  // flags for controlling... constant
+  private expressionMustResolve: boolean = false; // bxx1 bit0
+  private operandMode: boolean = false; // bx1x bit1
+  private isUnresolved: boolean = false; // b1xx bit2
+
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
@@ -50,6 +56,47 @@ export class SpinResolver {
 
   public setElements(updatedElementList: SpinElement[]) {
     this.spinElements = updatedElementList;
+  }
+
+  public get_value(): iResolveReturn {
+    // MUST resolve
+    this.mathMode = eMathMode.MM_Unknown;
+    this.expressionMustResolve = true;
+    const result = this.get_number();
+    return result;
+  }
+
+  public try_value(): iResolveReturn {
+    // might resolve (conditial based on flag)
+    this.mathMode = eMathMode.MM_Unknown;
+    this.expressionMustResolve = false;
+    const result = this.get_number();
+    return result;
+  }
+
+  public get_value_int(): iResolveReturn {
+    // MUST resolve
+    this.mathMode = eMathMode.MM_IntMode;
+    this.expressionMustResolve = true;
+    const result = this.get_number();
+    return result;
+  }
+
+  public try_value_int(): iResolveReturn {
+    // might resolve (conditial based on flag)
+    this.mathMode = eMathMode.MM_IntMode;
+    this.expressionMustResolve = false;
+    const result = this.get_number();
+    return result;
+  }
+
+  private get_number(): iResolveReturn {
+    this.isUnresolved = false; // b1xx bit2
+    this.numberStack.reset(); // empty our stack
+    this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
+    const value: bigint = this.numberStack.pop();
+    const isFloat: boolean = this.mathMode == eMathMode.MM_FloatMode ? true : false;
+    return { value: value, isUnresolved: this.isUnresolved, isFloat: isFloat };
   }
 
   public resolveExp(precedence: number) {
@@ -72,7 +119,13 @@ export class SpinResolver {
       // NOTE: we could move negation handling to here from within tryConstant()
       // attempt to get a constant
       const resolution = this.tryConstant(currElement);
-      if (resolution.isResolved) {
+      if (resolution.isUnresolved) {
+        this.isUnresolved = true;
+      }
+      if (resolution.isFloat) {
+        this.isUnresolved = true;
+      }
+      if (resolution.isUnresolved == false) {
         // we have a constant in hand
         // place it on our stack and we're done
         this.numberStack.push(resolution.value);
@@ -87,8 +140,13 @@ export class SpinResolver {
           this.resolveExp(currElement.precedence);
           // Perform Unary
           const aValue = this.numberStack.pop();
-          this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[currElement.operation]}]`);
-          const exprResult = this.resolveOperation(aValue, 0n, currElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+          let exprResult: bigint = 0n;
+          if (this.isUnresolved) {
+            this.logMessage(`* SKIP Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[currElement.operation]}]`);
+          } else {
+            this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[currElement.operation]}]`);
+            exprResult = this.resolveOperation(aValue, 0n, currElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+          }
           this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
           this.numberStack.push(exprResult);
         } else if (currElement.type == eElementType.type_left) {
@@ -117,12 +175,19 @@ export class SpinResolver {
             const falseValue = this.numberStack.pop();
             const trueValue = this.numberStack.pop();
             const decisionValue = this.numberStack.pop();
-            this.logMessage(
-              `* Perform Binary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[nextElement.operation]}]`
-            );
-            const resultValue = decisionValue != 0n ? trueValue : falseValue;
-            this.numberStack.push(resultValue);
-            this.logMessage(`* Push result=(${float32ToHexString(resultValue)})`);
+            let exprResult: bigint = 0n;
+            if (this.isUnresolved) {
+              this.logMessage(
+                `* SKIP Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[nextElement.operation]}]`
+              );
+            } else {
+              this.logMessage(
+                `* Perform Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[nextElement.operation]}]`
+              );
+              exprResult = decisionValue != 0n ? trueValue : falseValue;
+            }
+            this.numberStack.push(exprResult);
+            this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
             break; // done,  exit loop
           } else {
             // not a binary op
@@ -133,15 +198,22 @@ export class SpinResolver {
           // we have binary operator
           this.checkDualModeOp(nextElement); // NOTE: maybe this moves down below exit?
           if (nextElement.precedence == currPrecedence) {
-            // we have binary precedence...
+            // Perform Binary
             this.resolveExp(currPrecedence); // push rhs value
             // TODO: this needs to perform binary
             const bValue = this.numberStack.pop();
             const aValue = this.numberStack.pop();
-            this.logMessage(
-              `* Perform Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[nextElement.operation]}]`
-            );
-            const exprResult = this.resolveOperation(aValue, bValue, nextElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+            let exprResult: bigint = 0n;
+            if (this.isUnresolved) {
+              this.logMessage(
+                `* SKIP Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[nextElement.operation]}]`
+              );
+            } else {
+              this.logMessage(
+                `* Perform Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[nextElement.operation]}]`
+              );
+              exprResult = this.resolveOperation(aValue, bValue, nextElement.operation, this.mathMode == eMathMode.MM_FloatMode);
+            }
             this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
             this.numberStack.push(exprResult);
             // let loop occur
@@ -174,7 +246,7 @@ export class SpinResolver {
 
   private tryConstant(element: SpinElement): iResolveReturn {
     let currElement = element;
-    const resultStatus: iResolveReturn = { value: 0n, isResolved: true };
+    const resultStatus: iResolveReturn = { value: 0n, isUnresolved: true, isFloat: false };
     // this 'check_constant', now 'try_constant' in Pnut
     // trying to resolve spin2 constant
 
@@ -187,6 +259,7 @@ export class SpinResolver {
       if (nextElement.isConstantInt) {
         // coerce element to negative value
         resultStatus.value = (~nextElement.value + 1n) & BigInt(0xffffffff);
+        resultStatus.isFloat = false;
         this.checkIntMode(); // throw if we were float
         // if not set then set else
         // TODO: do we need to remove '-' from element list
@@ -195,11 +268,12 @@ export class SpinResolver {
         // NOTE: ~~ this coerces the value to be a number
         resultStatus.value = BigInt(nextElement.value) ^ BigInt(0x80000000);
         this.checkFloatMode(); // throw if we were int
+        resultStatus.isFloat = true;
         // if not set then set else
         // TODO: do we need to remove '-' from element list
       } else {
         this.backElement(); // leave the constant
-        resultStatus.isResolved = false;
+        resultStatus.isUnresolved = false;
       }
     } else {
       // what else is our minus sign preceeding
@@ -225,6 +299,7 @@ export class SpinResolver {
         const floatValue: number = Number(intValue) / 1.0;
         // return the converted result
         resultStatus.value = numberToBigIntFloat32(floatValue);
+        resultStatus.isFloat = true;
       } else if (currElement.type == eElementType.type_trunc) {
         // have TRUNC()
         // TODO: determine if we care about overflow checking... because we don't do any here
@@ -244,6 +319,7 @@ export class SpinResolver {
         const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
         // return the converted result
         resultStatus.value = BigInt(truncatedUInt32);
+        resultStatus.isFloat = false;
       } else if (currElement.type == eElementType.type_round) {
         // have ROUND()
         // TODO: determine if we care about overflow checking... because we don't do any here
@@ -262,8 +338,9 @@ export class SpinResolver {
         const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
         // return the converted result
         resultStatus.value = BigInt(roundedUInt32);
+        resultStatus.isFloat = false;
       } else {
-        resultStatus.isResolved = false;
+        resultStatus.isUnresolved = false;
       }
     }
 
@@ -353,6 +430,30 @@ export class SpinResolver {
     //this.logMessage(`* Element Index=(${this.curr_element - 1})`);
     this.curr_element--;
   }
+
+  /*
+  private expressionMustResolve: boolean = false; // bxx1 bit0
+  private operandMode: boolean = false; // bx1x bit1
+  private isUnresolved: boolean = false; // b1xx bit2
+*/
+
+  public compile_con_blocks_1st() {
+    this.expressionMustResolve = false; // b001
+    this.compile_con_blocks();
+    this.isUnresolved = true; // b101 - resolve more symbols (%101 avoids operand mode %x1x)
+    this.compile_con_blocks();
+  }
+
+  public compile_con_blocks_2nd() {
+    this.expressionMustResolve = false;
+    this.isUnresolved = true; // b101
+    this.compile_con_blocks();
+    this.expressionMustResolve = true;
+    this.isUnresolved = false; // b000
+    this.compile_con_blocks();
+  }
+
+  private compile_con_blocks() {}
 
   //
   //  Operation Solver
