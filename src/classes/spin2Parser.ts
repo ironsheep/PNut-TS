@@ -48,16 +48,16 @@ export class Spin2Parser {
     return this.elementizer.sourceLineNumber;
   }
 
-  public testResolver() {
+  public fakeResolver() {
     // our list is in class objexct
     const spinElements: SpinElement[] = this.spinElements;
     this.spinResolver.setElements(this.spinElements);
-    this.spinResolver.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
+    this.spinResolver.resolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
     // now process list of elements, writing to our symbol tables
     // the dump symbol tables to listing file
   }
 
-  public testGetElementLoop() {
+  public fakeGetElementLoop() {
     // store the value(s) in list
     // publish for next steps to use
     this.spinElements = this.elementizer.getFileElements();
@@ -95,12 +95,12 @@ export class Spin2Parser {
   public P2Compile1() {
     // TODO: we need code here
     // NOTE: reset all symbol tables
-    this.spinResolver.compile_con_blocks_1st();
+    this.spinResolver.compile1();
   }
 
   public P2Compile2() {
     // TODO: we need code here
-    this.spinResolver.compile_con_blocks_2nd();
+    this.spinResolver.compile2();
   }
 
   public P2InsertInterpreter() {

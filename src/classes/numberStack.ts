@@ -12,6 +12,8 @@ export class NumberStack {
   private context: Context;
   private isLogging: boolean = false;
   private stack: bigint[] = [];
+  // this is a "Sticky" flag
+  private _unresolvedStatus: boolean = false;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -20,6 +22,14 @@ export class NumberStack {
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
     this.isLogging = enable;
+  }
+
+  public setUnresolved() {
+    this._unresolvedStatus = true;
+  }
+
+  get isUnresolved(): boolean {
+    return this._unresolvedStatus;
   }
 
   public push(value: bigint) {
@@ -41,6 +51,7 @@ export class NumberStack {
 
   public reset(): void {
     this.stack = [];
+    this._unresolvedStatus = false;
   }
 
   private float32ToHexString(float32: bigint): string {

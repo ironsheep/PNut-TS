@@ -550,22 +550,22 @@ export class RegressionReporter {
     this.writeResolverTestResults(dirName, fileName, resultStrings);
   }
 
-  private executeTest(resolver: SpinResolver, parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): string {
+  private executeTest(resolver: SpinResolver, parmA: number, parmB: number, operation: eOperationType, isFloatInConBlock: boolean): string {
     let result32: number = 0xdeadf00d;
     try {
-      result32 = resolver.regressionTestResolver(parmA, parmB, operation, isFloatInConstExpression);
+      result32 = resolver.regressionTestResolver(parmA, parmB, operation, isFloatInConBlock);
     } catch (error: unknown) {
       if (error instanceof Error) {
         this.context.logger.compilerErrorMsg(`-ERROR-: ${error.message} --`);
       }
     }
-    const reportResult: string = this.formatAnswer(result32, parmA, parmB, operation, isFloatInConstExpression);
+    const reportResult: string = this.formatAnswer(result32, parmA, parmB, operation, isFloatInConBlock);
     return reportResult;
   }
-  private formatAnswer(result32: number, parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): string {
+  private formatAnswer(result32: number, parmA: number, parmB: number, operation: eOperationType, isFloatInConBlock: boolean): string {
     //  $xxxx_rrrr, $yyyy_vvvv, operation, fltflag = $0000_fffff
     const opName: string = eOperationType[operation];
-    const floatInterp: string = isFloatInConstExpression ? ` flt ` : `     `;
+    const floatInterp: string = isFloatInConBlock ? ` flt ` : `     `;
     const opInterp: string = opName.padEnd(13, ' ');
     const resultStr: string = `${this.hexLong(parmA)}, ${this.hexLong(parmB)}, ${opInterp}${floatInterp} = ${this.hexLong(result32)}`;
     return resultStr;

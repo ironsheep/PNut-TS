@@ -10,21 +10,39 @@
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
-import { eElementType, eOperationType } from './types';
+import { eElementType, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
+import { type OptionValues } from 'commander';
 
 // Internal types used for passing complex values
-interface iResolveReturn {
+interface iValueReturn {
   value: bigint;
   isUnresolved: boolean;
   isFloat: boolean;
+}
+
+interface iConstantReturn {
+  value: bigint;
+  foundConstant: boolean;
 }
 
 enum eMathMode {
   MM_Unknown,
   MM_FloatMode,
   MM_IntMode
+}
+
+enum eResolve {
+  BR_Must,
+  BR_Try
+}
+
+enum eMode {
+  BM_IntOrFloat,
+  BM_IntOnly,
+  BM_Operand,
+  BM_Spin2
 }
 
 export class SpinResolver {
@@ -35,22 +53,17 @@ export class SpinResolver {
   private curr_element: number = 0;
   // parser state
   private mathMode: eMathMode = eMathMode.MM_Unknown;
-  private mustResolve: boolean = false;
-  private onlyIntAllowed: boolean = false;
-  //
+
   private numberStack: NumberStack;
   private spinSymbolTables: SpinSymbolTables;
-
-  // flags for controlling... constant
-  private expressionMustResolve: boolean = false; // bxx1 bit0
-  private operandMode: boolean = false; // bx1x bit1
-  private isUnresolved: boolean = false; // b1xx bit2
+  private lowestPrecedence: number;
 
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
     this.isLogging = this.context.logOptions.logResolver;
     this.spinSymbolTables = new SpinSymbolTables(ctx);
+    this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
     this.numberStack.enableLogging(this.isLogging);
   }
 
@@ -58,48 +71,169 @@ export class SpinResolver {
     this.spinElements = updatedElementList;
   }
 
-  public get_value(): iResolveReturn {
-    // MUST resolve
-    this.mathMode = eMathMode.MM_Unknown;
-    this.expressionMustResolve = true;
-    const result = this.get_number();
-    return result;
+  public compile1() {
+    this.compile_con_blocks_1st();
   }
 
-  public try_value(): iResolveReturn {
-    // might resolve (conditial based on flag)
-    this.mathMode = eMathMode.MM_Unknown;
-    this.expressionMustResolve = false;
-    const result = this.get_number();
-    return result;
+  public compile2() {
+    this.compile_con_blocks_2nd();
   }
 
-  public get_value_int(): iResolveReturn {
-    // MUST resolve
-    this.mathMode = eMathMode.MM_IntMode;
-    this.expressionMustResolve = true;
-    const result = this.get_number();
-    return result;
+  private compile_con_blocks_1st() {
+    // true here means very-first pass!
+    this.compile_con_blocks(eResolve.BR_Try, true);
+    this.compile_con_blocks(eResolve.BR_Try);
   }
 
-  public try_value_int(): iResolveReturn {
-    // might resolve (conditial based on flag)
-    this.mathMode = eMathMode.MM_IntMode;
-    this.expressionMustResolve = false;
-    const result = this.get_number();
-    return result;
+  private compile_con_blocks_2nd() {
+    this.compile_con_blocks(eResolve.BR_Try);
+    this.compile_con_blocks(eResolve.BR_Must);
   }
 
-  private get_number(): iResolveReturn {
-    this.isUnresolved = false; // b1xx bit2
+  // upcoming: try spin2 constant expression
+
+  private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
+    // code here
+    this.curr_element = 0; // reset to head of file
+    do {
+      // NEXT BLOCK
+      // reset our enumeration
+      let enumValid: boolean = true;
+      let enumValue: bigint = 0n;
+      let enumStep: bigint = 1n;
+      let willAssign: boolean = false;
+
+      // possbile mutiple assignments
+      do {
+        // NEXT LINE
+        let currElement: SpinElement = this.getElement();
+        // move past end of line if we are at one
+        if (currElement.type == eElementType.type_end) {
+          currElement = this.getElement();
+        }
+        // if we hit end of file, we're done
+        if (currElement.type == eElementType.type_end_file) {
+          break;
+        }
+        // skip any EOLs here?
+        do {
+          // SAME LINE (process a line)
+          willAssign = true;
+          // do we have an enum declaration?
+          if (currElement.type == eElementType.type_pound) {
+            const result = this.getValue(eMode.BM_IntOnly, resolve);
+            enumValid = false;
+            if (result.isUnresolved == false) {
+              enumValid = true;
+              enumValue = result.value;
+              enumStep = 1n;
+            }
+            if (this.checkLeftBracket()) {
+              const result = this.getValue(eMode.BM_IntOnly, resolve);
+              if (result.isUnresolved == false) {
+                enumStep = result.value;
+              } else {
+                enumValid = false;
+              }
+              this.getRightBracket();
+            }
+          } else if (currElement.type == eElementType.type_con || currElement.type == eElementType.type_con_float) {
+            if (firstPass) {
+              // [error_eaucnop]
+              throw new Error('Expected a unique constant name or "#"');
+            } else {
+              willAssign = false;
+              const elementToVerify = currElement;
+              this.backElement();
+
+              let isFloat: boolean = false;
+              currElement = this.getElement();
+              if (currElement.type == eElementType.type_equal) {
+                const result = this.getValue(eMode.BM_IntOrFloat, resolve);
+                if (result.isUnresolved == false) {
+                  //
+                }
+              } else if (currElement.type == eElementType.type_leftb) {
+                //
+              } else if (currElement.type == eElementType.type_comma) {
+                //
+              } else if (currElement.type == eElementType.type_end) {
+                //
+              } else {
+                // [error_eelcoeol]
+                throw new Error('Expected "=" "[" "," or end of line');
+              }
+            }
+          } else if (currElement.type == eElementType.type_undefined) {
+            // we have a symbol!
+          } else if (currElement.type == eElementType.type_block) {
+            // let our outermost loop decide if we should process this next block
+            this.backElement();
+            break;
+          } else {
+            // [error_eaucnop]
+            throw new Error('Expected a unique constant name or "#"');
+          }
+        } while (this.getCommaOrEndOfLine());
+      } while (this.nextElementType() != eElementType.type_block);
+    } while (this.nextBlock(eValueType.block_con));
+  }
+
+  private verify(element: SpinElement, value: iValueReturn) {
+    const desiredType = value.isFloat ? eElementType.type_con_float : eElementType.type_con;
+    if (element.type != desiredType || element.value != value.value) {
+      // [error_siad]
+      throw new Error('Symbol is already defined');
+    }
+  }
+
+  /*
+  block_con = 0, // 0x00
+  block_obj = 1, // 0x01
+  block_var = 2, // 0x02
+  block_pub = 3, // 0x03
+  block_pri = 4, // 0x04
+  block_dat = 5, // 0x05
+  */
+  private nextBlock(blockType: eValueType): boolean {
+    let foundStatus: boolean = false;
+    let currElement: SpinElement;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      currElement = this.getElement();
+      if (currElement.type == eElementType.type_block && Number(currElement.value) == blockType) {
+        foundStatus = true;
+        break;
+      }
+      if (currElement.type == eElementType.type_end_file) {
+        break;
+      }
+    }
+    if (foundStatus == true) {
+      if (currElement.sourceCharacterOffset != 0) {
+        // [error_bdmbifc]
+        throw new Error('Block designator must be in first column');
+      }
+    }
+    return foundStatus;
+  }
+
+  private getValue(mode: eMode, resolve: eResolve): iValueReturn {
+    // in this one case we force integer math
+    this.mathMode = mode == eMode.BM_IntOnly ? eMathMode.MM_IntMode : eMathMode.MM_Unknown;
     this.numberStack.reset(); // empty our stack
-    this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
+    this.resolveExp(mode, resolve, this.lowestPrecedence);
     const value: bigint = this.numberStack.pop();
-    const isFloat: boolean = this.mathMode == eMathMode.MM_FloatMode ? true : false;
-    return { value: value, isUnresolved: this.isUnresolved, isFloat: isFloat };
+    return { value: value, isUnresolved: this.numberStack.isUnresolved, isFloat: this.isResultFloat() };
   }
 
-  public resolveExp(precedence: number) {
+  private isResultFloat(): boolean {
+    // this brought to us by the compiler not allowing this one line to be in above routine
+    const isFloat: boolean = this.mathMode == eMathMode.MM_FloatMode ? true : false;
+    return isFloat;
+  }
+
+  public resolveExp(mode: eMode, resolve: eResolve, precedence: number) {
     // leaves answer on stack
     let currPrecedence: number = precedence;
     //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
@@ -116,16 +250,11 @@ export class SpinResolver {
       } while (currElement.isPlus);
       this.logMessage(`* currElement=[${currElement.toString()}]`);
 
-      // NOTE: we could move negation handling to here from within tryConstant()
+      // NOTE: we could move negation handling to here from within getConstant()
+
       // attempt to get a constant
-      const resolution = this.tryConstant(currElement);
-      if (resolution.isUnresolved) {
-        this.isUnresolved = true;
-      }
-      if (resolution.isFloat) {
-        this.isUnresolved = true;
-      }
-      if (resolution.isUnresolved == false) {
+      const resolution = this.getConstant(mode, resolve, currElement);
+      if (resolution.foundConstant) {
         // we have a constant in hand
         // place it on our stack and we're done
         this.numberStack.push(resolution.value);
@@ -137,11 +266,11 @@ export class SpinResolver {
         if (currElement.isUnary) {
           // our element is a unary operation
           this.checkDualModeOp(currElement); // (this IS in good place...)
-          this.resolveExp(currElement.precedence);
+          this.resolveExp(mode, resolve, currElement.precedence);
           // Perform Unary
           const aValue = this.numberStack.pop();
           let exprResult: bigint = 0n;
-          if (this.isUnresolved) {
+          if (this.numberStack.isUnresolved) {
             this.logMessage(`* SKIP Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[currElement.operation]}]`);
           } else {
             this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[currElement.operation]}]`);
@@ -150,7 +279,7 @@ export class SpinResolver {
           this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
           this.numberStack.push(exprResult);
         } else if (currElement.type == eElementType.type_left) {
-          this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1);
+          this.resolveExp(mode, resolve, this.lowestPrecedence);
           this.getRightParen();
         } else {
           // [error_eacuool]
@@ -159,24 +288,24 @@ export class SpinResolver {
       }
     } else {
       // precendence is NOT zero (> 0)
-      this.resolveExp(currPrecedence);
+      this.resolveExp(mode, resolve, currPrecedence);
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const nextElement = this.getElement();
         if (nextElement.isTernary) {
           // we have '?' op
           this.logMessage(`* Have op ternary`);
-          if (currPrecedence == this.spinSymbolTables.ternaryPrecedence) {
+          if (currPrecedence == nextElement.precedence) {
             this.logMessage(`* Ternary Precedence`);
             // Perform Ternary
-            this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // push true value
+            this.resolveExp(mode, resolve, this.lowestPrecedence); // push true value
             this.getColon();
-            this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // push false value
+            this.resolveExp(mode, resolve, this.lowestPrecedence); // push false value
             const falseValue = this.numberStack.pop();
             const trueValue = this.numberStack.pop();
             const decisionValue = this.numberStack.pop();
             let exprResult: bigint = 0n;
-            if (this.isUnresolved) {
+            if (this.numberStack.isUnresolved) {
               this.logMessage(
                 `* SKIP Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[nextElement.operation]}]`
               );
@@ -199,12 +328,12 @@ export class SpinResolver {
           this.checkDualModeOp(nextElement); // NOTE: maybe this moves down below exit?
           if (nextElement.precedence == currPrecedence) {
             // Perform Binary
-            this.resolveExp(currPrecedence); // push rhs value
+            this.resolveExp(mode, resolve, currPrecedence); // push rhs value
             // TODO: this needs to perform binary
             const bValue = this.numberStack.pop();
             const aValue = this.numberStack.pop();
             let exprResult: bigint = 0n;
-            if (this.isUnresolved) {
+            if (this.numberStack.isUnresolved) {
               this.logMessage(
                 `* SKIP Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[nextElement.operation]}]`
               );
@@ -234,7 +363,7 @@ export class SpinResolver {
 
   private checkDualModeOp(element: SpinElement) {
     // [preview_op]
-    if (element.isFloat == false) {
+    if (element.isFloatCompatible == false) {
       if (this.mathMode == eMathMode.MM_FloatMode) {
         // [error_ionaifpe]
         throw new Error('Integer operator not allowed in floating-point expression');
@@ -244,9 +373,9 @@ export class SpinResolver {
     }
   }
 
-  private tryConstant(element: SpinElement): iResolveReturn {
+  private getConstant(mode: eMode, resolve: eResolve, element: SpinElement): iConstantReturn {
     let currElement = element;
-    const resultStatus: iResolveReturn = { value: 0n, isUnresolved: true, isFloat: false };
+    const resultStatus: iConstantReturn = { value: 0n, foundConstant: true };
     // this 'check_constant', now 'try_constant' in Pnut
     // trying to resolve spin2 constant
 
@@ -259,7 +388,6 @@ export class SpinResolver {
       if (nextElement.isConstantInt) {
         // coerce element to negative value
         resultStatus.value = (~nextElement.value + 1n) & BigInt(0xffffffff);
-        resultStatus.isFloat = false;
         this.checkIntMode(); // throw if we were float
         // if not set then set else
         // TODO: do we need to remove '-' from element list
@@ -268,12 +396,11 @@ export class SpinResolver {
         // NOTE: ~~ this coerces the value to be a number
         resultStatus.value = BigInt(nextElement.value) ^ BigInt(0x80000000);
         this.checkFloatMode(); // throw if we were int
-        resultStatus.isFloat = true;
         // if not set then set else
         // TODO: do we need to remove '-' from element list
       } else {
         this.backElement(); // leave the constant
-        resultStatus.isUnresolved = false;
+        resultStatus.foundConstant = false;
       }
     } else {
       // what else is our minus sign preceeding
@@ -289,7 +416,7 @@ export class SpinResolver {
         this.getLeftParen();
         this.mathMode = eMathMode.MM_IntMode;
         this.logMessage(`* mathMode = Int`);
-        this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // places result on stack
+        this.resolveExp(mode, resolve, this.lowestPrecedence); // places result on stack
         this.mathMode = eMathMode.MM_FloatMode;
         this.logMessage(`* mathMode = Float`);
         this.getRightParen();
@@ -299,53 +426,145 @@ export class SpinResolver {
         const floatValue: number = Number(intValue) / 1.0;
         // return the converted result
         resultStatus.value = numberToBigIntFloat32(floatValue);
-        resultStatus.isFloat = true;
-      } else if (currElement.type == eElementType.type_trunc) {
-        // have TRUNC()
+      } else if (currElement.type == eElementType.type_trunc || currElement.type == eElementType.type_round) {
+        // have TRUNC() or ROUND()
         // TODO: determine if we care about overflow checking... because we don't do any here
         this.checkIntMode();
         this.getLeftParen();
         this.mathMode = eMathMode.MM_FloatMode;
         this.logMessage(`* mathMode = Float`);
-        this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // places result on stack
-        this.mathMode = eMathMode.MM_IntMode;
-        this.logMessage(`* mathMode = Int`);
-        this.getRightParen();
-        const float32Value = this.numberStack.pop(); // get result
-        // convert uint32 to float
-        const exponent = float32Value & BigInt(0x7f800000);
-        const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
-        // truncate our float value
-        const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
-        // return the converted result
-        resultStatus.value = BigInt(truncatedUInt32);
-        resultStatus.isFloat = false;
-      } else if (currElement.type == eElementType.type_round) {
-        // have ROUND()
-        // TODO: determine if we care about overflow checking... because we don't do any here
-        this.checkIntMode();
-        this.getLeftParen();
-        this.mathMode = eMathMode.MM_FloatMode;
-        this.logMessage(`* mathMode = Float`);
-        this.resolveExp(this.spinSymbolTables.ternaryPrecedence + 1); // places result on stack
+        this.resolveExp(mode, resolve, this.lowestPrecedence); // places result on stack
         this.mathMode = eMathMode.MM_IntMode;
         this.logMessage(`* mathMode = Int`);
         this.getRightParen();
         const float32Value = this.numberStack.pop(); // get result
         // convert uint32 to float
         const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
-        // truncate our float value
-        const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
-        // return the converted result
-        resultStatus.value = BigInt(roundedUInt32);
-        resultStatus.isFloat = false;
+        if (currElement.type == eElementType.type_trunc) {
+          // truncate our float value
+          const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
+          // return the converted result
+          resultStatus.value = BigInt(truncatedUInt32);
+        } else if (currElement.type == eElementType.type_round) {
+          // truncate our float value
+          const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
+          // return the converted result
+          resultStatus.value = BigInt(roundedUInt32);
+        }
+      } else if (currElement.type == eElementType.type_undefined) {
+        this.numberStack.setUnresolved();
+        if (resolve == eResolve.BR_Must) {
+          // [error_us]
+          throw new Error(`Undefined symbol`);
+        }
       } else {
-        resultStatus.isUnresolved = false;
+        resultStatus.foundConstant = false;
       }
     }
 
     return resultStatus;
   }
+
+  private checkLeftParen(): boolean {
+    return this.checkElementType(eElementType.type_left);
+  }
+
+  private checkRightParen(): boolean {
+    return this.checkElementType(eElementType.type_right);
+  }
+
+  private checkLeftBracket(): boolean {
+    return this.checkElementType(eElementType.type_leftb);
+  }
+
+  private checkComma(): boolean {
+    return this.checkElementType(eElementType.type_comma);
+  }
+
+  private checkPound(): boolean {
+    return this.checkElementType(eElementType.type_pound);
+  }
+
+  private checkColon(): boolean {
+    return this.checkElementType(eElementType.type_colon);
+  }
+
+  private checkEqual(): boolean {
+    return this.checkElementType(eElementType.type_equal);
+  }
+
+  private checkUnderscore(): boolean {
+    return this.checkElementType(eElementType.type_under);
+  }
+
+  private checkDot(): boolean {
+    return this.checkElementType(eElementType.type_dot);
+  }
+
+  private checkDotDot(): boolean {
+    return this.checkElementType(eElementType.type_dotdot);
+  }
+
+  private checkAt(): boolean {
+    return this.checkElementType(eElementType.type_at);
+  }
+
+  private checkInc(): boolean {
+    return this.checkElementType(eElementType.type_inc);
+  }
+
+  private checkDec(): boolean {
+    return this.checkElementType(eElementType.type_dec);
+  }
+
+  private checkBackslash(): boolean {
+    return this.checkElementType(eElementType.type_back);
+  }
+
+  private checkTick(): boolean {
+    return this.checkElementType(eElementType.type_tick);
+  }
+
+  private checkEndOfLine(): boolean {
+    return this.checkElementType(eElementType.type_end);
+  }
+
+  private checkElementType(type: eElementType): boolean {
+    let foundStatus: boolean = false;
+    let currElement = this.getElement();
+    if (currElement.type == type) {
+      foundStatus = true;
+    } else {
+      this.backElement();
+    }
+    return foundStatus;
+  }
+
+  private getCommaOrEndOfLine(): boolean {
+    let foundCommaStatus: boolean = false;
+    let currElement = this.getElement();
+    if (currElement.type == eElementType.type_comma) {
+      foundCommaStatus = true;
+    } else if (currElement.type != eElementType.type_end) {
+      // [error_ecoeol]
+      throw new Error('Expected "," or end of line');
+    }
+    return foundCommaStatus;
+  }
+
+  private getCommaOrRightParen(): boolean {
+    let foundCommaStatus: boolean = false;
+    let currElement = this.getElement();
+    if (currElement.type == eElementType.type_comma) {
+      foundCommaStatus = true;
+    } else if (currElement.type != eElementType.type_right) {
+      // [error_ecor]
+      throw new Error('Expected "," or ")"');
+    }
+    return foundCommaStatus;
+  }
+
+  // more here!!
 
   private getLeftParen() {
     const nextElement = this.getElement();
@@ -363,11 +582,113 @@ export class SpinResolver {
     }
   }
 
+  private getLeftBracket() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_leftb) {
+      // [error_eleftb]
+      throw new Error('Expected "["');
+    }
+  }
+
+  private getRightBracket() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_rightb) {
+      // [error_erightb]
+      throw new Error('Expected "]"');
+    }
+  }
+
+  private getComma() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_comma) {
+      // [error_ecomma]
+      throw new Error('Expected ","');
+    }
+  }
+  private getPound() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_pound) {
+      // [error_epound]
+      throw new Error('Expected "#"');
+    }
+  }
+  private getEqual() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_equal) {
+      // [error_eequal]
+      throw new Error('Expected "="');
+    }
+  }
+
   private getColon() {
     const nextElement = this.getElement();
     if (nextElement.type != eElementType.type_colon) {
       // [error_ecolon]
       throw new Error('Expected ":"');
+    }
+  }
+
+  private getDot() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_dot) {
+      // [error_edot]
+      throw new Error('Expected "."');
+    }
+  }
+
+  private getDotDot() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_dotdot) {
+      // [error_edotdot]
+      throw new Error('Expected ".."');
+    }
+  }
+
+  private getAssign() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_assign) {
+      // [error_eassign]
+      throw new Error('Expected ":="');
+    }
+  }
+
+  private getSize() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_size) {
+      // [error_ebwl]
+      throw new Error('Expected BYTE/WORD/LONG');
+    }
+  }
+
+  private getFrom() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_from) {
+      // [error_efrom]
+      throw new Error('Expected FROM');
+    }
+  }
+
+  private getTo() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_to) {
+      // [error_eto]
+      throw new Error('Expected TO');
+    }
+  }
+
+  private getWith() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_with) {
+      // [error_ewith]
+      throw new Error('Expected WITH');
+    }
+  }
+
+  private getEndOfLine() {
+    const nextElement = this.getElement();
+    if (nextElement.type != eElementType.type_end) {
+      // [error_eeol]
+      throw new Error('Expected end of line');
     }
   }
 
@@ -421,9 +742,19 @@ export class SpinResolver {
     return currElement;
   }
 
+  private nextElementType(): eElementType {
+    const currElement = this.spinElements[this.curr_element];
+    return currElement.type;
+  }
+
   private getElement(): SpinElement {
     //this.logMessage(`* Element Index=(${this.curr_element + 1})`);
-    return this.spinElements[this.curr_element++];
+    const currElement = this.spinElements[this.curr_element];
+    // if we reach end, stay on this element forever
+    if (currElement.type != eElementType.type_end_file) {
+      this.curr_element++;
+    }
+    return currElement;
   }
 
   private backElement(): void {
@@ -431,45 +762,21 @@ export class SpinResolver {
     this.curr_element--;
   }
 
-  /*
-  private expressionMustResolve: boolean = false; // bxx1 bit0
-  private operandMode: boolean = false; // bx1x bit1
-  private isUnresolved: boolean = false; // b1xx bit2
-*/
-
-  public compile_con_blocks_1st() {
-    this.expressionMustResolve = false; // b001
-    this.compile_con_blocks();
-    this.isUnresolved = true; // b101 - resolve more symbols (%101 avoids operand mode %x1x)
-    this.compile_con_blocks();
-  }
-
-  public compile_con_blocks_2nd() {
-    this.expressionMustResolve = false;
-    this.isUnresolved = true; // b101
-    this.compile_con_blocks();
-    this.expressionMustResolve = true;
-    this.isUnresolved = false; // b000
-    this.compile_con_blocks();
-  }
-
-  private compile_con_blocks() {}
-
   //
   //  Operation Solver
   //
-  public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConstExpression: boolean): number {
+  public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConBlock: boolean): number {
     // forward to whaterever the name becomes...
-    const endingValue: number = Number(this.resolveOperation(BigInt(parmA), BigInt(parmB), operation, isFloatInConstExpression));
-    this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConstExpression}) => (${endingValue})`);
+    const endingValue: number = Number(this.resolveOperation(BigInt(parmA), BigInt(parmB), operation, isFloatInConBlock));
+    this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConBlock}) => (${endingValue})`);
     return endingValue;
   }
 
-  private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConstExpression: boolean): bigint {
+  private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConBlock: boolean): bigint {
     // runtime expression compiler (puts byte codes together to solve at runtime)
     //   calls compile time to reduce constants before emitting byte code
     // compile-time resolver - THIS CODE
-    //  isFloatInConstExpression is ONLY true if we are compiling CON blocks and we have a floating point context
+    //  isFloatInConBlock is ONLY true if we are compiling CON blocks and we have a floating point context
     const msb32Bit: bigint = BigInt(0x80000000);
     const float1p0: bigint = BigInt(0x3f800000);
     const mask32Bit: bigint = BigInt(0xffffffff);
@@ -478,7 +785,7 @@ export class SpinResolver {
     const false32Bit: bigint = 0n;
 
     this.logMessage(
-      `resolver(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConstExpression})`
+      `resolver(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConBlock})`
     );
 
     // conditioning the incoming params
@@ -496,7 +803,7 @@ export class SpinResolver {
         a ^= mask32Bit;
         break;
       case eOperationType.op_neg: //  -	(uses op_sub sym)
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           // our 32bit float  signbit in msb, 8 exponent bits, 23 mantissa bits
           a ^= msb32Bit;
         } else {
@@ -507,7 +814,7 @@ export class SpinResolver {
         a ^= msb32Bit;
         break;
       case eOperationType.op_abs: //  ABS
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           a &= mask31Bit;
         } else {
           a = a & msb32Bit ? ((a ^ mask32Bit) + 1n) & mask32Bit : a;
@@ -660,7 +967,7 @@ export class SpinResolver {
       case eOperationType.op_mul: //  *
         // multiply a by b
         {
-          if (isFloatInConstExpression) {
+          if (isFloatInConBlock) {
             // convert to internal from float32
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
             const bInternalFloat64: number = bigIntFloat32ToNumber(b);
@@ -689,7 +996,7 @@ export class SpinResolver {
       case eOperationType.op_div: //  /
         // divide a by b
         {
-          if (isFloatInConstExpression) {
+          if (isFloatInConBlock) {
             // convert to internal from float32
             if ((b & mask31Bit) == 0n) {
               // [error_fpo]
@@ -777,7 +1084,7 @@ export class SpinResolver {
       case eOperationType.op_add: //  +
         {
           // add b to a returning a
-          if (isFloatInConstExpression) {
+          if (isFloatInConBlock) {
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
             const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 += bInternalFloat64;
@@ -805,7 +1112,7 @@ export class SpinResolver {
       case eOperationType.op_sub: //  -
         {
           // subtract b from a returning a
-          if (isFloatInConstExpression) {
+          if (isFloatInConBlock) {
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
             const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 -= bInternalFloat64;
@@ -832,7 +1139,7 @@ export class SpinResolver {
       case eOperationType.op_fge: //  #>
         {
           // force a to be greater than or equal to b
-          if (isFloatInConstExpression) {
+          if (isFloatInConBlock) {
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
             const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 = aInternalFloat64 < bInternalFloat64 ? bInternalFloat64 : aInternalFloat64;
@@ -847,7 +1154,7 @@ export class SpinResolver {
       case eOperationType.op_fle: //  <#
         {
           // force a to be less than or equal to b
-          if (isFloatInConstExpression) {
+          if (isFloatInConBlock) {
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
             const bInternalFloat64: number = bigIntFloat32ToNumber(b);
             aInternalFloat64 = aInternalFloat64 > bInternalFloat64 ? bInternalFloat64 : aInternalFloat64;
@@ -876,7 +1183,7 @@ export class SpinResolver {
         // NOTE: in CON blocks return 1 or 0,
         //       runtime it returns all 1 bits or all 0 bits
 
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 < bInternalFloat64 ? float1p0 : 0n;
@@ -900,7 +1207,7 @@ export class SpinResolver {
         break;
 
       case eOperationType.op_lte: //  <=
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 <= bInternalFloat64 ? float1p0 : 0n;
@@ -923,7 +1230,7 @@ export class SpinResolver {
         break;
 
       case eOperationType.op_e: //  ==
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 == bInternalFloat64 ? float1p0 : 0n;
@@ -942,7 +1249,7 @@ export class SpinResolver {
         break;
 
       case eOperationType.op_ne: //  <>
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 != bInternalFloat64 ? float1p0 : 0n;
@@ -961,7 +1268,7 @@ export class SpinResolver {
         break;
 
       case eOperationType.op_gte: //  >=
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 >= bInternalFloat64 ? float1p0 : 0n;
@@ -984,7 +1291,7 @@ export class SpinResolver {
         break;
 
       case eOperationType.op_gt: //  >
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           a = aInternalFloat64 > bInternalFloat64 ? float1p0 : 0n;
@@ -1007,7 +1314,7 @@ export class SpinResolver {
         break;
 
       case eOperationType.op_ltegt: //  <=>
-        if (isFloatInConstExpression) {
+        if (isFloatInConBlock) {
           const aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
           const testStatus: boolean = aInternalFloat64 < bInternalFloat64;

@@ -151,7 +151,7 @@ export class SpinElement {
     return status;
   }
 
-  get isFloat(): boolean {
+  get isFloatCompatible(): boolean {
     let status: boolean = false;
     if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v8 parm (v8 << 28)
