@@ -124,6 +124,7 @@ export class SpinResolver {
           break;
         }
         // skip any EOLs here?
+        let didFindComma: boolean = false;
         do {
           // SAME LINE (process a line)
           // do we have an enum declaration?
@@ -242,11 +243,17 @@ export class SpinResolver {
             this.backElement();
             break;
           } else {
+            this.backElement(); // so we can re-discover the comma or EOL at while()
+            currElement = this.getElement();
             this.logMessage(`EEEE: Element at fail: [${currElement.toString()}]`);
             // [error_eaucnop]
             throw new Error('Expected a unique constant name or "#"');
           }
-        } while (this.getCommaOrEndOfLine());
+          didFindComma = this.getCommaOrEndOfLine();
+          if (didFindComma) {
+            currElement = this.getElement();
+          }
+        } while (didFindComma);
       } while (this.nextElementType() != eElementType.type_block);
     } while (this.nextBlock(eValueType.block_con));
   }

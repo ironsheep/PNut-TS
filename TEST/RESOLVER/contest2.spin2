@@ -7,10 +7,7 @@ CON  EnableFlow = 8                'single assignments
      PWM_base = 8
      PWM_pins = PWM_base ADDPINS 7
 
-'     x = 5, y = -5, z = 1          'comma-separated assignments
-     x = 5
-     y = -5
-     z = 1
+     x = 5, y = -5, z = 1          'comma-separated assignments
 
      HalfPi = 1.5707963268         'IEEE-754 single-precision float values
      QuarPi = HalfPi / 2.0
