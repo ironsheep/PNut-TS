@@ -18,7 +18,7 @@ import { SymbolTable } from './symbolTable';
 // Internal types used for passing complex values
 interface iValueReturn {
   value: bigint;
-  isUnresolved: boolean;
+  isResolved: boolean;
   isFloat: boolean;
 }
 
@@ -127,7 +127,7 @@ export class SpinResolver {
             // Example: we are processing the left edge of an enumeration:  #0[4], name1, name2, name3[5], name4
             const result = this.getValue(eMode.BM_IntOnly, resolve);
             enumValid = false;
-            if (result.isUnresolved == false) {
+            if (result.isResolved) {
               // we have a value!
               enumValid = true;
               enumValue = result.value;
@@ -135,7 +135,7 @@ export class SpinResolver {
             }
             if (this.checkLeftBracket()) {
               const result = this.getValue(eMode.BM_IntOnly, resolve);
-              if (result.isUnresolved == false) {
+              if (result.isResolved) {
                 enumStep = result.value;
               } else {
                 enumValid = false;
@@ -157,7 +157,7 @@ export class SpinResolver {
                 this.mathMode = eMathMode.MM_Unknown; // allow any
                 const result = this.getValue(eMode.BM_IntOrFloat, resolve);
                 // NOTE: if we don't get a value just leave we can't do anything yet...
-                if (result.isUnresolved == false) {
+                if (result.isResolved) {
                   // we have a value!
                   // record symbol value (do assign process)
                   this.verifySameValue(elementToVerify, result);
@@ -167,11 +167,11 @@ export class SpinResolver {
                 //  #0[nameA], nameA[nameB]
                 //  #0[11], nameA[15]
                 this.getRightBracket();
-                if (indexResult.isUnresolved == false) {
+                if (indexResult.isResolved) {
                   // we have a value
                   // Example: we are processing this:  #0[4], name1, name2, name3[5], name4
                   // preserve current enum value
-                  const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+                  const symbolResult: iValueReturn = { value: enumValue, isResolved: true, isFloat: false };
                   // step the enum
                   enumValue += enumStep * indexResult.value;
                   // record symbol with current enum value (do assign process)
@@ -182,7 +182,7 @@ export class SpinResolver {
                 }
               } else if (currElement.type == eElementType.type_comma || currElement.type == eElementType.type_end) {
                 // preserve current enum value
-                const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+                const symbolResult: iValueReturn = { value: enumValue, isResolved: true, isFloat: false };
                 // step the enum
                 enumValue += enumStep;
                 // record symbol with current enum value (do assign process)
@@ -201,7 +201,7 @@ export class SpinResolver {
               this.mathMode = eMathMode.MM_Unknown; // allow any
               const result = this.getValue(eMode.BM_IntOrFloat, resolve);
               // NOTE: if we don't get a value just leave we can't do anything yet...
-              if (result.isUnresolved == false) {
+              if (result.isResolved) {
                 // we have a value!
                 // record symbol value (do assign process)
                 this.recordSymbolValue(symbolNameElement.stringValue, result);
@@ -209,11 +209,11 @@ export class SpinResolver {
             } else if (currElement.type == eElementType.type_leftb) {
               const indexResult = this.getValue(eMode.BM_IntOnly, resolve);
               this.getRightBracket();
-              if (indexResult.isUnresolved == false) {
+              if (indexResult.isResolved) {
                 // we have a value
                 // Example: we are processing this:  #0[4], name1, name2, name3[5], name4
                 // preserve current enum value
-                const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+                const symbolResult: iValueReturn = { value: enumValue, isResolved: true, isFloat: false };
                 // step the enum
                 enumValue += enumStep * indexResult.value;
                 // record symbol with current enum value (do assign process)
@@ -224,7 +224,7 @@ export class SpinResolver {
               }
             } else if (currElement.type == eElementType.type_comma || currElement.type == eElementType.type_end) {
               // preserve current enum value
-              const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+              const symbolResult: iValueReturn = { value: enumValue, isResolved: true, isFloat: false };
               // step the enum
               enumValue += enumStep;
               // record symbol with current enum value (do assign process)
@@ -315,7 +315,7 @@ export class SpinResolver {
     this.numberStack.reset(); // empty our stack
     this.resolveExp(mode, resolve, this.lowestPrecedence);
     const value: bigint = this.numberStack.pop();
-    return { value: value, isUnresolved: this.numberStack.isUnresolved, isFloat: this.isResultFloat() };
+    return { value: value, isResolved: this.numberStack.isResolved, isFloat: this.isResultFloat() };
   }
 
   private isResultFloat(): boolean {

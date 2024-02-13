@@ -32,6 +32,10 @@ export class NumberStack {
     return this._unresolvedStatus;
   }
 
+  get isResolved(): boolean {
+    return this._unresolvedStatus == false;
+  }
+
   public push(value: bigint) {
     this.stack.push(value);
     this.logMessage(`#STK: push[${this.stack.length - 1}] (${this.float32ToHexString(value)})`);
