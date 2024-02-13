@@ -525,7 +525,7 @@ export class SpinElementizer {
     const quaternaryNumberMatch = line.match(isQuaternaryNumberRegEx);
     if (quaternaryNumberMatch) {
       const valueFound: string = quaternaryNumberMatch[0].substring(2);
-      interpValue = BigInt(parseInt(valueFound.replace('_', ''), 4));
+      interpValue = BigInt(parseInt(valueFound.replace(/_/g, ''), 4));
       charsUsed = quaternaryNumberMatch[0].length;
       // ensure that result fits in 32-bits
       this.logMessage(`  -- quaternaryConversion(${line}) = interpValue=(${interpValue})`);
@@ -542,7 +542,7 @@ export class SpinElementizer {
     if (binaryNumberMatch) {
       const valueFound: string = binaryNumberMatch[0].substring(1);
       //this.logMessage(`- binaryNumberMatch[0]=(${valueFound})`);
-      interpValue = BigInt(parseInt(valueFound.replace('_', ''), 2));
+      interpValue = BigInt(parseInt(valueFound.replace(/_/g, ''), 2));
       charsUsed = binaryNumberMatch[0].length;
       // ensure that result fits in 32-bits
       this.logMessage(`  -- binaryConversion(${line}) = interpValue=(${interpValue})`);
@@ -559,7 +559,7 @@ export class SpinElementizer {
     if (hexNumberMatch) {
       const valueFound: string = hexNumberMatch[0].substring(1);
       //this.logMessage(`- hexNumberMatch[0]=(${valueFound})`);
-      interpValue = BigInt(parseInt(valueFound.replace('_', ''), 16));
+      interpValue = BigInt(parseInt(valueFound.replace(/_/g, ''), 16));
       charsUsed = hexNumberMatch[0].length;
       // ensure that result fits in 32-bits
       this.logMessage(`  -- hexadecimalConversion(${line}) = interpValue=(${interpValue})`);
@@ -581,19 +581,19 @@ export class SpinElementizer {
     let didMatch: boolean = false;
     const float1NumberMatch = line.match(isFloat1NumberRegEx);
     if (float1NumberMatch) {
-      interpValue = stringToFloat32(float1NumberMatch[0].replace('_', ''));
+      interpValue = stringToFloat32(float1NumberMatch[0].replace(/_/g, ''));
       charsUsed = float1NumberMatch[0].length;
       didMatch = true;
     } else {
       const float2NumberMatch = line.match(isFloat2NumberRegEx);
       if (float2NumberMatch) {
-        interpValue = stringToFloat32(float2NumberMatch[0].replace('_', ''));
+        interpValue = stringToFloat32(float2NumberMatch[0].replace(/_/g, ''));
         charsUsed = float2NumberMatch[0].length;
         didMatch = true;
       } else {
         const float3NumberMatch = line.match(isFloat3NumberRegEx);
         if (float3NumberMatch) {
-          interpValue = stringToFloat32(float3NumberMatch[0].replace('_', ''));
+          interpValue = stringToFloat32(float3NumberMatch[0].replace(/_/g, ''));
           charsUsed = float3NumberMatch[0].length;
           didMatch = true;
         }
@@ -627,7 +627,7 @@ export class SpinElementizer {
       const isDecimalNumberRegEx = /^(\d+[\d_]*)/;
       const decimalNumberMatch = line.match(isDecimalNumberRegEx);
       if (decimalNumberMatch) {
-        interpValue = BigInt(parseInt(decimalNumberMatch[0].replace('_', '')));
+        interpValue = BigInt(parseInt(decimalNumberMatch[0].replace(/_/g, '')));
         charsUsed = decimalNumberMatch[0].length;
         // ensure that result fits in 32-bits
         this.logMessage(`  -- decimalConversion(${line}) = interpValue=(${interpValue})`);
