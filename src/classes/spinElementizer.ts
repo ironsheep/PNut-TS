@@ -61,6 +61,7 @@ export class SpinElementizer {
   get sourceLineNumber(): number {
     // return last access line number
     //  ultimately this will be line with error on it
+    //this.logMessage(`* sourceLineNumber() currentTextLine=[${this.currentTextLine.text}]`);
     return this.currentTextLine.sourceLineNumber;
   }
 
@@ -552,13 +553,13 @@ export class SpinElementizer {
   }
 
   private hexadecimalConversion(line: string): [number, bigint] {
-    const isHexNumberRegEx = /^\$([[0-9A-Fa-f]+[0-9_A-Fa-f]*)/;
+    const isHexNumberRegEx = /^\$([0-9A-Fa-f]+[0-9_A-Fa-f]*)/;
     let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     const hexNumberMatch = line.match(isHexNumberRegEx);
     if (hexNumberMatch) {
       const valueFound: string = hexNumberMatch[0].substring(1);
-      //this.logMessage(`- hexNumberMatch[0]=(${valueFound})`);
+      //this.logMessage(`- hexNumberMatch[0]=(${valueFound})(${hexNumberMatch.length})`);
       interpValue = BigInt(parseInt(valueFound.replace(/_/g, ''), 16));
       charsUsed = hexNumberMatch[0].length;
       // ensure that result fits in 32-bits

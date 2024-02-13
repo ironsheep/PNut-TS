@@ -1,0 +1,1203 @@
+DAT
+CON
+
+symbol_size		= 32		'cannot exceed 255
+pasm_regs		= $1D8		'convenient PASM <-> Spin2 registers
+m			= $80		'byte MSB
+'
+'
+' Assembly operands
+'
+#0
+operand_ds
+operand_bitx
+operand_testb
+operand_du
+operand_duii
+operand_duiz
+operand_ds3set
+operand_ds3get
+operand_ds2set
+operand_ds2get
+operand_ds1set
+operand_ds1get
+operand_dsj
+operand_ls
+operand_lsj
+operand_dsp
+operand_lsp
+operand_rep
+operand_jmp
+operand_call
+operand_calld
+operand_jpoll
+operand_loc
+operand_aug
+operand_d
+operand_de
+operand_l
+operand_cz
+operand_pollwait
+operand_getbrk
+operand_pinop
+operand_testp
+operand_pushpop
+operand_xlat
+operand_akpin
+operand_nop
+'
+'
+' Assembly push/pops
+'
+#0
+pp_pusha	'	PUSHA	D/#	-->	WRLONG	D/#,PTRA++
+pp_pushb	'	PUSHB	D/#	-->	WRLONG	D/#,PTRB++
+pp_popa		'	POPA	D	-->	RDLONG	D,--PTRA
+pp_popb		'	POPB	D	-->	RDLONG	D,--PTRB
+'
+'
+' Assembly codes
+'			opcode        flags    operand                          instruction
+'			---------------------------------------------------------------------------------
+ac_ror		=	%000000000 | %11 <<9 | operand_ds	<<11	'	ROR	D,S/#
+ac_rol		=	%000000100 | %11 <<9 | operand_ds	<<11	'	ROL	D,S/#
+ac_shr		=	%000001000 | %11 <<9 | operand_ds	<<11	'	SHR	D,S/#
+ac_shl		=	%000001100 | %11 <<9 | operand_ds	<<11	'	SHL	D,S/#
+ac_rcr		=	%000010000 | %11 <<9 | operand_ds	<<11	'	RCR	D,S/#
+ac_rcl		=	%000010100 | %11 <<9 | operand_ds	<<11	'	RCL	D,S/#
+ac_sar		=	%000011000 | %11 <<9 | operand_ds	<<11	'	SAR	D,S/#
+ac_sal		=	%000011100 | %11 <<9 | operand_ds	<<11	'	SAL	D,S/#
+
+ac_add		=	%000100000 | %11 <<9 | operand_ds	<<11	'	ADD	D,S/#
+ac_addx		=	%000100100 | %11 <<9 | operand_ds	<<11	'	ADDX	D,S/#
+ac_adds		=	%000101000 | %11 <<9 | operand_ds	<<11	'	ADDS	D,S/#
+ac_addsx	=	%000101100 | %11 <<9 | operand_ds	<<11	'	ADDSX	D,S/#
+
+ac_sub		=	%000110000 | %11 <<9 | operand_ds	<<11	'	SUB	D,S/#
+ac_subx		=	%000110100 | %11 <<9 | operand_ds	<<11	'	SUBX	D,S/#
+ac_subs		=	%000111000 | %11 <<9 | operand_ds	<<11	'	SUBS	D,S/#
+ac_subsx	=	%000111100 | %11 <<9 | operand_ds	<<11	'	SUBSX	D,S/#
+
+ac_cmp		=	%001000000 | %11 <<9 | operand_ds	<<11	'	CMP	D,S/#
+ac_cmpx		=	%001000100 | %11 <<9 | operand_ds	<<11	'	CMPX	D,S/#
+ac_cmps		=	%001001000 | %11 <<9 | operand_ds	<<11	'	CMPS	D,S/#
+ac_cmpsx	=	%001001100 | %11 <<9 | operand_ds	<<11	'	CMPSX	D,S/#
+
+ac_cmpr		=	%001010000 | %11 <<9 | operand_ds	<<11	'	CMPR	D,S/#
+ac_cmpm		=	%001010100 | %11 <<9 | operand_ds	<<11	'	CMPM	D,S/#
+ac_subr		=	%001011000 | %11 <<9 | operand_ds	<<11	'	SUBR	D,S/#
+ac_cmpsub	=	%001011100 | %11 <<9 | operand_ds	<<11	'	CMPSUB	D,S/#
+
+ac_fge		=	%001100000 | %11 <<9 | operand_ds	<<11	'	FGE	D,S/#
+ac_fle		=	%001100100 | %11 <<9 | operand_ds	<<11	'	FLE	D,S/#
+ac_fges		=	%001101000 | %11 <<9 | operand_ds	<<11	'	FGES	D,S/#
+ac_fles		=	%001101100 | %11 <<9 | operand_ds	<<11	'	FLES	D,S/#
+
+ac_sumc		=	%001110000 | %11 <<9 | operand_ds	<<11	'	SUMC	D,S/#
+ac_sumnc	=	%001110100 | %11 <<9 | operand_ds	<<11	'	SUMNC	D,S/#
+ac_sumz		=	%001111000 | %11 <<9 | operand_ds	<<11	'	SUMZ	D,S/#
+ac_sumnz	=	%001111100 | %11 <<9 | operand_ds	<<11	'	SUMNZ	D,S/#
+
+ac_bitl		=	%010000000 | %00 <<9 | operand_bitx	<<11	'	BITL	D,S/#
+ac_bith		=	%010000100 | %00 <<9 | operand_bitx	<<11	'	BITH	D,S/#
+ac_bitc		=	%010001000 | %00 <<9 | operand_bitx	<<11	'	BITC	D,S/#
+ac_bitnc	=	%010001100 | %00 <<9 | operand_bitx	<<11	'	BITNC	D,S/#
+ac_bitz		=	%010010000 | %00 <<9 | operand_bitx	<<11	'	BITZ	D,S/#
+ac_bitnz	=	%010010100 | %00 <<9 | operand_bitx	<<11	'	BITNZ	D,S/#
+ac_bitrnd	=	%010011000 | %00 <<9 | operand_bitx	<<11	'	BITRND	D,S/#
+ac_bitnot	=	%010011100 | %00 <<9 | operand_bitx	<<11	'	BITNOT	D,S/#
+
+ac_testb	=	%010000000 | %00 <<9 | operand_testb	<<11	'	TESTB	D,S/#
+ac_testbn	=	%010000100 | %00 <<9 | operand_testb	<<11	'	TESTBN	D,S/#
+
+ac_and		=	%010100000 | %11 <<9 | operand_ds	<<11	'	AND	D,S/#
+ac_andn		=	%010100100 | %11 <<9 | operand_ds	<<11	'	ANDN	D,S/#
+ac_or		=	%010101000 | %11 <<9 | operand_ds	<<11	'	OR	D,S/#
+ac_xor		=	%010101100 | %11 <<9 | operand_ds	<<11	'	XOR	D,S/#
+
+ac_muxc		=	%010110000 | %11 <<9 | operand_ds	<<11	'	MUXC	D,S/#
+ac_muxnc	=	%010110100 | %11 <<9 | operand_ds	<<11	'	MUXNC	D,S/#
+ac_muxz		=	%010111000 | %11 <<9 | operand_ds	<<11	'	MUXZ	D,S/#
+ac_muxnz	=	%010111100 | %11 <<9 | operand_ds	<<11	'	MUXNZ	D,S/#
+
+ac_mov		=	%011000000 | %11 <<9 | operand_ds	<<11	'	MOV	D,S/#
+ac_not		=	%011000100 | %11 <<9 | operand_du	<<11	'	NOT	D{,S/#}
+ac_abs		=	%011001000 | %11 <<9 | operand_du	<<11	'	ABS	D{,S/#}
+ac_neg		=	%011001100 | %11 <<9 | operand_du	<<11	'	NEG	D{,S/#}
+
+ac_negc		=	%011010000 | %11 <<9 | operand_du	<<11	'	NEGC	D{,S/#}
+ac_negnc	=	%011010100 | %11 <<9 | operand_du	<<11	'	NEGNC	D{,S/#}
+ac_negz		=	%011011000 | %11 <<9 | operand_du	<<11	'	NEGZ	D{,S/#}
+ac_negnz	=	%011011100 | %11 <<9 | operand_du	<<11	'	NEGNZ	D{,S/#}
+
+ac_incmod	=	%011100000 | %11 <<9 | operand_ds	<<11	'	INCMOD	D,S/#
+ac_decmod	=	%011100100 | %11 <<9 | operand_ds	<<11	'	DECMOD	D,S/#
+ac_zerox	=	%011101000 | %11 <<9 | operand_ds	<<11	'	ZEROX	D,S/#
+ac_signx	=	%011101100 | %11 <<9 | operand_ds	<<11	'	SIGNX	D,S/#
+
+ac_encod	=	%011110000 | %11 <<9 | operand_du	<<11	'	ENCOD	D{,S/#}
+ac_ones		=	%011110100 | %11 <<9 | operand_du	<<11	'	ONES	D{,S/#}
+ac_test		=	%011111000 | %11 <<9 | operand_du	<<11	'	TEST	D,{S/#}
+ac_testn	=	%011111100 | %11 <<9 | operand_ds	<<11	'	TESTN	D,S/#
+
+ac_setnib	=	%100000000 | %00 <<9 | operand_ds3set	<<11	'	SETNIB	{D,}S/#{,#0..7}
+ac_getnib	=	%100001000 | %00 <<9 | operand_ds3get	<<11	'	GETNIB	D{,S/#,#0..7}
+ac_rolnib	=	%100010000 | %00 <<9 | operand_ds3get	<<11	'	ROLNIB	D{,S/#,#0..7}
+
+ac_setbyte	=	%100011000 | %00 <<9 | operand_ds2set	<<11	'	SETBYTE	{D,}S/#{,#0..3}
+ac_getbyte	=	%100011100 | %00 <<9 | operand_ds2get	<<11	'	GETBYTE	D{,S/#,#0..3}
+ac_rolbyte	=	%100100000 | %00 <<9 | operand_ds2get	<<11	'	ROLBYTE	D{,S/#,#0..3}
+
+ac_setword	=	%100100100 | %00 <<9 | operand_ds1set	<<11	'	SETWORD	{D,}S/#{,#0..1}
+ac_getword	=	%100100110 | %00 <<9 | operand_ds1get	<<11	'	GETWORD	D{,S/#,#0..1}
+ac_rolword	=	%100101000 | %00 <<9 | operand_ds1get	<<11	'	ROLWORD	D{,S/#,#0..1}
+
+ac_altsn	=	%100101010 | %00 <<9 | operand_duiz	<<11	'	ALTSN	D{,S/#}
+ac_altgn	=	%100101011 | %00 <<9 | operand_duiz	<<11	'	ALTGN	D{,S/#}
+ac_altsb	=	%100101100 | %00 <<9 | operand_duiz	<<11	'	ALTSB	D{,S/#}
+ac_altgb	=	%100101101 | %00 <<9 | operand_duiz	<<11	'	ALTGB	D{,S/#}
+ac_altsw	=	%100101110 | %00 <<9 | operand_duiz	<<11	'	ALTSW	D{,S/#}
+ac_altgw	=	%100101111 | %00 <<9 | operand_duiz	<<11	'	ALTGW	D{,S/#}
+ac_altr		=	%100110000 | %00 <<9 | operand_duiz	<<11	'	ALTR	D{,S/#}
+ac_altd		=	%100110001 | %00 <<9 | operand_duiz	<<11	'	ALTD	D{,S/#}
+ac_alts		=	%100110010 | %00 <<9 | operand_duiz	<<11	'	ALTS	D{,S/#}
+ac_altb		=	%100110011 | %00 <<9 | operand_duiz	<<11	'	ALTB	D{,S/#}
+ac_alti		=	%100110100 | %00 <<9 | operand_duii	<<11	'	ALTI	D{,S/#}
+ac_setr		=	%100110101 | %00 <<9 | operand_ds	<<11	'	SETR	D,S/#
+ac_setd		=	%100110110 | %00 <<9 | operand_ds	<<11	'	SETD	D,S/#
+ac_sets		=	%100110111 | %00 <<9 | operand_ds	<<11	'	SETS	D,S/#
+ac_decod	=	%100111000 | %00 <<9 | operand_du	<<11	'	DECOD	D{,S/#}
+ac_bmask	=	%100111001 | %00 <<9 | operand_du	<<11	'	BMASK	D{,S/#}
+ac_crcbit	=	%100111010 | %00 <<9 | operand_ds	<<11	'	CRCBIT	D,S/#
+ac_crcnib	=	%100111011 | %00 <<9 | operand_ds	<<11	'	CRCNIB	D,S/#
+ac_muxnits	=	%100111100 | %00 <<9 | operand_ds	<<11	'	MUXNITS	D,S/#
+ac_muxnibs	=	%100111101 | %00 <<9 | operand_ds	<<11	'	MUXNIBS	D,S/#
+ac_muxq		=	%100111110 | %00 <<9 | operand_ds	<<11	'	MUXQ	D,S/#
+ac_movbyts	=	%100111111 | %00 <<9 | operand_ds	<<11	'	MOVBYTS	D,S/#
+
+ac_mul		=	%101000000 | %01 <<9 | operand_ds	<<11	'	MUL	D,S/#
+ac_muls		=	%101000010 | %01 <<9 | operand_ds	<<11	'	MULS	D,S/#
+ac_sca		=	%101000100 | %01 <<9 | operand_ds	<<11	'	SCA	D,S/#
+ac_scas		=	%101000110 | %01 <<9 | operand_ds	<<11	'	SCAS	D,S/#
+
+ac_addpix	=	%101001000 | %00 <<9 | operand_ds	<<11	'	ADDPIX	D,S/#
+ac_mulpix	=	%101001001 | %00 <<9 | operand_ds	<<11	'	MULPIX	D,S/#
+ac_blnpix	=	%101001010 | %00 <<9 | operand_ds	<<11	'	BLNPIX	D,S/#
+ac_mixpix	=	%101001011 | %00 <<9 | operand_ds	<<11	'	MIXPIX	D,S/#
+
+ac_addct1	=	%101001100 | %00 <<9 | operand_ds	<<11	'	ADDCT1	D,S/#
+ac_addct2	=	%101001101 | %00 <<9 | operand_ds	<<11	'	ADDCT2	D,S/#
+ac_addct3	=	%101001110 | %00 <<9 | operand_ds	<<11	'	ADDCT3	D,S/#
+ac_wmlong	=	%101001111 | %00 <<9 | operand_dsp	<<11	'	WMLONG	D,S/#/PTRx
+
+ac_rqpin	=	%101010000 | %10 <<9 | operand_ds	<<11	'	RQPIN	D,S/#
+ac_rdpin	=	%101010001 | %10 <<9 | operand_ds	<<11	'	RDPIN	D,S/#
+ac_rdlut	=	%101010100 | %11 <<9 | operand_dsp	<<11	'	RDLUT	D,S/#/PTRx
+
+ac_rdbyte	=	%101011000 | %11 <<9 | operand_dsp	<<11	'	RDBYTE	D,S/#/PTRx
+ac_rdword	=	%101011100 | %11 <<9 | operand_dsp	<<11	'	RDWORD	D,S/#/PTRx
+ac_rdlong	=	%101100000 | %11 <<9 | operand_dsp	<<11	'	RDLONG	D,S/#/PTRx
+
+ac_callpa	=	%101101000 | %00 <<9 | operand_lsj	<<11	'	CALLPA	D/#,S/#
+ac_callpb	=	%101101010 | %00 <<9 | operand_lsj	<<11	'	CALLPB	D/#,S/#
+
+ac_djz		=	%101101100 | %00 <<9 | operand_dsj	<<11	'	DJZ	D,S/#
+ac_djnz		=	%101101101 | %00 <<9 | operand_dsj	<<11	'	DJNZ	D,S/#
+ac_djf		=	%101101110 | %00 <<9 | operand_dsj	<<11	'	DJF	D,S/#
+ac_djnf		=	%101101111 | %00 <<9 | operand_dsj	<<11	'	DJNF	D,S/#
+
+ac_ijz		=	%101110000 | %00 <<9 | operand_dsj	<<11	'	IJZ	D,S/#
+ac_ijnz		=	%101110001 | %00 <<9 | operand_dsj	<<11	'	IJNZ	D,S/#
+
+ac_tjz		=	%101110010 | %00 <<9 | operand_dsj	<<11	'	TJZ	D,S/#
+ac_tjnz		=	%101110011 | %00 <<9 | operand_dsj	<<11	'	TJNZ	D,S/#
+ac_tjf		=	%101110100 | %00 <<9 | operand_dsj	<<11	'	TJF	D,S/#
+ac_tjnf		=	%101110101 | %00 <<9 | operand_dsj	<<11	'	TJNF	D,S/#
+ac_tjs		=	%101110110 | %00 <<9 | operand_dsj	<<11	'	TJS	D,S/#
+ac_tjns		=	%101110111 | %00 <<9 | operand_dsj	<<11	'	TJNS	D,S/#
+ac_tjv		=	%101111000 | %00 <<9 | operand_dsj	<<11	'	TJV	D,S/#
+
+ac_jint		=	%000000000 | %00 <<9 | operand_jpoll	<<11	'	JINT	S/#
+ac_jct1		=	%000000001 | %00 <<9 | operand_jpoll	<<11	'	JCT1	S/#
+ac_jct2		=	%000000010 | %00 <<9 | operand_jpoll	<<11	'	JCT2	S/#
+ac_jct3		=	%000000011 | %00 <<9 | operand_jpoll	<<11	'	JCT3	S/#
+ac_jse1		=	%000000100 | %00 <<9 | operand_jpoll	<<11	'	JSE1	S/#
+ac_jse2		=	%000000101 | %00 <<9 | operand_jpoll	<<11	'	JSE2	S/#
+ac_jse3		=	%000000110 | %00 <<9 | operand_jpoll	<<11	'	JSE3	S/#
+ac_jse4		=	%000000111 | %00 <<9 | operand_jpoll	<<11	'	JSE4	S/#
+ac_jpat		=	%000001000 | %00 <<9 | operand_jpoll	<<11	'	JPAT	S/#
+ac_jfbw		=	%000001001 | %00 <<9 | operand_jpoll	<<11	'	JFBW	S/#
+ac_jxmt		=	%000001010 | %00 <<9 | operand_jpoll	<<11	'	JXMT	S/#
+ac_jxfi		=	%000001011 | %00 <<9 | operand_jpoll	<<11	'	JXFI	S/#
+ac_jxro		=	%000001100 | %00 <<9 | operand_jpoll	<<11	'	JXRO	S/#
+ac_jxrl		=	%000001101 | %00 <<9 | operand_jpoll	<<11	'	JXRL	S/#
+ac_jatn		=	%000001110 | %00 <<9 | operand_jpoll	<<11	'	JATN	S/#
+ac_jqmt		=	%000001111 | %00 <<9 | operand_jpoll	<<11	'	JQMT	S/#
+
+ac_jnint	=	%000010000 | %00 <<9 | operand_jpoll	<<11	'	JNINT	S/#
+ac_jnct1	=	%000010001 | %00 <<9 | operand_jpoll	<<11	'	JNCT1	S/#
+ac_jnct2	=	%000010010 | %00 <<9 | operand_jpoll	<<11	'	JNCT2	S/#
+ac_jnct3	=	%000010011 | %00 <<9 | operand_jpoll	<<11	'	JNCT3	S/#
+ac_jnse1	=	%000010100 | %00 <<9 | operand_jpoll	<<11	'	JNSE1	S/#
+ac_jnse2	=	%000010101 | %00 <<9 | operand_jpoll	<<11	'	JNSE2	S/#
+ac_jnse3	=	%000010110 | %00 <<9 | operand_jpoll	<<11	'	JNSE3	S/#
+ac_jnse4	=	%000010111 | %00 <<9 | operand_jpoll	<<11	'	JNSE4	S/#
+ac_jnpat	=	%000011000 | %00 <<9 | operand_jpoll	<<11	'	JNPAT	S/#
+ac_jnfbw	=	%000011001 | %00 <<9 | operand_jpoll	<<11	'	JNFBW	S/#
+ac_jnxmt	=	%000011010 | %00 <<9 | operand_jpoll	<<11	'	JNXMT	S/#
+ac_jnxfi	=	%000011011 | %00 <<9 | operand_jpoll	<<11	'	JNXFI	S/#
+ac_jnxro	=	%000011100 | %00 <<9 | operand_jpoll	<<11	'	JNXRO	S/#
+ac_jnxrl	=	%000011101 | %00 <<9 | operand_jpoll	<<11	'	JNXRL	S/#
+ac_jnatn	=	%000011110 | %00 <<9 | operand_jpoll	<<11	'	JNATN	S/#
+ac_jnqmt	=	%000011111 | %00 <<9 | operand_jpoll	<<11	'	JNQMT	S/#
+
+ac_empty1	=	%101111010 | %00 <<9 | operand_ls	<<11	'	<empty>	D/#,S/#
+ac_empty2	=	%101111100 | %00 <<9 | operand_ls	<<11	'	<empty>	D/#,S/#
+ac_setpat	=	%101111110 | %00 <<9 | operand_ls	<<11	'	SETPAT	D/#,S/#
+
+ac_wrpin	=	%110000000 | %00 <<9 | operand_ls	<<11	'	WRPIN	D/#,S/#
+ac_wxpin	=	%110000010 | %00 <<9 | operand_ls	<<11	'	WXPIN	D/#,S/#
+ac_wypin	=	%110000100 | %00 <<9 | operand_ls	<<11	'	WYPIN	D/#,S/#
+ac_wrlut	=	%110000110 | %00 <<9 | operand_lsp	<<11	'	WRLUT	D/#,S/#/PTRx
+
+ac_wrbyte	=	%110001000 | %00 <<9 | operand_lsp	<<11	'	WRBYTE	D/#,S/#/PTRx
+ac_wrword	=	%110001010 | %00 <<9 | operand_lsp	<<11	'	WRWORD	D/#,S/#/PTRx
+ac_wrlong	=	%110001100 | %00 <<9 | operand_lsp	<<11	'	WRLONG	D/#,S/#/PTRx
+
+ac_rdfast	=	%110001110 | %00 <<9 | operand_ls	<<11	'	RDFAST	D/#,S/#
+ac_wrfast	=	%110010000 | %00 <<9 | operand_ls	<<11	'	WRFAST	D/#,S/#
+ac_fblock	=	%110010010 | %00 <<9 | operand_ls	<<11	'	FBLOCK	D/#,S/#
+
+ac_xinit	=	%110010100 | %00 <<9 | operand_ls	<<11	'	XINIT	D/#,S/#
+ac_xzero	=	%110010110 | %00 <<9 | operand_ls	<<11	'	XZERO	D/#,S/#
+ac_xcont	=	%110011000 | %00 <<9 | operand_ls	<<11	'	XCONT	D/#,S/#
+
+ac_rep		=	%110011010 | %00 <<9 | operand_rep	<<11	'	REP	D/#/@,S/#
+
+ac_coginit	=	%110011100 | %10 <<9 | operand_ls	<<11	'	COGINIT	D/#,S/#
+ac_qmul		=	%110100000 | %00 <<9 | operand_ls	<<11	'	QMUL	D/#,S/#
+ac_qdiv		=	%110100010 | %00 <<9 | operand_ls	<<11	'	QDIV	D/#,S/#
+ac_qfrac	=	%110100100 | %00 <<9 | operand_ls	<<11	'	QFRAC	D/#,S/#
+ac_qsqrt	=	%110100110 | %00 <<9 | operand_ls	<<11	'	QSQRT	D/#,S/#
+ac_qrotate	=	%110101000 | %00 <<9 | operand_ls	<<11	'	QROTATE	D/#,S/#
+ac_qvector	=	%110101010 | %00 <<9 | operand_ls	<<11	'	QVECTOR	D/#,S/#
+
+ac_hubset	=	%000000000 | %00 <<9 | operand_l	<<11	'	HUBSET	D/#
+ac_cogid	=	%000000001 | %10 <<9 | operand_l	<<11	'	COGID	D/#
+ac_cogstop	=	%000000011 | %00 <<9 | operand_l	<<11	'	COGSTOP	D/#
+ac_locknew	=	%000000100 | %10 <<9 | operand_d	<<11	'	LOCKNEW	D
+ac_lockret	=	%000000101 | %00 <<9 | operand_l	<<11	'	LOCKRET	D/#
+ac_locktry	=	%000000110 | %10 <<9 | operand_l	<<11	'	LOCKTRY	D/#
+ac_lockrel	=	%000000111 | %10 <<9 | operand_l	<<11	'	LOCKREL	D/#
+ac_qlog		=	%000001110 | %00 <<9 | operand_l	<<11	'	QLOG	D/#
+ac_qexp		=	%000001111 | %00 <<9 | operand_l	<<11	'	QEXP	D/#
+
+ac_rfbyte	=	%000010000 | %11 <<9 | operand_d	<<11	'	RFBYTE	D
+ac_rfword	=	%000010001 | %11 <<9 | operand_d	<<11	'	RFWORD	D
+ac_rflong	=	%000010010 | %11 <<9 | operand_d	<<11	'	RFLONG	D
+ac_rfvar	=	%000010011 | %11 <<9 | operand_d	<<11	'	RFVAR	D
+ac_rfvars	=	%000010100 | %11 <<9 | operand_d	<<11	'	RFVARS	D
+
+ac_wfbyte	=	%000010101 | %00 <<9 | operand_l	<<11	'	WFBYTE	D/#
+ac_wfword	=	%000010110 | %00 <<9 | operand_l	<<11	'	WFWORD	D/#
+ac_wflong	=	%000010111 | %00 <<9 | operand_l	<<11	'	WFLONG	D/#
+
+ac_getqx	=	%000011000 | %11 <<9 | operand_d	<<11	'	GETQX	D
+ac_getqy	=	%000011001 | %11 <<9 | operand_d	<<11	'	GETQY	D
+
+ac_getct	=	%000011010 | %10 <<9 | operand_d	<<11	'	GETCT	D
+ac_getrnd	=	%000011011 | %11 <<9 | operand_de	<<11	'	GETRND	D
+
+ac_setdacs	=	%000011100 | %00 <<9 | operand_l	<<11	'	SETDACS	D/#
+ac_setxfrq	=	%000011101 | %00 <<9 | operand_l	<<11	'	SETXFRQ	D/#
+ac_getxacc	=	%000011110 | %00 <<9 | operand_d	<<11	'	GETXACC	D
+ac_waitx	=	%000011111 | %11 <<9 | operand_l	<<11	'	WAITX	D/#
+
+ac_setse1	=	%000100000 | %00 <<9 | operand_l	<<11	'	SETSE1	D/#
+ac_setse2	=	%000100001 | %00 <<9 | operand_l	<<11	'	SETSE2	D/#
+ac_setse3	=	%000100010 | %00 <<9 | operand_l	<<11	'	SETSE3	D/#
+ac_setse4	=	%000100011 | %00 <<9 | operand_l	<<11	'	SETSE4	D/#
+
+ac_pollint	=	%000000000 | %11 <<9 | operand_pollwait	<<11	'	POLLINT
+ac_pollct1	=	%000000001 | %11 <<9 | operand_pollwait	<<11	'	POLLCT1
+ac_pollct2	=	%000000010 | %11 <<9 | operand_pollwait	<<11	'	POLLCT2
+ac_pollct3	=	%000000011 | %11 <<9 | operand_pollwait	<<11	'	POLLCT3
+ac_pollse1	=	%000000100 | %11 <<9 | operand_pollwait	<<11	'	POLLSE1
+ac_pollse2	=	%000000101 | %11 <<9 | operand_pollwait	<<11	'	POLLSE2
+ac_pollse3	=	%000000110 | %11 <<9 | operand_pollwait	<<11	'	POLLSE3
+ac_pollse4	=	%000000111 | %11 <<9 | operand_pollwait	<<11	'	POLLSE4
+ac_pollpat	=	%000001000 | %11 <<9 | operand_pollwait	<<11	'	POLLPAT
+ac_pollfbw	=	%000001001 | %11 <<9 | operand_pollwait	<<11	'	POLLFBW
+ac_pollxmt	=	%000001010 | %11 <<9 | operand_pollwait	<<11	'	POLLXMT
+ac_pollxfi	=	%000001011 | %11 <<9 | operand_pollwait	<<11	'	POLLXFI
+ac_pollxro	=	%000001100 | %11 <<9 | operand_pollwait	<<11	'	POLLXRO
+ac_pollxrl	=	%000001101 | %11 <<9 | operand_pollwait	<<11	'	POLLXRL
+ac_pollatn	=	%000001110 | %11 <<9 | operand_pollwait	<<11	'	POLLATN
+ac_pollqmt	=	%000001111 | %11 <<9 | operand_pollwait	<<11	'	POLLQMT
+
+ac_waitint	=	%000010000 | %11 <<9 | operand_pollwait	<<11	'	WAITINT
+ac_waitct1	=	%000010001 | %11 <<9 | operand_pollwait	<<11	'	WAITCT1
+ac_waitct2	=	%000010010 | %11 <<9 | operand_pollwait	<<11	'	WAITCT2
+ac_waitct3	=	%000010011 | %11 <<9 | operand_pollwait	<<11	'	WAITCT3
+ac_waitse1	=	%000010100 | %11 <<9 | operand_pollwait	<<11	'	WAITSE1
+ac_waitse2	=	%000010101 | %11 <<9 | operand_pollwait	<<11	'	WAITSE2
+ac_waitse3	=	%000010110 | %11 <<9 | operand_pollwait	<<11	'	WAITSE3
+ac_waitse4	=	%000010111 | %11 <<9 | operand_pollwait	<<11	'	WAITSE4
+ac_waitpat	=	%000011000 | %11 <<9 | operand_pollwait	<<11	'	WAITPAT
+ac_waitfbw	=	%000011001 | %11 <<9 | operand_pollwait	<<11	'	WAITFBW
+ac_waitxmt	=	%000011010 | %11 <<9 | operand_pollwait	<<11	'	WAITXMT
+ac_waitxfi	=	%000011011 | %11 <<9 | operand_pollwait	<<11	'	WAITXFI
+ac_waitxro	=	%000011100 | %11 <<9 | operand_pollwait	<<11	'	WAITXRO
+ac_waitxrl	=	%000011101 | %11 <<9 | operand_pollwait	<<11	'	WAITXRL
+ac_waitatn	=	%000011110 | %11 <<9 | operand_pollwait	<<11	'	WAITATN
+
+ac_allowi	=	%000100000 | %00 <<9 | operand_pollwait	<<11	'	ALLOWI
+ac_stalli	=	%000100001 | %00 <<9 | operand_pollwait	<<11	'	STALLI
+
+ac_trgint1	=	%000100010 | %00 <<9 | operand_pollwait	<<11	'	TRGINT1
+ac_trgint2	=	%000100011 | %00 <<9 | operand_pollwait	<<11	'	TRGINT2
+ac_trgint3	=	%000100100 | %00 <<9 | operand_pollwait	<<11	'	TRGINT3
+
+ac_nixint1	=	%000100101 | %00 <<9 | operand_pollwait	<<11	'	NIXINT1
+ac_nixint2	=	%000100110 | %00 <<9 | operand_pollwait	<<11	'	NIXINT2
+ac_nixint3	=	%000100111 | %00 <<9 | operand_pollwait	<<11	'	NIXINT3
+
+ac_setint1	=	%000100101 | %00 <<9 | operand_l	<<11	'	SETINT1	D/#
+ac_setint2	=	%000100110 | %00 <<9 | operand_l	<<11	'	SETINT2	D/#
+ac_setint3	=	%000100111 | %00 <<9 | operand_l	<<11	'	SETINT3	D/#
+
+ac_setq		=	%000101000 | %00 <<9 | operand_l	<<11	'	SETQ	D/#
+ac_setq2	=	%000101001 | %00 <<9 | operand_l	<<11	'	SETQ2	D/#
+ac_push		=	%000101010 | %00 <<9 | operand_l	<<11	'	PUSH	D/#
+ac_pop		=	%000101011 | %11 <<9 | operand_d	<<11	'	POP	D
+
+ac_jmprel	=	%000110000 | %00 <<9 | operand_l	<<11	'	JMPREL	D/#
+ac_skip		=	%000110001 | %00 <<9 | operand_l	<<11	'	SKIP	D/#
+ac_skipf	=	%000110010 | %00 <<9 | operand_l	<<11	'	SKIPF	D/#
+ac_execf	=	%000110011 | %00 <<9 | operand_l	<<11	'	EXECF	D/#
+
+ac_getptr	=	%000110100 | %00 <<9 | operand_d	<<11	'	GETPTR	D
+ac_getbrk	=	%000110101 | %11 <<9 | operand_getbrk	<<11	'	GETBRK	D
+ac_cogbrk	=	%000110101 | %00 <<9 | operand_l	<<11	'	COGBRK	D/#
+ac_brk		=	%000110110 | %00 <<9 | operand_l	<<11	'	BRK	D/#
+
+ac_setluts	=	%000110111 | %00 <<9 | operand_l	<<11	'	SETLUTS	D/#
+
+ac_setcy	=	%000111000 | %00 <<9 | operand_l	<<11	'	SETCY	D/#
+ac_setci	=	%000111001 | %00 <<9 | operand_l	<<11	'	SETCI	D/#
+ac_setcq	=	%000111010 | %00 <<9 | operand_l	<<11	'	SETCQ	D/#
+ac_setcfrq	=	%000111011 | %00 <<9 | operand_l	<<11	'	SETCFRQ	D/#
+ac_setcmod	=	%000111100 | %00 <<9 | operand_l	<<11	'	SETCMOD	D/#
+
+ac_setpiv	=	%000111101 | %00 <<9 | operand_l	<<11	'	SETPIV	D/#
+ac_setpix	=	%000111110 | %00 <<9 | operand_l	<<11	'	SETPIX	D/#
+
+ac_cogatn	=	%000111111 | %00 <<9 | operand_l	<<11	'	COGATN	D/#
+
+ac_testp	=	%001000000 | %00 <<9 | operand_testp	<<11	'	TESTP	D/#
+ac_testpn	=	%001000001 | %00 <<9 | operand_testp	<<11	'	TESTPN	D/#
+
+ac_dirl		=	%001000000 | %00 <<9 | operand_pinop	<<11	'	DIRL	D/#
+ac_dirh		=	%001000001 | %00 <<9 | operand_pinop	<<11	'	DIRH	D/#
+ac_dirc		=	%001000010 | %00 <<9 | operand_pinop	<<11	'	DIRC	D/#
+ac_dirnc	=	%001000011 | %00 <<9 | operand_pinop	<<11	'	DIRNC	D/#
+ac_dirz		=	%001000100 | %00 <<9 | operand_pinop	<<11	'	DIRZ	D/#
+ac_dirnz	=	%001000101 | %00 <<9 | operand_pinop	<<11	'	DIRNZ	D/#
+ac_dirrnd	=	%001000110 | %00 <<9 | operand_pinop	<<11	'	DIRRND	D/#
+ac_dirnot	=	%001000111 | %00 <<9 | operand_pinop	<<11	'	DIRNOT	D/#
+
+ac_outl		=	%001001000 | %00 <<9 | operand_pinop	<<11	'	OUTL	D/#
+ac_outh		=	%001001001 | %00 <<9 | operand_pinop	<<11	'	OUTH	D/#
+ac_outc		=	%001001010 | %00 <<9 | operand_pinop	<<11	'	OUTC	D/#
+ac_outnc	=	%001001011 | %00 <<9 | operand_pinop	<<11	'	OUTNC	D/#
+ac_outz		=	%001001100 | %00 <<9 | operand_pinop	<<11	'	OUTZ	D/#
+ac_outnz	=	%001001101 | %00 <<9 | operand_pinop	<<11	'	OUTNZ	D/#
+ac_outrnd	=	%001001110 | %00 <<9 | operand_pinop	<<11	'	OUTRND	D/#
+ac_outnot	=	%001001111 | %00 <<9 | operand_pinop	<<11	'	OUTNOT	D/#
+
+ac_fltl		=	%001010000 | %00 <<9 | operand_pinop	<<11	'	FLTL	D/#
+ac_flth		=	%001010001 | %00 <<9 | operand_pinop	<<11	'	FLTH	D/#
+ac_fltc		=	%001010010 | %00 <<9 | operand_pinop	<<11	'	FLTC	D/#
+ac_fltnc	=	%001010011 | %00 <<9 | operand_pinop	<<11	'	FLTNC	D/#
+ac_fltz		=	%001010100 | %00 <<9 | operand_pinop	<<11	'	FLTZ	D/#
+ac_fltnz	=	%001010101 | %00 <<9 | operand_pinop	<<11	'	FLTNZ	D/#
+ac_fltrnd	=	%001010110 | %00 <<9 | operand_pinop	<<11	'	FLTRND	D/#
+ac_fltnot	=	%001010111 | %00 <<9 | operand_pinop	<<11	'	FLTNOT	D/#
+
+ac_drvl		=	%001011000 | %00 <<9 | operand_pinop	<<11	'	DRVL	D/#
+ac_drvh		=	%001011001 | %00 <<9 | operand_pinop	<<11	'	DRVH	D/#
+ac_drvc		=	%001011010 | %00 <<9 | operand_pinop	<<11	'	DRVC	D/#
+ac_drvnc	=	%001011011 | %00 <<9 | operand_pinop	<<11	'	DRVNC	D/#
+ac_drvz		=	%001011100 | %00 <<9 | operand_pinop	<<11	'	DRVZ	D/#
+ac_drvnz	=	%001011101 | %00 <<9 | operand_pinop	<<11	'	DRVNZ	D/#
+ac_drvrnd	=	%001011110 | %00 <<9 | operand_pinop	<<11	'	DRVRND	D/#
+ac_drvnot	=	%001011111 | %00 <<9 | operand_pinop	<<11	'	DRVNOT	D/#
+
+ac_splitb	=	%001100000 | %00 <<9 | operand_d	<<11	'	SPLITB	D
+ac_mergeb	=	%001100001 | %00 <<9 | operand_d	<<11	'	MERGEB	D
+ac_splitw	=	%001100010 | %00 <<9 | operand_d	<<11	'	SPLITW	D
+ac_mergew	=	%001100011 | %00 <<9 | operand_d	<<11	'	MERGEW	D
+ac_seussf	=	%001100100 | %00 <<9 | operand_d	<<11	'	SEUSSF	D
+ac_seussr	=	%001100101 | %00 <<9 | operand_d	<<11	'	SEUSSR	D
+ac_rgbsqz	=	%001100110 | %00 <<9 | operand_d	<<11	'	RGBSQZ	D
+ac_rgbexp	=	%001100111 | %00 <<9 | operand_d	<<11	'	RGBEXP	D
+ac_xoro32	=	%001101000 | %00 <<9 | operand_d	<<11	'	XORO32	D
+ac_rev		=	%001101001 | %00 <<9 | operand_d	<<11	'	REV	D
+ac_rczr		=	%001101010 | %11 <<9 | operand_d	<<11	'	RCZR	D
+ac_rczl		=	%001101011 | %11 <<9 | operand_d	<<11	'	RCZL	D
+ac_wrc		=	%001101100 | %00 <<9 | operand_d	<<11	'	WRC	D
+ac_wrnc		=	%001101101 | %00 <<9 | operand_d	<<11	'	WRNC	D
+ac_wrz		=	%001101110 | %00 <<9 | operand_d	<<11	'	WRZ	D
+ac_wrnz		=	%001101111 | %00 <<9 | operand_d	<<11	'	WRNZ	D
+ac_modcz	=	%001101111 | %11 <<9 | operand_cz	<<11	'	MODCZ	c,z
+ac_modc		=	%001101111 | %10 <<9 | operand_cz	<<11	'	MODC	c
+ac_modz		=	%001101111 | %01 <<9 | operand_cz	<<11	'	MODZ	z
+
+ac_setscp	=	%001110000 | %00 <<9 | operand_l	<<11	'	SETSCP	D/#
+ac_getscp	=	%001110001 | %00 <<9 | operand_d	<<11	'	GETSCP	D
+
+ac_jmp		=	%110110000 | %00 <<9 | operand_jmp	<<11	'	JMP	# <or> D
+ac_call		=	%110110100 | %00 <<9 | operand_call	<<11	'	CALL	# <or> D
+ac_calla	=	%110111000 | %00 <<9 | operand_call	<<11	'	CALLA	# <or> D
+ac_callb	=	%110111100 | %00 <<9 | operand_call	<<11	'	CALLB	# <or> D
+ac_calld	=	%111000000 | %00 <<9 | operand_calld	<<11	'	CALLD	reg,# / D,S
+ac_loc		=	%111010000 | %00 <<9 | operand_loc	<<11	'	LOC	reg,#
+
+ac_augs		=	%111100000 | %00 <<9 | operand_aug	<<11	'	AUGS	#
+ac_augd		=	%111110000 | %00 <<9 | operand_aug	<<11	'	AUGD	#
+
+
+ac_pusha	=	pp_pusha   | %00 <<9 | operand_pushpop	<<11	'	PUSHA	D/#	alias instructions
+ac_pushb	=	pp_pushb   | %00 <<9 | operand_pushpop	<<11	'	PUSHB	D/#
+ac_popa		=	pp_popa    | %11 <<9 | operand_pushpop	<<11	'	POPA	D
+ac_popb		=	pp_popb    | %11 <<9 | operand_pushpop	<<11	'	POPB	D
+
+ac_ret		=	0	   | %11 <<9 | operand_xlat	<<11	'	RET
+ac_reta		=	1	   | %11 <<9 | operand_xlat	<<11	'	RETA
+ac_retb		=	2	   | %11 <<9 | operand_xlat	<<11	'	RETB
+ac_reti0	=	3	   | %00 <<9 | operand_xlat	<<11	'	RETI0
+ac_reti1	=	4	   | %00 <<9 | operand_xlat	<<11	'	RETI1
+ac_reti2	=	5	   | %00 <<9 | operand_xlat	<<11	'	RETI2
+ac_reti3	=	6	   | %00 <<9 | operand_xlat	<<11	'	RETI3
+ac_resi0	=	7	   | %00 <<9 | operand_xlat	<<11	'	RESI0
+ac_resi1	=	8	   | %00 <<9 | operand_xlat	<<11	'	RESI1
+ac_resi2	=	9	   | %00 <<9 | operand_xlat	<<11	'	RESI2
+ac_resi3	=	10	   | %00 <<9 | operand_xlat	<<11	'	RESI3
+ac_xstop	=	11	   | %00 <<9 | operand_xlat	<<11	'	XSTOP
+
+ac_akpin	=	0	   | %00 <<9 | operand_akpin	<<11	'	AKPIN	S/#
+
+ac_nop		=	%000000000 | %00 <<9 | operand_nop	<<11	'	NOP
+'
+'
+' Types
+'
+#0
+type_undefined		'	(undefined symbol, must be 0)
+type_string		'	"Hello" --> "H","e","l","l","o"
+type_left		'	(
+type_right		'	)
+type_leftb		'	[
+type_rightb		'	]
+type_comma		'	,
+type_equal		'	=
+type_pound		'	#
+type_colon		'	:
+type_back		'	\
+type_under		'	_
+type_dot		'	.
+type_dotdot		'	..
+type_at			'	@
+type_atat		'	@@
+type_til		'	~
+type_tiltil		'	~~
+type_inc		'	++
+type_dec		'	--
+type_rnd		'	??
+type_assign		'	:=
+type_op			'	!, -, ABS, ENC, etc.
+type_float		'	FLOAT
+type_round		'	ROUND
+type_trunc		'	TRUNC
+type_constr		'	STRING
+type_block		'	CON, VAR, DAT, OBJ, PUB, PRI
+type_size		'	BYTE, WORD, LONG
+type_fvar		'	FVAR, FVARS
+type_precompile		'	PRECOMPILE
+type_archive		'	ARCHIVE
+type_file		'	FILE
+type_if			'	IF
+type_ifnot		'	IFNOT
+type_elseif		'	ELSEIF
+type_elseifnot		'	ELSEIFNOT
+type_else		'	ELSE
+type_case		'	CASE
+type_case_fast		'	CASE_FAST
+type_other		'	OTHER
+type_repeat		'	REPEAT
+type_repeat_var		'	REPEAT var   - different QUIT method
+type_repeat_count	'	REPEAT count - different QUIT method
+type_while		'	WHILE
+type_until		'	UNTIL
+type_from		'	FROM
+type_to			'	TO
+type_step		'	STEP
+type_i_next_quit	'	NEXT/QUIT
+type_i_return		'	RETURN
+type_i_abort		'	ABORT
+type_i_look		'	LOOKUPZ/LOOKUP/LOOKDOWNZ/LOOKDOWN
+type_i_cogspin		'	COGSPIN
+type_i_flex		'	HUBSET, COGINIT, COGSTOP...
+type_send		'	SEND
+type_asm_org		'	$ (without a hex digit following)
+type_asm_end		'	END
+type_asm_dir		'	ORGH, ORG, ORGF, RES, FIT
+type_asm_cond		'	IF_C, IF_Z, IF_NC, etc
+type_asm_inst		'	RDBYTE, RDWORD, RDLONG, etc.
+type_asm_effect		'	WC, WZ, WCZ
+type_asm_effect2	'	ANDC, ANDZ, ORC, ORZ, XORC, XORZ
+type_reg		'	REG
+type_con		'	user constant integer (must be followed by type_con_float)
+type_con_float		'	user constant float
+type_register		'	user long register
+type_loc_byte		'	user byte local
+type_loc_word		'	user word local
+type_loc_long		'	user long local
+type_var_byte		'V0	user byte var
+type_var_word		'V1	user word var
+type_var_long		'V2	user long var
+type_dat_byte		'D0	user byte dat
+type_dat_word		'D1	user word dat
+type_dat_long		'D2	user long dat
+type_dat_long_res	'(D2)	user res dat (must follow type_dat_long)
+type_hub_byte		'H0	user byte hub
+type_hub_word		'H1	user word hub
+type_hub_long		'H2	user long hub
+type_obj		'	user object
+type_objpub		'	user object.subroutine
+type_objcon		'	user object.constant (must be followed by type_objcon_float)
+type_objcon_float	'	user object.constant float
+type_method		'	user method
+type_end		'	end-of-line c=0, end-of-file c=1
+'
+'
+' Bytecodes
+'
+#0			'main bytecodes
+bc_drop
+bc_drop_push
+bc_drop_trap
+bc_drop_trap_push
+
+bc_return_results
+bc_return_args
+
+bc_abort_0
+bc_abort_arg
+
+bc_call_obj_sub
+bc_call_obji_sub
+bc_call_sub
+bc_call_ptr
+bc_call_send
+bc_call_send_bytes
+
+bc_mptr_obj_sub
+bc_mptr_obji_sub
+bc_mptr_sub
+
+bc_jmp
+bc_jz
+bc_jnz
+bc_tjz
+bc_djnz
+
+bc_case_fast_init
+bc_case_fast_done
+
+bc_case_value
+bc_case_range
+bc_case_done
+
+bc_lookup_value
+bc_lookdown_value
+bc_lookup_range
+bc_lookdown_range
+bc_look_done
+
+bc_pop
+bc_pop_rfvar
+
+bc_hub_bytecode
+
+bc_add_pbase
+
+bc_hubset
+
+bc_coginit
+bc_coginit_push
+bc_cogstop
+bc_cogid
+bc_cogchk
+
+bc_locknew
+bc_lockret
+bc_locktry
+bc_lockrel
+bc_lockchk
+
+bc_cogatn
+bc_pollatn
+bc_waitatn
+
+bc_getrnd
+bc_getct
+bc_pollct
+bc_waitct
+
+bc_pinwrite
+bc_pinlow
+bc_pinhigh
+bc_pintoggle
+bc_pinfloat
+bc_pinread
+
+bc_pinstart
+bc_pinclear
+
+bc_wrpin
+bc_wxpin
+bc_wypin
+bc_akpin
+bc_rdpin
+bc_rqpin
+
+bc_debug
+
+bc_con_rfbyte
+bc_con_rfbyte_not
+bc_con_rfword
+bc_con_rfword_not
+bc_con_rflong
+bc_con_rfbyte_decod
+bc_con_rfbyte_decod_not
+bc_con_rfbyte_bmask
+bc_con_rfbyte_bmask_not
+
+bc_setup_reg
+bc_setup_reg_pi
+
+bc_setup_byte_pbase
+bc_setup_byte_vbase
+bc_setup_byte_dbase
+
+bc_setup_byte_pbase_pi
+bc_setup_byte_vbase_pi
+bc_setup_byte_dbase_pi
+
+bc_setup_word_pbase
+bc_setup_word_vbase
+bc_setup_word_dbase
+
+bc_setup_word_pbase_pi
+bc_setup_word_vbase_pi
+bc_setup_word_dbase_pi
+
+bc_setup_long_pbase
+bc_setup_long_vbase
+bc_setup_long_dbase
+
+bc_setup_long_pbase_pi
+bc_setup_long_vbase_pi
+bc_setup_long_dbase_pi
+
+bc_setup_byte_pb_pi
+bc_setup_word_pb_pi
+bc_setup_long_pb_pi
+
+bc_setup_byte_pa
+bc_setup_word_pa
+bc_setup_long_pa
+
+bc_rotxy
+bc_polxy
+bc_xypol
+
+bc_ternary
+
+bc_lt
+bc_ltu
+bc_lte
+bc_lteu
+bc_e
+bc_ne
+bc_gte
+bc_gteu
+bc_gt
+bc_gtu
+bc_ltegt
+
+bc_lognot
+bc_bitnot
+bc_neg
+bc_abs
+bc_encod
+bc_decod
+bc_bmask
+bc_ones
+bc_sqrt
+bc_qlog
+bc_qexp
+
+bc_shr
+bc_shl
+bc_sar
+bc_ror
+bc_rol
+bc_rev
+bc_zerox
+bc_signx
+bc_add
+bc_sub
+
+bc_logand
+bc_logxor
+bc_logor
+bc_bitand
+bc_bitxor
+bc_bitor
+bc_fge
+bc_fle
+bc_addbits
+bc_addpins
+
+bc_mul
+bc_div
+bc_divu
+bc_rem
+bc_remu
+bc_sca
+bc_scas
+bc_frac
+
+bc_string
+bc_bitrange
+
+bc_con_n1		[16]
+bc_setup_reg_1D8_1F8	[16]
+bc_setup_var_0_15	[16]
+bc_setup_local_0_15	[16]
+bc_read_local_0_15	[16]
+bc_write_local_0_15	[16]
+
+#$7C			'variable-operator bytecodes
+bc_repeat_var_init_1
+bc_repeat_var_init
+bc_repeat_var_loop
+
+bc_addr
+bc_read
+bc_write
+bc_write_push
+
+bc_var_inc
+bc_var_dec
+bc_var_preinc_push
+bc_var_predec_push
+bc_var_postinc_push
+bc_var_postdec_push
+bc_var_lognot
+bc_var_lognot_push
+bc_var_bitnot
+bc_var_bitnot_push
+bc_var_swap
+bc_var_rnd
+bc_var_rnd_push
+
+bc_lognot_write
+bc_bitnot_write
+bc_neg_write
+bc_abs_write
+bc_encod_write
+bc_decod_write
+bc_bmask_write
+bc_ones_write
+bc_sqrt_write
+bc_qlog_write
+bc_qexp_write
+
+bc_shr_write
+bc_shl_write
+bc_sar_write
+bc_ror_write
+bc_rol_write
+bc_rev_write
+bc_zerox_write
+bc_signx_write
+bc_add_write
+bc_sub_write
+
+bc_logand_write
+bc_logxor_write
+bc_logor_write
+bc_bitand_write
+bc_bitxor_write
+bc_bitor_write
+bc_fge_write
+bc_fle_write
+bc_addbits_write
+bc_addpins_write
+
+bc_mul_write
+bc_div_write
+bc_divu_write
+bc_rem_write
+bc_remu_write
+bc_sca_write
+bc_scas_write
+bc_frac_write
+
+bc_lognot_write_push
+bc_bitnot_write_push
+bc_neg_write_push
+bc_abs_write_push
+bc_encod_write_push
+bc_decod_write_push
+bc_bmask_write_push
+bc_ones_write_push
+bc_sqrt_write_push
+bc_qlog_write_push
+bc_qexp_write_push
+
+bc_shr_write_push
+bc_shl_write_push
+bc_sar_write_push
+bc_ror_write_push
+bc_rol_write_push
+bc_rev_write_push
+bc_zerox_write_push
+bc_signx_write_push
+bc_add_write_push
+bc_sub_write_push
+
+bc_logand_write_push
+bc_logxor_write_push
+bc_logor_write_push
+bc_bitand_write_push
+bc_bitxor_write_push
+bc_bitor_write_push
+bc_fge_write_push
+bc_fle_write_push
+bc_addbits_write_push
+bc_addpins_write_push
+
+bc_mul_write_push
+bc_div_write_push
+bc_divu_write_push
+bc_rem_write_push
+bc_remu_write_push
+bc_sca_write_push
+bc_scas_write_push
+bc_frac_write_push
+
+bc_setup_field_pop
+bc_setup_field_rfvar
+bc_setup_field_0_31	[32]
+
+#$54[2]			'hub bytecodes (step by 2)
+bc_clkset
+bc_read_clkfreq
+bc_cogspin
+bc_inline
+bc_regexec
+bc_regload
+bc_call
+bc_getregs
+bc_setregs
+bc_bytemove
+bc_bytefill
+bc_wordmove
+bc_wordfill
+bc_longmove
+bc_longfill
+bc_strsize
+bc_strcomp
+bc_waitus
+bc_waitms
+bc_getsec
+bc_muldiv64
+'
+'
+' Flex codes
+'
+flex_params		=	$07
+flex_results		=	$38
+flex_results_shift	=	3
+flex_pinfld		=	$40
+flex_hubcode		=	$80
+
+'			bytecode	  params  results  pinfld   hubcode
+'			-------------------------------------------------------------------------------
+fc_hubset	=	bc_hubset	| 1 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+
+fc_coginit	=	bc_coginit	| 3 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_coginit_push	=	bc_coginit_push	| 3 <<8 | 1 <<11 | 0 <<14 | 0 <<15
+fc_cogstop	=	bc_cogstop	| 1 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_cogid	=	bc_cogid	| 0 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_cogchk	=	bc_cogchk	| 1 <<8 | 1 <<11 | 0 <<14 | 0 <<15
+
+fc_getrnd	=	bc_getrnd	| 0 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_getct	=	bc_getct	| 0 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_pollct	=	bc_pollct	| 1 <<8 | 1 <<11 | 0 <<14 | 0 <<15
+fc_waitct	=	bc_waitct	| 1 <<8 | 0 <<11 | 0 <<14 | 0 <<15
+
+fc_pinwrite	=	bc_pinwrite	| 2 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+fc_pinlow	=	bc_pinlow	| 1 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+fc_pinhigh	=	bc_pinhigh	| 1 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+fc_pintoggle	=	bc_pintoggle	| 1 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+fc_pinfloat	=	bc_pinfloat	| 1 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+fc_pinread	=	bc_pinread	| 1 <<8 | 1 <<11 | 1 <<14 | 0 <<15
+
+fc_pinstart	=	bc_pinstart	| 4 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+fc_pinclear	=	bc_pinclear	| 1 <<8 | 0 <<11 | 1 <<14 | 0 <<15
+
+fc_wrpin	=	bc_wrpin	| 2 <<8 | 0 <<11 | 1 <<14 | 0 <<15	'(also asm instruction)
+fc_wxpin	=	bc_wxpin	| 2 <<8 | 0 <<11 | 1 <<14 | 0 <<15	'(also asm instruction)
+fc_wypin	=	bc_wypin	| 2 <<8 | 0 <<11 | 1 <<14 | 0 <<15	'(also asm instruction)
+fc_akpin	=	bc_akpin	| 1 <<8 | 0 <<11 | 1 <<14 | 0 <<15	'(also asm instruction)
+fc_rdpin	=	bc_rdpin	| 1 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_rqpin	=	bc_rqpin	| 1 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+
+fc_rotxy	=	bc_rotxy	| 3 <<8 | 2 <<11 | 0 <<14 | 0 <<15
+fc_polxy	=	bc_polxy	| 2 <<8 | 2 <<11 | 0 <<14 | 0 <<15
+fc_xypol	=	bc_xypol	| 2 <<8 | 2 <<11 | 0 <<14 | 0 <<15
+
+fc_locknew	=	bc_locknew	| 0 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_lockret	=	bc_lockret	| 1 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_locktry	=	bc_locktry	| 1 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_lockrel	=	bc_lockrel	| 1 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_lockchk	=	bc_lockchk	| 1 <<8 | 1 <<11 | 0 <<14 | 0 <<15
+
+fc_cogatn	=	bc_cogatn	| 1 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_pollatn	=	bc_pollatn	| 0 <<8 | 1 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+fc_waitatn	=	bc_waitatn	| 0 <<8 | 0 <<11 | 0 <<14 | 0 <<15	'(also asm instruction)
+
+fc_clkset	=	bc_clkset	| 2 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_regexec	=	bc_regexec	| 1 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_regload	=	bc_regload	| 1 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_call		=	bc_call		| 1 <<8 | 0 <<11 | 0 <<14 | 1 <<15	'(also asm instruction)
+fc_getregs	=	bc_getregs	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_setregs	=	bc_setregs	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+
+fc_bytemove	=	bc_bytemove	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_bytefill	=	bc_bytefill	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_wordmove	=	bc_wordmove	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_wordfill	=	bc_wordfill	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_longmove	=	bc_longmove	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_longfill	=	bc_longfill	| 3 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+
+fc_strsize	=	bc_strsize	| 1 <<8 | 1 <<11 | 0 <<14 | 1 <<15
+fc_strcomp	=	bc_strcomp	| 2 <<8 | 1 <<11 | 0 <<14 | 1 <<15
+
+fc_waitus	=	bc_waitus	| 1 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_waitms	=	bc_waitms	| 1 <<8 | 0 <<11 | 0 <<14 | 1 <<15
+fc_getsec	=	bc_getsec	| 0 <<8 | 1 <<11 | 0 <<14 | 1 <<15
+fc_muldiv64	=	bc_muldiv64	| 3 <<8 | 1 <<11 | 0 <<14 | 1 <<15
+'
+'
+' Operators
+'
+'	Operator precedence (highest to lowest)
+'
+'	0	!, -, ABS, ENCOD, DECOD, BMASK, ONES, SQRT, QLOG, QEXP		(unary)
+'	1	>>, <<, SAR, ROR, ROL, REV, ZEROX, SIGNX			(binary)
+'	2	&								(binary)
+'	3	^								(binary)
+'	4	|								(binary)
+'	5	*, /, +/, //, +//, SCA, SCAS, FRAC				(binary)
+'	6	+, -								(binary)
+'	7	#>, <#								(binary)
+'	8	ADDBITS, ADDPINS						(binary)
+'	9	<, +<, <=, +<=, ==, <>, >=, +>=, >, +>, <=>			(binary)
+'	10	!!, NOT								(unary)
+'	11	&&, AND								(binary)
+'	12	^^, XOR								(binary)
+'	13	||, OR								(binary)
+'	14	? :								(ternary)
+'
+'			oper		type		prec	float
+#0		'	---------------------------------------------
+op_bitnot	'	!		unary		0	-
+op_neg		'	-		unary		0	yes
+op_abs		'	ABS		unary		0	yes
+op_encod	'	ENCOD		unary		0	-
+op_decod	'	DECOD		unary		0	-
+op_bmask	'	BMASK		unary		0	-
+op_ones		'	ONES		unary		0	-
+op_sqrt		'	SQRT		unary		0	-
+op_qlog		'	QLOG		unary		0	-
+op_qexp		'	QEXP		unary		0	-
+op_shr		'	>>		binary		1	-
+op_shl		'	<<		binary		1	-
+op_sar		'	SAR		binary		1	-
+op_ror		'	ROR		binary		1	-
+op_rol		'	ROL		binary		1	-
+op_rev		'	REV		binary		1	-
+op_zerox	'	ZEROX		binary		1	-
+op_signx	'	SIGNX		binary		1	-
+op_bitand	'	&		binary		2	-
+op_bitxor	'	^		binary		3	-
+op_bitor	'	|		binary		4	-
+op_mul		'	*		binary		5	yes
+op_div		'	/		binary		5	yes
+op_divu		'	+/		binary		5	-
+op_rem		'	//		binary		5	-
+op_remu		'	+//		binary		5	-
+op_sca		'	SCA		binary		5	-
+op_scas		'	SCAS		binary		5	-
+op_frac		'	FRAC		binary		5	-
+op_add		'	+		binary		6	yes
+op_sub		'	-		binary		6	yes
+op_fge		'	#>		binary		7	yes
+op_fle		'	<#		binary		7	yes
+op_addbits	'	ADDBITS		binary		8	-
+op_addpins	'	ADDPINS		binary		8	-
+op_lt		'	<		binary		9	yes
+op_ltu		'	+<		binary		9	-
+op_lte		'	<=		binary		9	yes
+op_lteu		'	+<=		binary		9	-
+op_e		'	==		binary		9	yes
+op_ne		'	<>		binary		9	yes
+op_gte		'	>=		binary		9	yes
+op_gteu		'	+>=		binary		9	-
+op_gt		'	>		binary		9	yes
+op_gtu		'	+>		binary		9	-
+op_ltegt	'	<=>		binary		9	-
+op_lognot	'	!!, NOT		unary		10	-
+op_logand	'	&&, AND		binary		11	-
+op_logxor	'	^^, XOR		binary		12	-
+op_logor	'	||, OR		binary		13	-
+op_ternary	'	? (:)		ternary		14	-
+
+ternary_prec	=	14
+
+opc_ternary	=	1 << 24
+opc_binary	=	1 << 25
+opc_unary	=	1 << 26
+opc_assign	=	1 << 27
+opc_float	=	1 << 28
+opc_alias	=	1 << 29
+
+'			op		   precedence	bytecode	       ternary  binary   unary    assign   float    alias
+
+oc_bitnot	=	op_bitnot	|  0	<<8 |	bc_bitnot	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' !
+oc_neg		=	op_neg		|  0	<<8 |	bc_neg		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' -	(uses op_sub symbol)
+oc_abs		=	op_abs		|  0	<<8 |	bc_abs		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' ABS
+oc_encod	=	op_encod	|  0	<<8 |	bc_encod	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ENCOD
+oc_decod	=	op_decod	|  0	<<8 |	bc_decod	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' DECOD
+oc_bmask	=	op_bmask	|  0	<<8 |	bc_bmask	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' BMASK
+oc_ones		=	op_ones		|  0	<<8 |	bc_ones		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ONES
+oc_sqrt		=	op_sqrt		|  0	<<8 |	bc_sqrt		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' SQRT
+oc_qlog		=	op_qlog		|  0	<<8 |	bc_qlog		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' QLOG
+oc_qexp		=	op_qexp		|  0	<<8 |	bc_qexp		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' QEXP
+oc_shr		=	op_shr		|  1	<<8 |	bc_shr		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' >>
+oc_shl		=	op_shl		|  1	<<8 |	bc_shl		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' <<
+oc_sar		=	op_sar		|  1	<<8 |	bc_sar		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' SAR
+oc_ror		=	op_ror		|  1	<<8 |	bc_ror		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ROR
+oc_rol		=	op_rol		|  1	<<8 |	bc_rol		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ROL
+oc_rev		=	op_rev		|  1	<<8 |	bc_rev		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' REV
+oc_zerox	=	op_zerox	|  1	<<8 |	bc_zerox	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ZEROX
+oc_signx	=	op_signx	|  1	<<8 |	bc_signx	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' SIGNX
+oc_bitand	=	op_bitand	|  2	<<8 |	bc_bitand	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' &
+oc_bitxor	=	op_bitxor	|  3	<<8 |	bc_bitxor	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ^
+oc_bitor	=	op_bitor	|  4	<<8 |	bc_bitor	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' |
+oc_mul		=	op_mul		|  5	<<8 |	bc_mul		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' *
+oc_div		=	op_div		|  5	<<8 |	bc_div		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' /
+oc_divu		=	op_divu		|  5	<<8 |	bc_divu		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' +/
+oc_rem		=	op_rem		|  5	<<8 |	bc_rem		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' //
+oc_remu		=	op_remu		|  5	<<8 |	bc_remu		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' +//
+oc_sca		=	op_sca		|  5	<<8 |	bc_sca		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' SCA
+oc_scas		=	op_scas		|  5	<<8 |	bc_scas		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' SCAS
+oc_frac		=	op_frac		|  5	<<8 |	bc_frac		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' FRAC
+oc_add		=	op_add		|  6	<<8 |	bc_add		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' +
+oc_sub		=	op_sub		|  6	<<8 |	bc_sub		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' -
+oc_fge		=	op_fge		|  7	<<8 |	bc_fge		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' #>
+oc_fle		=	op_fle		|  7	<<8 |	bc_fle		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' <#
+oc_addbits	=	op_addbits	|  8	<<8 |	bc_addbits	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ADDBITS
+oc_addpins	=	op_addpins	|  8	<<8 |	bc_addpins	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ADDPINS
+oc_lt		=	op_lt		|  9	<<8 |	bc_lt		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' <
+oc_ltu		=	op_ltu		|  9	<<8 |	bc_ltu		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 0 <<28 | 0 <<29	' +<
+oc_lte		=	op_lte		|  9	<<8 |	bc_lte		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' <=
+oc_lteu		=	op_lteu		|  9	<<8 |	bc_lteu		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 0 <<28 | 0 <<29	' +<=
+oc_e		=	op_e		|  9	<<8 |	bc_e		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' ==
+oc_ne		=	op_ne		|  9	<<8 |	bc_ne		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' <>
+oc_gte		=	op_gte		|  9	<<8 |	bc_gte		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' >=
+oc_gteu		=	op_gteu		|  9	<<8 |	bc_gteu		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 0 <<28 | 0 <<29	' +>=
+oc_gt		=	op_gt		|  9	<<8 |	bc_gt		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' >
+oc_gtu		=	op_gtu		|  9	<<8 |	bc_gtu		<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 0 <<28 | 0 <<29	' +>
+oc_ltegt	=	op_ltegt	|  9	<<8 |	bc_ltegt	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 0 <<27 | 1 <<28 | 0 <<29	' <=>
+oc_lognot	=	op_lognot	|  10	<<8 |	bc_lognot	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 1 <<29	' !!
+oc_lognot_name	=	op_lognot	|  10	<<8 |	bc_lognot	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' NOT
+oc_logand	=	op_logand	|  11	<<8 |	bc_logand	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 1 <<29	' &&
+oc_logand_name	=	op_logand	|  11	<<8 |	bc_logand	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' AND
+oc_logxor	=	op_logxor	|  12	<<8 |	bc_logxor	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 1 <<29	' ^^
+oc_logxor_name	=	op_logxor	|  12	<<8 |	bc_logxor	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' XOR
+oc_logor	=	op_logor	|  13	<<8 |	bc_logor	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 1 <<29	' ||
+oc_logor_name	=	op_logor	|  13	<<8 |	bc_logor	<<16 | 0 <<24 | 1 <<25 | 0 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' OR
+oc_ternary	=	op_ternary	|  14	<<8 |	0		<<16 | 1 <<24 | 0 <<25 | 0 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ?
+'
+'
+' Blocks
+'
+#0
+block_con
+block_obj
+block_var
+block_pub
+block_pri
+block_dat
+block_dev
+'
+'
+' Directives
+'
+#0
+dir_orgh
+dir_alignw
+dir_alignl
+dir_org
+dir_orgf
+dir_res
+dir_fit
+'
+'
+' Ifs
+'
+#0
+_if_never
+_if_nc_and_nz
+_if_nc_and_z
+_if_nc
+_if_c_and_nz
+_if_nz
+_if_c_ne_z
+_if_nc_or_nz
+_if_c_and_z
+_if_c_eq_z
+_if_z
+_if_nc_or_z
+_if_c
+_if_c_or_nz
+_if_c_or_z
+_if_always
+'
+'
+' Info types
+'
+#0
+info_con			'data0 = value (must be followed by info_con_float)
+info_con_float			'data0 = value
+info_dat			'data0/1 = obj start/finish
+info_dat_symbol			'data0 = offset, data1 = size
+info_pub			'data0/1 = obj start/finish, data2/3 = name start/finish
+info_pri			'data0/1 = obj start/finish, data2/3 = name start/finish

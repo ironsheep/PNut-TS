@@ -242,6 +242,7 @@ export class SpinResolver {
             this.backElement();
             break;
           } else {
+            this.logMessage(`EEEE: Element at fail: [${currElement.toString()}]`);
             // [error_eaucnop]
             throw new Error('Expected a unique constant name or "#"');
           }
@@ -843,12 +844,15 @@ export class SpinResolver {
 
   private getElement(): SpinElement {
     //this.logMessage(`* Element Index=(${this.curr_element + 1})`);
-    if (this.spinElements.length == 0 || this.curr_element >> (this.spinElements.length - 1)) {
-      throw new Error(`NO Elements or off end of Element List`);
+    if (this.spinElements.length == 0) {
+      throw new Error(`NO Elements`);
     }
     let currElement = this.spinElements[this.curr_element];
     // if we reach end, stay on this element forever
     if (currElement.type != eElementType.type_end_file) {
+      if (this.curr_element > this.spinElements.length - 1) {
+        throw new Error(`Off end of Element List`);
+      }
       this.curr_element++;
     }
 

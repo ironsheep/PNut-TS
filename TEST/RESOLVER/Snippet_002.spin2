@@ -1,0 +1,32 @@
+CON
+  BASE = 2
+  SIGN_SHIFT = 31
+  EXP_OFFSET = 127         ' offset for exponent field
+  EXP_SHIFT  = 23          ' shift for reading the exponent field
+  MAX_EXP    = 255
+  EXP_MASK   = MAX_EXP
+  MIN_SIG    = $800_000       ' smallest significand
+  MIN_SIG_BITS = 23
+  MAX_SIG    = BASE*MIN_SIG   ' one more than the largest significand
+  MAX_SIG_DIGITS = 24         ' number of BASE digits in MIN_SIG
+
+  ' some special values
+  NEG_ZERO = $8000_0000
+  INFINITY = MAX_EXP << EXP_SHIFT
+  NEG_INFINITY = NEG_ZERO | INFINITY
+  ONE = (BASE==10) ? ((EXP_OFFSET << EXP_SHIFT) | MIN_SIG) : (EXP_OFFSET<<EXP_SHIFT)
+
+  ' canonical value for Not A Number
+  NAN_CON    = $7fff_ffff
+
+  ' result for unordered comparison
+  UNORDERED_CMP_RESULT = $8000_0000
+
+  ' other useful constants
+  ' value for 2 * pi
+  TWOPI = 6.28318530718
+  CONST_E =  2.718281825
+  CONST_ONE = 1.0
+  LOG2_10 = 3.3219281
+  LOG2_E  = 1.4426950409
+  LOGE_2  = 0.6931472

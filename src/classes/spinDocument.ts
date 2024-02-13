@@ -317,6 +317,8 @@ export class SpinDocument {
               this.reportError(`File [${filename}] not found!`, index, 0);
             }
           }
+        } else if (currLine.match(/^#[0-9%$]/)) {
+          // ignore these enumeration starts, they are not meant to be directives
         } else {
           // generate error! vs. throwing exception
           let lineParts = this.splitLineOnWhiteSpace(currLine);
@@ -324,8 +326,8 @@ export class SpinDocument {
             lineParts = [currLine];
           }
           this.reportError(`Unknown #directive: [${lineParts[0]}]`, index, 0);
+          skipThisline = true;
         }
-        skipThisline = true;
       } else if (currLine.startsWith('{{')) {
         // handle start of doc-comment {{..}}
         if (!currLine.substring(2).includes('}}')) {
@@ -501,22 +503,6 @@ export class SpinDocument {
    * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range,
    * returns a TextLine object representing an empty line with a line number of -1.
    */
-  public lineAtOld(lineIndex: number): TextLine {
-    let desiredString: string | undefined = undefined;
-    if (lineIndex >= 0 && lineIndex < this.lineCount) {
-      desiredString = this.rawLines[lineIndex];
-      //this.logMessage(`DOC: lineAt(${lineIndex}) finds desiredString=[${desiredString}](${desiredString.length})`);
-      if (desiredString != null) {
-        // do nothing this is good
-      } else {
-        desiredString = ''; // we want an empty string in this case
-      }
-    }
-    // return object with additional details about this line
-    const desiredLine: TextLine = desiredString != null ? new TextLine(desiredString, lineIndex) : new TextLine('', -1);
-    return desiredLine;
-  }
-
   public lineAt(lineIndex: number): TextLine {
     let desiredLine: TextLine = new TextLine('', -1);
     if (lineIndex >= 0 && lineIndex < this.lineCount) {

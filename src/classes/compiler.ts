@@ -7,6 +7,7 @@ import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { Spin2Parser } from './spin2Parser';
 import { RegressionReporter } from './regression';
+import { Logger } from './logger';
 
 // src/classes/compiler.ts
 
@@ -49,6 +50,7 @@ export class Compiler {
         //this.spin2Parser.P2Compile1();
       } catch (error: unknown) {
         if (error instanceof Error) {
+          this.context.logger.logMessage(`EEEE: About to report: ${error.message}`);
           const filename: string = this.srcFile.fileName;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
           this.context.logger.compilerErrorMsg(`${filename}:${sourceLineNumber}:error:${error.message}`);
