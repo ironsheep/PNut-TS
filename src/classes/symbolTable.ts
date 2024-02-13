@@ -16,7 +16,7 @@ import { eElementType } from './types';
 export interface iSymbol {
   name: string;
   type: eElementType;
-  value: number | string;
+  value: bigint | string;
 }
 /**
  * The Pnut_ts symbol table class.
@@ -33,10 +33,10 @@ export class SymbolTable {
    *
    * @param {string} symbolName
    * @param {eElementType} symbolType
-   * @param {number} symbolValue
+   * @param {bigint} symbolValue
    * @memberof SymbolTable
    */
-  public add(symbolName: string, symbolType: eElementType, symbolValue: number | string) {
+  public add(symbolName: string, symbolType: eElementType, symbolValue: bigint | string) {
     const nameKey: string = symbolName.toUpperCase();
     if (!this.exists(nameKey)) {
       const newSymbol: iSymbol = { name: nameKey, type: symbolType, value: symbolValue };

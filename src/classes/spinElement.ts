@@ -31,6 +31,14 @@ export class SpinElement {
     return this._value;
   }
 
+  get stringValue(): string {
+    let returnedValue: string = '';
+    if (typeof this._value === 'string') {
+      returnedValue = this._value;
+    }
+    return returnedValue;
+  }
+
   get sourceLineIndex(): number {
     return this._sourceLineIndex;
   }

@@ -120,7 +120,11 @@ export class SpinDocument {
   public defineSymbol(newSymbol: string, value: string | number): void {
     this.logMessage(`CODE: defSymbol(${newSymbol})=[${value}]`);
     if (!this.preProcSymbols.exists(newSymbol)) {
-      this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
+      if (typeof value === 'number') {
+        this.preProcSymbols.add(newSymbol, eElementType.type_con, BigInt(value));
+      } else {
+        this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
+      }
     } else {
       this.logMessage(`CODE: symbol(${newSymbol}) already exists, add skipped`);
     }

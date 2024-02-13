@@ -13,7 +13,7 @@ import { NumberStack } from './numberStack';
 import { eElementType, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
-import { type OptionValues } from 'commander';
+import { SymbolTable } from './symbolTable';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -58,6 +58,8 @@ export class SpinResolver {
   private spinSymbolTables: SpinSymbolTables;
   private lowestPrecedence: number;
 
+  private userSymbols: SymbolTable = new SymbolTable();
+
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
@@ -81,7 +83,8 @@ export class SpinResolver {
 
   private compile_con_blocks_1st() {
     // true here means very-first pass!
-    this.compile_con_blocks(eResolve.BR_Try, true);
+    const FIRST_PASS: boolean = true;
+    this.compile_con_blocks(eResolve.BR_Try, FIRST_PASS);
     this.compile_con_blocks(eResolve.BR_Try);
   }
 
@@ -101,7 +104,8 @@ export class SpinResolver {
       let enumValid: boolean = true;
       let enumValue: bigint = 0n;
       let enumStep: bigint = 1n;
-      let willAssign: boolean = false;
+
+      //   CON  a = 100
 
       // possbile mutiple assignments
       do {
@@ -118,12 +122,13 @@ export class SpinResolver {
         // skip any EOLs here?
         do {
           // SAME LINE (process a line)
-          willAssign = true;
           // do we have an enum declaration?
           if (currElement.type == eElementType.type_pound) {
+            // Example: we are processing the left edge of an enumeration:  #0[4], name1, name2, name3[5], name4
             const result = this.getValue(eMode.BM_IntOnly, resolve);
             enumValid = false;
             if (result.isUnresolved == false) {
+              // we have a value!
               enumValid = true;
               enumValue = result.value;
               enumStep = 1n;
@@ -138,34 +143,97 @@ export class SpinResolver {
               this.getRightBracket();
             }
           } else if (currElement.type == eElementType.type_con || currElement.type == eElementType.type_con_float) {
+            // Example: we are validating for symbol
+            //   #0[4], name1, name2, name3[5], name4
+            //   name = value, name = value, name = name = value, #0[4], name1, name2
             if (firstPass) {
               // [error_eaucnop]
               throw new Error('Expected a unique constant name or "#"');
             } else {
-              willAssign = false;
               const elementToVerify = currElement;
-              this.backElement();
 
-              let isFloat: boolean = false;
               currElement = this.getElement();
               if (currElement.type == eElementType.type_equal) {
+                this.mathMode = eMathMode.MM_Unknown; // allow any
                 const result = this.getValue(eMode.BM_IntOrFloat, resolve);
+                // NOTE: if we don't get a value just leave we can't do anything yet...
                 if (result.isUnresolved == false) {
-                  //
+                  // we have a value!
+                  // record symbol value (do assign process)
+                  this.verifySameValue(elementToVerify, result);
                 }
               } else if (currElement.type == eElementType.type_leftb) {
-                //
-              } else if (currElement.type == eElementType.type_comma) {
-                //
-              } else if (currElement.type == eElementType.type_end) {
-                //
-              } else {
-                // [error_eelcoeol]
-                throw new Error('Expected "=" "[" "," or end of line');
+                const indexResult = this.getValue(eMode.BM_IntOnly, resolve);
+                //  #0[nameA], nameA[nameB]
+                //  #0[11], nameA[15]
+                this.getRightBracket();
+                if (indexResult.isUnresolved == false) {
+                  // we have a value
+                  // Example: we are processing this:  #0[4], name1, name2, name3[5], name4
+                  // preserve current enum value
+                  const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+                  // step the enum
+                  enumValue += enumStep * indexResult.value;
+                  // record symbol with current enum value (do assign process)
+                  this.verifySameValue(elementToVerify, symbolResult);
+                } else {
+                  // missing new step value... invalidate enum and bail
+                  enumValid = false;
+                }
+              } else if (currElement.type == eElementType.type_comma || currElement.type == eElementType.type_end) {
+                // preserve current enum value
+                const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+                // step the enum
+                enumValue += enumStep;
+                // record symbol with current enum value (do assign process)
+                this.verifySameValue(elementToVerify, symbolResult);
+                this.backElement(); // so we can re-discover the comma or EOL at while()
               }
             }
           } else if (currElement.type == eElementType.type_undefined) {
             // we have a symbol!
+            // Example: we are processing the {name} somewhere in:
+            //   #0[4], name1, name2, name3[5], name4
+            //   name = value, name = value, name = name = value, #0[4], name1, name2
+            const symbolNameElement: SpinElement = currElement;
+            currElement = this.getElement();
+            if (currElement.type == eElementType.type_equal) {
+              this.mathMode = eMathMode.MM_Unknown; // allow any
+              const result = this.getValue(eMode.BM_IntOrFloat, resolve);
+              // NOTE: if we don't get a value just leave we can't do anything yet...
+              if (result.isUnresolved == false) {
+                // we have a value!
+                // record symbol value (do assign process)
+                this.recordSymbolValue(symbolNameElement.stringValue, result);
+              }
+            } else if (currElement.type == eElementType.type_leftb) {
+              const indexResult = this.getValue(eMode.BM_IntOnly, resolve);
+              this.getRightBracket();
+              if (indexResult.isUnresolved == false) {
+                // we have a value
+                // Example: we are processing this:  #0[4], name1, name2, name3[5], name4
+                // preserve current enum value
+                const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+                // step the enum
+                enumValue += enumStep * indexResult.value;
+                // record symbol with current enum value (do assign process)
+                this.recordSymbolValue(symbolNameElement.stringValue, symbolResult);
+              } else {
+                // missing new step value... invalidate enum and bail
+                enumValid = false;
+              }
+            } else if (currElement.type == eElementType.type_comma || currElement.type == eElementType.type_end) {
+              // preserve current enum value
+              const symbolResult: iValueReturn = { value: enumValue, isUnresolved: false, isFloat: false };
+              // step the enum
+              enumValue += enumStep;
+              // record symbol with current enum value (do assign process)
+              this.recordSymbolValue(symbolNameElement.stringValue, symbolResult);
+              this.backElement(); // so we can re-discover the comma or EOL at while()
+            } else {
+              // [error_eelcoeol]
+              throw new Error('Expected "=" "[" "," or end of line');
+            }
           } else if (currElement.type == eElementType.type_block) {
             // let our outermost loop decide if we should process this next block
             this.backElement();
@@ -179,6 +247,37 @@ export class SpinResolver {
     } while (this.nextBlock(eValueType.block_con));
   }
 
+  private verifySameValue(currentValue: SpinElement, expectedValue: iValueReturn) {
+    const expectedType: eElementType = expectedValue.isFloat ? eElementType.type_con_float : eElementType.type_con;
+    if (currentValue.type !== expectedType || currentValue.value !== expectedValue.value) {
+      // [error_siad]
+      throw new Error('Symbol is already defined');
+    }
+  }
+
+  private recordSymbolValue(symbolName: string, symbolValue: iValueReturn) {
+    // do assign process
+    this.checkImportedParam(); //  checkParam - is parameter? substitute value
+    const symbolType: eElementType = symbolValue.isFloat ? eElementType.type_con_float : eElementType.type_con;
+    // write info to object pub/con list
+    const interfaceType: number = symbolValue.isFloat ? 17 : 16;
+    this.recordObjectConstant(symbolName, interfaceType, symbolValue.value);
+    // record our symbol
+    this.userSymbols.add(symbolName, symbolType, symbolValue.value);
+  }
+
+  private checkImportedParam() {
+    //  checkParam - is parameter? substitute value
+  }
+
+  private recordObjectConstant(name: string, type: number, value: bigint) {
+    // add to this objects' public interface
+  }
+
+  private recordPub(name: string, resultCount: number, parameterCount: number) {
+    // add to this objects' public interface
+  }
+
   private verify(element: SpinElement, value: iValueReturn) {
     const desiredType = value.isFloat ? eElementType.type_con_float : eElementType.type_con;
     if (element.type != desiredType || element.value != value.value) {
@@ -187,14 +286,6 @@ export class SpinResolver {
     }
   }
 
-  /*
-  block_con = 0, // 0x00
-  block_obj = 1, // 0x01
-  block_var = 2, // 0x02
-  block_pub = 3, // 0x03
-  block_pri = 4, // 0x04
-  block_dat = 5, // 0x05
-  */
   private nextBlock(blockType: eValueType): boolean {
     let foundStatus: boolean = false;
     let currElement: SpinElement;
@@ -749,10 +840,18 @@ export class SpinResolver {
 
   private getElement(): SpinElement {
     //this.logMessage(`* Element Index=(${this.curr_element + 1})`);
-    const currElement = this.spinElements[this.curr_element];
+    let currElement = this.spinElements[this.curr_element];
     // if we reach end, stay on this element forever
     if (currElement.type != eElementType.type_end_file) {
       this.curr_element++;
+    }
+
+    // if the symbol exists, return it instead of undefined
+    if (currElement.type === eElementType.type_undefined) {
+      const foundSymbol = this.userSymbols.get(currElement.stringValue);
+      if (foundSymbol !== undefined) {
+        currElement = new SpinElement(foundSymbol.type, foundSymbol.value, currElement.sourceLineIndex, currElement.sourceCharacterOffset);
+      }
     }
     return currElement;
   }
