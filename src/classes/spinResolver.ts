@@ -73,6 +73,10 @@ export class SpinResolver {
     this.spinElements = updatedElementList;
   }
 
+  get userSymbolTable(): SymbolTable {
+    return this.userSymbols;
+  }
+
   public compile1() {
     this.compile_con_blocks_1st();
   }
@@ -840,6 +844,9 @@ export class SpinResolver {
 
   private getElement(): SpinElement {
     //this.logMessage(`* Element Index=(${this.curr_element + 1})`);
+    if (this.spinElements.length == 0 || this.curr_element >> (this.spinElements.length - 1)) {
+      throw new Error(`NO Elements or off end of Element List`);
+    }
     let currElement = this.spinElements[this.curr_element];
     // if we reach end, stay on this element forever
     if (currElement.type != eElementType.type_end_file) {

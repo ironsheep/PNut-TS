@@ -1,4 +1,5 @@
 
+'' simple file handed to Pnut_v43 to get .lst file output
 CON
 
   CLK_FREQ = 335_000_000                                        ' system freq as a constant

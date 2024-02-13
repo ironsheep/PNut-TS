@@ -191,6 +191,7 @@ export class PNutInTypeScript {
       // forward our Output Filename
       const outFilename = this.options.output;
       this.context.compileOptions.outputFilename = outFilename;
+      this.context.logger.verboseMsg(`* Override output filename, now [${outFilename}]`);
     }
 
     if (this.options.both) {
@@ -264,6 +265,9 @@ export class PNutInTypeScript {
       // set up output filespec in case we are writing a listing file
       const lstFilespec = filename.replace('.spin2', '.lst');
       this.context.compileOptions.listFilename = lstFilespec;
+      if (this.options.list) {
+        this.context.logger.verboseMsg(`* Write listing file: ${lstFilespec}`);
+      }
       // and load our .spin2 top-level file
       this.spinDocument = new SpinDocument(this.context, filename);
       // TODO post symbols to conext object instead of top-level doc??

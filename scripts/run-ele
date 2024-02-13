@@ -1,0 +1,5 @@
+#!/bin/bash
+#  the following should abort if the compile fails
+(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v --log resolver parser --regression element -- TEST/SHORT/elementizerTESTs/parser_test_full.spin2)
+#(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -D CLOCK_200MHZ --regression preproc --log preproc  -v TEST/FULL/preprocessTESTs/condCode.spin2)
+#(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -D CLOCK_300MHZ --regression preproc --log preproc  -v TEST/FULL/preprocessTESTs/condCode.spin2)

@@ -39,8 +39,12 @@ export class Compiler {
 
       // here we make calls to the P2* methods (e.g., this.spin2Parser.P2Compile1(), , etc.)
       try {
-        this.spin2Parser.fakeGetElementLoop();
-        this.spin2Parser.fakeResolver();
+        //this.spin2Parser.fakeGetElementLoop();
+        //this.spin2Parser.fakeResolver();
+        this.spin2Parser.P2Elementize();
+        this.spin2Parser.P2Compile1();
+        this.spin2Parser.P2Compile2();
+        this.spin2Parser.P2List();
 
         //this.spin2Parser.P2Compile1();
       } catch (error: unknown) {
@@ -48,9 +52,9 @@ export class Compiler {
           const filename: string = this.srcFile.fileName;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
           this.context.logger.compilerErrorMsg(`${filename}:${sourceLineNumber}:error:${error.message}`);
-          //if (error.stack) {
-          //  this.context.logger.errorMsg(error.stack);
-          //}
+          if (error.stack) {
+            this.context.logger.errorMsg(error.stack);
+          }
         } else {
           // If it's not an Error object, it could be a string, null, etc.
           this.context.logger.errorMsg(error);

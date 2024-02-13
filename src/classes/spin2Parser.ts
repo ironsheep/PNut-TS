@@ -4,6 +4,7 @@
 
 'use strict';
 
+import fs from 'fs';
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 //import { SymbolTable } from './symbolTable';
@@ -12,6 +13,9 @@ import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { SpinResolver } from './spinResolver';
+import { iSymbol } from './symbolTable';
+import { float32ToHexString } from '../utils/float32';
+import { eElementType } from './types';
 
 // src/classes/spin2Parser.ts
 
@@ -48,19 +52,11 @@ export class Spin2Parser {
     return this.elementizer.sourceLineNumber;
   }
 
-  public fakeResolver() {
-    // our list is in class objexct
-    const spinElements: SpinElement[] = this.spinElements;
-    this.spinResolver.setElements(this.spinElements);
-    this.spinResolver.resolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
-    // now process list of elements, writing to our symbol tables
-    // the dump symbol tables to listing file
-  }
-
-  public fakeGetElementLoop() {
+  public P2Elementize() {
     // store the value(s) in list
     // publish for next steps to use
     this.spinElements = this.elementizer.getFileElements();
+    this.spinResolver.setElements(this.spinElements);
 
     // now loop thru elements found
     this.logMessage(''); // blank line
@@ -93,14 +89,78 @@ export class Spin2Parser {
   }
 
   public P2Compile1() {
-    // TODO: we need code here
-    // NOTE: reset all symbol tables
     this.spinResolver.compile1();
   }
 
   public P2Compile2() {
-    // TODO: we need code here
     this.spinResolver.compile2();
+  }
+  public P2List() {
+    if (this.context.compileOptions.writeListing) {
+      const outFilename = this.context.compileOptions.listFilename;
+      // Create a write stream
+      this.logMessage(`* writing report to ${outFilename}`);
+      const stream = fs.createWriteStream(outFilename);
+
+      const userSymbols = this.spinResolver.userSymbolTable;
+
+      // emit: symbol list,  if we have symbols place them at top of report
+      if (userSymbols.length > 0) {
+        // EX: TYPE: CON             VALUE: 13F7B1C0          NAME: CLK_FREQ
+        for (const [key, value] of userSymbols) {
+          const symbol: iSymbol = value;
+          const symbolType: string = symbol.type == eElementType.type_con ? 'CON      ' : 'CON_FLOAT';
+          const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
+          stream.write(`TYPE: ${symbolType}       VALUE: ${hexValue}          NAME: ${symbol.name}\n`);
+        }
+      }
+      // emit spin version
+      stream.write(`\n\nSpin2_v${this.srcFile.versionNumber}\n\n`);
+      // emit: CLKMODE, CLKFREQ, XINFREQ if present
+      let symbol = userSymbols.get('CLKMODE');
+      if (symbol !== undefined) {
+        const valueReport = this.symbolAsHexValue(symbol);
+        stream.write(`${valueReport}\n`);
+      }
+
+      symbol = userSymbols.get('CLKFREQ');
+      if (symbol !== undefined) {
+        const valueReport = this.symbolAsDecimalValue(symbol);
+        stream.write(`${valueReport}\n`);
+      }
+
+      symbol = userSymbols.get('XINFREQ');
+      if (symbol !== undefined) {
+        const valueReport = this.symbolAsDecimalValue(symbol);
+        stream.write(`${valueReport}\n`);
+      }
+
+      // emit hubbytes use
+      stream.write('\n\nHub bytes:           0\n\n');
+
+      // Close the stream
+      stream.end();
+    }
+  }
+
+  private symbolAsHexValue(symbol: iSymbol): string {
+    const interpValue: string = `${symbol.name.toUpperCase()}:   $${float32ToHexString(BigInt(symbol.value))})`;
+    return interpValue;
+  }
+
+  private symbolAsDecimalValue(symbol: iSymbol): string {
+    // FIXME: TODO: make this decimal with commas...
+    const interpValue: string = `${symbol.name.toUpperCase()}:   $${float32ToHexString(BigInt(symbol.value))})`;
+    return interpValue;
+  }
+
+  public fakeResolver() {
+    // our list is in class objexct
+    const spinElements: SpinElement[] = this.spinElements;
+    this.spinResolver.setElements(this.spinElements);
+    this.spinResolver.resolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
+    // now process list of elements, writing to our symbol tables
+    // the dump symbol tables to listing file
   }
 
   public P2InsertInterpreter() {
