@@ -129,6 +129,7 @@ export class SpinResolver {
           // do we have an enum declaration?
           if (currElement.type == eElementType.type_pound) {
             // Example: we are processing the left edge of an enumeration:  #0[4], name1, name2, name3[5], name4
+            // initial value
             const result = this.getValue(eMode.BM_IntOnly, resolve);
             enumValid = false;
             if (result.isResolved) {
@@ -137,6 +138,7 @@ export class SpinResolver {
               enumValue = result.value;
               enumStep = 1n;
             }
+            // optional step size
             if (this.checkLeftBracket()) {
               const result = this.getValue(eMode.BM_IntOnly, resolve);
               if (result.isResolved) {
@@ -158,8 +160,7 @@ export class SpinResolver {
 
               currElement = this.getElement();
               if (currElement.type == eElementType.type_equal) {
-                this.mathMode = eMathMode.MM_Unknown; // allow any
-                const result = this.getValue(eMode.BM_IntOrFloat, resolve);
+                const result = this.getValue(eMode.BM_IntOrFloat, eResolve.BR_Must);
                 // NOTE: if we don't get a value just leave we can't do anything yet...
                 if (result.isResolved) {
                   // we have a value!
@@ -167,7 +168,7 @@ export class SpinResolver {
                   this.verifySameValue(elementToVerify, result);
                 }
               } else if (currElement.type == eElementType.type_leftb) {
-                const indexResult = this.getValue(eMode.BM_IntOnly, resolve);
+                const indexResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
                 //  #0[nameA], nameA[nameB]
                 //  #0[11], nameA[15]
                 this.getRightBracket();
@@ -180,9 +181,6 @@ export class SpinResolver {
                   enumValue += enumStep * indexResult.value;
                   // record symbol with current enum value (do assign process)
                   this.verifySameValue(elementToVerify, symbolResult);
-                } else {
-                  // missing new step value... invalidate enum and bail
-                  enumValid = false;
                 }
               } else if (currElement.type == eElementType.type_comma || currElement.type == eElementType.type_end) {
                 // preserve current enum value
@@ -202,7 +200,6 @@ export class SpinResolver {
             const symbolNameElement: SpinElement = currElement;
             currElement = this.getElement();
             if (currElement.type == eElementType.type_equal) {
-              this.mathMode = eMathMode.MM_Unknown; // allow any
               const result = this.getValue(eMode.BM_IntOrFloat, resolve);
               // NOTE: if we don't get a value just leave we can't do anything yet...
               if (result.isResolved) {
@@ -213,7 +210,7 @@ export class SpinResolver {
             } else if (currElement.type == eElementType.type_leftb) {
               const indexResult = this.getValue(eMode.BM_IntOnly, resolve);
               this.getRightBracket();
-              if (indexResult.isResolved) {
+              if (indexResult.isResolved && enumValid) {
                 // we have a value
                 // Example: we are processing this:  #0[4], name1, name2, name3[5], name4
                 // preserve current enum value
@@ -227,13 +224,15 @@ export class SpinResolver {
                 enumValid = false;
               }
             } else if (currElement.type == eElementType.type_comma || currElement.type == eElementType.type_end) {
-              // preserve current enum value
-              const symbolResult: iValueReturn = { value: enumValue, isResolved: true, isFloat: false };
-              // step the enum
-              enumValue += enumStep;
-              // record symbol with current enum value (do assign process)
-              this.recordSymbolValue(symbolNameElement.stringValue, symbolResult);
               this.backElement(); // so we can re-discover the comma or EOL at while()
+              if (enumValid) {
+                // preserve current enum value
+                const symbolResult: iValueReturn = { value: enumValue, isResolved: true, isFloat: false };
+                // step the enum
+                enumValue += enumStep;
+                // record symbol with current enum value (do assign process)
+                this.recordSymbolValue(symbolNameElement.stringValue, symbolResult);
+              }
             } else {
               // [error_eelcoeol]
               throw new Error('Expected "=" "[" "," or end of line');
