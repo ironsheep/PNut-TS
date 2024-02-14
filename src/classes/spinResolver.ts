@@ -102,6 +102,16 @@ export class SpinResolver {
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
     // code here
     this.curr_element = 0; // reset to head of file
+
+    // move past opening CON if we have one
+    if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eValueType.block_con) {
+      this.getElement(); // throw element away
+    }
+    // if the File is Empty we are done!
+    if (this.nextElementType() == eElementType.type_end_file) {
+      return;
+    }
+
     do {
       // NEXT BLOCK
       // reset our enumeration
@@ -109,24 +119,12 @@ export class SpinResolver {
       let enumValue: bigint = 0n;
       let enumStep: bigint = 1n;
 
-      //   CON  a = 100
-
-      // possbile mutiple assignments
       do {
         // NEXT LINE
-        let currElement: SpinElement = this.getElement();
-        // move past end of line if we are at one
-        if (currElement.type == eElementType.type_end) {
-          currElement = this.getElement();
-        }
-        // if we hit end of file, we're done
-        if (currElement.type == eElementType.type_end_file) {
-          break;
-        }
-        // skip any EOLs here?
-        let didFindComma: boolean = false;
+
         do {
           // SAME LINE (process a line)
+          let currElement: SpinElement = this.getElement();
           // do we have an enum declaration?
           if (currElement.type == eElementType.type_pound) {
             // Example: we are processing the left edge of an enumeration:  #0[4], name1, name2, name3[5], name4
@@ -243,17 +241,18 @@ export class SpinResolver {
             this.backElement();
             break;
           } else {
+            // let's show some debug
             this.backElement(); // so we can re-discover the comma or EOL at while()
             currElement = this.getElement();
             this.logMessage(`EEEE: Element at fail: [${currElement.toString()}]`);
             // [error_eaucnop]
             throw new Error('Expected a unique constant name or "#"');
           }
-          didFindComma = this.getCommaOrEndOfLine();
-          if (didFindComma) {
-            currElement = this.getElement();
-          }
-        } while (didFindComma);
+        } while (this.getCommaOrEndOfLine());
+        // if we hit end of file, we're done
+        if (this.nextElementType() == eElementType.type_end_file) {
+          break;
+        }
       } while (this.nextElementType() != eElementType.type_block);
     } while (this.nextBlock(eValueType.block_con));
   }
@@ -315,6 +314,9 @@ export class SpinResolver {
       if (currElement.sourceCharacterOffset != 0) {
         // [error_bdmbifc]
         throw new Error('Block designator must be in first column');
+      }
+      if (this.nextElementType() == eElementType.type_end) {
+        this.getElement(); // throw the EOL-after-a-BLOCK away
       }
     }
     return foundStatus;
@@ -847,6 +849,11 @@ export class SpinResolver {
   private nextElementType(): eElementType {
     const currElement = this.spinElements[this.curr_element];
     return currElement.type;
+  }
+
+  private nextElementValue(): eValueType {
+    const currElement = this.spinElements[this.curr_element];
+    return currElement.numberValue;
   }
 
   private getElement(): SpinElement {

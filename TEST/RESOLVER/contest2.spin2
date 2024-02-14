@@ -16,7 +16,8 @@ CON  EnableFlow = 8                'single assignments
 
      zz = ROUND(4000.0 / QuarPi)    'float to integer
 
-CON  #0,a,b,c,d           'a=0, b=1, c=2, d=3    (start=0, step=1)
+CON  #0,a,b, ...
+        c,d           'a=0, b=1, c=2, d=3    (start=0, step=1)
      #1,e,f,g,h           'e=1, f=2, g=3, h=4    (start=1, step=1)
 
      #4[2],i,j,k,l        'i=4, j=6, k=8, l=10   (start=4, step=2)

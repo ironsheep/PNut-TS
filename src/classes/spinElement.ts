@@ -4,7 +4,7 @@
 import { float32ToHexString } from '../utils/float32';
 // src/classes/parseUtils.ts
 
-import { eElementType, eOperationType, getElementTypeString } from './types';
+import { eElementType, eOperationType, eValueType, getElementTypeString } from './types';
 //import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
@@ -35,6 +35,14 @@ export class SpinElement {
     let returnedValue: string = '';
     if (typeof this._value === 'string') {
       returnedValue = this._value;
+    }
+    return returnedValue;
+  }
+
+  get numberValue(): number {
+    let returnedValue: number = 0;
+    if (typeof this._value === 'bigint') {
+      returnedValue = Number(this._value);
     }
     return returnedValue;
   }
@@ -88,6 +96,14 @@ export class SpinElement {
 
   public operationString(): string {
     return eOperationType[this.operation] !== undefined ? eOperationType[this.operation] : '{OP-NOT-FOUND}';
+  }
+
+  get isBlockCon(): boolean {
+    let foundStatus: boolean = false;
+    if (this._type == eElementType.type_block && typeof this._value === 'bigint') {
+      foundStatus = Number(this._value) == eValueType.block_con;
+    }
+    return foundStatus;
   }
 
   //
