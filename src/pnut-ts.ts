@@ -321,9 +321,9 @@ export class PNutInTypeScript {
     }
   }
 
-  // --------------------------------------------
+  // --------------------------------------------------
   // PLEASE PARDON OUR STRAY TEST CODE BELOW HERE
-  // --------------------------------------------
+  // --------------------------------------------------
 
   private bigIntFloat32ToNumber(float32BigInt: bigint): number {
     // Create a new ArrayBuffer with a size of 4 bytes
@@ -436,7 +436,7 @@ export class PNutInTypeScript {
   }
 }
 
-// ------------------------------------------------------
+// --------------------------------------------------
 // our actual command line tool when run stand-alone
 //
 const cliTool = new PNutInTypeScript();
