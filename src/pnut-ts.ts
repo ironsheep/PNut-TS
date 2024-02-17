@@ -270,6 +270,8 @@ export class PNutInTypeScript {
       }
       // and load our .spin2 top-level file
       this.spinDocument = new SpinDocument(this.context, filename);
+      // record this new file in our master list of files we compiled to buid the binary
+      this.context.sourceFiles.addFile(this.spinDocument);
       // TODO post symbols to conext object instead of top-level doc??
       this.spinDocument.defineSymbol('__VERSION__', this.version);
     } else {

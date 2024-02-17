@@ -7,7 +7,6 @@ import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { Spin2Parser } from './spin2Parser';
 import { RegressionReporter } from './regression';
-import { Logger } from './logger';
 
 // src/classes/compiler.ts
 

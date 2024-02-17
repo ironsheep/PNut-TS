@@ -95,6 +95,7 @@ export class SpinElementizer {
     let typeFound: eElementType = eElementType.type_undefined;
     // eslint-disable-next-line prefer-const
     let valueFound: string | bigint = '';
+    let symbolLengthFound: number = 0;
     //
     // let's parse like spin example initially
     //
@@ -225,6 +226,7 @@ export class SpinElementizer {
     } else if (this.isSymbolStartChar(this.unprocessedLine.charAt(0))) {
       // handle symbol names
       const [charsUsed, value] = this.symbolNameConversion(this.unprocessedLine);
+      symbolLengthFound = charsUsed;
       // Identify symbol if known part of language
       const foundSymbol: iBuiltInSymbol = this.symbolConvert(value);
       if (foundSymbol.foundStatus) {
@@ -260,8 +262,9 @@ export class SpinElementizer {
       const lineNbrString: string = this.lineNumberString(this.symbolLineNumber, this.symbolCharacterOffset);
       this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${valueToDisplay})`);
       this.logMessage(''); // blank line
-      const singleElement = new SpinElement(typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
+      const singleElement = new SpinElement(this.srcFile.fileId, typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
       if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
+        singleElement.setSymbolLength(symbolLengthFound); // if this refers to a symbol, record the length of the symbol too
         elementsFound.push(singleElement);
         this.lastEmittedIsLineEnd = singleElement.isLineEnd ? true : false;
         //this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd}) type=[${singleElement.typeString()}]`); // blank line
@@ -392,7 +395,7 @@ export class SpinElementizer {
   }
 
   private buildElement(type: eElementType, value: bigint | string, charOffset: number): SpinElement {
-    const newElement: SpinElement = new SpinElement(type, value, this.currentTextLine.sourceLineNumber - 1, charOffset);
+    const newElement: SpinElement = new SpinElement(this.srcFile.fileId, type, value, this.currentTextLine.sourceLineNumber - 1, charOffset);
     return newElement;
   }
 

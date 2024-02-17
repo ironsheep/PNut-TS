@@ -14,6 +14,8 @@ import { eElementType, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { SymbolTable } from './symbolTable';
+import { Uint8Image } from './uint8Image';
+import { getSourceSymbol } from '../utils/fileUtils';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -45,26 +47,45 @@ enum eMode {
   BM_Spin2
 }
 
+enum eWordSize {
+  WS_Byte = 0,
+  WS_Word = 1,
+  WS_Long = 2
+}
+
 export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
   // data from our elemtizer and navigation variables
   private spinElements: SpinElement[] = [];
-  private curr_element: number = 0;
+  private elementIndex: number = 0;
   // parser state
   private mathMode: eMathMode = eMathMode.MM_Unknown;
 
+  // CON processing support data
   private numberStack: NumberStack;
   private spinSymbolTables: SpinSymbolTables;
   private lowestPrecedence: number;
 
   private userSymbols: SymbolTable = new SymbolTable();
 
+  // DAT processing support data
+  private objImage: Uint8Image;
+  private asmLocal: number = 0x30303030;
+  private hubOrg: number = 0x00000;
+  private hubOrgLimit: number = 0x100000;
+  private hubMode: boolean = false; // was orgh!
+  private orghOffset: number = 0;
+  private cogOrg: number = 0 << 2;
+  private cogOrgLimit: number = 0x1f8 << 2;
+  private pasmMode: boolean = false;
+
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
     this.isLogging = this.context.logOptions.logResolver;
     this.spinSymbolTables = new SpinSymbolTables(ctx);
+    this.objImage = new Uint8Image(ctx);
     this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
     this.numberStack.enableLogging(this.isLogging);
   }
@@ -78,11 +99,29 @@ export class SpinResolver {
   }
 
   public compile1() {
+    // reset symbol tables
+    /*
+      call	enter_symbols_level	;enter level symbols after determining spin2 level
+      call	enter_symbols_param	;enter parameter symbols
+      call	reset_symbols_main	;reset main symbols
+      call	reset_symbols_local	;reset local symbols
+      call	reset_symbols_inline	;reset inline symbols
+      call	write_symbols_main	;write main symbols
+      mov	[asm_local],30303030h	;reset asm local "0000"
+      mov	[pubcon_list_size],0	;reset pub/con list
+      mov	[list_length],0		;reset list length
+      mov	[doc_length],0		;reset doc length
+      mov	[doc_mode],0		;reset doc mode
+      mov	[info_count],0		;reset info count
+    */
+    this.objImage.reset();
     this.compile_con_blocks_1st();
+    this.compile_dat_blocks_fn();
   }
 
   public compile2() {
     this.compile_con_blocks_2nd();
+    this.compile_dat_blocks();
   }
 
   private compile_con_blocks_1st() {
@@ -97,11 +136,94 @@ export class SpinResolver {
     this.compile_con_blocks(eResolve.BR_Must);
   }
 
-  // upcoming: try spin2 constant expression
+  private compile_dat_blocks_fn() {
+    //
+  }
 
+  /**
+   *  compile DAT blocks or inline pasm code
+   *
+   * @private
+   * @param {boolean} [inLineMode=false] - T/F where T means we are processing PUB/PRI pasm inline code
+   * @param {number} [inLineCogOrg=0] - the offset within COG for this inline pasm code
+   * @param {number} [inLineCogOrgLimit=0] - the ending limit useable for this block of inline pasm code
+   * @memberof SpinResolver
+   */
+  private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
+    // compile all DAT blocks in file
+
+    // pasm symbols sym, .sym (global and local)
+    //
+    // TODO: POSSIBLE LANG ENHANCEMENT: datName.localSymbol (let our symbol table remember global.local pasm reference)
+    // remember where we are starting from in OBJ image, with local labelling and with
+    const startingObjOffset = this.objImage.offset;
+    const startingAsmLocal = this.asmLocal;
+    const startingElementIndex = this.elementIndex;
+
+    let pass: number = 0;
+    do {
+      // PASS Loop
+      this.objImage.setOffsetTo(startingObjOffset);
+      this.asmLocal = startingAsmLocal;
+      this.elementIndex = startingElementIndex;
+      this.hubOrg = 0x00000; // get constant(getValue) will use this
+      this.hubOrgLimit = 0x100000; // get constant(getValue) will use this;
+      let wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
+
+      if (inLineMode) {
+        this.hubMode = false;
+        this.cogOrg = inLineCogOrg;
+        this.cogOrgLimit = inLineCogOrgLimit;
+        this.elementIndex = startingElementIndex;
+      } else {
+        this.hubMode = true;
+        this.cogOrg = 0x000 << 2;
+        this.cogOrgLimit = 0x1f8 << 2;
+        // location in object of start -OR- start of hub for execution
+        this.hubOrg = this.pasmMode ? this.objImage.offset : 0x00400;
+        this.orghOffset = this.hubOrg - this.objImage.offset;
+        this.hubOrgLimit = 0x100000;
+        this.elementIndex = 0; // reset to head of file
+      }
+      do {
+        // NEXT BLOCK Loop
+        if (inLineMode === false) {
+          this.nextBlock(eValueType.block_dat);
+        }
+
+        // prepare DAT block info
+
+        let currElement: SpinElement = this.getElement();
+        if (currElement.type == eElementType.type_end_file) {
+          break;
+        }
+
+        let sizeFitFlag: boolean = false;
+        // using element as location info, get the symbol from the
+        //  associated source code
+        const symbolName = getSourceSymbol(this.context, currElement);
+
+        //
+        // NEXT LINE Loop
+        // eslint-disable-next-line no-constant-condition
+      } while (true);
+    } while (++pass < 2);
+  }
+
+  private checkLocal(element: SpinElement): boolean {
+    return false;
+  }
+
+  private getSymbol(element: SpinElement): [string, boolean] {
+    let symbolName: string = '';
+    let foundStatus: boolean = false;
+    return [symbolName, foundStatus];
+  }
+
+  // TODO: upcoming: try spin2 constant expression
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
-    // code here
-    this.curr_element = 0; // reset to head of file
+    // compile all CON blocks in file
+    this.elementIndex = 0; // reset to head of file
 
     // move past opening CON if we have one
     if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eValueType.block_con) {
@@ -822,6 +944,7 @@ export class SpinResolver {
     if (currElement.operation == eOperationType.op_sub) {
       // replace our currElement with an oc_neg [sub-to-neg]
       currElement = new SpinElement(
+        currElement.fileId,
         eElementType.type_op,
         BigInt(this.spinSymbolTables.opcodeValue(eOpcode.oc_neg)) & BigInt(0xffffffff),
         currElement.sourceLineIndex,
@@ -837,6 +960,7 @@ export class SpinResolver {
     if (currElement.operation == eOperationType.op_fsub) {
       // replace our currElement with an oc_fneg [fsub-to-fneg]
       currElement = new SpinElement(
+        currElement.fileId,
         eElementType.type_op,
         BigInt(this.spinSymbolTables.opcodeValue(eOpcode.oc_fneg)) & BigInt(0xffffffff),
         currElement.sourceLineIndex,
@@ -847,42 +971,48 @@ export class SpinResolver {
   }
 
   private nextElementType(): eElementType {
-    const currElement = this.spinElements[this.curr_element];
+    const currElement = this.spinElements[this.elementIndex];
     return currElement.type;
   }
 
   private nextElementValue(): eValueType {
-    const currElement = this.spinElements[this.curr_element];
+    const currElement = this.spinElements[this.elementIndex];
     return currElement.numberValue;
   }
 
   private getElement(): SpinElement {
-    //this.logMessage(`* Element Index=(${this.curr_element + 1})`);
+    //this.logMessage(`* Element Index=(${this.elementIndex + 1})`);
     if (this.spinElements.length == 0) {
       throw new Error(`NO Elements`);
     }
-    let currElement = this.spinElements[this.curr_element];
+    let currElement = this.spinElements[this.elementIndex];
     // if we reach end, stay on this element forever
     if (currElement.type != eElementType.type_end_file) {
-      if (this.curr_element > this.spinElements.length - 1) {
+      if (this.elementIndex > this.spinElements.length - 1) {
         throw new Error(`Off end of Element List`);
       }
-      this.curr_element++;
+      this.elementIndex++;
     }
 
     // if the symbol exists, return it instead of undefined
     if (currElement.type === eElementType.type_undefined) {
       const foundSymbol = this.userSymbols.get(currElement.stringValue);
       if (foundSymbol !== undefined) {
-        currElement = new SpinElement(foundSymbol.type, foundSymbol.value, currElement.sourceLineIndex, currElement.sourceCharacterOffset);
+        currElement = new SpinElement(
+          currElement.fileId,
+          foundSymbol.type,
+          foundSymbol.value,
+          currElement.sourceLineIndex,
+          currElement.sourceCharacterOffset
+        );
       }
     }
     return currElement;
   }
 
   private backElement(): void {
-    //this.logMessage(`* Element Index=(${this.curr_element - 1})`);
-    this.curr_element--;
+    //this.logMessage(`* Element Index=(${this.elementIndex - 1})`);
+    this.elementIndex--;
   }
 
   //

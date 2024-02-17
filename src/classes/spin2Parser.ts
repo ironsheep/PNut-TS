@@ -16,6 +16,7 @@ import { SpinResolver } from './spinResolver';
 import { iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
+import { getSourceSymbol } from '../utils/fileUtils';
 
 // src/classes/spin2Parser.ts
 
@@ -70,13 +71,9 @@ export class Spin2Parser {
         this.logMessage(`  -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) [${sourceLine}]`);
         currSourceLine = element.sourceLineIndex;
       }
-      const elemTypeStr: string = element.typeString();
-      const flagInterp: string = element.isMidStringComma ? `, midString` : '';
-      const valueInterp: string = element.valueString().length != 0 ? `, ${element.valueString()}` : '';
-      const opInterp: string = element.isOperation ? ` ${element.operationString()}` : '';
-      this.logMessage(
-        ` (${index + 1}) -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}`
-      );
+      const symbolName = getSourceSymbol(this.context, element);
+      const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
+      this.logMessage(` (${index + 1}) -- ${element.toString()}${symbolInterp}`);
     }
     this.logMessage('\\ ---------------------------------------');
     this.logMessage(''); // blank line

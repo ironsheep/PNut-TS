@@ -63,27 +63,33 @@ export class TextLine {
   /**
    * The index of the first non-whitespace character in the line.
    */
-  private readonly nonWhiteIndex: number;
+  private readonly _nonWhiteIndex: number;
 
   /**
    * The raw line index [0 - length-1].
    */
-  private readonly rawLineIndex: number;
+  private readonly _sourceFileId: number;
+
+  /**
+   * The raw line index [0 - length-1].
+   */
+  private readonly _rawLineIndex: number;
 
   /**
    * The raw text of the line.
    */
-  private readonly rawText: string;
+  private readonly _rawText: string;
 
   /**
    * Constructs a new TextLine instance.
    * @param {string} line - The raw text of the line.
    * @param {number} lineIndex - The raw line number, zero relative [0 to lineCount - 1].
    */
-  constructor(line: string, lineIndex: number) {
-    this.rawText = line;
-    this.rawLineIndex = lineIndex;
-    this.nonWhiteIndex = this._skipWhite(line, 0);
+  constructor(fileID: number, line: string, lineIndex: number) {
+    this._sourceFileId = fileID;
+    this._rawText = line;
+    this._rawLineIndex = lineIndex;
+    this._nonWhiteIndex = this._skipWhite(line, 0);
   }
 
   /**
@@ -91,7 +97,7 @@ export class TextLine {
    * @returns {string} The line of text.
    */
   get text(): string {
-    return this.rawText;
+    return this._rawText;
   }
 
   /**
@@ -99,12 +105,12 @@ export class TextLine {
    * @returns {number} The raw line number.
    */
   get sourceLineNumber(): number {
-    return this.rawLineIndex + 1;
+    return this._rawLineIndex + 1;
   }
 
   get range(): Range {
-    const startPos: Position = new Position(this.rawLineIndex, 0);
-    const endPos: Position = new Position(this.rawLineIndex, this.rawText.length - 1);
+    const startPos: Position = new Position(this._rawLineIndex, 0);
+    const endPos: Position = new Position(this._rawLineIndex, this._rawText.length - 1);
     const desiredRange = new Range(startPos, endPos);
     return desiredRange;
   }
@@ -114,7 +120,7 @@ export class TextLine {
    * @returns {number} The index of the first non-whitespace character.
    */
   get firstNonWhitespaveCharacterIndex(): number {
-    return this.nonWhiteIndex;
+    return this._nonWhiteIndex;
   }
 
   /**
@@ -122,7 +128,7 @@ export class TextLine {
    * @returns {boolean} True if the line is empty or contains only whitespace, false otherwise.
    */
   get isEmptyOrWhiteSpace(): boolean {
-    return this.rawText.length === 0 || this.nonWhiteIndex === 0;
+    return this._rawText.length === 0 || this._nonWhiteIndex === 0;
   }
 
   /**

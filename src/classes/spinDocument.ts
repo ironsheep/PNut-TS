@@ -39,6 +39,9 @@ export interface iError {
 export class SpinDocument {
   private context: Context;
   private isLogging: boolean = false;
+  // unique document IDs
+  static nextDocumentId: number = 0;
+  private documentId: number;
   // raw lines from file
   private readonly rawLines: string[] = [];
   // remaining lines are preprocessing
@@ -70,6 +73,7 @@ export class SpinDocument {
     // record file name and location
     this.context = ctx;
     this.isLogging = this.context.logOptions.logPreprocessor;
+    this.documentId = SpinDocument.nextDocumentId++;
     const bFileFound: boolean = fileExists(fileSpec);
     this.docFolder = bFileFound ? path.dirname(fileSpecFromURI(fileSpec)) : '';
     this.fileBaseName = bFileFound ? path.basename(fileSpecFromURI(fileSpec)) : '';
@@ -110,6 +114,11 @@ export class SpinDocument {
         this.defineSymbol(newSymbolName, 1);
       }
     }
+  }
+
+  get fileId(): number {
+    // return this files' unique ID
+    return this.documentId;
   }
 
   get allTextLines(): TextLine[] {
@@ -310,6 +319,8 @@ export class SpinDocument {
             if (filespec) {
               // load file into spinDoc
               const incSpinDocument = new SpinDocument(this.context, filespec);
+              // record this new file in our master list of files we compiled to buid the binary
+              this.context.sourceFiles.addFile(incSpinDocument);
               incSpinDocument.preProcess();
               // get parsed content from spinDoc inserting into current content in place of this line
               insertTextLines = incSpinDocument.allTextLines;
@@ -360,7 +371,7 @@ export class SpinDocument {
 
       if (!skipThisline) {
         //this.logMessage(`CODE: Line KEEP [${currLine}]`);
-        this.preprocessedLines.push(new TextLine(currLine, index));
+        this.preprocessedLines.push(new TextLine(this.fileId, currLine, index));
       } else {
         //this.logMessage(`CODE: Line SKIP [${currLine}]`);
       }
@@ -504,7 +515,9 @@ export class SpinDocument {
    * returns a TextLine object representing an empty line with a line number of -1.
    */
   public lineAt(lineIndex: number): TextLine {
-    let desiredLine: TextLine = new TextLine('', -1);
+    // NOTE: fileID cannot be lessthan zero nor can the line number be
+    //  this just represents a line that doesn't exist
+    let desiredLine: TextLine = new TextLine(-1, '', -1);
     if (lineIndex >= 0 && lineIndex < this.lineCount) {
       desiredLine = this.preprocessedLines[lineIndex];
       //this.logMessage(`DOC: lineAt(${lineIndex}) finds desiredString=[${desiredString}](${desiredString.length})`);

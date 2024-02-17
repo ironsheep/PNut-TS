@@ -12,15 +12,33 @@ import { eElementType, eOperationType, eValueType, getElementTypeString } from '
 export class SpinElement {
   private _sourceLineIndex: number = 0;
   private _sourceCharacterOffset: number = 0;
+  private _fileId: number;
   private _value: bigint | string = '';
   private _type: eElementType = eElementType.type_undefined;
   private _midStringComma: boolean = false; // valid only if type_comma
+  private _isSymbol: boolean = false; // valid when element referrs to symbol in source code
+  private _symbolLength: number = 0; // valid only when _isSymbol is true
 
-  constructor(type: eElementType, value: bigint | string, lineIndex: number, charIndex: number) {
+  constructor(fileID: number, type: eElementType, value: bigint | string, lineIndex: number, charIndex: number) {
+    this._fileId = fileID;
     this._type = type;
     this._value = value;
     this._sourceLineIndex = lineIndex;
     this._sourceCharacterOffset = charIndex;
+  }
+
+  get fileId(): number {
+    // return the unique ID of the file from which this element was created
+    return this._fileId;
+  }
+
+  get refersToSymbol(): boolean {
+    // Return T/F where T means this element refers to a symbol found in source code
+    return this._isSymbol;
+  }
+
+  get sourceCharacterEndOffset(): number {
+    return this._sourceCharacterOffset + this._symbolLength;
   }
 
   get type(): eElementType {
@@ -86,6 +104,7 @@ export class SpinElement {
   get isMidStringComma(): boolean {
     return this._type == eElementType.type_comma && this._midStringComma == true;
   }
+
   get isPlus(): boolean {
     return this._type == eElementType.type_op && (this.operation == eOperationType.op_add || this.operation == eOperationType.op_fadd);
   }
@@ -200,6 +219,12 @@ export class SpinElement {
       status = this._value & (1n << 30n) ? true : false;
     }
     return status;
+  }
+
+  public setSymbolLength(length: number) {
+    // called when this element refers to a symbol in source code
+    this._isSymbol = length > 0 ? true : false;
+    this._symbolLength = length;
   }
 
   set midStringComma(enable: boolean) {

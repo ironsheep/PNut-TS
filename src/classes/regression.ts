@@ -12,6 +12,7 @@ import { SpinSymbolTables } from './parseUtils';
 import { TextLine } from './textLine';
 import { SpinResolver } from './spinResolver';
 import { eOperationType } from './types';
+import { getSourceSymbol } from '../utils/fileUtils';
 
 export class RegressionReporter {
   private context: Context;
@@ -49,7 +50,9 @@ export class RegressionReporter {
         stream.write(''); // blank line
         currSourceLine = element.sourceLineIndex;
       }
-      stream.write(` (${itemNbr}) -- ${element.toString()}\n`);
+      const symbolName = getSourceSymbol(this.context, element);
+      const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
+      stream.write(` (${itemNbr}) -- ${element.toString()}${symbolInterp}\n`);
       itemNbr++;
     }
     stream.write('# ---------------------------------------\n');

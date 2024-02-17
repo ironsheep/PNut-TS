@@ -7,6 +7,7 @@
 'use strict';
 import path from 'path';
 import { Logger } from '../classes/logger';
+import { SpinDocument } from '../classes/spinDocument';
 
 export interface LogOptions {
   logElementizer: boolean; // write elementizer log
@@ -14,6 +15,7 @@ export interface LogOptions {
   logResolver: boolean; // write resolver log
   logPreprocessor: boolean; // write preprocessor log
 }
+
 export interface ReportOptions {
   writeTablesReport: boolean; // write elementizer
   writeElementsReport: boolean; // write elementizer
@@ -24,7 +26,7 @@ export interface ReportOptions {
 export interface PreProcessorOptions {
   defSymbols: string[]; // symbols from -Dsymbol
   undefSymbols: string[]; // symbols from -Usymbol
-  includeFolders: string[];
+  includeFolders: string[]; // paths from -Ipath
 }
 
 export interface CompileOptions {
@@ -40,10 +42,29 @@ export interface Context {
   libraryFolder: string;
   currentFolder: string;
   logger: Logger;
+  sourceFiles: SourceFiles;
   compileOptions: CompileOptions;
   logOptions: LogOptions;
   reportOptions: ReportOptions;
   preProcessorOptions: PreProcessorOptions;
+}
+
+export class SourceFiles {
+  private _srcFiles: SpinDocument[] = [];
+
+  public addFile(fileReference: SpinDocument) {
+    if (!this.hasFile(fileReference.fileName)) {
+      this._srcFiles.push(fileReference);
+    }
+  }
+
+  public getFileHavingID(fileID: number): SpinDocument | undefined {
+    return this._srcFiles.find((file) => file.fileId === fileID);
+  }
+
+  private hasFile(fileName: string): boolean {
+    return this._srcFiles.some((file) => file.fileName === fileName);
+  }
 }
 
 export function createContext(): Context {
@@ -51,6 +72,7 @@ export function createContext(): Context {
     libraryFolder: path.join(__dirname, '../ext'),
     currentFolder: process.cwd(),
     logger: new Logger(),
+    sourceFiles: new SourceFiles(),
     compileOptions: {
       writeFlash: false,
       writeRAM: false,
