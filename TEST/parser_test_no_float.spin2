@@ -45,6 +45,9 @@ DAT
    org
 pasmSym   nop
 .localSym  nop
+    ret
+
+sym001 long 0 ' comment
 
    fit
 	{comment{nested comment}}

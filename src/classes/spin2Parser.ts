@@ -99,12 +99,12 @@ export class Spin2Parser {
       this.logMessage(`* writing report to ${outFilename}`);
       const stream = fs.createWriteStream(outFilename);
 
-      const userSymbols = this.spinResolver.userSymbolTable;
+      const mainSymbols = this.spinResolver.userSymbolTable;
 
       // emit: symbol list,  if we have symbols place them at top of report
-      if (userSymbols.length > 0) {
+      if (mainSymbols.length > 0) {
         // EX: TYPE: CON             VALUE: 13F7B1C0          NAME: CLK_FREQ
-        for (const [key, value] of userSymbols) {
+        for (const [key, value] of mainSymbols) {
           const symbol: iSymbol = value;
           const symbolType: string = symbol.type == eElementType.type_con ? 'CON      ' : 'CON_FLOAT';
           const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
@@ -114,19 +114,19 @@ export class Spin2Parser {
       // emit spin version
       stream.write(`\n\nSpin2_v${this.srcFile.versionNumber}\n\n`);
       // emit: CLKMODE, CLKFREQ, XINFREQ if present
-      let symbol = userSymbols.get('CLKMODE');
+      let symbol = mainSymbols.get('CLKMODE');
       if (symbol !== undefined) {
         const valueReport = this.symbolAsHexValue(symbol);
         stream.write(`${valueReport}\n`);
       }
 
-      symbol = userSymbols.get('CLKFREQ');
+      symbol = mainSymbols.get('CLKFREQ');
       if (symbol !== undefined) {
         const valueReport = this.symbolAsDecimalValue(symbol);
         stream.write(`${valueReport}\n`);
       }
 
-      symbol = userSymbols.get('XINFREQ');
+      symbol = mainSymbols.get('XINFREQ');
       if (symbol !== undefined) {
         const valueReport = this.symbolAsDecimalValue(symbol);
         stream.write(`${valueReport}\n`);

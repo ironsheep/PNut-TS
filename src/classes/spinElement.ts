@@ -49,6 +49,16 @@ export class SpinElement {
     return this._value;
   }
 
+  public setType(newType: eElementType) {
+    // override type
+    this._type = newType;
+  }
+
+  public setValue(newValue: string | bigint) {
+    // override value
+    this._value = newValue;
+  }
+
   get stringValue(): string {
     let returnedValue: string = '';
     if (typeof this._value === 'string') {

@@ -12,8 +12,8 @@ import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
 import { eElementType, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
-import { SpinSymbolTables, eOpcode } from './parseUtils';
-import { SymbolTable } from './symbolTable';
+import { SpinSymbolTables, eOpcode, iSpinSymbol } from './parseUtils';
+import { SymbolTable, iSymbol } from './symbolTable';
 import { Uint8Image } from './uint8Image';
 import { getSourceSymbol } from '../utils/fileUtils';
 
@@ -50,7 +50,14 @@ enum eMode {
 enum eWordSize {
   WS_Byte = 0,
   WS_Word = 1,
-  WS_Long = 2
+  WS_Long = 2,
+  WS_Long_Res = 3
+}
+
+enum eSymbolTableId {
+  STI_MAIN,
+  STI_LOCAL,
+  STI_INLINE
 }
 
 export class SpinResolver {
@@ -67,11 +74,19 @@ export class SpinResolver {
   private spinSymbolTables: SpinSymbolTables;
   private lowestPrecedence: number;
 
-  private userSymbols: SymbolTable = new SymbolTable();
+  // these first two may go away
+  private autoSymbols: SymbolTable = new SymbolTable(); // neverechanging symbols
+  private levelSymbols: SymbolTable = new SymbolTable(); // based on language level
+
+  private mainSymbols: SymbolTable = new SymbolTable(); // var, dat, pub, pri, con, obj
+  private parameterSymbols: SymbolTable = new SymbolTable(); // constants from parent object
+  private localSymbols: SymbolTable = new SymbolTable(); // parameters, return variables and locals for PUB/PRI scope
+  private inlineSymbols: SymbolTable = new SymbolTable(); // for inline code sections
+  private activeSymbolTable: eSymbolTableId = eSymbolTableId.STI_MAIN;
 
   // DAT processing support data
   private objImage: Uint8Image;
-  private asmLocal: number = 0x30303030;
+  private asmLocal: number = 0;
   private hubOrg: number = 0x00000;
   private hubOrgLimit: number = 0x100000;
   private hubMode: boolean = false; // was orgh!
@@ -79,6 +94,10 @@ export class SpinResolver {
   private cogOrg: number = 0 << 2;
   private cogOrgLimit: number = 0x1f8 << 2;
   private pasmMode: boolean = false;
+  private fitToSize: boolean = false;
+  private wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
+  private weHaveASymbol: boolean = false;
+  private symbolName: string = '';
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -95,7 +114,7 @@ export class SpinResolver {
   }
 
   get userSymbolTable(): SymbolTable {
-    return this.userSymbols;
+    return this.mainSymbols;
   }
 
   public compile1() {
@@ -103,25 +122,25 @@ export class SpinResolver {
     /*
       call	enter_symbols_level	;enter level symbols after determining spin2 level
       call	enter_symbols_param	;enter parameter symbols
-      call	reset_symbols_main	;reset main symbols
-      call	reset_symbols_local	;reset local symbols
-      call	reset_symbols_inline	;reset inline symbols
-      call	write_symbols_main	;write main symbols
-      mov	[asm_local],30303030h	;reset asm local "0000"
       mov	[pubcon_list_size],0	;reset pub/con list
       mov	[list_length],0		;reset list length
       mov	[doc_length],0		;reset doc length
       mov	[doc_mode],0		;reset doc mode
       mov	[info_count],0		;reset info count
     */
+    this.mainSymbols.reset();
+    this.localSymbols.reset();
+    this.inlineSymbols.reset();
+    this.activeSymbolTable = eSymbolTableId.STI_MAIN;
+    this.asmLocal = 0;
     this.objImage.reset();
     this.compile_con_blocks_1st();
-    this.compile_dat_blocks_fn();
+    //this.compile_dat_blocks_fn();
   }
 
   public compile2() {
     this.compile_con_blocks_2nd();
-    this.compile_dat_blocks();
+    //this.compile_dat_blocks();
   }
 
   private compile_con_blocks_1st() {
@@ -151,6 +170,9 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
+    if (inLineMode) {
+      this.activeSymbolTable = eSymbolTableId.STI_INLINE;
+    }
 
     // pasm symbols sym, .sym (global and local)
     //
@@ -168,7 +190,7 @@ export class SpinResolver {
       this.elementIndex = startingElementIndex;
       this.hubOrg = 0x00000; // get constant(getValue) will use this
       this.hubOrgLimit = 0x100000; // get constant(getValue) will use this;
-      let wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
+      this.wordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
 
       if (inLineMode) {
         this.hubMode = false;
@@ -193,31 +215,208 @@ export class SpinResolver {
 
         // prepare DAT block info
 
-        let currElement: SpinElement = this.getElement();
-        if (currElement.type == eElementType.type_end_file) {
-          break;
-        }
-
-        let sizeFitFlag: boolean = false;
-        // using element as location info, get the symbol from the
-        //  associated source code
-        const symbolName = getSourceSymbol(this.context, currElement);
-
-        //
         // NEXT LINE Loop
+        do {
+          //
+
+          let currElement: SpinElement = this.getElement();
+          if (currElement.type == eElementType.type_end_file) {
+            break;
+          }
+
+          let fitToSize: boolean = false;
+          let isLocalSymbol: boolean = false;
+
+          const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
+          if (didFindLocal) {
+            // we have a local symbol... (must be undef or is storage type)
+            // replace curr elem with this symbol...
+            currElement = this.getElement(); // put us in proper place in element list
+            currElement.setType(symbol.type);
+            currElement.setValue(symbol.value); // this is our LOCAL internal name:  sym'0000
+            isLocalSymbol = true;
+          }
+          this.weHaveASymbol = currElement.type == eElementType.type_undefined;
+          const isDatStorage: boolean = this.isDatStorageType(currElement);
+          if ((this.weHaveASymbol || isDatStorage) && !isLocalSymbol) {
+            this.incrementLocalScopeCounter();
+          }
+          if (isDatStorage && pass == 0) {
+            // [error_siad]
+            throw new Error('Symbol is already defined');
+          }
+          this.symbolName = this.weHaveASymbol ? currElement.stringValue : '';
+
+          if (this.weHaveASymbol) {
+            currElement = this.getElement(); // moving on to next (past this symbol)
+          }
+
+          if (currElement.type == eElementType.type_end) {
+            this.enterDatSymbol();
+            // back to top of loop to get first elem of new line
+            continue;
+          }
+          // handle size
+          let isSizeFit: boolean = currElement.type == eElementType.type_size_fit;
+          if (currElement.type == eElementType.type_size || isSizeFit) {
+            this.wordSize = Number(currElement.value); // NOTE: this matches our enum values
+            this.enterDatSymbol(); // process pending symbol
+            do {
+              let currSize = this.wordSize;
+              currElement = this.getElement(); // moving on to next (past this symbol)
+              if (currElement.type == eElementType.type_end) {
+                break;
+              }
+              if (currElement.type == eElementType.type_size) {
+                // handle size override
+                currSize = Number(currElement.value);
+                currElement = this.getElement(); // moving on to next (past this symbol)
+              } else if (currElement.type == eElementType.type_fvar) {
+                // handle FVar...
+              }
+            } while (this.getCommaOrEndOfLine());
+            continue;
+          }
+          // handle alignment
+          // directive
+          // if-condition
+          // instruction
+          // if inline check for end
+          // file
+          // block
+
+          // eslint-disable-next-line no-constant-condition
+        } while (true); // NEXT LINE...
         // eslint-disable-next-line no-constant-condition
-      } while (true);
+      } while (true); // NEXT BLOCK...
     } while (++pass < 2);
   }
 
-  private checkLocal(element: SpinElement): boolean {
-    return false;
+  private enterDatSymbol() {
+    let value: bigint = 0n;
+    let type: eElementType;
+    if (this.weHaveASymbol) {
+      switch (this.wordSize) {
+        case eWordSize.WS_Byte:
+          type = eElementType.type_dat_byte;
+          break;
+        case eWordSize.WS_Word:
+          type = eElementType.type_dat_word;
+          break;
+        case eWordSize.WS_Long:
+          type = eElementType.type_dat_long;
+          break;
+        case eWordSize.WS_Long_Res:
+          type = eElementType.type_dat_long_res;
+          break;
+        default:
+          // [error_INTERNAL]
+          throw new Error('[CODE] unexpected wordSize!');
+      }
+      if (this.hubMode) {
+        value = BigInt(this.objImage.offset | 0xfff00000);
+      } else {
+        if ((this.cogOrg & 0x3) != 0) {
+          // [error_csmbla]
+          throw new Error('Cog symbol must be long-aligned');
+        }
+        // NOTE: cog address is bytes
+        value = BigInt(this.objImage.offset | (this.cogOrg << (32 - 10)));
+      }
+      const newSymbol: iSymbol = { name: this.symbolName, type: type, value: value };
+      this.recordSymbol(newSymbol);
+    }
   }
 
-  private getSymbol(element: SpinElement): [string, boolean] {
-    let symbolName: string = '';
-    let foundStatus: boolean = false;
-    return [symbolName, foundStatus];
+  private incrementLocalScopeCounter() {
+    this.asmLocal++;
+    if (this.asmLocal > 9999) {
+      // [error_loxdse]
+      throw new Error('Limit of 10k DAT symbols exceeded');
+    }
+  }
+
+  private isDatStorageType(element: SpinElement): boolean {
+    let matchStatus: boolean = true;
+    switch (element.type) {
+      case eElementType.type_dat_byte:
+      case eElementType.type_dat_word:
+      case eElementType.type_dat_long:
+      case eElementType.type_dat_long_res:
+        break;
+      default:
+        matchStatus = false;
+        break;
+    }
+    return matchStatus;
+  }
+
+  private checkLocalSymbol(element: SpinElement): [boolean, iSymbol] {
+    let symbolFoundStatus: boolean = false;
+    let symbolFound: iSymbol = { name: '', type: eElementType.type_undefined, value: 0n };
+    if (element.type == eElementType.type_dot) {
+      // using element as location info, get the symbol from the
+      //  associated source code
+      const nextElement: SpinElement = this.getElement();
+      const symbolName = getSourceSymbol(this.context, nextElement);
+      if (symbolName.length == 0) {
+        // we have error this should be a symbol!
+        // [error_eals]
+        throw new Error('Expected a local symbol');
+      }
+      let newLocalSymbolName = `${symbolName}'${this.asmLocal.toString().padStart(4, '0')}`;
+      const tmpSymbolFound = this.findSymbol(newLocalSymbolName);
+      // if we are undefined then replace the value with the new LOCAL NAME
+      if (tmpSymbolFound.type == eElementType.type_undefined) {
+        tmpSymbolFound.value = newLocalSymbolName;
+      }
+      symbolFound = tmpSymbolFound;
+      symbolFoundStatus = true;
+    }
+    return [symbolFoundStatus, symbolFound];
+  }
+
+  private findSymbol(name: string): iSymbol {
+    let symbolFound: iSymbol = { name: '', type: eElementType.type_undefined, value: 0n };
+    let containingTable: SymbolTable | undefined = undefined;
+    if (this.autoSymbols.exists(name)) {
+      containingTable = this.autoSymbols;
+    } else if (this.levelSymbols.exists(name)) {
+      containingTable = this.levelSymbols;
+    } else if (this.mainSymbols.exists(name)) {
+      containingTable = this.mainSymbols;
+    } else if (this.localSymbols.exists(name)) {
+      containingTable = this.localSymbols;
+    } else if (this.inlineSymbols.exists(name)) {
+      containingTable = this.localSymbols;
+    }
+    if (containingTable !== undefined) {
+      const tmpSymbolFound = containingTable.get(name);
+      if (tmpSymbolFound !== undefined) {
+        symbolFound.name = tmpSymbolFound.name;
+        symbolFound.type = tmpSymbolFound.type;
+        symbolFound.value = tmpSymbolFound.value;
+      }
+    }
+    return symbolFound;
+  }
+
+  private recordSymbol(newSymbol: iSymbol) {
+    switch (this.activeSymbolTable) {
+      case eSymbolTableId.STI_MAIN:
+        this.mainSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        break;
+      case eSymbolTableId.STI_LOCAL:
+        this.localSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        break;
+      case eSymbolTableId.STI_INLINE:
+        this.inlineSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        break;
+      default:
+        // [error_INTERNAL]
+        throw new Error('[CODE] known table ID!');
+        break;
+    }
   }
 
   // TODO: upcoming: try spin2 constant expression
@@ -395,7 +594,7 @@ export class SpinResolver {
     const interfaceType: number = symbolValue.isFloat ? 17 : 16;
     this.recordObjectConstant(symbolName, interfaceType, symbolValue.value);
     // record our symbol
-    this.userSymbols.add(symbolName, symbolType, symbolValue.value);
+    this.mainSymbols.add(symbolName, symbolType, symbolValue.value);
   }
 
   private checkImportedParam() {
@@ -996,7 +1195,7 @@ export class SpinResolver {
 
     // if the symbol exists, return it instead of undefined
     if (currElement.type === eElementType.type_undefined) {
-      const foundSymbol = this.userSymbols.get(currElement.stringValue);
+      const foundSymbol = this.mainSymbols.get(currElement.stringValue);
       if (foundSymbol !== undefined) {
         currElement = new SpinElement(
           currElement.fileId,
