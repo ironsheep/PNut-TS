@@ -185,6 +185,7 @@ export class SpinResolver {
     let pass: number = 0;
     do {
       // PASS Loop
+      const resolveForm: eResolve = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
       this.objImage.setOffsetTo(startingObjOffset);
       this.asmLocal = startingAsmLocal;
       this.elementIndex = startingElementIndex;
@@ -224,7 +225,6 @@ export class SpinResolver {
             break;
           }
 
-          let fitToSize: boolean = false;
           let isLocalSymbol: boolean = false;
 
           const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
@@ -256,9 +256,10 @@ export class SpinResolver {
             // back to top of loop to get first elem of new line
             continue;
           }
-          // handle size
-          let isSizeFit: boolean = currElement.type == eElementType.type_size_fit;
-          if (currElement.type == eElementType.type_size || isSizeFit) {
+          //
+          // HANDLE size
+          let fitToSize: boolean = currElement.type == eElementType.type_size_fit;
+          if (currElement.type == eElementType.type_size || fitToSize) {
             this.wordSize = Number(currElement.value); // NOTE: this matches our enum values
             this.enterDatSymbol(); // process pending symbol
             do {
@@ -268,22 +269,49 @@ export class SpinResolver {
                 break;
               }
               if (currElement.type == eElementType.type_size) {
-                // handle size override
+                // HANDLE Size Override
                 currSize = Number(currElement.value);
-                currElement = this.getElement(); // moving on to next (past this symbol)
               } else if (currElement.type == eElementType.type_fvar) {
-                // handle FVar...
+                // HANDLE FVar... [0,1] where 1 is signed fvar
+                const isSigned = currElement.value == 1n;
+                const fvarResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                if (isSigned) {
+                  if ((BigInt(fvarResult.value) & BigInt(0xf0000000)) != BigInt(0xf0000000)) {
+                    // [error_fvar]
+                    throw new Error('FVAR/FVARS data is too big');
+                  }
+                  this.compileRfvars(fvarResult.value);
+                } else {
+                  if ((BigInt(fvarResult.value) & BigInt(0xe0000000)) != 0n) {
+                    // [error_fvar]
+                    throw new Error('FVAR/FVARS data is too big');
+                  }
+                  this.compileRfvar(fvarResult.value);
+                }
+              } else {
+                this.backElement();
+                let multiplier: number = 1;
+                const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_IntOrFloat : eMode.BM_IntOnly;
+                const valueResult = this.getValue(getForm, resolveForm);
+                if (this.checkLeftBracket()) {
+                  const multiplierResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                  multiplier = Number(multiplierResult.value);
+                  this.getRightBracket();
+                }
+                this.enterData(valueResult.value, currSize, multiplier, fitToSize);
               }
             } while (this.getCommaOrEndOfLine());
             continue;
+          } else if (currElement.type == eElementType.type_asm_dir) {
+            // HANDLE pasm directive
+            this.wordSize = eWordSize.WS_Long;
           }
-          // handle alignment
-          // directive
-          // if-condition
-          // instruction
+
+          // handle if-condition
+          // handle instruction
           // if inline check for end
-          // file
-          // block
+          // handle file
+          // handle block
 
           // eslint-disable-next-line no-constant-condition
         } while (true); // NEXT LINE...
@@ -292,7 +320,113 @@ export class SpinResolver {
     } while (++pass < 2);
   }
 
+  private enterData(value: bigint, currSize: eWordSize, multiplier: number, fitToSize: boolean) {
+    // TODO: possibly emitData
+    if (multiplier > 0) {
+      if (fitToSize) {
+        const isNegative = value & BigInt(0x80000000);
+        switch (currSize) {
+          case eWordSize.WS_Byte:
+            // -128 to +255 (-$80 to $FF)
+            if (isNegative ? value < BigInt(0xffffff80) : value > BigInt(0xff)) {
+              // [error_bmbft]
+              throw new Error('BYTEFIT values must range from -$80 to $FF');
+            }
+            break;
+
+          case eWordSize.WS_Word:
+            // -$8000 to $FFFF
+            if (isNegative ? value < BigInt(0xffff8000) : value > BigInt(0xffff)) {
+              // [error_wmbft]
+              throw new Error('WORDFIT values must range from -$8000 to $FFFF');
+            }
+            break;
+        }
+      }
+      // write multiplier occurrences of value to our object
+      for (let index = 0; index < multiplier; index++) {
+        for (let byteIndex = 0; byteIndex < 1 << currSize; byteIndex++) {
+          this.objImage.append((Number(value) >> (byteIndex << 3)) & 0xff);
+        }
+      }
+    }
+  }
+
+  private compileRfvar(value: bigint) {
+    // generates 1-4 bytes (unsigned)
+    const masks = [BigInt(0x1fffff80), BigInt(0x1fffc000), BigInt(0x1fe00000)];
+    for (let i = 0; i < masks.length; i++) {
+      if (value & masks[i]) {
+        this.objImage.append(((Number(value) >> (7 * i)) & 0x7f) | 0x80);
+      } else {
+        this.objImage.append((Number(value) >> (7 * i)) & 0x7f);
+        return;
+      }
+    }
+    this.objImage.append((Number(value) >> 21) & 0xff);
+  }
+
+  /*
+  private compileRfvarOurs(value: bigint) {
+    // generates 1-4 bytes (unsigned)
+    if (value & BigInt(0x1fffff80)) {
+      this.objImage.append((Number(value) & 0x7f) | 0x80);
+    } else {
+      this.objImage.append(Number(value) & 0x7f);
+      return;
+    }
+    if (value & BigInt(0x1fffc000)) {
+      this.objImage.append(((Number(value) >> 7) & 0x7f) | 0x80);
+    } else {
+      this.objImage.append((Number(value) >> 7) & 0x7f);
+      return;
+    }
+    if (value & BigInt(0x1fe00000)) {
+      this.objImage.append(((Number(value) >> 14) & 0x7f) | 0x80);
+    } else {
+      this.objImage.append((Number(value) >> 14) & 0x7f);
+      return;
+    }
+    this.objImage.append((Number(value) >> 21) & 0xff);
+  }
+  */
+
+  private compileRfvars(value: bigint) {
+    // generates 1-4 bytes (signed)
+    const masks = [
+      { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
+      { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
+      { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
+    ];
+    for (let i = 0; i < masks.length; i++) {
+      if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
+        return this.compileRfvar(value & masks[i].bits);
+      }
+    }
+    return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+  }
+
+  /*
+  private compileRfvarsOurs(value: bigint) {
+    // generates 1-4 bytes (signed)
+    let bigMask: bigint = BigInt(0x1fffffc0);
+    if ((value & bigMask) == 0n || (value & bigMask) == bigMask) {
+      return this.compileRfvar(value & BigInt(0x7f)); // 7 bits
+    }
+    bigMask = BigInt(0x1fffe000);
+    if ((value & bigMask) == 0n || (value & bigMask) == bigMask) {
+      return this.compileRfvar(value & BigInt(0x3fff)); // 14 bits
+    }
+    bigMask = BigInt(0x1ff00000);
+    if ((value & bigMask) == 0n || (value & bigMask) == bigMask) {
+      return this.compileRfvar(value & BigInt(0x1fffff)); // 21 bits
+    }
+    return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+  }
+  */
+
   private enterDatSymbol() {
+    // TODO: possibly recordDatSymbol
     let value: bigint = 0n;
     let type: eElementType;
     if (this.weHaveASymbol) {
