@@ -1,156 +1,225 @@
 # Report for regression testing
-# Run: 02/08/2024
+# Run: 02/19/2024
 #
 # ---------------------------------------
-# - Showing 150 entries
- (0) -- Ln#1(0) type_block, (0)
+# - Showing 219 entries
+ (0) -- Ln#1(0) type_block, (0) [CON]
  (1) -- Ln#1(3) type_end
- (2) -- Ln#2(1) type_undefined, "A"
+ (2) -- Ln#2(1) type_undefined, "A" [A]
  (3) -- Ln#2(3) type_equal
  (4) -- Ln#2(5) type_con, (65280)
  (5) -- Ln#2(10) type_end
- (6) -- Ln#3(1) type_undefined, "B"
+ (6) -- Ln#3(1) type_undefined, "B" [B]
  (7) -- Ln#3(3) type_equal
  (8) -- Ln#3(5) type_con, (10)
  (9) -- Ln#3(10) type_end
- (10) -- Ln#4(1) type_undefined, "C"
+ (10) -- Ln#4(1) type_undefined, "C" [C]
  (11) -- Ln#4(3) type_equal
  (12) -- Ln#4(5) type_con, (228)
  (13) -- Ln#4(11) type_end
- (14) -- Ln#5(1) type_undefined, "D"
+ (14) -- Ln#5(1) type_undefined, "D" [D]
  (15) -- Ln#5(3) type_equal
  (16) -- Ln#5(5) type_con, (1684234849)
  (17) -- Ln#5(12) type_end
- (18) -- Ln#6(1) type_undefined, "D1"
+ (18) -- Ln#6(1) type_undefined, "D1" [D1]
  (19) -- Ln#6(4) type_equal
  (20) -- Ln#6(6) type_con, (6513249)
  (21) -- Ln#6(12) type_end
- (22) -- Ln#8(1) type_undefined, "E"
+ (22) -- Ln#8(1) type_undefined, "E" [E]
  (23) -- Ln#8(3) type_equal
  (24) -- Ln#8(5) type_con, (100)
  (25) -- Ln#8(8) type_end
- (26) -- Ln#15(0) type_block, (5)
+ (26) -- Ln#15(0) type_block, (1) [OBJ]
  (27) -- Ln#15(3) type_end
- (28) -- Ln#16(1) type_asm_dir, (3)
- (29) -- Ln#16(4) type_end
- (30) -- Ln#17(0) type_undefined, "PASM"
- (31) -- Ln#17(5) type_asm_inst, (61535)
- (32) -- Ln#17(12) type_pound
- (33) -- Ln#17(13) type_con, (0)
- (34) -- Ln#17(14) type_end
- (35) -- Ln#18(1) type_asm_inst, (37296)
- (36) -- Ln#18(5) type_pound
- (37) -- Ln#18(6) type_dollar
- (38) -- Ln#18(7) type_op, (0x1A8B0624) op_sub
- (39) -- Ln#18(8) type_con, (1)
- (40) -- Ln#18(11) type_end
- (41) -- Ln#20(0) type_block, (3)
- (42) -- Ln#20(4) type_undefined, "HYPOT"
- (43) -- Ln#20(9) type_left
- (44) -- Ln#20(10) type_undefined, "X"
- (45) -- Ln#20(11) type_comma
- (46) -- Ln#20(12) type_undefined, "Y"
- (47) -- Ln#20(13) type_right
- (48) -- Ln#20(15) type_colon
- (49) -- Ln#20(17) type_undefined, "Z"
- (50) -- Ln#20(18) type_end
- (51) -- Ln#22(2) type_undefined, "Z"
- (52) -- Ln#22(3) type_comma
- (53) -- Ln#22(4) type_under, (0)
- (54) -- Ln#22(6) type_assign
- (55) -- Ln#22(9) type_i_flex, (37520)
- (56) -- Ln#22(14) type_left
- (57) -- Ln#22(15) type_undefined, "X"
- (58) -- Ln#22(16) type_comma
- (59) -- Ln#22(17) type_undefined, "Y"
- (60) -- Ln#22(18) type_right
- (61) -- Ln#22(21) type_end
- (62) -- Ln#24(0) type_block, (4)
- (63) -- Ln#24(4) type_undefined, "INDEX"
- (64) -- Ln#24(9) type_left
- (65) -- Ln#24(10) type_undefined, "X"
- (66) -- Ln#24(11) type_right
- (67) -- Ln#24(13) type_colon
- (68) -- Ln#24(15) type_undefined, "Z"
- (69) -- Ln#24(16) type_end
- (70) -- Ln#26(2) type_undefined, "Z"
- (71) -- Ln#26(4) type_assign
- (72) -- Ln#26(7) type_i_look, (0)
- (73) -- Ln#26(14) type_left
- (74) -- Ln#26(15) type_undefined, "X"
- (75) -- Ln#26(17) type_colon
- (76) -- Ln#27(1) type_at
- (77) -- Ln#27(2) type_con, "A"
- (78) -- Ln#27(2) type_comma, (0), midString
- (79) -- Ln#27(3) type_con, "p"
- (80) -- Ln#27(3) type_comma, (0), midString
- (81) -- Ln#27(4) type_con, "p"
- (82) -- Ln#27(4) type_comma, (0), midString
- (83) -- Ln#27(5) type_con, "l"
- (84) -- Ln#27(5) type_comma, (0), midString
- (85) -- Ln#27(6) type_con, "e"
- (86) -- Ln#27(6) type_comma, (0), midString
- (87) -- Ln#27(7) type_con, "s"
- (88) -- Ln#27(10) type_comma
- (89) -- Ln#28(1) type_at
- (90) -- Ln#28(2) type_con, "O"
- (91) -- Ln#28(2) type_comma, (0), midString
- (92) -- Ln#28(3) type_con, "r"
- (93) -- Ln#28(3) type_comma, (0), midString
- (94) -- Ln#28(4) type_con, "a"
- (95) -- Ln#28(4) type_comma, (0), midString
- (96) -- Ln#28(5) type_con, "n"
- (97) -- Ln#28(5) type_comma, (0), midString
- (98) -- Ln#28(6) type_con, "g"
- (99) -- Ln#28(6) type_comma, (0), midString
- (100) -- Ln#28(7) type_con, "e"
- (101) -- Ln#28(7) type_comma, (0), midString
- (102) -- Ln#28(8) type_con, "s"
- (103) -- Ln#28(11) type_comma
- (104) -- Ln#29(1) type_at
- (105) -- Ln#29(2) type_con, "P"
- (106) -- Ln#29(2) type_comma, (0), midString
- (107) -- Ln#29(3) type_con, "e"
- (108) -- Ln#29(3) type_comma, (0), midString
- (109) -- Ln#29(4) type_con, "a"
- (110) -- Ln#29(4) type_comma, (0), midString
- (111) -- Ln#29(5) type_con, "r"
- (112) -- Ln#29(5) type_comma, (0), midString
- (113) -- Ln#29(6) type_con, "s"
- (114) -- Ln#29(9) type_comma
- (115) -- Ln#30(1) type_at
- (116) -- Ln#30(2) type_con, "B"
- (117) -- Ln#30(2) type_comma, (0), midString
- (118) -- Ln#30(3) type_con, "a"
- (119) -- Ln#30(3) type_comma, (0), midString
- (120) -- Ln#30(4) type_con, "n"
- (121) -- Ln#30(4) type_comma, (0), midString
- (122) -- Ln#30(5) type_con, "a"
- (123) -- Ln#30(5) type_comma, (0), midString
- (124) -- Ln#30(6) type_con, "n"
- (125) -- Ln#30(6) type_comma, (0), midString
- (126) -- Ln#30(7) type_con, "a"
- (127) -- Ln#30(7) type_comma, (0), midString
- (128) -- Ln#30(8) type_con, "s"
- (129) -- Ln#30(11) type_comma
- (130) -- Ln#31(1) type_op, (0x1A8B0624) op_sub
- (131) -- Ln#31(2) type_con, (1)
- (132) -- Ln#31(3) type_dotdot
- (133) -- Ln#31(5) type_op, (0x1A8B0624) op_sub
- (134) -- Ln#31(6) type_con, (9)
- (135) -- Ln#31(7) type_right
- (136) -- Ln#31(11) type_end
- (137) -- Ln#33(2) type_if, (0)
- (138) -- Ln#33(5) type_undefined, "Z"
- (139) -- Ln#33(6) type_dot
- (140) -- Ln#33(7) type_leftb
- (141) -- Ln#33(8) type_con, (31)
- (142) -- Ln#33(10) type_rightb
- (143) -- Ln#33(14) type_end
- (144) -- Ln#34(4) type_undefined, "Z"
- (145) -- Ln#34(6) type_op, (0xA83010E) op_shl
- (146) -- Ln#34(8) type_equal
- (147) -- Ln#34(10) type_con, (1)
- (148) -- Ln#34(14) type_end
- (149) -- Ln#39(0) type_end_file
+ (28) -- Ln#17(2) type_undefined, "MYOBJ" [MYOBJ]
+ (29) -- Ln#17(8) type_colon
+ (30) -- Ln#17(10) type_con, "s"
+ (31) -- Ln#17(10) type_comma, (0), midString
+ (32) -- Ln#17(11) type_con, "p"
+ (33) -- Ln#17(11) type_comma, (0), midString
+ (34) -- Ln#17(12) type_con, "i"
+ (35) -- Ln#17(12) type_comma, (0), midString
+ (36) -- Ln#17(13) type_con, "n"
+ (37) -- Ln#17(13) type_comma, (0), midString
+ (38) -- Ln#17(14) type_con, "O"
+ (39) -- Ln#17(14) type_comma, (0), midString
+ (40) -- Ln#17(15) type_con, "b"
+ (41) -- Ln#17(15) type_comma, (0), midString
+ (42) -- Ln#17(16) type_con, "j"
+ (43) -- Ln#17(16) type_comma, (0), midString
+ (44) -- Ln#17(17) type_con, "e"
+ (45) -- Ln#17(17) type_comma, (0), midString
+ (46) -- Ln#17(18) type_con, "c"
+ (47) -- Ln#17(18) type_comma, (0), midString
+ (48) -- Ln#17(19) type_con, "t"
+ (49) -- Ln#17(19) type_comma, (0), midString
+ (50) -- Ln#17(20) type_con, "F"
+ (51) -- Ln#17(20) type_comma, (0), midString
+ (52) -- Ln#17(21) type_con, "i"
+ (53) -- Ln#17(21) type_comma, (0), midString
+ (54) -- Ln#17(22) type_con, "l"
+ (55) -- Ln#17(22) type_comma, (0), midString
+ (56) -- Ln#17(23) type_con, "e"
+ (57) -- Ln#17(26) type_end
+ (58) -- Ln#19(0) type_block, (5) [DAT]
+ (59) -- Ln#19(3) type_end
+ (60) -- Ln#20(1) type_asm_dir, (3) [ORG]
+ (61) -- Ln#20(4) type_end
+ (62) -- Ln#21(0) type_undefined, "PASM" [PASM]
+ (63) -- Ln#21(5) type_asm_inst, (61535) [DRVNOT]
+ (64) -- Ln#21(12) type_pound
+ (65) -- Ln#21(13) type_con, (0)
+ (66) -- Ln#21(14) type_end
+ (67) -- Ln#22(1) type_asm_inst, (37296) [JMP]
+ (68) -- Ln#22(5) type_pound
+ (69) -- Ln#22(6) type_dollar
+ (70) -- Ln#22(7) type_op, (0x1A8B0624) op_sub
+ (71) -- Ln#22(8) type_con, (1)
+ (72) -- Ln#22(11) type_end
+ (73) -- Ln#24(0) type_block, (3) [PUB]
+ (74) -- Ln#24(4) type_undefined, "HYPOT" [HYPOT]
+ (75) -- Ln#24(9) type_left
+ (76) -- Ln#24(10) type_undefined, "X" [X]
+ (77) -- Ln#24(11) type_comma
+ (78) -- Ln#24(12) type_undefined, "Y" [Y]
+ (79) -- Ln#24(13) type_right
+ (80) -- Ln#24(15) type_colon
+ (81) -- Ln#24(17) type_undefined, "Z" [Z]
+ (82) -- Ln#24(18) type_comma
+ (83) -- Ln#24(20) type_undefined, "W" [W]
+ (84) -- Ln#24(21) type_comma
+ (85) -- Ln#24(23) type_undefined, "V" [V]
+ (86) -- Ln#24(24) type_end
+ (87) -- Ln#26(2) type_undefined, "Z" [Z]
+ (88) -- Ln#26(3) type_comma
+ (89) -- Ln#26(4) type_under, (0) [_]
+ (90) -- Ln#26(6) type_assign
+ (91) -- Ln#26(9) type_i_flex, (37520) [XYPOL]
+ (92) -- Ln#26(14) type_left
+ (93) -- Ln#26(15) type_undefined, "X" [X]
+ (94) -- Ln#26(16) type_comma
+ (95) -- Ln#26(17) type_undefined, "Y" [Y]
+ (96) -- Ln#26(18) type_right
+ (97) -- Ln#26(21) type_end
+ (98) -- Ln#27(2) type_undefined, "W" [W]
+ (99) -- Ln#27(4) type_assign
+ (100) -- Ln#27(7) type_undefined, "MYOBJ" [MYOBJ]
+ (101) -- Ln#27(12) type_dot
+ (102) -- Ln#27(13) type_undefined, "IF_CONSTANT" [IF_CONSTANT]
+ (103) -- Ln#27(24) type_end
+ (104) -- Ln#28(2) type_undefined, "V" [V]
+ (105) -- Ln#28(4) type_assign
+ (106) -- Ln#28(7) type_undefined, "MYOBJ" [MYOBJ]
+ (107) -- Ln#28(12) type_dot
+ (108) -- Ln#28(13) type_undefined, "IF_METHOD" [IF_METHOD]
+ (109) -- Ln#28(22) type_left
+ (110) -- Ln#28(23) type_right
+ (111) -- Ln#28(24) type_end
+ (112) -- Ln#30(0) type_block, (4) [PRI]
+ (113) -- Ln#30(4) type_undefined, "INDEX" [INDEX]
+ (114) -- Ln#30(9) type_left
+ (115) -- Ln#30(10) type_undefined, "X" [X]
+ (116) -- Ln#30(11) type_right
+ (117) -- Ln#30(13) type_colon
+ (118) -- Ln#30(15) type_undefined, "Z" [Z]
+ (119) -- Ln#30(16) type_end
+ (120) -- Ln#32(2) type_undefined, "Z" [Z]
+ (121) -- Ln#32(4) type_assign
+ (122) -- Ln#32(7) type_i_look, (0) [LOOKUPZ]
+ (123) -- Ln#32(14) type_left
+ (124) -- Ln#32(15) type_undefined, "X" [X]
+ (125) -- Ln#32(17) type_colon
+ (126) -- Ln#33(1) type_at
+ (127) -- Ln#33(2) type_con, "A"
+ (128) -- Ln#33(2) type_comma, (0), midString
+ (129) -- Ln#33(3) type_con, "p"
+ (130) -- Ln#33(3) type_comma, (0), midString
+ (131) -- Ln#33(4) type_con, "p"
+ (132) -- Ln#33(4) type_comma, (0), midString
+ (133) -- Ln#33(5) type_con, "l"
+ (134) -- Ln#33(5) type_comma, (0), midString
+ (135) -- Ln#33(6) type_con, "e"
+ (136) -- Ln#33(6) type_comma, (0), midString
+ (137) -- Ln#33(7) type_con, "s"
+ (138) -- Ln#33(10) type_comma
+ (139) -- Ln#34(1) type_at
+ (140) -- Ln#34(2) type_con, "O"
+ (141) -- Ln#34(2) type_comma, (0), midString
+ (142) -- Ln#34(3) type_con, "r"
+ (143) -- Ln#34(3) type_comma, (0), midString
+ (144) -- Ln#34(4) type_con, "a"
+ (145) -- Ln#34(4) type_comma, (0), midString
+ (146) -- Ln#34(5) type_con, "n"
+ (147) -- Ln#34(5) type_comma, (0), midString
+ (148) -- Ln#34(6) type_con, "g"
+ (149) -- Ln#34(6) type_comma, (0), midString
+ (150) -- Ln#34(7) type_con, "e"
+ (151) -- Ln#34(7) type_comma, (0), midString
+ (152) -- Ln#34(8) type_con, "s"
+ (153) -- Ln#34(11) type_comma
+ (154) -- Ln#35(1) type_at
+ (155) -- Ln#35(2) type_con, "P"
+ (156) -- Ln#35(2) type_comma, (0), midString
+ (157) -- Ln#35(3) type_con, "e"
+ (158) -- Ln#35(3) type_comma, (0), midString
+ (159) -- Ln#35(4) type_con, "a"
+ (160) -- Ln#35(4) type_comma, (0), midString
+ (161) -- Ln#35(5) type_con, "r"
+ (162) -- Ln#35(5) type_comma, (0), midString
+ (163) -- Ln#35(6) type_con, "s"
+ (164) -- Ln#35(9) type_comma
+ (165) -- Ln#36(1) type_at
+ (166) -- Ln#36(2) type_con, "B"
+ (167) -- Ln#36(2) type_comma, (0), midString
+ (168) -- Ln#36(3) type_con, "a"
+ (169) -- Ln#36(3) type_comma, (0), midString
+ (170) -- Ln#36(4) type_con, "n"
+ (171) -- Ln#36(4) type_comma, (0), midString
+ (172) -- Ln#36(5) type_con, "a"
+ (173) -- Ln#36(5) type_comma, (0), midString
+ (174) -- Ln#36(6) type_con, "n"
+ (175) -- Ln#36(6) type_comma, (0), midString
+ (176) -- Ln#36(7) type_con, "a"
+ (177) -- Ln#36(7) type_comma, (0), midString
+ (178) -- Ln#36(8) type_con, "s"
+ (179) -- Ln#36(11) type_comma
+ (180) -- Ln#37(1) type_op, (0x1A8B0624) op_sub
+ (181) -- Ln#37(2) type_con, (1)
+ (182) -- Ln#37(3) type_dotdot
+ (183) -- Ln#37(5) type_op, (0x1A8B0624) op_sub
+ (184) -- Ln#37(6) type_con, (9)
+ (185) -- Ln#37(7) type_right
+ (186) -- Ln#37(11) type_end
+ (187) -- Ln#39(2) type_if, (0) [IF]
+ (188) -- Ln#39(5) type_undefined, "Z" [Z]
+ (189) -- Ln#39(6) type_dot
+ (190) -- Ln#39(7) type_leftb
+ (191) -- Ln#39(8) type_con, (31)
+ (192) -- Ln#39(10) type_rightb
+ (193) -- Ln#39(14) type_end
+ (194) -- Ln#40(4) type_undefined, "Z" [Z]
+ (195) -- Ln#40(6) type_op, (0xA83010E) op_shl
+ (196) -- Ln#40(8) type_equal
+ (197) -- Ln#40(10) type_con, (1)
+ (198) -- Ln#40(14) type_end
+ (199) -- Ln#43(0) type_block, (5) [DAT]
+ (200) -- Ln#43(3) type_end
+ (201) -- Ln#45(3) type_asm_dir, (3) [ORG]
+ (202) -- Ln#45(6) type_end
+ (203) -- Ln#46(0) type_undefined, "PASMSYM" [PASMSYM]
+ (204) -- Ln#46(10) type_asm_inst, (73728) [NOP]
+ (205) -- Ln#46(13) type_end
+ (206) -- Ln#47(0) type_dot
+ (207) -- Ln#47(1) type_undefined, "LOCALSYM" [LOCALSYM]
+ (208) -- Ln#47(11) type_asm_inst, (73728) [NOP]
+ (209) -- Ln#47(14) type_end
+ (210) -- Ln#48(4) type_asm_inst, (69120) [RET]
+ (211) -- Ln#48(7) type_end
+ (212) -- Ln#50(0) type_undefined, "SYM001" [SYM001]
+ (213) -- Ln#50(7) type_size, (2) [LONG]
+ (214) -- Ln#50(12) type_con, (0)
+ (215) -- Ln#50(14) type_end
+ (216) -- Ln#52(3) type_asm_dir, (6) [FIT]
+ (217) -- Ln#52(6) type_end
+ (218) -- Ln#56(0) type_end_file
 # ---------------------------------------

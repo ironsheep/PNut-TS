@@ -12,14 +12,20 @@ CON
 	'i = 1e9
 	'j = 1e-9
 
+OBJ
+
+  myobj : "spinObjectFile"
+
 DAT
 	org
 pasm	drvnot	#0
 	jmp	#$-1		'test $
 
-PUB hypot(x,y) : z
+PUB hypot(x,y) : z, w, v
 
   z,_ := xypol(x,y)		'test _
+  w := myobj.IF_CONSTANT
+  v := myobj.if_method()
 
 PRI index(x) : z
 
@@ -33,6 +39,17 @@ PRI index(x) : z
   if z.[31]			'test .
     z <<= 1			'test three-chr symbol <<=
 
+
+DAT
+
+   org
+pasmSym   nop
+.localSym  nop
+    ret
+
+sym001 long 0 ' comment
+
+   fit
 	{comment{nested comment}}
 	{{doc comment}}
 	'' doc comment

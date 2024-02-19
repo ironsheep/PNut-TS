@@ -32,7 +32,7 @@ test('CLI generates correct table listings', () => {
   let passCount = 0;
   const failList = [];
 
-  const options: string = '-c --regression tables -- ';
+  const options: string = '-c --pass preprocess --regression tables -- ';
 
   // Iterate over each .spin2 file
   for (const file of files) {

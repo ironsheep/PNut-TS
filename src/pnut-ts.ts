@@ -83,6 +83,7 @@ export class PNutInTypeScript {
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
       .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
+      .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize']))
       .option('-v, --verbose', 'Output verbose messages');
 
     this.program.addHelpText('beforeAll', `$-`);
@@ -184,6 +185,21 @@ export class PNutInTypeScript {
       if (choices.includes('preproc')) {
         this.context.logOptions.logPreprocessor = true;
         this.context.logger.verboseMsg('  PreProcessor');
+      }
+    }
+
+    if (this.options.pass) {
+      // forward our PASS Options (stop after pass)
+      this.requiresFilename = true;
+      const choices: string[] = this.options.pass;
+      this.context.logger.verboseMsg('MODE: End after');
+      if (choices.includes('preprocess')) {
+        this.context.passOptions.afterPreprocess = true;
+        this.context.logger.verboseMsg('  PreProcessing');
+      }
+      if (choices.includes('elementize')) {
+        this.context.passOptions.afterElementize = true;
+        this.context.logger.verboseMsg('  Elementizer');
       }
     }
 

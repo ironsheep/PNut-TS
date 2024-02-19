@@ -28,28 +28,28 @@ describe('PNutInTypeScript', () => {
   */
 
   test('run function logs correct message for --debug option', () => {
-    process.argv = ['node', 'pnut-ts.js', '--debug', 'f1.spin2'];
+    process.argv = ['node', 'pnut-ts.js', '--debug', 'TEST/emptySpinFile.spin2'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
     expect(process.stdout.write).toHaveBeenCalledWith('pnut-ts: Compiling with DEBUG\r\n');
   });
 
   test('run function logs correct message for --verbose option', () => {
-    process.argv = ['node', 'pnut-ts.js', '--verbose', 'f1.spin2'];
+    process.argv = ['node', 'pnut-ts.js', '--verbose', 'TEST/emptySpinFile.spin2'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
     expect(process.stdout.write).toHaveBeenCalledWith('pnut-ts: Verbose output is enabled\r\n');
   });
 
   test('run function logs correct message for --flash option', () => {
-    process.argv = ['node', 'pnut-ts.js', '--flash', 'f1.spin2'];
+    process.argv = ['node', 'pnut-ts.js', '--flash', 'TEST/emptySpinFile.spin2'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
     expect(process.stdout.write).toHaveBeenCalledWith('pnut-ts: Downloading to FLASH\r\n');
   });
 
   test('run function logs correct message for --ram option', () => {
-    process.argv = ['node', 'pnut-ts.js', '--ram', 'f1.spin2'];
+    process.argv = ['node', 'pnut-ts.js', '--ram', 'TEST/emptySpinFile.spin2'];
     const cliTool = new PNutInTypeScript();
     cliTool.run();
     expect(process.stdout.write).toHaveBeenCalledWith('pnut-ts: Downloading to RAM\r\n');

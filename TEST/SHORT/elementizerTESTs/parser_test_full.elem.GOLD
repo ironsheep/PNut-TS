@@ -1,104 +1,104 @@
 # Report for regression testing
-# Run: 02/08/2024
+# Run: 02/19/2024
 #
 # ---------------------------------------
 # - Showing 175 entries
- (0) -- Ln#2(0) type_block, (0)
+ (0) -- Ln#2(0) type_block, (0) [CON]
  (1) -- Ln#2(3) type_end
- (2) -- Ln#3(1) type_undefined, "A"
+ (2) -- Ln#3(1) type_undefined, "A" [A]
  (3) -- Ln#3(3) type_equal
  (4) -- Ln#3(5) type_con, (65280)
  (5) -- Ln#3(14) type_end
- (6) -- Ln#4(1) type_undefined, "B"
+ (6) -- Ln#4(1) type_undefined, "B" [B]
  (7) -- Ln#4(3) type_equal
  (8) -- Ln#4(5) type_con, (10)
  (9) -- Ln#4(11) type_end
- (10) -- Ln#5(1) type_undefined, "C"
+ (10) -- Ln#5(1) type_undefined, "C" [C]
  (11) -- Ln#5(3) type_equal
  (12) -- Ln#5(5) type_con, (228)
  (13) -- Ln#5(12) type_end
- (14) -- Ln#6(1) type_undefined, "D"
+ (14) -- Ln#6(1) type_undefined, "D" [D]
  (15) -- Ln#6(3) type_equal
  (16) -- Ln#6(5) type_con, (1684234849)
  (17) -- Ln#6(12) type_end
- (18) -- Ln#7(1) type_undefined, "E"
+ (18) -- Ln#7(1) type_undefined, "E" [E]
  (19) -- Ln#7(3) type_equal
  (20) -- Ln#7(5) type_con, (100000)
  (21) -- Ln#7(12) type_end
- (22) -- Ln#8(1) type_undefined, "F"
+ (22) -- Ln#8(1) type_undefined, "F" [F]
  (23) -- Ln#8(3) type_equal
  (24) -- Ln#8(5) type_con_float, (0x3F800000)
  (25) -- Ln#8(8) type_end
- (26) -- Ln#9(1) type_undefined, "G"
+ (26) -- Ln#9(1) type_undefined, "G" [G]
  (27) -- Ln#9(3) type_equal
  (28) -- Ln#9(5) type_con_float, (0x49742400)
  (29) -- Ln#9(10) type_end
- (30) -- Ln#10(1) type_undefined, "H"
+ (30) -- Ln#10(1) type_undefined, "H" [H]
  (31) -- Ln#10(3) type_equal
  (32) -- Ln#10(5) type_op, (0x1A8B0624) op_sub
  (33) -- Ln#10(6) type_con_float, (0x358637BD)
  (34) -- Ln#10(12) type_end
- (35) -- Ln#11(1) type_undefined, "I"
+ (35) -- Ln#11(1) type_undefined, "I" [I]
  (36) -- Ln#11(3) type_equal
  (37) -- Ln#11(5) type_con_float, (0x4E6E6B28)
  (38) -- Ln#11(9) type_end
- (39) -- Ln#12(1) type_undefined, "J"
+ (39) -- Ln#12(1) type_undefined, "J" [J]
  (40) -- Ln#12(3) type_equal
  (41) -- Ln#12(5) type_con_float, (0x3089705F)
  (42) -- Ln#12(9) type_end
- (43) -- Ln#16(22) type_undefined, "L"
+ (43) -- Ln#16(22) type_undefined, "L" [L]
  (44) -- Ln#16(24) type_equal
  (45) -- Ln#16(26) type_con, (5000)
  (46) -- Ln#16(33) type_end
- (47) -- Ln#19(0) type_block, (5)
+ (47) -- Ln#19(0) type_block, (5) [DAT]
  (48) -- Ln#19(3) type_end
- (49) -- Ln#20(1) type_asm_dir, (3)
+ (49) -- Ln#20(1) type_asm_dir, (3) [ORG]
  (50) -- Ln#20(4) type_end
- (51) -- Ln#21(0) type_undefined, "PASM"
- (52) -- Ln#21(5) type_asm_inst, (61535)
+ (51) -- Ln#21(0) type_undefined, "PASM" [PASM]
+ (52) -- Ln#21(5) type_asm_inst, (61535) [DRVNOT]
  (53) -- Ln#21(12) type_pound
  (54) -- Ln#21(13) type_con, (0)
  (55) -- Ln#21(14) type_end
- (56) -- Ln#22(1) type_asm_inst, (37296)
+ (56) -- Ln#22(1) type_asm_inst, (37296) [JMP]
  (57) -- Ln#22(5) type_pound
  (58) -- Ln#22(6) type_dollar
  (59) -- Ln#22(7) type_op, (0x1A8B0624) op_sub
  (60) -- Ln#22(8) type_con, (1)
  (61) -- Ln#22(11) type_end
- (62) -- Ln#24(0) type_block, (3)
- (63) -- Ln#24(4) type_undefined, "HYPOT"
+ (62) -- Ln#24(0) type_block, (3) [PUB]
+ (63) -- Ln#24(4) type_undefined, "HYPOT" [HYPOT]
  (64) -- Ln#24(9) type_left
- (65) -- Ln#24(10) type_undefined, "X"
+ (65) -- Ln#24(10) type_undefined, "X" [X]
  (66) -- Ln#24(11) type_comma
- (67) -- Ln#24(12) type_undefined, "Y"
+ (67) -- Ln#24(12) type_undefined, "Y" [Y]
  (68) -- Ln#24(13) type_right
  (69) -- Ln#24(15) type_colon
- (70) -- Ln#24(17) type_undefined, "Z"
+ (70) -- Ln#24(17) type_undefined, "Z" [Z]
  (71) -- Ln#24(18) type_end
- (72) -- Ln#26(2) type_undefined, "Z"
+ (72) -- Ln#26(2) type_undefined, "Z" [Z]
  (73) -- Ln#26(3) type_comma
- (74) -- Ln#26(4) type_under, (0)
+ (74) -- Ln#26(4) type_under, (0) [_]
  (75) -- Ln#26(6) type_assign
- (76) -- Ln#26(9) type_i_flex, (37520)
+ (76) -- Ln#26(9) type_i_flex, (37520) [XYPOL]
  (77) -- Ln#26(14) type_left
- (78) -- Ln#26(15) type_undefined, "X"
+ (78) -- Ln#26(15) type_undefined, "X" [X]
  (79) -- Ln#26(16) type_comma
- (80) -- Ln#26(17) type_undefined, "Y"
+ (80) -- Ln#26(17) type_undefined, "Y" [Y]
  (81) -- Ln#26(18) type_right
  (82) -- Ln#26(21) type_end
- (83) -- Ln#28(0) type_block, (4)
- (84) -- Ln#28(4) type_undefined, "INDEX"
+ (83) -- Ln#28(0) type_block, (4) [PRI]
+ (84) -- Ln#28(4) type_undefined, "INDEX" [INDEX]
  (85) -- Ln#28(9) type_left
- (86) -- Ln#28(10) type_undefined, "X"
+ (86) -- Ln#28(10) type_undefined, "X" [X]
  (87) -- Ln#28(11) type_right
  (88) -- Ln#28(13) type_colon
- (89) -- Ln#28(15) type_undefined, "Z"
+ (89) -- Ln#28(15) type_undefined, "Z" [Z]
  (90) -- Ln#28(16) type_end
- (91) -- Ln#30(2) type_undefined, "Z"
+ (91) -- Ln#30(2) type_undefined, "Z" [Z]
  (92) -- Ln#30(4) type_assign
- (93) -- Ln#30(7) type_i_look, (0)
+ (93) -- Ln#30(7) type_i_look, (0) [LOOKUPZ]
  (94) -- Ln#30(14) type_left
- (95) -- Ln#30(15) type_undefined, "X"
+ (95) -- Ln#30(15) type_undefined, "X" [X]
  (96) -- Ln#30(17) type_colon
  (97) -- Ln#31(1) type_at
  (98) -- Ln#31(2) type_con, "A"
@@ -161,19 +161,19 @@
  (155) -- Ln#35(6) type_con, (9)
  (156) -- Ln#35(7) type_right
  (157) -- Ln#35(11) type_end
- (158) -- Ln#37(2) type_if, (0)
- (159) -- Ln#37(5) type_undefined, "Z"
+ (158) -- Ln#37(2) type_if, (0) [IF]
+ (159) -- Ln#37(5) type_undefined, "Z" [Z]
  (160) -- Ln#37(6) type_dot
  (161) -- Ln#37(7) type_leftb
  (162) -- Ln#37(8) type_con, (31)
  (163) -- Ln#37(10) type_rightb
  (164) -- Ln#37(14) type_end
- (165) -- Ln#38(4) type_undefined, "Z"
+ (165) -- Ln#38(4) type_undefined, "Z" [Z]
  (166) -- Ln#38(6) type_op, (0xA83010E) op_shl
  (167) -- Ln#38(8) type_equal
  (168) -- Ln#38(10) type_con, (1)
  (169) -- Ln#38(14) type_end
- (170) -- Ln#50(0) type_undefined, "X"
+ (170) -- Ln#50(0) type_undefined, "X" [X]
  (171) -- Ln#50(2) type_assign
  (172) -- Ln#50(5) type_con, (0)
  (173) -- Ln#50(6) type_end

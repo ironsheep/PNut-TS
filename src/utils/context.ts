@@ -9,6 +9,11 @@ import path from 'path';
 import { Logger } from '../classes/logger';
 import { SpinDocument } from '../classes/spinDocument';
 
+export interface PassOptions {
+  afterPreprocess: boolean; // stop after preprocessing
+  afterElementize: boolean; // stop after elementize
+}
+
 export interface LogOptions {
   logElementizer: boolean; // write elementizer log
   logParser: boolean; // write parser log
@@ -47,6 +52,7 @@ export interface Context {
   logOptions: LogOptions;
   reportOptions: ReportOptions;
   preProcessorOptions: PreProcessorOptions;
+  passOptions: PassOptions;
 }
 
 export class SourceFiles {
@@ -84,6 +90,7 @@ export function createContext(): Context {
     },
     logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
     reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false },
-    preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolders: [] }
+    preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolders: [] },
+    passOptions: { afterPreprocess: false, afterElementize: false }
   };
 }

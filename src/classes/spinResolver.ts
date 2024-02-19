@@ -1305,6 +1305,7 @@ export class SpinResolver {
 
   private nextElementType(): eElementType {
     const currElement = this.spinElements[this.elementIndex];
+    //this.logMessage(`* NEXTele i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
     return currElement.type;
   }
 
@@ -1340,12 +1341,19 @@ export class SpinResolver {
         );
       }
     }
+    //this.logMessage(`* GETele GOT i#${this.elementIndex - 1}, e=[${this.spinElements[this.elementIndex - 1].toString()}]`);
+    //if (currElement.type != eElementType.type_end_file) {
+    //  this.logMessage(`* GETele NEXT i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
+    //} else {
+    //  this.logMessage(`* GETele NEXT -- at EOF --`);
+    //}
+
     return currElement;
   }
 
   private backElement(): void {
-    //this.logMessage(`* Element Index=(${this.elementIndex - 1})`);
     this.elementIndex--;
+    //this.logMessage(`* BACKele i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
   }
 
   //

@@ -26,7 +26,7 @@ test('CLI generates correct element listings', () => {
   let passCount = 0;
   const failList = [];
 
-  const options: string = '-c --regression element -- ';
+  const options: string = '-c --pass elementize --regression element -- ';
 
   // Iterate over each .spin2 file
   for (const file of files) {

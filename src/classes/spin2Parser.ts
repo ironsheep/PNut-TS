@@ -54,6 +54,7 @@ export class Spin2Parser {
   }
 
   public P2Elementize() {
+    this.logMessage('* P2Elementize() - ENTRY');
     // store the value(s) in list
     // publish for next steps to use
     this.spinElements = this.elementizer.getFileElements();
@@ -86,13 +87,16 @@ export class Spin2Parser {
   }
 
   public P2Compile1() {
+    this.logMessage('* P2Compile1() - ENTRY');
     this.spinResolver.compile1();
   }
 
   public P2Compile2() {
+    this.logMessage('* P2Compile2() - ENTRY');
     this.spinResolver.compile2();
   }
   public P2List() {
+    this.logMessage('* P2List() - ENTRY');
     if (this.context.compileOptions.writeListing) {
       const outFilename = this.context.compileOptions.listFilename;
       // Create a write stream

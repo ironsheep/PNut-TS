@@ -41,9 +41,13 @@ export class Compiler {
       try {
         //this.spin2Parser.fakeGetElementLoop();
         //this.spin2Parser.fakeResolver();
-        this.spin2Parser.P2Elementize();
-        this.spin2Parser.P2Compile1();
-        this.spin2Parser.P2Compile2();
+        if (this.context.passOptions.afterPreprocess == false) {
+          this.spin2Parser.P2Elementize();
+          if (this.context.passOptions.afterElementize == false) {
+            this.spin2Parser.P2Compile1();
+            this.spin2Parser.P2Compile2();
+          }
+        }
         this.spin2Parser.P2List();
 
         //this.spin2Parser.P2Compile1();
