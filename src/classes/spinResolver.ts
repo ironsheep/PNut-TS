@@ -12,9 +12,9 @@ import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
 import { eElementType, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
-import { SpinSymbolTables, eOpcode, iSpinSymbol } from './parseUtils';
+import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
-import { Uint8Image } from './uint8Image';
+import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 
 // Internal types used for passing complex values
@@ -85,14 +85,14 @@ export class SpinResolver {
   private activeSymbolTable: eSymbolTableId = eSymbolTableId.STI_MAIN;
 
   // DAT processing support data
-  private objImage: Uint8Image;
+  private objImage: ObjectImage;
   private asmLocal: number = 0;
   private hubOrg: number = 0x00000;
   private hubOrgLimit: number = 0x100000;
   private hubMode: boolean = false; // was orgh!
   private orghOffset: number = 0;
-  private cogOrg: number = 0 << 2;
-  private cogOrgLimit: number = 0x1f8 << 2;
+  private cogOrg: number = 0 << 2; // byte-address
+  private cogOrgLimit: number = 0x1f8 << 2; // byte-address limit
   private pasmMode: boolean = false;
   private fitToSize: boolean = false;
   private wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
@@ -104,7 +104,7 @@ export class SpinResolver {
     this.numberStack = new NumberStack(ctx);
     this.isLogging = this.context.logOptions.logResolver;
     this.spinSymbolTables = new SpinSymbolTables(ctx);
-    this.objImage = new Uint8Image(ctx);
+    this.objImage = new ObjectImage(ctx);
     this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
     this.numberStack.enableLogging(this.isLogging);
   }
@@ -304,20 +304,184 @@ export class SpinResolver {
             continue;
           } else if (currElement.type == eElementType.type_asm_dir) {
             // HANDLE pasm directive
+            const pasmDirective: number = Number(currElement.value);
             this.wordSize = eWordSize.WS_Long;
-          }
 
-          // handle if-condition
-          // handle instruction
-          // if inline check for end
-          // handle file
-          // handle block
+            if (pasmDirective == eValueType.dir_fit) {
+              //
+              // ASM dir: FIT {address}
+              this.errorIfSymbol();
+              const addressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+              if (this.hubMode) {
+                if (this.hubOrg > Number(addressResult.value)) {
+                  // [error_haefl]
+                  throw new Error('Hub address exceeds FIT limit');
+                }
+              } else {
+                if (this.cogOrg > Number(addressResult.value) << 2) {
+                  // [error_caefl]
+                  throw new Error('Cog address exceeds FIT limit');
+                }
+              }
+            } else if (pasmDirective == eValueType.dir_res) {
+              //
+              // RES {count}
+              if (this.hubMode) {
+                // [error_rinaiom]
+                throw new Error('RES is not allowed in ORGH mode');
+              }
+              this.wordSize = eWordSize.WS_Long_Res;
+              this.enterDatSymbol();
+              const countResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+              // NOTE: omitting the 0x400 error detection (shouldn't be needed)
+              this.cogOrg = this.cogOrg + (Number(countResult.value) << 2);
+              if (this.cogOrg > this.cogOrgLimit) {
+                // [error_cael]
+                throw new Error('Cog address exceeds limit');
+              }
+            } else if (pasmDirective == eValueType.dir_orgf) {
+              //
+              // ORGF {cog-address}
+              if (this.hubMode) {
+                // [error_oinaiom]
+                throw new Error('ORGF is not allowed in ORGH mode');
+              }
+              this.errorIfSymbol();
+              const cogAddressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+              const tmpCogAddress = Number(cogAddressResult.value) << 2;
+              if (tmpCogAddress > this.cogOrgLimit) {
+                // [error_cael]
+                throw new Error('Cog address exceeds limit');
+              }
+              if (this.cogOrg > tmpCogAddress) {
+                // [error_oaet]
+                throw new Error('Origin already exceeds target');
+              }
+              this.enterData(0n, eWordSize.WS_Byte, tmpCogAddress - this.cogOrg, false);
+            } else if (pasmDirective == eValueType.dir_org) {
+              //
+              // ORG [{address}[,{limit}]]- (for COG ram)
+              if (inLineMode) {
+                // [error_onawiac]
+                throw new Error('ORG not allowed within inline assembly code');
+              }
+              this.errorIfSymbol();
+              // reset cog address and limit
+              this.hubMode = false;
+              this.cogOrg = 0;
+              this.cogOrgLimit = 0x1f8 << 2;
+              if (this.nextElementType() != eElementType.type_end) {
+                // get our (optional) address
+                const cogAddressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                if (Number(cogAddressResult.value) > 0x400) {
+                  // [error_caexl]
+                  throw new Error('Cog address exceeds $400 limit');
+                }
+                this.cogOrg = Number(cogAddressResult.value) << 2;
+                this.cogOrgLimit = (Number(cogAddressResult.value) >= 0x200 ? 0x400 : 0x200) << 2;
+                if (this.checkComma()) {
+                  // get our (optional) [,{limit}]] and adopt it
+                  const cogLimitResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                  if (Number(cogLimitResult.value) > 0x400) {
+                    // [error_caexl]
+                    throw new Error('Cog address exceeds $400 limit');
+                  }
+                  this.cogOrgLimit = Number(cogLimitResult.value) << 2;
+                }
+              }
+            } else if (pasmDirective == eValueType.dir_orgh) {
+              //
+              // ORGH [{address}[,{limit}]] - (for HUB ram)
+              if (inLineMode) {
+                // [error_ohnawiac]
+                throw new Error('ORGH not allowed within inline assembly code');
+              }
+              this.errorIfSymbol();
+              // reset hub address and limit
+              this.hubMode = true;
+              this.hubOrg = this.pasmMode ? this.objImage.offset : 0x400;
+              this.orghOffset = this.hubOrg - this.objImage.offset;
+              this.hubOrgLimit = ObjectImage.MAX_SIZE_IN_BYTES;
+
+              if (this.nextElementType() != eElementType.type_end) {
+                // get our (optional) address
+                const hubAddressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                if (this.pasmMode == false) {
+                  if (Number(hubAddressResult.value) < 0x400) {
+                    // [error_habxl]
+                    throw new Error('Hub address below $400 limit');
+                  }
+                }
+                if (Number(hubAddressResult.value) > ObjectImage.MAX_SIZE_IN_BYTES) {
+                  // [error_haec]
+                  throw new Error('Hub address exceeds $100000 ceiling');
+                }
+                this.hubOrg = Number(hubAddressResult.value);
+                this.orghOffset = this.hubOrg - this.objImage.offset;
+
+                if (this.checkComma()) {
+                  // get our (optional) [,{limit}]] and adopt it
+                  const hubLimitResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                  this.hubOrgLimit = Number(hubLimitResult.value);
+                  if (this.hubOrgLimit < this.hubOrg) {
+                    // [error_hael]
+                    throw new Error('Hub address exceeds limit');
+                  }
+                  if (this.hubOrgLimit > ObjectImage.MAX_SIZE_IN_BYTES) {
+                    // [error_haec]
+                    throw new Error('Hub address exceeds $100000 ceiling');
+                  }
+                }
+                // if in pasmMode ...
+                if (this.pasmMode == true) {
+                  if (this.hubOrg < this.objImage.offset) {
+                    // [error_hacd]
+                    throw new Error('Hub address cannot decrease');
+                  }
+                  // fill to new orgh address
+                  const fillByteCount = this.hubOrg - this.objImage.offset;
+                  // our routine is using "this.hubOrg" (passed by side-effect)
+                  //  so we back it up in preparation for the fill
+                  this.hubOrg -= fillByteCount;
+                  this.enterData(0n, eWordSize.WS_Byte, fillByteCount, false);
+                }
+              }
+            } else if (pasmDirective == eValueType.dir_alignw || pasmDirective == eValueType.dir_alignl) {
+              //
+              // ALIGN[W|L]
+              if (inLineMode) {
+                // [error_aanawiac]
+                throw new Error('ALIGNW/ALIGNL not allowed within inline assembly code');
+              }
+              const fillByteCount = (4 - (this.objImage.offset & 0x03)) & (pasmDirective == eValueType.dir_alignl ? 0x03 : 0x01);
+              this.enterData(0n, eWordSize.WS_Byte, fillByteCount, false);
+            }
+            // ensure this gets to end-of-line check (throw error if not)
+            this.getEndOfLine();
+          } else if (currElement.type == eElementType.type_asm_cond) {
+            // handle if-condition
+          } else if (currElement.type == eElementType.type_asm_inst) {
+            // handle instruction
+          } else if (inLineMode == false && currElement.type == eElementType.type_file) {
+            // HANDLE FILE
+          } else if (inLineMode == false && currElement.type == eElementType.type_block) {
+            // handle block
+          }
 
           // eslint-disable-next-line no-constant-condition
         } while (true); // NEXT LINE...
         // eslint-disable-next-line no-constant-condition
       } while (true); // NEXT BLOCK...
     } while (++pass < 2);
+  }
+
+  private errorIfSymbol() {
+    // for certain symbols: FIT,
+    // we throw an error if preceeded by a symbol name
+    if (this.weHaveASymbol) {
+      // [error_tdcbpbas]
+      throw new Error('This directive cannot be preceded by a symbol');
+    }
   }
 
   private enterData(value: bigint, currSize: eWordSize, multiplier: number, fitToSize: boolean) {
@@ -343,10 +507,26 @@ export class SpinResolver {
             break;
         }
       }
+
       // write multiplier occurrences of value to our object
       for (let index = 0; index < multiplier; index++) {
         for (let byteIndex = 0; byteIndex < 1 << currSize; byteIndex++) {
           this.objImage.append((Number(value) >> (byteIndex << 3)) & 0xff);
+          if (this.hubMode) {
+            // in HUB mode
+            this.hubOrg++;
+            if (this.hubOrg > this.hubOrgLimit) {
+              // [error_hael]
+              throw new Error('Hub address exceeds limit');
+            }
+          } else {
+            // in COG mode
+            this.cogOrg++;
+            if (this.cogOrg > this.cogOrgLimit) {
+              // [error_cael]
+              throw new Error('Cog address exceeds limit');
+            }
+          }
         }
       }
     }
@@ -1111,6 +1291,14 @@ export class SpinResolver {
     return foundCommaStatus;
   }
 
+  private getEndOfLine() {
+    let currElement = this.getElement();
+    if (currElement.type != eElementType.type_end) {
+      // [error_eeol]
+      throw new Error('Expected end of line');
+    }
+  }
+
   private getCommaOrRightParen(): boolean {
     let foundCommaStatus: boolean = false;
     let currElement = this.getElement();
@@ -1240,14 +1428,6 @@ export class SpinResolver {
     if (nextElement.type != eElementType.type_with) {
       // [error_ewith]
       throw new Error('Expected WITH');
-    }
-  }
-
-  private getEndOfLine() {
-    const nextElement = this.getElement();
-    if (nextElement.type != eElementType.type_end) {
-      // [error_eeol]
-      throw new Error('Expected end of line');
     }
   }
 

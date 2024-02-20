@@ -7,14 +7,14 @@
 
 import { Context } from '../utils/context';
 
-// src/classes/uint8Image.ts
+// src/classes/objectImage.ts
 
-export class Uint8Image {
+export class ObjectImage {
   private context: Context;
   private isLogging: boolean = false;
 
-  private readonly OBJ_LIMIT: number = 0x100000;
-  private _objImage = new Uint8Array(this.OBJ_LIMIT); // total memory size
+  static readonly MAX_SIZE_IN_BYTES: number = 0x100000;
+  private _objImage = new Uint8Array(ObjectImage.MAX_SIZE_IN_BYTES); // total memory size
   private _objOffset: number = 0; // current index into OBJ image
 
   constructor(ctx: Context) {
@@ -34,7 +34,7 @@ export class Uint8Image {
 
   public append(uint8: number) {
     // append byte to end of image
-    if (this._objOffset < this.OBJ_LIMIT) {
+    if (this._objOffset < ObjectImage.MAX_SIZE_IN_BYTES) {
       this._objImage[this._objOffset++] = uint8;
     } else {
       // [error_pex]
