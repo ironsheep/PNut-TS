@@ -2984,7 +2984,7 @@ export class SpinSymbolTables {
   }
 }
 // unofficial enum - internal use ONLY
-enum eAsmcode {
+export enum eAsmcode {
   ac_ror,
   ac_rol,
   ac_shr,

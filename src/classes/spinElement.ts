@@ -4,7 +4,7 @@
 import { float32ToHexString } from '../utils/float32';
 // src/classes/parseUtils.ts
 
-import { eElementType, eOperationType, eValueType, getElementTypeString } from './types';
+import { eElementType, eFlexcodes, eOperationType, eValueType, getElementTypeString } from './types';
 //import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
@@ -133,6 +133,19 @@ export class SpinElement {
       foundStatus = Number(this._value) == eValueType.block_con;
     }
     return foundStatus;
+  }
+
+  //
+  // special for type_i_flex: elements
+  //
+  get flexCode(): eFlexcodes {
+    // returns the op_* value
+    let desiredValue: number = -1;
+    if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
+      // macro v1 parm (v1 << 0) 8 bits
+      desiredValue = Number(this._value & BigInt(0xff)); // 8 ls-bits
+    }
+    return desiredValue;
   }
 
   //

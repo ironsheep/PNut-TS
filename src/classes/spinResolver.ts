@@ -10,9 +10,9 @@
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
-import { eElementType, eOperationType, eValueType } from './types';
+import { eElementType, eFlexcodes, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
-import { SpinSymbolTables, eOpcode } from './parseUtils';
+import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
@@ -214,14 +214,17 @@ export class SpinResolver {
           this.nextBlock(eValueType.block_dat);
         }
 
-        // prepare DAT block info
+        // process the DAT block
 
-        // NEXT LINE Loop
+        // NEXT LINE in BLOCK Loop
         do {
           //
-
           let currElement: SpinElement = this.getElement();
           if (currElement.type == eElementType.type_end_file) {
+            if (inLineMode) {
+              // [error_eend]
+              throw new Error('Expected END');
+            }
             break;
           }
 
@@ -330,6 +333,7 @@ export class SpinResolver {
                 // [error_rinaiom]
                 throw new Error('RES is not allowed in ORGH mode');
               }
+              this.advanceToNextCogLong();
               this.wordSize = eWordSize.WS_Long_Res;
               this.enterDatSymbol();
               const countResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
@@ -453,26 +457,247 @@ export class SpinResolver {
                 // [error_aanawiac]
                 throw new Error('ALIGNW/ALIGNL not allowed within inline assembly code');
               }
-              const fillByteCount = (4 - (this.objImage.offset & 0x03)) & (pasmDirective == eValueType.dir_alignl ? 0x03 : 0x01);
-              this.enterData(0n, eWordSize.WS_Byte, fillByteCount, false);
+              while (this.objImage.offset & (pasmDirective == eValueType.dir_alignl ? 0x03 : 0x01)) {
+                this.enterByte(0n);
+              }
             }
             // ensure this gets to end-of-line check (throw error if not)
             this.getEndOfLine();
-          } else if (currElement.type == eElementType.type_asm_cond) {
-            // handle if-condition
-          } else if (currElement.type == eElementType.type_asm_inst) {
-            // handle instruction
-          } else if (inLineMode == false && currElement.type == eElementType.type_file) {
+          } else if (this.isThereAnInstruction(currElement)) {
+            //
+            // HANDLE if-condition, and/or instruction
+            // write symbol if present
+            this.advanceToNextCogLong();
+            this.enterDatSymbol();
+            this.processInstructionLine(currElement, pass);
+            this.getEndOfLine();
+          } else if (inLineMode) {
+            //
+            // HANDLE inline must have end
+            if (currElement.type != eElementType.type_asm_end) {
+              // [error_eidbwloe]
+              throw new Error('Expected instruction, directive, BYTE/WORD/LONG, or END');
+            }
+            this.enterLong(BigInt(0xfd64002d)); // enter a RET istruction
+            this.getEndOfLine();
+          } else if (currElement.type == eElementType.type_file) {
+            //
             // HANDLE FILE
-          } else if (inLineMode == false && currElement.type == eElementType.type_block) {
-            // handle block
+            // FIXME: TODO: we need code here
+          } else if (currElement.type != eElementType.type_block) {
+            //
+            // HANDLE block - we MUST have one...
+            // [error_eaunbwlo]
+            throw new Error('Expected a unique name, BYTE, WORD, LONG, or assembly instruction');
           }
-
+          // put block back in list
+          this.backElement();
+          // get out of next line loop
+          break;
           // eslint-disable-next-line no-constant-condition
-        } while (true); // NEXT LINE...
+        } while (this.nextElementType() != eElementType.type_block); // NEXT LINE in BLOCK...
         // eslint-disable-next-line no-constant-condition
-      } while (true); // NEXT BLOCK...
+      } while (this.nextElementType() == eElementType.type_block); // NEXT BLOCK...
     } while (++pass < 2);
+    if (inLineMode) {
+      this.inlineSymbols.reset();
+      this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
+    }
+  }
+
+  private advanceToNextCogLong() {
+    // advance to next cog-long boundary
+    if (this.hubMode == false) {
+      while (this.cogOrg & 0x03) {
+        this.enterByte(0n);
+      }
+    }
+  }
+
+  private isThereAnInstruction(element: SpinElement): boolean {
+    // return
+    let instructionFoundStatus: boolean = false;
+    if (element.type == eElementType.type_asm_cond) {
+      let nextElement = this.getElement();
+      const [foundInstruction, instructionValue] = this.checkInstruction(nextElement);
+      instructionFoundStatus = foundInstruction;
+      this.backElement();
+    } else {
+      const [foundInstruction, instructionValue] = this.checkInstruction(element);
+      instructionFoundStatus = foundInstruction;
+    }
+    return instructionFoundStatus;
+  }
+
+  private processInstructionLine(element: SpinElement, pass: number) {
+    // FIXME: TODO: we need code here
+    if (element.type == eElementType.type_asm_cond) {
+      const asmCondition = Number(element.value);
+      let nextElement = this.getElement();
+      const [foundInstruction, instructionValue] = this.checkInstruction(nextElement);
+      if (foundInstruction == false) {
+        // [error_eaasmi]
+        throw new Error('Expected an assembly instruction');
+      }
+      this.instructionCompile(asmCondition, instructionValue, pass);
+    } else {
+      //
+      // handle instruction
+      const [foundInstruction, instructionValue] = this.checkInstruction(element);
+      if (foundInstruction) {
+        const asmCondition: number = eValueType.if_always;
+        this.instructionCompile(asmCondition, instructionValue, pass);
+      }
+    }
+  }
+
+  private instructionCompile(asmCondition: number, instructionValue: number, pass: number) {
+    // our single-line pasm compiler
+  }
+
+  private checkInstruction(element: SpinElement): [boolean, number] {
+    let instructionFoundStatus: boolean = true;
+    let instructionValue: number = 0;
+    if (element.type == eElementType.type_asm_inst) {
+      instructionValue = Number(element.value);
+    } else if (element.type == eElementType.type_op) {
+      switch (Number(element.operation)) {
+        case eOpcode.oc_abs:
+          instructionValue = eAsmcode.ac_abs;
+          break;
+        case eOpcode.oc_encod:
+          instructionValue = eAsmcode.ac_encod;
+          break;
+        case eOpcode.oc_decod:
+          instructionValue = eAsmcode.ac_decod;
+          break;
+        case eOpcode.oc_bmask:
+          instructionValue = eAsmcode.ac_bmask;
+          break;
+        case eOpcode.oc_ones:
+          instructionValue = eAsmcode.ac_ones;
+          break;
+        case eOpcode.oc_qlog:
+          instructionValue = eAsmcode.ac_qlog;
+          break;
+        case eOpcode.oc_qexp:
+          instructionValue = eAsmcode.ac_qexp;
+          break;
+        case eOpcode.oc_sar:
+          instructionValue = eAsmcode.ac_sar;
+          break;
+        case eOpcode.oc_ror:
+          instructionValue = eAsmcode.ac_ror;
+          break;
+        case eOpcode.oc_rol:
+          instructionValue = eAsmcode.ac_rol;
+          break;
+        case eOpcode.oc_rev:
+          instructionValue = eAsmcode.ac_rev;
+          break;
+        case eOpcode.oc_zerox:
+          instructionValue = eAsmcode.ac_zerox;
+          break;
+        case eOpcode.oc_signx:
+          instructionValue = eAsmcode.ac_signx;
+          break;
+        case eOpcode.oc_sca:
+          instructionValue = eAsmcode.ac_sca;
+          break;
+        case eOpcode.oc_scas:
+          instructionValue = eAsmcode.ac_scas;
+          break;
+        case eOpcode.oc_lognot_name:
+          instructionValue = eAsmcode.ac_not;
+          break;
+        case eOpcode.oc_logand_name:
+          instructionValue = eAsmcode.ac_and;
+          break;
+        case eOpcode.oc_logxor_name:
+          instructionValue = eAsmcode.ac_xor;
+          break;
+        case eOpcode.oc_logor_name:
+          instructionValue = eAsmcode.ac_or;
+          break;
+
+        default:
+          instructionFoundStatus = false;
+          break;
+      }
+    } else if (element.type == eElementType.type_i_flex) {
+      switch (element.flexCode) {
+        case eFlexcodes.fc_hubset:
+          instructionValue = eAsmcode.ac_hubset;
+          break;
+        case eFlexcodes.fc_coginit:
+          instructionValue = eAsmcode.ac_coginit;
+          break;
+        case eFlexcodes.fc_cogstop:
+          instructionValue = eAsmcode.ac_cogstop;
+          break;
+        case eFlexcodes.fc_cogid:
+          instructionValue = eAsmcode.ac_cogid;
+          break;
+        case eFlexcodes.fc_getrnd:
+          instructionValue = eAsmcode.ac_getrnd;
+          break;
+        case eFlexcodes.fc_getct:
+          instructionValue = eAsmcode.ac_getct;
+          break;
+        case eFlexcodes.fc_wrpin:
+          instructionValue = eAsmcode.ac_wrpin;
+          break;
+        case eFlexcodes.fc_wxpin:
+          instructionValue = eAsmcode.ac_wxpin;
+          break;
+        case eFlexcodes.fc_wypin:
+          instructionValue = eAsmcode.ac_wypin;
+          break;
+        case eFlexcodes.fc_akpin:
+          instructionValue = eAsmcode.ac_akpin;
+          break;
+        case eFlexcodes.fc_rdpin:
+          instructionValue = eAsmcode.ac_rdpin;
+          break;
+        case eFlexcodes.fc_rqpin:
+          instructionValue = eAsmcode.ac_rqpin;
+          break;
+        case eFlexcodes.fc_locknew:
+          instructionValue = eAsmcode.ac_locknew;
+          break;
+        case eFlexcodes.fc_lockret:
+          instructionValue = eAsmcode.ac_lockret;
+          break;
+        case eFlexcodes.fc_locktry:
+          instructionValue = eAsmcode.ac_locktry;
+          break;
+        case eFlexcodes.fc_lockrel:
+          instructionValue = eAsmcode.ac_lockrel;
+          break;
+        case eFlexcodes.fc_cogatn:
+          instructionValue = eAsmcode.ac_cogatn;
+          break;
+        case eFlexcodes.fc_pollatn:
+          instructionValue = eAsmcode.ac_pollatn;
+          break;
+        case eFlexcodes.fc_waitatn:
+          instructionValue = eAsmcode.ac_waitatn;
+          break;
+        case eFlexcodes.fc_call:
+          instructionValue = eAsmcode.ac_call;
+          break;
+
+        default:
+          instructionFoundStatus = false;
+          break;
+      }
+    } else if (element.type == eElementType.type_debug) {
+      instructionValue = eAsmcode.ac_debug;
+    } else {
+      instructionFoundStatus = false;
+    }
+
+    return [instructionFoundStatus, instructionValue];
   }
 
   private errorIfSymbol() {
@@ -482,6 +707,14 @@ export class SpinResolver {
       // [error_tdcbpbas]
       throw new Error('This directive cannot be preceded by a symbol');
     }
+  }
+
+  private enterByte(byteValue: bigint) {
+    this.enterData(byteValue, eWordSize.WS_Byte, 1, false);
+  }
+
+  private enterLong(longValue: bigint) {
+    this.enterData(longValue, eWordSize.WS_Long, 1, false);
   }
 
   private enterData(value: bigint, currSize: eWordSize, multiplier: number, fitToSize: boolean) {
@@ -546,31 +779,6 @@ export class SpinResolver {
     this.objImage.append((Number(value) >> 21) & 0xff);
   }
 
-  /*
-  private compileRfvarOurs(value: bigint) {
-    // generates 1-4 bytes (unsigned)
-    if (value & BigInt(0x1fffff80)) {
-      this.objImage.append((Number(value) & 0x7f) | 0x80);
-    } else {
-      this.objImage.append(Number(value) & 0x7f);
-      return;
-    }
-    if (value & BigInt(0x1fffc000)) {
-      this.objImage.append(((Number(value) >> 7) & 0x7f) | 0x80);
-    } else {
-      this.objImage.append((Number(value) >> 7) & 0x7f);
-      return;
-    }
-    if (value & BigInt(0x1fe00000)) {
-      this.objImage.append(((Number(value) >> 14) & 0x7f) | 0x80);
-    } else {
-      this.objImage.append((Number(value) >> 14) & 0x7f);
-      return;
-    }
-    this.objImage.append((Number(value) >> 21) & 0xff);
-  }
-  */
-
   private compileRfvars(value: bigint) {
     // generates 1-4 bytes (signed)
     const masks = [
@@ -585,25 +793,6 @@ export class SpinResolver {
     }
     return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
   }
-
-  /*
-  private compileRfvarsOurs(value: bigint) {
-    // generates 1-4 bytes (signed)
-    let bigMask: bigint = BigInt(0x1fffffc0);
-    if ((value & bigMask) == 0n || (value & bigMask) == bigMask) {
-      return this.compileRfvar(value & BigInt(0x7f)); // 7 bits
-    }
-    bigMask = BigInt(0x1fffe000);
-    if ((value & bigMask) == 0n || (value & bigMask) == bigMask) {
-      return this.compileRfvar(value & BigInt(0x3fff)); // 14 bits
-    }
-    bigMask = BigInt(0x1ff00000);
-    if ((value & bigMask) == 0n || (value & bigMask) == bigMask) {
-      return this.compileRfvar(value & BigInt(0x1fffff)); // 21 bits
-    }
-    return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
-  }
-  */
 
   private enterDatSymbol() {
     // TODO: possibly recordDatSymbol
