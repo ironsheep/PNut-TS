@@ -223,7 +223,7 @@ export enum eValueType {
   //
   // Ifs
   //
-  if_never = 0, // 0x00
+  if_ret = 0, // 0x00  (also, if_return)
   if_nc_and_nz = 1, // 0x01
   if_nc_and_z = 2, // 0x02
   if_nc = 3, // 0x03

@@ -1906,7 +1906,7 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.RES, { type: eElementType.type_asm_dir, value: eValueType.dir_res });
     this.automatic_symbols.set(SYMBOLS.FIT, { type: eElementType.type_asm_dir, value: eValueType.dir_fit });
 
-    this.automatic_symbols.set(SYMBOLS._RET_, { type: eElementType.type_asm_cond, value: eValueType.if_never }); // assembly conditionals
+    this.automatic_symbols.set(SYMBOLS._RET_, { type: eElementType.type_asm_cond, value: eValueType.if_ret }); // assembly conditionals
     this.automatic_symbols.set(SYMBOLS.IF_NC_AND_NZ, { type: eElementType.type_asm_cond, value: eValueType.if_nc_and_nz });
     this.automatic_symbols.set(SYMBOLS.IF_NZ_AND_NC, { type: eElementType.type_asm_cond, value: eValueType.if_nc_and_nz });
     this.automatic_symbols.set(SYMBOLS.IF_GT, { type: eElementType.type_asm_cond, value: eValueType.if_nc_and_nz });
@@ -2420,7 +2420,7 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.XORC, { type: eElementType.type_asm_effect2, value: 0b1110 });
     this.automatic_symbols.set(SYMBOLS.XORZ, { type: eElementType.type_asm_effect2, value: 0b1101 });
 
-    this.automatic_symbols.set(SYMBOLS._CLR, { type: eElementType.type_con, value: eValueType.if_never }); // modcz values
+    this.automatic_symbols.set(SYMBOLS._CLR, { type: eElementType.type_con, value: eValueType.if_ret }); // modcz values
     this.automatic_symbols.set(SYMBOLS._NC_AND_NZ, { type: eElementType.type_con, value: eValueType.if_nc_and_nz });
     this.automatic_symbols.set(SYMBOLS._NZ_AND_NC, { type: eElementType.type_con, value: eValueType.if_nc_and_nz });
     this.automatic_symbols.set(SYMBOLS._GT, { type: eElementType.type_con, value: eValueType.if_nc_and_nz });

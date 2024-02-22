@@ -60,6 +60,18 @@ enum eSymbolTableId {
   STI_INLINE
 }
 
+enum eAugType {
+  AT_D,
+  AT_S
+}
+
+interface instructionWork {
+  instructionBinary: number;
+  operandType: eValueType;
+  effectBits: number;
+  instructionImage: number;
+}
+
 export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
@@ -98,6 +110,8 @@ export class SpinResolver {
   private wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
   private weHaveASymbol: boolean = false;
   private symbolName: string = '';
+  private pasmResolveForm: eResolve = eResolve.BR_Try;
+  private instructionImage: number = 0;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -185,7 +199,7 @@ export class SpinResolver {
     let pass: number = 0;
     do {
       // PASS Loop
-      const resolveForm: eResolve = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
+      this.pasmResolveForm = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
       this.objImage.setOffsetTo(startingObjOffset);
       this.asmLocal = startingAsmLocal;
       this.elementIndex = startingElementIndex;
@@ -295,7 +309,7 @@ export class SpinResolver {
                 this.backElement();
                 let multiplier: number = 1;
                 const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_IntOrFloat : eMode.BM_IntOnly;
-                const valueResult = this.getValue(getForm, resolveForm);
+                const valueResult = this.getValue(getForm, this.pasmResolveForm);
                 if (this.checkLeftBracket()) {
                   const multiplierResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
                   multiplier = Number(multiplierResult.value);
@@ -469,7 +483,7 @@ export class SpinResolver {
             // write symbol if present
             this.advanceToNextCogLong();
             this.enterDatSymbol();
-            this.processInstructionLine(currElement, pass);
+            this.assembleInstructionFromLine(currElement);
             this.getEndOfLine();
           } else if (inLineMode) {
             //
@@ -522,37 +536,499 @@ export class SpinResolver {
       const [foundInstruction, instructionValue] = this.checkInstruction(nextElement);
       instructionFoundStatus = foundInstruction;
       this.backElement();
-    } else {
-      const [foundInstruction, instructionValue] = this.checkInstruction(element);
-      instructionFoundStatus = foundInstruction;
-    }
-    return instructionFoundStatus;
-  }
-
-  private processInstructionLine(element: SpinElement, pass: number) {
-    // FIXME: TODO: we need code here
-    if (element.type == eElementType.type_asm_cond) {
-      const asmCondition = Number(element.value);
-      let nextElement = this.getElement();
-      const [foundInstruction, instructionValue] = this.checkInstruction(nextElement);
       if (foundInstruction == false) {
         // [error_eaasmi]
         throw new Error('Expected an assembly instruction');
       }
-      this.instructionCompile(asmCondition, instructionValue, pass);
+    } else {
+      const [foundInstruction, instructionValue] = this.checkInstruction(element);
+      instructionFoundStatus = foundInstruction;
+    }
+    //FIXME: TODO: there is tension!  we should return found, cond and instru!
+    return instructionFoundStatus;
+  }
+
+  private assembleInstructionFromLine(element: SpinElement) {
+    let asmCondition: number = eValueType.if_always;
+    let instructionValue: number;
+    let nextElement: SpinElement;
+    if (element.type == eElementType.type_asm_cond) {
+      asmCondition = Number(element.value);
+      nextElement = this.getElement();
+      const [foundInstruction, tmpInstructionValue] = this.checkInstruction(nextElement);
+      instructionValue = tmpInstructionValue;
     } else {
       //
       // handle instruction
-      const [foundInstruction, instructionValue] = this.checkInstruction(element);
+      const [foundInstruction, tmpInstructionValue] = this.checkInstruction(element);
       if (foundInstruction) {
-        const asmCondition: number = eValueType.if_always;
-        this.instructionCompile(asmCondition, instructionValue, pass);
+        instructionValue = tmpInstructionValue;
+      } else {
+        // [error_INTERNAL]
+        throw new Error('[CODE] INTERNAL error: we should have found an instruction');
       }
+    }
+    // handle condition and instruction we found
+    // tease out instruction fields
+    //  bottom 9 are code
+    const instructionBinary: number = instructionValue & 0x1ff;
+    //  91-53 (38)
+    const operandType: eValueType = (instructionValue >> 11) & 0x3f;
+    //  next 2 are flag permissions
+    let allowedEffects: number = (instructionValue >> 9) & 0x03;
+
+    this.instructionImage = asmCondition << 28;
+    this.instructionImage |= operandType >= eValueType.operand_d ? 0x0d600000 | instructionBinary : instructionBinary << 19;
+    // handle operands
+    switch (operandType) {
+      case eValueType.operand_ds:
+        // inst d,s/#
+        this.tryD();
+        this.getComma();
+        this.trySImmediate();
+        break;
+      case eValueType.operand_bitx:
+        // inst d,s/# {wc,wz or none)
+        this.tryD();
+        this.getComma();
+        this.trySImmediate();
+        this.tryWCZ();
+        break;
+      case eValueType.operand_testb:
+        // inst d,s/# (wc/andc/orc/xorc or wz/andz/orz/xorz}
+        {
+          this.tryD();
+          this.getComma();
+          this.trySImmediate();
+          const logicFunction = this.getCorZ();
+          this.instructionImage |= logicFunction << 22;
+        }
+        break;
+      case eValueType.operand_du:
+        // inst d,s/# / inst d (unary)
+        this.tryD();
+        if (this.checkComma()) {
+          this.trySImmediate();
+        } else {
+          // copy D int S
+          this.instructionImage |= (this.instructionImage >> 9) & 0x1ff;
+        }
+        break;
+      case eValueType.operand_duii:
+        // inst d,s/# / inst d (alti)
+        this.tryD();
+        if (this.checkComma()) {
+          this.trySImmediate();
+        } else {
+          // make S immediate and say to execute D in place of next instruction
+          this.instructionImage |= (1 << 18) + 0b101100100;
+        }
+        break;
+      case eValueType.operand_duiz:
+        // inst d,s/# / inst d
+        this.tryD();
+        if (this.checkComma()) {
+          this.trySImmediate();
+        } else {
+          // make S immediate
+          this.instructionImage |= 1 << 18;
+        }
+        break;
+      case eValueType.operand_ds3set:
+        // inst d,s/#,#0..7 / inst s/# (SETNIB)
+        this.trySImmediate();
+        // if immediate bit is not set...
+        if ((this.instructionImage & (1 << 18)) == 0) {
+          if (this.checkComma()) {
+            // copy d into s
+            //  clear d
+            this.instructionImage |= (this.instructionImage & 0x1ff) << 9;
+            this.instructionImage &= 0xfffffe00;
+            this.trySImmediate();
+            this.getComma();
+            this.getPound();
+            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+            if (Number(valueResult.value) > 0b111) {
+              // [error_smb0t7]
+              throw new Error('Selector must be 0 to 7');
+            }
+            this.instructionImage |= Number(valueResult.value) << 19;
+          }
+        }
+        break;
+      case eValueType.operand_ds3get:
+        // inst d,s/#,#0..7 / inst d
+        this.tryD();
+        if (this.checkComma()) {
+          this.trySImmediate();
+          this.getComma();
+          this.getPound();
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          if (Number(valueResult.value) > 0b111) {
+            // [error_smb0t7]
+            throw new Error('Selector must be 0 to 7');
+          }
+          this.instructionImage |= Number(valueResult.value) << 19;
+        }
+        break;
+      case eValueType.operand_ds2set:
+        // inst d,s/#,#0..3 / inst s/#
+        this.trySImmediate();
+        // if immediate bit is not set...
+        if ((this.instructionImage & (1 << 18)) == 0) {
+          if (this.checkComma()) {
+            // copy d into s
+            //  clear d
+            this.instructionImage |= (this.instructionImage & 0x1ff) << 9;
+            this.instructionImage &= 0xfffffe00;
+            this.trySImmediate();
+            this.getComma();
+            this.getPound();
+            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+            if (Number(valueResult.value) > 0b11) {
+              // [error_smb0t3]
+              throw new Error('Selector must be 0 to 3');
+            }
+            this.instructionImage |= Number(valueResult.value) << 19;
+          }
+        }
+        break;
+      case eValueType.operand_ds2get:
+        // inst d,s/#,#0..3 / inst d
+        this.tryD();
+        if (this.checkComma()) {
+          this.trySImmediate();
+          this.getComma();
+          this.getPound();
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          if (Number(valueResult.value) > 0b11) {
+            // [error_smb0t3]
+            throw new Error('Selector must be 0 to 3');
+          }
+          this.instructionImage |= Number(valueResult.value) << 19;
+        }
+        break;
+      case eValueType.operand_ds1set:
+        // inst d,s/#,#0..1 / inst s/#
+        this.trySImmediate();
+        // if immediate bit is not set...
+        if ((this.instructionImage & (1 << 18)) == 0) {
+          if (this.checkComma()) {
+            // copy d into s
+            //  clear d
+            this.instructionImage |= (this.instructionImage & 0x1ff) << 9;
+            this.instructionImage &= 0xfffffe00;
+            this.trySImmediate();
+            this.getComma();
+            this.getPound();
+            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+            if (Number(valueResult.value) > 0b1) {
+              // [error_smb0t1]
+              throw new Error('Selector must be 0 to 1');
+            }
+            this.instructionImage |= Number(valueResult.value) << 19;
+          }
+        }
+        break;
+      case eValueType.operand_ds1get:
+        // inst d,s/#,#0..1 / inst d
+        this.tryD();
+        if (this.checkComma()) {
+          this.trySImmediate();
+          this.getComma();
+          this.getPound();
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          if (Number(valueResult.value) > 0b1) {
+            // [error_smb0t1]
+            throw new Error('Selector must be 0 to 1');
+          }
+          this.instructionImage |= Number(valueResult.value) << 19;
+        }
+        break;
+      case eValueType.operand_dsj:
+        // inst d,s/@
+        this.tryD();
+        this.getComma();
+        this.trySRel();
+        break;
+      case eValueType.operand_ls:
+        // inst d/#,s/#
+        this.tryDImmediate(19);
+        this.getComma();
+        this.trySImmediate();
+        break;
+      case eValueType.operand_lsj:
+        // inst d/#,s/@
+        this.tryDImmediate(19);
+        this.getComma();
+        this.trySRel();
+        break;
+      case eValueType.operand_dsp:
+        // inst d,s/#/ptra/ptrb
+        this.tryD();
+        this.getComma();
+        this.tryPtraPtrb();
+        break;
+      case eValueType.operand_lsp:
+        // inst d/#,s/#/ptra/ptrb
+        this.tryDImmediate(19);
+        this.getComma();
+        this.tryPtraPtrb();
+        break;
+      case eValueType.operand_rep:
+        break;
+      case eValueType.operand_jmp:
+        break;
+      case eValueType.operand_call:
+        break;
+      case eValueType.operand_calld:
+        break;
+      case eValueType.operand_jpoll:
+        break;
+      case eValueType.operand_loc:
+        break;
+      case eValueType.operand_aug:
+        break;
+      case eValueType.operand_d:
+        break;
+      case eValueType.operand_de:
+        break;
+      case eValueType.operand_l:
+        break;
+      case eValueType.operand_cz:
+        break;
+      case eValueType.operand_pollwait:
+        break;
+      case eValueType.operand_getbrk:
+        break;
+      case eValueType.operand_pinop:
+        break;
+      case eValueType.operand_testp:
+        break;
+      case eValueType.operand_pushpop:
+        break;
+      case eValueType.operand_xlat:
+        break;
+      case eValueType.operand_akpin:
+        break;
+      case eValueType.operand_asmclk:
+        break;
+      case eValueType.operand_nop:
+        break;
+      case eValueType.operand_debug:
+        break;
+
+      default:
+        break;
+    }
+    // end of line or have effect?
+    if (this.nextElementType() != eElementType.type_end) {
+      // we have an effect!
+      nextElement = this.getElement();
+      if (nextElement.type != eElementType.type_asm_effect) {
+        // [error_eaaeoeol]
+        throw new Error('Expected an assembly effect or end of line');
+      }
+      const attemptedEffects = Number(nextElement.value);
+      // can we use an effect?
+      if ((attemptedEffects & allowedEffects) == 0 || (attemptedEffects == 0b11 && allowedEffects != 0b11)) {
+        // [error_teinafti]
+        throw new Error('This effect is not allowed for this instruction');
+      }
+      // encode effects into instruction
+      this.instructionImage |= attemptedEffects << 19;
+    }
+    // write instruction to obj image
+    this.enterLong(BigInt(this.instructionImage));
+  }
+
+  private tryD() {
+    // look for d (of d,s)
+    let value: number = this.tryValueReg();
+    this.instructionImage |= value << 9;
+  }
+
+  private tryDImmediate(immediateBitNumber: number) {
+    // look for d (of d,s)
+    if (this.checkPound()) {
+      // set the immediate bit
+      this.instructionImage |= 1 << immediateBitNumber;
+      if (this.checkPound()) {
+        // have '##' (big immediate) case
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        // emit AUGD Instruction
+        this.emitAugDS(eAugType.AT_D, Number(valueResult.value));
+        // place remainder in D field
+        this.instructionImage |= (Number(valueResult.value) & 0x1ff) << 9;
+      } else {
+        // have '#' (immediate) case
+        const valueCon = this.tryValueCon();
+        // place constant in D field
+        this.instructionImage |= valueCon << 9;
+      }
+    } else {
+      // have register case
+      this.tryD();
     }
   }
 
-  private instructionCompile(asmCondition: number, instructionValue: number, pass: number) {
-    // our single-line pasm compiler
+  private tryS() {
+    // look for s (of d,s)
+    let value: number = this.tryValueReg();
+    this.instructionImage |= value;
+  }
+
+  private trySImmediate() {
+    // look for s (of d,s)
+    if (this.checkPound()) {
+      // set the immediate bit
+      this.instructionImage |= 1 << 18;
+      if (this.checkPound()) {
+        // have '##' (big immediate) case
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        // emit AUGD or AUGS Instruction
+        this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
+        // place remainder in S field
+        this.instructionImage |= Number(valueResult.value) & 0x1ff;
+      } else {
+        // have '#' (immediate) case
+        const valueCon = this.tryValueCon();
+        // place constant in S field
+        this.instructionImage |= valueCon;
+      }
+    } else {
+      // have register case
+      this.tryS();
+    }
+  }
+
+  private trySRel() {
+    // look for s relative address if immediate
+    let branchAddress: number = 0;
+    if (this.checkPound()) {
+      // set the immediate bit
+      this.instructionImage |= 1 << 18;
+      if (this.checkPound()) {
+        // this is our '##' case
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        // tryS_rel32:
+        if (this.pasmResolveForm == eResolve.BR_Must) {
+          this.checkCogHubCrossing(Number(valueResult.value));
+          branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
+          const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
+          branchAddress -= orgAddress + 8;
+          if (branchAddress & 0b11) {
+            // [error_rainawi]
+            throw new Error('Relative address is not aligned with instruction');
+          }
+          branchAddress = (branchAddress >> 2) & (0xfffff >> 2);
+        }
+        this.emitAugDS(eAugType.AT_S, branchAddress);
+        this.instructionImage |= branchAddress & 0x1ff;
+      } else {
+        // this is our '#' case
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        if (this.pasmResolveForm == eResolve.BR_Must) {
+          this.checkCogHubCrossing(Number(valueResult.value));
+          branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
+          const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
+          branchAddress -= orgAddress + 4;
+          if (branchAddress & 0b11) {
+            // [error_rainawi]
+            throw new Error('Relative address is not aligned with instruction');
+          }
+          // check signed number
+          // TODO: watch that this doesn't do weird stuff! (fix math if does!)
+          if (branchAddress < -0x100 || branchAddress > 0xff) {
+            // [error_raioor]
+            throw new Error('Relative address is out of range');
+          }
+        }
+        this.instructionImage |= (branchAddress >> 2) & 0x1ff;
+      }
+    } else {
+      // have register case
+      this.tryS();
+    }
+  }
+
+  private tryPtraPtrb() {
+    // FIXME: TODO: unify  these two routines and modify instruction at end
+    this.trysImmedPtraPtrb();
+  }
+
+  private trysImmedPtraPtrb() {
+    //
+  }
+
+  private checkCogHubCrossing(address: number) {
+    if (this.hubMode ? address < 0x400 : address >= 0x400) {
+      // [error_racc]
+      throw new Error('Relative addresses cannot cross between cog and hub domains');
+    }
+  }
+
+  private tryWCZ() {
+    // if we have an upcoming WCZ request (ONLY!)
+    if (this.nextElementType() == eElementType.type_asm_effect && this.nextElementValue() == 0b11) {
+      this.getElement();
+      // encode effects into instruction
+      this.instructionImage |= 0b11 << 19;
+    }
+  }
+
+  private getCorZ(): number {
+    // return asmCondition if present?
+    let logicFunction: number = 0b00;
+    const nextElement = this.getElement();
+    if (
+      nextElement.type == eElementType.type_asm_effect2 ||
+      (nextElement.type == eElementType.type_asm_effect && Number(nextElement.value) != 0b11)
+    ) {
+      this.instructionImage |= (Number(nextElement.value) & 0b11) << 19;
+      logicFunction = Number(nextElement.value) >> 2;
+    } else {
+      // [error_ewaox]
+      throw new Error('Expected WC, WZ, ANDC, ANDZ, ORC, ORZ, XORC, or XORZ');
+    }
+    return logicFunction;
+  }
+
+  private emitAugDS(augType: eAugType, augValue: number) {
+    // set aug form
+    let augInstruction: number = augType == eAugType.AT_S ? 0x0f000000 : 0x0f800000;
+    // copy our condition bits
+    //  NOTE: if instruction condition is a _ret_, force always
+    const asmCondition = (this.instructionImage >> 28) & 0x0f;
+    augInstruction |= (asmCondition == eValueType.if_ret ? eValueType.if_always : asmCondition) << 28;
+    // insert our aug value
+    augInstruction |= (augValue >> 9) & 0x7fffff;
+    // write instruction to obj image
+    this.enterLong(BigInt(augInstruction));
+  }
+
+  private tryValueReg(): number {
+    // return value [0x000-0x1ff]
+    let value: number = 0;
+    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+    value = Number(valueResult.value);
+    if (value > 0x1ff) {
+      // [error_rcex]
+      throw new Error('Register cannot exceed $1FF');
+    }
+    return value;
+  }
+
+  private tryValueCon(): number {
+    // return value [0-511]
+    let value: number = 0;
+    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+    value = Number(valueResult.value);
+    if (value > 511) {
+      // [error_cmbf0t511]
+      throw new Error('Constant must be from 0 to 511');
+    }
+    return value;
   }
 
   private checkInstruction(element: SpinElement): [boolean, number] {
@@ -1459,11 +1935,9 @@ export class SpinResolver {
 
   private checkElementType(type: eElementType): boolean {
     let foundStatus: boolean = false;
-    let currElement = this.getElement();
-    if (currElement.type == type) {
+    if (this.nextElementType() == type) {
       foundStatus = true;
-    } else {
-      this.backElement();
+      this.getElement();
     }
     return foundStatus;
   }
