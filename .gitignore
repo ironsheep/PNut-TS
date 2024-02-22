@@ -198,3 +198,4 @@ TEST/SHORT/tablesTESTs/dumpTables.tabl
 *.resolv
 TEST/SHORT/tablesTESTs/dumpTables.resolv.GOLD.txt
 TEST/SHORT/tablesTESTs/dumpTables.resolv.txt
+REF/asmodeConversion.js
