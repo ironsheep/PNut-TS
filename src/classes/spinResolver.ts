@@ -954,11 +954,12 @@ export class SpinResolver {
 
   private tryPtraPtrb() {
     // FIXME: TODO: unify  these two routines and modify instruction at end
+    // @@chkpab:
     this.trysImmedPtraPtrb();
   }
 
   private trysImmedPtraPtrb() {
-    //
+    // @@trys_imm_pab:
   }
 
   private checkCogHubCrossing(address: number) {
