@@ -110,7 +110,7 @@ export class SpinResolver {
   private wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
   private weHaveASymbol: boolean = false;
   private symbolName: string = '';
-  private pasmResolveForm: eResolve = eResolve.BR_Try;
+  private pasmResolveMode: eResolve = eResolve.BR_Try;
   private instructionImage: number = 0;
 
   constructor(ctx: Context) {
@@ -199,7 +199,7 @@ export class SpinResolver {
     let pass: number = 0;
     do {
       // PASS Loop
-      this.pasmResolveForm = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
+      this.pasmResolveMode = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
       this.objImage.setOffsetTo(startingObjOffset);
       this.asmLocal = startingAsmLocal;
       this.elementIndex = startingElementIndex;
@@ -309,7 +309,7 @@ export class SpinResolver {
                 this.backElement();
                 let multiplier: number = 1;
                 const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_IntOrFloat : eMode.BM_IntOnly;
-                const valueResult = this.getValue(getForm, this.pasmResolveForm);
+                const valueResult = this.getValue(getForm, this.pasmResolveMode);
                 if (this.checkLeftBracket()) {
                   const multiplierResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
                   multiplier = Number(multiplierResult.value);
@@ -647,7 +647,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b111) {
               // [error_smb0t7]
               throw new Error('Selector must be 0 to 7');
@@ -663,7 +663,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b111) {
             // [error_smb0t7]
             throw new Error('Selector must be 0 to 7');
@@ -684,7 +684,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b11) {
               // [error_smb0t3]
               throw new Error('Selector must be 0 to 3');
@@ -700,7 +700,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b11) {
             // [error_smb0t3]
             throw new Error('Selector must be 0 to 3');
@@ -721,7 +721,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b1) {
               // [error_smb0t1]
               throw new Error('Selector must be 0 to 1');
@@ -737,7 +737,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b1) {
             // [error_smb0t1]
             throw new Error('Selector must be 0 to 1');
@@ -770,16 +770,42 @@ export class SpinResolver {
         this.tryPtraPtrb();
         break;
       case eValueType.operand_lsp:
-        {
-          // inst d/#,s/#/ptra/ptrb
-          this.tryDImmediate(19);
-          this.getComma();
-          this.tryPtraPtrb();
-        }
+        // inst d/#,s/#/ptra/ptrb
+        this.tryDImmediate(19);
+        this.getComma();
+        this.tryPtraPtrb();
         break;
       case eValueType.operand_rep:
+        // rep d/#/@,s/#
+        if (this.checkAt()) {
+          // rep @,s/#
+          this.instructionImage |= 1 << 19;
+          const instructionCountResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          let instructionCount: number = Number(instructionCountResult.value);
+          this.getComma();
+          this.trySImmediate(); // get repetition count
+          if (this.pasmResolveMode == eResolve.BR_Must) {
+            instructionCount = this.hubMode ? instructionCount - this.hubOrg : (instructionCount << 2) - this.cogOrg;
+          }
+          if (instructionCount & 0b11) {
+            // [error_rbeiooa]
+            throw new Error('REP block end is out of alignment');
+          }
+          instructionCount = (instructionCount >> 2) - 1;
+          if (instructionCount < 0 || instructionCount > 0x1ff) {
+            // [error_rbeioor]
+            throw new Error('REP block end is out of range');
+          }
+          this.instructionImage |= instructionCount << 9;
+        } else {
+          // rep d/#,s/#
+          this.tryDImmediate(19);
+          this.getComma();
+          this.trySImmediate();
+        }
         break;
       case eValueType.operand_jmp:
+        //  jmp # <or> jmp d
         break;
       case eValueType.operand_call:
         break;
@@ -857,7 +883,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << immediateBitNumber;
       if (this.checkPound()) {
         // have '##' (big immediate) case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
         // emit AUGD Instruction
         this.emitAugDS(eAugType.AT_D, Number(valueResult.value));
         // place remainder in D field
@@ -887,7 +913,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << 18;
       if (this.checkPound()) {
         // have '##' (big immediate) case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
         // emit AUGD or AUGS Instruction
         this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
         // place remainder in S field
@@ -912,9 +938,9 @@ export class SpinResolver {
       this.instructionImage |= 1 << 18;
       if (this.checkPound()) {
         // this is our '##' case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
         // tryS_rel32:
-        if (this.pasmResolveForm == eResolve.BR_Must) {
+        if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
           branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
           const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
@@ -929,8 +955,8 @@ export class SpinResolver {
         this.instructionImage |= branchAddress & 0x1ff;
       } else {
         // this is our '#' case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
-        if (this.pasmResolveForm == eResolve.BR_Must) {
+        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+        if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
           branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
           const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
@@ -954,12 +980,21 @@ export class SpinResolver {
     }
   }
 
+  private tryImmediateOrRelative() {
+    // TODO:  this is our next day start
+  }
+
+  private branchImmediateOrRelative() {
+    // TODO:  this is our next day start
+  }
+
   private tryPtraPtrb() {
     // check for ptra/ptrb expression
     let foundPtraPtrb: boolean = true;
-    // @@chkpab:
-    let pointerField: number = 0;
+    let pointerField: number = 0; // work area for instruction bits
+
     let nextElement = this.getElement();
+    // check for pre increment/decrement of ptra/ptrb
     if (nextElement.type == eElementType.type_inc) {
       // have ++(ptra/ptrb)?
       nextElement = this.getElement();
@@ -988,11 +1023,7 @@ export class SpinResolver {
       }
     } else {
       const [foundPtr, fieldBit] = this.checkPtr(nextElement);
-      if (foundPtr == false) {
-        // not ptra/ptrb(++/--), back up
-        this.backElement();
-        foundPtraPtrb = false;
-      } else {
+      if (foundPtr) {
         // we have a ptr, do we have post incr or decr?
         let nextElement = this.getElement();
         if (nextElement.type == eElementType.type_inc) {
@@ -1005,6 +1036,10 @@ export class SpinResolver {
           // no post ++/--, return this element
           this.backElement();
         }
+      } else {
+        // no ptra/ptrb(++/--), back up
+        this.backElement();
+        foundPtraPtrb = false;
       }
     }
     if (foundPtraPtrb) {
@@ -1016,42 +1051,30 @@ export class SpinResolver {
         if (this.checkPound()) {
           this.getPound(); // our second '#' MUST be here
           // this is our '##' case (20-bit index value)
-          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           let indexValue = Number(indexResult.value);
           if ((pointerField & (0x40 | 0x10)) == (0x40 | 0x10)) {
             indexValue = -indexValue;
           }
-          indexValue &= 0xfffff;
-          pointerField = (pointerField & 0x1e0) << (20 - 5);
-          indexValue |= pointerField;
-          this.emitAugDS(eAugType.AT_S, indexValue);
+          pointerField = ((pointerField & 0x1e0) << (20 - 5)) | (indexValue & 0xfffff);
+          this.emitAugDS(eAugType.AT_S, pointerField);
           // set immediate bit, install lower 9 bits of constant
-          // FIXME: TODO: this is wiped out below when we OR-in the pointerField value
-          //  WE NEED TO RESOLVE THIS!
-          this.instructionImage |= (1 << 18) | (indexValue &= 0x1ff);
+          this.instructionImage |= (1 << 18) | (pointerField &= 0x1ff);
+          pointerField = 0; // prevent pointerField from being ORd-in again later
         } else {
           // no '##'
-          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           let indexValue = Number(indexResult.value);
           // is positive value
           if (pointerField & 0x40) {
-            if (pointerField & 0x10) {
-              if (indexValue < 1 || indexValue > 16) {
-                // [error_picmr116]
-                throw new Error('PTRA/PTRB index constant must range from 1 to 16');
-              }
-              pointerField &= 0xe0;
-              pointerField |= -indexValue & 0x1f;
-            } else {
-              if (indexValue < 1 || indexValue > 16) {
-                // [error_picmr116]
-                throw new Error('PTRA/PTRB index constant must range from 1 to 16');
-              }
-              pointerField &= 0xe0;
-              pointerField |= indexValue & 0x0f;
+            // we are modifying...
+            if (indexValue < 1 || indexValue > 16) {
+              // [error_picmr116]
+              throw new Error('PTRA/PTRB index constant must range from 1 to 16');
             }
+            pointerField = (pointerField & 0xe0) | (pointerField & 0x10 ? -indexValue & 0x1f : indexValue & 0x0f);
           } else {
-            // have negative case
+            // not modifying, have negative-to-positive case
             if (indexValue < -32 || indexValue > 31) {
               // [error_picmr6b]
               throw new Error('PTRA/PTRB index constant must range from -32 to 31');
@@ -1062,8 +1085,6 @@ export class SpinResolver {
         }
         this.getRightBracket();
       }
-    }
-    if (foundPtraPtrb) {
       this.instructionImage |= pointerField;
     } else {
       // .. check for pound..
@@ -1071,13 +1092,13 @@ export class SpinResolver {
         this.instructionImage |= 1 << 18;
         if (this.checkPound()) {
           // this is our '##' case (20-bit index value)
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
           // install lower 9 bits of constant
           this.instructionImage |= Number(valueResult.value) & 0x1ff;
         } else {
           // have '#' but constrained to 8-bit value! (not 9-bit)
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
           const value = Number(valueResult.value);
           if (value > 255) {
             // [error_cmbf0t255]
@@ -1153,7 +1174,7 @@ export class SpinResolver {
   private tryValueReg(): number {
     // return value [0x000-0x1ff]
     let value: number = 0;
-    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
     value = Number(valueResult.value);
     if (value > 0x1ff) {
       // [error_rcex]
@@ -1165,7 +1186,7 @@ export class SpinResolver {
   private tryValueCon(): number {
     // return value [0-511]
     let value: number = 0;
-    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
     value = Number(valueResult.value);
     if (value > 511) {
       // [error_cmbf0t511]
