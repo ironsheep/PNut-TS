@@ -12,6 +12,7 @@ import { SpinDocument } from '../classes/spinDocument';
 export interface PassOptions {
   afterPreprocess: boolean; // stop after preprocessing
   afterElementize: boolean; // stop after elementize
+  afterConBlock: boolean; // stop after compiling CON block
 }
 
 export interface LogOptions {
@@ -91,6 +92,6 @@ export function createContext(): Context {
     logOptions: { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false },
     reportOptions: { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false },
     preProcessorOptions: { defSymbols: [], undefSymbols: [], includeFolders: [] },
-    passOptions: { afterPreprocess: false, afterElementize: false }
+    passOptions: { afterPreprocess: false, afterElementize: false, afterConBlock: false }
   };
 }

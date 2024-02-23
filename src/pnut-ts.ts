@@ -83,7 +83,7 @@ export class PNutInTypeScript {
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
       .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
-      .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize']))
+      .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
       .option('-v, --verbose', 'Output verbose messages');
 
     this.program.addHelpText('beforeAll', `$-`);
@@ -200,6 +200,10 @@ export class PNutInTypeScript {
       if (choices.includes('elementize')) {
         this.context.passOptions.afterElementize = true;
         this.context.logger.verboseMsg('  Elementizer');
+      }
+      if (choices.includes('con-block')) {
+        this.context.passOptions.afterConBlock = true;
+        this.context.logger.verboseMsg('  ConBlocks');
       }
     }
 

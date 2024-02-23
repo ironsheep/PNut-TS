@@ -131,6 +131,10 @@ export class SpinResolver {
     return this.mainSymbols;
   }
 
+  get objectImage(): ObjectImage {
+    return this.objImage;
+  }
+
   public compile1() {
     // reset symbol tables
     /*
@@ -149,28 +153,36 @@ export class SpinResolver {
     this.asmLocal = 0;
     this.objImage.reset();
     this.compile_con_blocks_1st();
-    //this.compile_dat_blocks_fn();
+    if (this.context.passOptions.afterConBlock == false) {
+      this.compile_dat_blocks_fn();
+    }
   }
 
   public compile2() {
     this.compile_con_blocks_2nd();
-    //this.compile_dat_blocks();
+    if (this.context.passOptions.afterConBlock == false) {
+      this.compile_dat_blocks();
+    }
   }
 
   private compile_con_blocks_1st() {
     // true here means very-first pass!
     const FIRST_PASS: boolean = true;
+    this.logMessage('* compile_con_blocks_1st() 1of2');
     this.compile_con_blocks(eResolve.BR_Try, FIRST_PASS);
+    this.logMessage('* compile_con_blocks_1st() 2of2');
     this.compile_con_blocks(eResolve.BR_Try);
   }
 
   private compile_con_blocks_2nd() {
+    this.logMessage('* compile_con_blocks_2nd() 1of2');
     this.compile_con_blocks(eResolve.BR_Try);
+    this.logMessage('* compile_con_blocks_2nd() 2of2');
     this.compile_con_blocks(eResolve.BR_Must);
   }
 
   private compile_dat_blocks_fn() {
-    //
+    this.logMessage('* compile_dat_blocks_fn()');
   }
 
   /**
@@ -184,6 +196,7 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
+    this.logMessage(`* compile_dat_blocks_fn() inLineMode=(${inLineMode})`);
     if (inLineMode) {
       this.activeSymbolTable = eSymbolTableId.STI_INLINE;
     }
@@ -1570,6 +1583,9 @@ export class SpinResolver {
     // move past opening CON if we have one
     if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eValueType.block_con) {
       this.getElement(); // throw element away
+      if (this.nextElementType() == eElementType.type_end) {
+        this.getElement(); // throw element away
+      }
     }
     // if the File is Empty we are done!
     if (this.nextElementType() == eElementType.type_end_file) {

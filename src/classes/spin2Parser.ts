@@ -17,6 +17,7 @@ import { iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
+import { ObjectImage } from './objectImage';
 
 // src/classes/spin2Parser.ts
 
@@ -136,8 +137,41 @@ export class Spin2Parser {
         stream.write(`${valueReport}\n`);
       }
 
-      // emit hubbytes use
-      stream.write('\n\nHub bytes:           0\n\n');
+      const objImage: ObjectImage = this.spinResolver.objectImage;
+
+      // test code!!!
+      /*
+      const hexLoad = '59 F0 64 FD 4E F0 64 FD 1F 08 60 FD F4 FF 9F FD 00 36 6E 01';
+      const byteAr = hexLoad.split(' ').map((h) => parseInt(h, 16));
+      for (let index = 0; index < byteAr.length; index++) {
+        const newByte = byteAr[index];
+        objImage.append(newByte);
+      }
+      */
+
+      // emit hub-bytes use
+      stream.write(`\n\nHub bytes:          ${objImage.offset}\n\n`);
+
+      // if we have object data, dump it
+      if (objImage.offset > 0) {
+        /// dump hex and ascii data
+        let currOffset = 0;
+        while (currOffset < objImage.offset) {
+          let hexPart = '';
+          let asciiPart = '';
+          const remainingBytes = objImage.offset - currOffset;
+          const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
+          for (let i = 0; i < lineLength; i++) {
+            const byteValue = objImage.read(currOffset + i);
+            hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
+            asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
+          }
+          const offsetPart = currOffset.toString(16).padStart(5, '0').toUpperCase();
+
+          stream.write(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
+          currOffset += lineLength;
+        }
+      }
 
       // Close the stream
       stream.end();
