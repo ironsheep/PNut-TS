@@ -770,10 +770,12 @@ export class SpinResolver {
         this.tryPtraPtrb();
         break;
       case eValueType.operand_lsp:
-        // inst d/#,s/#/ptra/ptrb
-        this.tryDImmediate(19);
-        this.getComma();
-        this.tryPtraPtrb();
+        {
+          // inst d/#,s/#/ptra/ptrb
+          this.tryDImmediate(19);
+          this.getComma();
+          this.tryPtraPtrb();
+        }
         break;
       case eValueType.operand_rep:
         break;
@@ -953,13 +955,153 @@ export class SpinResolver {
   }
 
   private tryPtraPtrb() {
-    // FIXME: TODO: unify  these two routines and modify instruction at end
+    // check for ptra/ptrb expression
+    let foundPtraPtrb: boolean = true;
     // @@chkpab:
-    this.trysImmedPtraPtrb();
+    let pointerField: number = 0;
+    let nextElement = this.getElement();
+    if (nextElement.type == eElementType.type_inc) {
+      // have ++(ptra/ptrb)?
+      nextElement = this.getElement();
+      const [foundPtr, fieldBit] = this.checkPtr(nextElement);
+      if (foundPtr) {
+        // ++ptra/ptrb, set update bit, set index to +1
+        pointerField |= fieldBit | 0x40 | 0x01;
+      } else {
+        // no pointer found (not (++)ptra/ptrb, back up)
+        this.backElement();
+        this.backElement();
+        foundPtraPtrb = false;
+      }
+    } else if (nextElement.type == eElementType.type_dec) {
+      // have --(ptra/ptrb)?
+      nextElement = this.getElement();
+      const [foundPtr, fieldBit] = this.checkPtr(nextElement);
+      if (foundPtr) {
+        // --ptra/ptrb, set update bit, set index to -1
+        pointerField |= fieldBit | 0x40 | 0x1f;
+      } else {
+        // no pointer found (not (--)ptra/ptrb, back up)
+        this.backElement();
+        this.backElement();
+        foundPtraPtrb = false;
+      }
+    } else {
+      const [foundPtr, fieldBit] = this.checkPtr(nextElement);
+      if (foundPtr == false) {
+        // not ptra/ptrb(++/--), back up
+        this.backElement();
+        foundPtraPtrb = false;
+      } else {
+        // we have a ptr, do we have post incr or decr?
+        let nextElement = this.getElement();
+        if (nextElement.type == eElementType.type_inc) {
+          // ptra/ptrb++, set update and post bits, set index to +1
+          pointerField |= fieldBit | 0x40 | 0x20 | 0x01;
+        } else if (nextElement.type == eElementType.type_dec) {
+          // ptra/ptrb--, set update and post bits, set index to -1
+          pointerField |= fieldBit | 0x40 | 0x20 | 0x1f;
+        } else {
+          // no post ++/--, return this element
+          this.backElement();
+        }
+      }
+    }
+    if (foundPtraPtrb) {
+      // set immediate bit and ptra/ptrb bit
+      pointerField |= (1 << 18) | 0x100;
+      // if we have index value...
+      if (this.checkLeftBracket()) {
+        // .. check for pound, pound
+        if (this.checkPound()) {
+          this.getPound(); // our second '#' MUST be here
+          // this is our '##' case (20-bit index value)
+          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          let indexValue = Number(indexResult.value);
+          if ((pointerField & (0x40 | 0x10)) == (0x40 | 0x10)) {
+            indexValue = -indexValue;
+          }
+          indexValue &= 0xfffff;
+          pointerField = (pointerField & 0x1e0) << (20 - 5);
+          indexValue |= pointerField;
+          this.emitAugDS(eAugType.AT_S, indexValue);
+          // set immediate bit, install lower 9 bits of constant
+          // FIXME: TODO: this is wiped out below when we OR-in the pointerField value
+          //  WE NEED TO RESOLVE THIS!
+          this.instructionImage |= (1 << 18) | (indexValue &= 0x1ff);
+        } else {
+          // no '##'
+          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          let indexValue = Number(indexResult.value);
+          // is positive value
+          if (pointerField & 0x40) {
+            if (pointerField & 0x10) {
+              if (indexValue < 1 || indexValue > 16) {
+                // [error_picmr116]
+                throw new Error('PTRA/PTRB index constant must range from 1 to 16');
+              }
+              pointerField &= 0xe0;
+              pointerField |= -indexValue & 0x1f;
+            } else {
+              if (indexValue < 1 || indexValue > 16) {
+                // [error_picmr116]
+                throw new Error('PTRA/PTRB index constant must range from 1 to 16');
+              }
+              pointerField &= 0xe0;
+              pointerField |= indexValue & 0x0f;
+            }
+          } else {
+            // have negative case
+            if (indexValue < -32 || indexValue > 31) {
+              // [error_picmr6b]
+              throw new Error('PTRA/PTRB index constant must range from -32 to 31');
+            }
+            pointerField &= 0xc0;
+            pointerField |= indexValue & 0x3f;
+          }
+        }
+        this.getRightBracket();
+      }
+    }
+    if (foundPtraPtrb) {
+      this.instructionImage |= pointerField;
+    } else {
+      // .. check for pound..
+      if (this.checkPound()) {
+        this.instructionImage |= 1 << 18;
+        if (this.checkPound()) {
+          // this is our '##' case (20-bit index value)
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
+          // install lower 9 bits of constant
+          this.instructionImage |= Number(valueResult.value) & 0x1ff;
+        } else {
+          // have '#' but constrained to 8-bit value! (not 9-bit)
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveForm);
+          const value = Number(valueResult.value);
+          if (value > 255) {
+            // [error_cmbf0t255]
+            throw new Error('Constant must be from 0 to 255');
+          }
+          this.instructionImage |= value;
+        }
+      } else {
+        this.tryS();
+      }
+    }
   }
 
-  private trysImmedPtraPtrb() {
-    // @@trys_imm_pab:
+  private checkPtr(element: SpinElement): [boolean, number] {
+    let foundPtr: boolean = false;
+    let fieldBit: number = 0;
+    if (element.type == eElementType.type_register) {
+      const regValue: number = Number(element.value);
+      if ((regValue & 0x1fe) == 0x1f8) {
+        fieldBit = (regValue & 0x001) << 7;
+        foundPtr = true;
+      }
+    }
+    return [foundPtr, fieldBit];
   }
 
   private checkCogHubCrossing(address: number) {
