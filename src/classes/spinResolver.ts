@@ -65,13 +65,6 @@ enum eAugType {
   AT_S
 }
 
-interface instructionWork {
-  instructionBinary: number;
-  operandType: eValueType;
-  effectBits: number;
-  instructionImage: number;
-}
-
 export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
@@ -112,6 +105,7 @@ export class SpinResolver {
   private symbolName: string = '';
   private pasmResolveMode: eResolve = eResolve.BR_Try;
   private instructionImage: number = 0;
+  private orghSymbolFlag: boolean = false; // set by getConstant()
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -819,36 +813,285 @@ export class SpinResolver {
         break;
       case eValueType.operand_jmp:
         //  jmp # <or> jmp d
+        if (this.checkPound()) {
+          this.branchImmediateOrRelative();
+        } else {
+          // reg, make jmp d instruction
+          this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d60002c;
+          this.tryD();
+          allowedEffects = 0b11;
+        }
         break;
       case eValueType.operand_call:
+        // call/calla/callb # <or> call/calla/callb d
+        if (this.checkPound()) {
+          this.branchImmediateOrRelative();
+        } else {
+          // reg, make 'call/calla/callb d' instruction
+          this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d60002c | ((this.instructionImage >> 21) & 0b11);
+          this.tryD();
+          allowedEffects = 0b11;
+        }
         break;
       case eValueType.operand_calld:
+        // 'calld 1F6h..1F9h,#{\}adr20' <or> 'calld d,s/#rel9'
+        {
+          // get d
+          const dRegister: number = this.tryValueReg();
+          this.getComma();
+          if (this.checkPound()) {
+            let [isRelative, address] = this.tryImmediateOrRelative();
+            if (isRelative) {
+              // cy = 1  isRelative (relative 9-bit address)
+              if (this.pasmResolveMode == eResolve.BR_Must) {
+                if (this.hubMode) {
+                  // HUB mode
+                  address -= this.hubOrg + 4;
+                  if (address & 0b11) {
+                    if (dRegister < 0x1f6 || dRegister > 0x1f9) {
+                      // [error_drmbpppp]
+                      throw new Error('D register must be PA/PB/PTRA/PTRB');
+                    }
+                    // install the mini d field, set relative, s field
+                    this.instructionImage |= (((dRegister & 0b11) ^ 0b10) << 21) | (1 << 20) | (address & 0xfffff);
+                  } else {
+                    // hub mode but 0b11 bits are clear
+                    address >>= 2;
+                    if (address < -0x100 || address > 0xff) {
+                      // out of range
+                      if (dRegister < 0x1f6 || dRegister > 0x1f9) {
+                        // [error_drmbpppp]
+                        throw new Error('D register must be PA/PB/PTRA/PTRB');
+                      }
+                      // install the mini d field, set relative, s field
+                      this.instructionImage |= (((dRegister & 0b11) ^ 0b10) << 21) | (1 << 20) | (address & 0xfffff);
+                    } else {
+                      // in-range
+                      // preserve condition, set instruction, install d, install s
+                      this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b240000 | (dRegister << 9) | (address & 0x1ff);
+                      allowedEffects = 0b11;
+                    }
+                  }
+                } else {
+                  // COG mode (relative 9-bit address)
+                  address -= (this.cogOrg >> 2) + 1;
+                  if (address < -0x100 || address > 0xff) {
+                    // address out-of-range
+                    if (dRegister < 0x1f6 || dRegister > 0x1f9) {
+                      // [error_drmbpppp]
+                      throw new Error('D register must be PA/PB/PTRA/PTRB');
+                    }
+                    // install the mini d field, relative bit, and s field
+                    this.instructionImage |= (((dRegister & 0b11) ^ 0b10) << 21) | (1 << 20) | (address & 0xfffff);
+                  } else {
+                    // address in-range
+                    // preserve condition, set instruction, install d, install s
+                    this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b240000 | (dRegister << 9) | (address & 0x1ff);
+                    allowedEffects = 0b11;
+                  }
+                }
+              }
+            } else {
+              // cy = 0  isRelative == false (absolute 20-bit address)
+              if (this.pasmResolveMode == eResolve.BR_Must) {
+                if (dRegister < 0x1f6 || dRegister > 0x1f9) {
+                  // [error_drmbpppp]
+                  throw new Error('D register must be PA/PB/PTRA/PTRB');
+                }
+                // install the mini d field and s field
+                this.instructionImage |= (((dRegister & 0b11) ^ 0b10) << 21) | (address & 0xfffff);
+              }
+            }
+          } else {
+            // NO '#'
+            // call d, s
+            const sRegister: number = this.tryValueReg();
+            // preserve condition, set instruction, install d, install s
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b200000 | (dRegister << 9) | sRegister;
+            allowedEffects = 0b11;
+          }
+        }
         break;
       case eValueType.operand_jpoll:
+        // jint..jnqmt s/#
+        // preserve condition, set instruction, install d
+        this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0bc80000 | ((this.instructionImage & 0x0ff80000) >> (19 - 9));
+        this.trySRel(); // install s
         break;
       case eValueType.operand_loc:
+        // loc reg,#
+        {
+          const dRegister: number = this.tryValueReg();
+          if (this.pasmResolveMode == eResolve.BR_Must) {
+            if (dRegister < 0x1f6 || dRegister > 0x1f9) {
+              // [error_drmbpppp]
+              throw new Error('D register must be PA/PB/PTRA/PTRB');
+            }
+            // install d
+            this.instructionImage |= ((dRegister & 0b11) ^ 0b10) << 21;
+          }
+          this.getComma();
+          this.getPound();
+          const backslashFound: boolean = this.checkBackslash(); // and remove it if found
+          this.orghSymbolFlag = false;
+          const addressResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const address: number = Number(addressResult.value);
+          if (address > 0xfffff) {
+            // [error_amnex]
+            throw new Error('Address must not exceed $FFFFF');
+          }
+          if (backslashFound) {
+            // have '\'
+            // install address
+            this.instructionImage |= address;
+          } else {
+            // don't have '\'
+            if (address >= 0x400) {
+              this.orghSymbolFlag = true;
+            }
+            // set symbol flag iff flag and hub mode are different
+            this.orghSymbolFlag !== this.hubMode;
+            if (this.orghSymbolFlag) {
+              // install address
+              this.instructionImage |= address;
+            } else {
+              // set relative bit and install address
+              this.instructionImage |= (1 << 20) | ((address - (this.hubMode ? this.hubOrg + 4 : (this.cogOrg >> 2) + 1)) & 0xfffff);
+            }
+          }
+        }
         break;
       case eValueType.operand_aug:
+        // AUGS or AUGD
+        {
+          this.getPound();
+          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          // install upper 23 bits as immediate into AUGD/AUGS
+          this.instructionImage |= Number(valueResult.value) >> 9;
+        }
         break;
       case eValueType.operand_d:
+        // inst d
+        this.tryD();
         break;
       case eValueType.operand_de:
+        // GETRND d and/or effects
+        if (this.nextElementType() == eElementType.type_asm_effect) {
+          this.instructionImage |= 1 << 18;
+        } else {
+          this.tryD();
+        }
         break;
       case eValueType.operand_l:
+        // inst d/#0..511
+        this.tryDImmediate(18);
         break;
       case eValueType.operand_cz:
+        // modcz/modc/modz
+        if (allowedEffects & 0b10) {
+          // we have MODC or MODCZ
+          const flagBitsResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          // place into upper four bits of d field
+          this.instructionImage |= (Number(flagBitsResult.value) & 0b1111) << (9 + 4);
+          if (allowedEffects & 0b01) {
+            // we have MODCZ
+            this.getComma();
+          }
+        }
+        if (allowedEffects & 0b01) {
+          // we have MODZ (or MODCZ)
+          const flagBitsResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          // place into lower four bits of d field
+          this.instructionImage |= (Number(flagBitsResult.value) & 0b1111) << (9 + 0);
+        }
         break;
       case eValueType.operand_pollwait:
+        // pollxxx/waitxxx <blank>
+        // move s into d, set s to 0x024
+        this.instructionImage = (this.instructionImage & 0xfffffe00) | ((this.instructionImage & 0x1ff) << 9) | 0x00000024;
         break;
       case eValueType.operand_getbrk:
+        // getbrk d wc/wz/wcz
+        this.tryDImmediate(18);
+        if (this.nextElementType() != eElementType.type_asm_effect) {
+          // [error_ewcwzwcz]
+          throw new Error('Expected WC, WZ, or WCZ');
+        }
         break;
       case eValueType.operand_pinop:
+        // pinop d/#0..511 (wc,wz or none)
+        this.tryDImmediate(18);
+        this.tryWCZ();
         break;
       case eValueType.operand_testp:
+        // testp d/#0..511 (wc/andc/orc/xorc or wz/andz/orz/xorz}
+        {
+          this.tryDImmediate(18);
+          const logicFunction = this.getCorZ();
+          this.instructionImage |= logicFunction << 1;
+        }
         break;
       case eValueType.operand_pushpop:
+        // push/pop
+        switch (this.instructionImage & 0b11) {
+          case 0b00:
+            this.instructionImage = 0x0c640161; // PUSHA	D/#	-->	WRLONG	D/#,PTRA++
+            this.tryDImmediate(19);
+            break;
+          case 0b01:
+            this.instructionImage = 0x0c6401e1; // PUSHB	D/#	-->	WRLONG	D/#,PTRB++
+            this.tryDImmediate(19);
+            break;
+          case 0b10:
+            this.instructionImage = 0x0b04015f; // POPA	D	-->	RDLONG	D,--PTRA
+            this.tryD();
+            break;
+          case 0b11:
+            this.instructionImage = 0x0b0401df; // POPB	D	-->	RDLONG	D,--PTRB
+            this.tryD();
+            break;
+        }
         break;
       case eValueType.operand_xlat:
+        // inst [RET*, RES*, XSTOP]
+        switch (this.instructionImage & 0b1111) {
+          case 0b0000:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002d; // RET
+            break;
+          case 0b0001:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002e; // RETA
+            break;
+          case 0b0010:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002f; // RETB
+            break;
+          case 0b0011:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bffff; // RETI0  -->	CALLD	INB,INB		WCZ
+            break;
+          case 0b0100:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff5; // RETI1  -->	CALLD	INB,$1F5	WCZ
+            break;
+          case 0b0101:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff3; // RETI2  -->	CALLD	INB,$1F3	WCZ
+            break;
+          case 0b0110:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff1; // RETI3  -->	CALLD	INB,$1F1	WCZ
+            break;
+          case 0b0111:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfdff; // RESI0  -->	CALLD	INA,INB		WCZ
+            break;
+          case 0b1000:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be9f5; // RESI1  -->	CALLD	$1F4,$1F5	WCZ
+            break;
+          case 0b1001:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be5f3; // RESI2  -->	CALLD	$1F2,$1F3	WCZ
+            break;
+          case 0b1010:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be1f1; // RESI3  -->	CALLD	$1F0,$1F1	WCZ
+            break;
+          case 0b1011:
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0cac0000; // XSTOP  -->	XINIT	#0,#0
+            break;
+        }
         break;
       case eValueType.operand_akpin:
         break;
@@ -993,12 +1236,28 @@ export class SpinResolver {
     }
   }
 
-  private tryImmediateOrRelative() {
-    // TODO:  this is our next day start
+  private tryImmediateOrRelative(): [boolean, number] {
+    let foundRelativeStatus: boolean = false; // we default to relative
+    let address: number = 0;
+    // check for '\' absolute override
+    const backslashFound: boolean = this.checkBackslash(); // and remove backslash if found
+    const addressResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+    address = Number(addressResult.value);
+    if (address > 0xfffff) {
+      // [error_amnex]
+      throw new Error('Address must not exceed $FFFFF');
+    }
+    foundRelativeStatus = backslashFound ? false : this.hubMode ? address >= 0x400 : address < 0x400;
+    return [foundRelativeStatus, address];
   }
 
   private branchImmediateOrRelative() {
-    // TODO:  this is our next day start
+    let [isRelativeAddress, address] = this.tryImmediateOrRelative();
+    if (isRelativeAddress) {
+      address = (this.hubMode ? address - (this.hubOrg + 4) : (address << 2) - (this.cogOrg + 4)) & 0xfffff;
+      this.instructionImage |= 1 << 20;
+    }
+    this.instructionImage |= address;
   }
 
   private tryPtraPtrb() {
@@ -2045,6 +2304,8 @@ export class SpinResolver {
         resultStatus.foundConstant = false;
       }
     }
+
+    // FIXME: TODO: not handling orgh symbols
 
     return resultStatus;
   }
