@@ -106,6 +106,9 @@ export class SpinResolver {
   private pasmResolveMode: eResolve = eResolve.BR_Try;
   private instructionImage: number = 0;
   private orghSymbolFlag: boolean = false; // set by getConstant()
+  private clkMode: number = 0;
+  private clkFreq: number = 0;
+  private xinFreq: number = 0;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -121,6 +124,7 @@ export class SpinResolver {
     this.spinElements = updatedElementList;
   }
 
+  // for lister  vvv
   get userSymbolTable(): SymbolTable {
     return this.mainSymbols;
   }
@@ -128,6 +132,11 @@ export class SpinResolver {
   get objectImage(): ObjectImage {
     return this.objImage;
   }
+
+  get xinFrequency(): number {
+    return this.xinFreq;
+  }
+  // for lister  ^^^
 
   public compile1() {
     // reset symbol tables
@@ -153,6 +162,7 @@ export class SpinResolver {
   }
 
   public compile2() {
+    this.determine_clock();
     this.compile_con_blocks_2nd();
     if (this.context.passOptions.afterConBlock == false) {
       this.compile_dat_blocks();
@@ -177,6 +187,128 @@ export class SpinResolver {
 
   private compile_dat_blocks_fn() {
     this.logMessage('* compile_dat_blocks_fn()');
+  }
+
+  private determine_clock() {
+    const clockSymbols = new Map([
+      ['CLKMODE_', 0x80], // shouldn't exist
+      ['CLKFREQ_', 0x40], // shouldn't exist
+      ['_ERRFREQ', 0x20],
+      ['_CLKFREQ', 0x10],
+      ['_XTLFREQ', 0x08],
+      ['_XINFREQ', 0x04],
+      ['_RCFAST', 0x02],
+      ['_RCSLOW', 0x01]
+    ]);
+
+    let symbolsFoundBits: number = 0;
+    let _errFreq: number = 1000000; // didn't find _ERRFREQ
+    let _clkFreq: number = 0;
+    let _xtlFreq: number = 0;
+    let _xinFreq: number = 0;
+    for (let [symbolName, symbolMaskBit] of clockSymbols) {
+      const symbolValue: iSymbol | undefined = this.mainSymbols.get(symbolName);
+      if (symbolValue !== undefined) {
+        if (symbolValue.type == eElementType.type_con) {
+          symbolsFoundBits |= symbolMaskBit;
+          switch (symbolMaskBit) {
+            case 0x20:
+              _errFreq = Number(symbolValue.value);
+              break;
+            case 0x10:
+              _clkFreq = Number(symbolValue.value);
+              break;
+            case 0x08:
+              _xtlFreq = Number(symbolValue.value);
+              break;
+            case 0x04:
+              _xinFreq = Number(symbolValue.value);
+              break;
+          }
+        } else {
+          // [error_cfcobd]
+          throw new Error('_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants');
+        }
+      }
+    }
+
+    // make sure neither CLKMODE_ nor CLKFREQ_ were declared
+    if (symbolsFoundBits & 0b11000000) {
+      // [error_cccbd]
+      throw new Error('CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler');
+    }
+
+    // hide _ERRFREQ in ah to reduce comparisons
+    let criticalSymbolsFound = symbolsFoundBits & 0b00011111;
+
+    // if no symbol, use _RCFAST (_XTALFRQ = 20_000_000 if DEBUG)
+    if (criticalSymbolsFound == 0b00000) {
+      if (this.context.compileOptions.enableDebug) {
+        // debug mode compile, use _XTALFRQ = 20_000_000
+        criticalSymbolsFound = 0b01000;
+        _xtlFreq = 20000000;
+      } else {
+        // NOT debug mode compile, use _RCFAST
+        criticalSymbolsFound = 0b00010;
+      }
+    }
+
+    switch (criticalSymbolsFound) {
+      case 0b10000: // _CLKFREQ ?            + _ERRFREQ optional
+        [this.clkMode, this.clkFreq] = this.pllCalc(20000000, _clkFreq, _errFreq);
+        this.clkMode |= 0b1011; // 15pf/pin, clksrc=PLL
+        this.xinFreq = 20000000;
+        break;
+      case 0b11000: // _CLKFREQ + _XTLFREQ ? + _ERRFREQ optional
+        [this.clkMode, this.clkFreq] = this.pllCalc(_xtlFreq, _clkFreq, _errFreq);
+        this.clkMode |= _xtlFreq >= 16000000 ? 0b1011 : 0b1111; // 15pf/pin : 30pf/pin, clksrc=PLL
+        this.xinFreq = _xtlFreq;
+        break;
+      case 0b10100: // _CLKFREQ + _XINFREQ ? + _ERRFREQ optional
+        [this.clkMode, this.clkFreq] = this.pllCalc(_xinFreq, _clkFreq, _errFreq);
+        this.clkMode |= 0b0111; // no caps, clksrc=PLL
+        this.xinFreq = _xinFreq;
+        break;
+      case 0b01000: // _XTLFREQ ?
+        this.clkMode = _xtlFreq >= 16000000 ? 0b1010 : 0b1110; // 15pf/pin : 30pf/pin, clksrc=XI
+        this.clkFreq = _xtlFreq;
+        this.xinFreq = _xtlFreq;
+        break;
+      case 0b00100: // _XINFREQ ?
+        this.clkMode = 0b0110; // no caps, clksrc=XI
+        this.clkFreq = _xinFreq;
+        this.xinFreq = _xinFreq;
+        break;
+      case 0b00010: // _RCFAST ?
+        this.clkMode = 0b0000; // ignored, clksrc=RCFAST
+        this.clkFreq = 20000000;
+        this.xinFreq = 0;
+        break;
+      case 0b00001: // _RCSLOW ?
+        this.clkMode = 0b0001; // ignored, clksrc=RCSLOW
+        this.clkFreq = 20000;
+        this.xinFreq = 0;
+        break;
+
+      default:
+        // [error_codcssf]
+        throw new Error('Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found');
+    }
+
+    // record our symbols
+    this.mainSymbols.add('CLKMODE_', eElementType.type_con, BigInt(this.clkMode));
+    this.mainSymbols.add('CLKFREQ_', eElementType.type_con, BigInt(this.clkFreq));
+  }
+
+  private pllCalc(inputFrequency: number, outputFrequency: number, allowedError: number): [number, number] {
+    let calcClkMode: number = 0;
+    let calcClkFreq: number = 0;
+    let foundStatus: boolean = false;
+    if (foundStatus == false) {
+      // [error_pllscnba]
+      throw new Error('PLL settings could not be achieved per _CLKFREQ');
+    }
+    return [calcClkMode, calcClkFreq];
   }
 
   /**
@@ -1091,15 +1223,49 @@ export class SpinResolver {
           case 0b1011:
             this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0cac0000; // XSTOP  -->	XINIT	#0,#0
             break;
+          default:
+            // [error_INTERNAL]
+            throw new Error('[CODE] unexpected XLAT instruction');
+            break;
         }
         break;
       case eValueType.operand_akpin:
+        // akpin s/#
+        this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0c080200; // wrpin #1,s/#
+        this.trySImmediate();
         break;
       case eValueType.operand_asmclk:
+        // asmclk
+        if (this.clkMode & 0b10) {
+          const asmCondition = (this.instructionImage >> 28) & 0x0f;
+          const instructionCondition: number = (asmCondition == eValueType.if_ret ? eValueType.if_always : asmCondition) << 28;
+          // assemble 'hubset ##clkmode & $ffff_fffc'
+          this.instructionImage = instructionCondition | 0x0d640000 | ((this.clkMode & 0x1fc) << 9);
+          this.emitAugDS(eAugType.AT_D, this.clkMode);
+          this.enterLong(BigInt(this.instructionImage));
+          // assemble 'waitx ##20_000_000/100' - (10ms to switch)
+          const waitTime: number = 20000000 / 100;
+          this.instructionImage = instructionCondition | 0x0d64001f | ((waitTime & 0x1ff) << 9);
+          this.emitAugDS(eAugType.AT_D, waitTime);
+          this.enterLong(BigInt(this.instructionImage));
+          // assemble 'hubset ##clkmode'
+          this.instructionImage = instructionCondition | 0x0d640000 | ((this.clkMode & 0x1ff) << 9);
+          this.emitAugDS(eAugType.AT_D, this.clkMode);
+        } else {
+          // rcfast/rcslow, assemble 'hubset #0/1'
+          this.instructionImage |= 0xd640000 | ((this.clkMode & 1) << 9);
+        }
         break;
       case eValueType.operand_nop:
+        // nop
+        if (this.instructionImage >> 28 != eValueType.if_always) {
+          // [error_nchcor]
+          throw new Error('NOP cannot have a condition or _RET_');
+        }
+        this.instructionImage = 0x00000000;
         break;
       case eValueType.operand_debug:
+        // TODO: add debug support here
         break;
 
       default:

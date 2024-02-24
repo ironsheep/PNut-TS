@@ -12,6 +12,7 @@ CON
 
 DAT
         org
+        asmclk
         drvh    #LED_BITS
 entry
         outrnd  #LED_BITS
