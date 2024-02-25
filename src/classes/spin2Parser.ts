@@ -119,23 +119,21 @@ export class Spin2Parser {
       // emit spin version
       stream.write(`\n\nSpin2_v${this.srcFile.versionNumber}\n\n`);
       // emit: CLKMODE, CLKFREQ, XINFREQ if present
-      let symbol = mainSymbols.get('CLKMODE');
+      let symbol = mainSymbols.get('CLKMODE_');
       if (symbol !== undefined) {
         const valueReport = this.symbolAsHexValue(symbol);
         stream.write(`${valueReport}\n`);
       }
 
-      symbol = mainSymbols.get('CLKFREQ');
+      symbol = mainSymbols.get('CLKFREQ_');
       if (symbol !== undefined) {
         const valueReport = this.symbolAsDecimalValue(symbol);
         stream.write(`${valueReport}\n`);
       }
 
-      symbol = mainSymbols.get('XINFREQ');
-      if (symbol !== undefined) {
-        const valueReport = this.symbolAsDecimalValue(symbol);
-        stream.write(`${valueReport}\n`);
-      }
+      const xinFrequency = this.spinResolver.xinFrequency;
+      const interpValue: string = `XINFREQ: ${xinFrequency.toLocaleString().padStart(11)}`;
+      stream.write(`${interpValue}\n`);
 
       const objImage: ObjectImage = this.spinResolver.objectImage;
 
@@ -179,13 +177,14 @@ export class Spin2Parser {
   }
 
   private symbolAsHexValue(symbol: iSymbol): string {
-    const interpValue: string = `${symbol.name.toUpperCase()}:   $${float32ToHexString(BigInt(symbol.value))})`;
+    const symbolValue: string = `$${float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0')}`;
+    const interpValue: string = `${symbol.name.replace(/_/g, '').toUpperCase()}: ${symbolValue.padStart(11)}`;
     return interpValue;
   }
 
   private symbolAsDecimalValue(symbol: iSymbol): string {
     // FIXME: TODO: make this decimal with commas...
-    const interpValue: string = `${symbol.name.toUpperCase()}:   $${float32ToHexString(BigInt(symbol.value))})`;
+    const interpValue: string = `${symbol.name.replace(/_/g, '').toUpperCase()}: ${symbol.value.toLocaleString().padStart(11)}`;
     return interpValue;
   }
 

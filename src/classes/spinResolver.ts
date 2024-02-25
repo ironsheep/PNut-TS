@@ -141,13 +141,13 @@ export class SpinResolver {
   public compile1() {
     // reset symbol tables
     /*
-      call	enter_symbols_level	;enter level symbols after determining spin2 level
-      call	enter_symbols_param	;enter parameter symbols
-      mov	[pubcon_list_size],0	;reset pub/con list
-      mov	[list_length],0		;reset list length
-      mov	[doc_length],0		;reset doc length
-      mov	[doc_mode],0		;reset doc mode
-      mov	[info_count],0		;reset info count
+      call  enter_symbols_level ;enter level symbols after determining spin2 level
+      call  enter_symbols_param ;enter parameter symbols
+      mov [pubcon_list_size],0  ;reset pub/con list
+      mov [list_length],0   ;reset list length
+      mov [doc_length],0    ;reset doc length
+      mov [doc_mode],0    ;reset doc mode
+      mov [info_count],0    ;reset info count
     */
     this.mainSymbols.reset();
     this.localSymbols.reset();
@@ -300,15 +300,81 @@ export class SpinResolver {
     this.mainSymbols.add('CLKFREQ_', eElementType.type_con, BigInt(this.clkFreq));
   }
 
-  private pllCalc(inputFrequency: number, outputFrequency: number, allowedError: number): [number, number] {
-    let calcClkMode: number = 0;
-    let calcClkFreq: number = 0;
-    let foundStatus: boolean = false;
-    if (foundStatus == false) {
+  private pllCalc(inputFrequency: number, requestedFrequency: number, allowedError: number): [number, number] {
+    // Calculate PLL setting
+    //
+    // on entry:  eax = input frequency in Hz
+    //            ebx = requested output frequency in Hz
+    //            ecx = max allowable error in Hz
+    //
+    // on exit:   eax = PLL mode with crystal bits cleared (eax[3:2]=0)
+    //            ebx = actual output frequency in Hz
+    //            c = 1 if setting found
+    //
+    //let calcClkMode: number = 0; // _mode
+    //let calcClkFreq: number = 0; // _freq
+    //let foundStatus: boolean = false; // _found
+
+    let _xinfreq: number = inputFrequency;
+    let _clkfreq: number = requestedFrequency;
+
+    if (_xinfreq < 250000 || _xinfreq > 500000000) {
+      // [error_INTERNAL]
+      throw new Error('_XINFREQ must be from 250_000 to 500_000_000');
+    }
+    if (_clkfreq < 3333333 || _clkfreq > 500000000) {
+      // [error_INTERNAL]
+      throw new Error('_CLKFREQ must be from 3_333_333 to 500_000_000');
+    }
+
+    let _found: boolean = false;
+    let _errfreq: number = allowedError;
+    let _error: number = allowedError; // running absolute minimum error
+    let _abse: number = 0;
+    let _pppp: number = 0;
+    let _post: number = 0;
+    let _divd: number = 0;
+    let _fpfd: number = 0;
+    let _mult: number = 0;
+    let _fvco: number = 0;
+    let _fout: number = 0;
+    let _mode: number = 0;
+    let _freq: number = 0;
+    do {
+      //  LOOP while _pppp...
+      _post = (_pppp << 1) + (_pppp ? 0 : 1);
+      _divd = 64;
+      do {
+        // -- LOOP while _divd...
+        _fpfd = Math.fround(_xinfreq / _divd);
+        _mult = Math.fround((_post * _divd * _clkfreq) / _xinfreq);
+        _fvco = Math.fround((_xinfreq * _mult) / _divd);
+        _fout = Math.fround(_fvco / _post);
+        _abse = Math.abs(_fout - _clkfreq);
+        // does this setting have lower or same _error?
+        // is _fpfd at least 250KHz?
+        // is _mult 1024 or less?
+        // is _fvco at least 99 MHz?
+        // is _fvco no more than 201 MHz? -OR- is _fvco no more than _clkfreq + _errfreq?
+        if (_abse <= _error && _fpfd >= 250000 && _mult <= 1024 && _fvco >= 99000000 && (_fvco <= 201000000 || _fvco <= _clkfreq + _errfreq)) {
+          // yep:
+          //  found the best setting so far, update error to abserror
+          _found = true;
+          _error = _abse;
+          // set PLL mode: set the PLL-enable bit, set the divider field, set the multiplier field, set the post divider field
+          _mode = (1 << 24) | ((_divd - 1) << 18) | ((_mult - 1) << 8) | (((_pppp - 1) & 0b1111) << 4);
+          // set PLL frequency
+          _freq = _fout;
+        }
+        // nope
+      } while (--_divd > 0);
+    } while (++_pppp < 16);
+
+    if (_found == false) {
       // [error_pllscnba]
       throw new Error('PLL settings could not be achieved per _CLKFREQ');
     }
-    return [calcClkMode, calcClkFreq];
+    return [_mode, _freq];
   }
 
   /**
@@ -322,7 +388,7 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
-    this.logMessage(`* compile_dat_blocks_fn() inLineMode=(${inLineMode})`);
+    this.logMessage(`* compile_dat_blocks() inLineMode=(${inLineMode})`);
     if (inLineMode) {
       this.activeSymbolTable = eSymbolTableId.STI_INLINE;
     }
@@ -338,6 +404,7 @@ export class SpinResolver {
     let pass: number = 0;
     do {
       // PASS Loop
+      this.logMessage(`LOOP: pass=${pass} TOP`);
       this.pasmResolveMode = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
       this.objImage.setOffsetTo(startingObjOffset);
       this.asmLocal = startingAsmLocal;
@@ -363,6 +430,7 @@ export class SpinResolver {
       }
       do {
         // NEXT BLOCK Loop
+        this.logMessage(`LOOP: next block TOP`);
         if (inLineMode === false) {
           this.nextBlock(eValueType.block_dat);
         }
@@ -371,8 +439,10 @@ export class SpinResolver {
 
         // NEXT LINE in BLOCK Loop
         do {
+          this.logMessage(`LOOP: next line TOP`);
           //
           let currElement: SpinElement = this.getElement();
+          this.logMessage(`* DAT NEXTLINE LOOP currElement=[${currElement.toString()}]`);
           if (currElement.type == eElementType.type_end_file) {
             if (inLineMode) {
               // [error_eend]
@@ -385,6 +455,7 @@ export class SpinResolver {
 
           const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
           if (didFindLocal) {
+            this.logMessage(`* FOUND local symbol element=[${currElement.toString()}]`);
             // we have a local symbol... (must be undef or is storage type)
             // replace curr elem with this symbol...
             currElement = this.getElement(); // put us in proper place in element list
@@ -416,6 +487,7 @@ export class SpinResolver {
           // HANDLE size
           let fitToSize: boolean = currElement.type == eElementType.type_size_fit;
           if (currElement.type == eElementType.type_size || fitToSize) {
+            this.logMessage(`* HANDLE size found element=[${currElement.toString()}]`);
             this.wordSize = Number(currElement.value); // NOTE: this matches our enum values
             this.enterDatSymbol(); // process pending symbol
             do {
@@ -642,13 +714,16 @@ export class SpinResolver {
             // HANDLE block - we MUST have one...
             // [error_eaunbwlo]
             throw new Error('Expected a unique name, BYTE, WORD, LONG, or assembly instruction');
+          } else {
+            // put block back in list
+            this.backElement();
+            // get out of next line loop
+            break;
           }
-          // put block back in list
-          this.backElement();
-          // get out of next line loop
-          break;
           // eslint-disable-next-line no-constant-condition
+          this.logMessage(`LOOP: next line BOTTOM`);
         } while (this.nextElementType() != eElementType.type_block); // NEXT LINE in BLOCK...
+        this.logMessage(`LOOP: next block BOTTOM`);
         // eslint-disable-next-line no-constant-condition
       } while (this.nextElementType() == eElementType.type_block); // NEXT BLOCK...
     } while (++pass < 2);
@@ -946,6 +1021,7 @@ export class SpinResolver {
       case eValueType.operand_jmp:
         //  jmp # <or> jmp d
         if (this.checkPound()) {
+          this.logMessage(`* in jmp, have #!`);
           this.branchImmediateOrRelative();
         } else {
           // reg, make jmp d instruction
@@ -1167,19 +1243,19 @@ export class SpinResolver {
         // push/pop
         switch (this.instructionImage & 0b11) {
           case 0b00:
-            this.instructionImage = 0x0c640161; // PUSHA	D/#	-->	WRLONG	D/#,PTRA++
+            this.instructionImage = 0x0c640161; // PUSHA  D/# --> WRLONG  D/#,PTRA++
             this.tryDImmediate(19);
             break;
           case 0b01:
-            this.instructionImage = 0x0c6401e1; // PUSHB	D/#	-->	WRLONG	D/#,PTRB++
+            this.instructionImage = 0x0c6401e1; // PUSHB  D/# --> WRLONG  D/#,PTRB++
             this.tryDImmediate(19);
             break;
           case 0b10:
-            this.instructionImage = 0x0b04015f; // POPA	D	-->	RDLONG	D,--PTRA
+            this.instructionImage = 0x0b04015f; // POPA D --> RDLONG  D,--PTRA
             this.tryD();
             break;
           case 0b11:
-            this.instructionImage = 0x0b0401df; // POPB	D	-->	RDLONG	D,--PTRB
+            this.instructionImage = 0x0b0401df; // POPB D --> RDLONG  D,--PTRB
             this.tryD();
             break;
         }
@@ -1197,31 +1273,31 @@ export class SpinResolver {
             this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002f; // RETB
             break;
           case 0b0011:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bffff; // RETI0  -->	CALLD	INB,INB		WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bffff; // RETI0  -->  CALLD INB,INB   WCZ
             break;
           case 0b0100:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff5; // RETI1  -->	CALLD	INB,$1F5	WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff5; // RETI1  -->  CALLD INB,$1F5  WCZ
             break;
           case 0b0101:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff3; // RETI2  -->	CALLD	INB,$1F3	WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff3; // RETI2  -->  CALLD INB,$1F3  WCZ
             break;
           case 0b0110:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff1; // RETI3  -->	CALLD	INB,$1F1	WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff1; // RETI3  -->  CALLD INB,$1F1  WCZ
             break;
           case 0b0111:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfdff; // RESI0  -->	CALLD	INA,INB		WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfdff; // RESI0  -->  CALLD INA,INB   WCZ
             break;
           case 0b1000:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be9f5; // RESI1  -->	CALLD	$1F4,$1F5	WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be9f5; // RESI1  -->  CALLD $1F4,$1F5 WCZ
             break;
           case 0b1001:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be5f3; // RESI2  -->	CALLD	$1F2,$1F3	WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be5f3; // RESI2  -->  CALLD $1F2,$1F3 WCZ
             break;
           case 0b1010:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be1f1; // RESI3  -->	CALLD	$1F0,$1F1	WCZ
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be1f1; // RESI3  -->  CALLD $1F0,$1F1 WCZ
             break;
           case 0b1011:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0cac0000; // XSTOP  -->	XINIT	#0,#0
+            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0cac0000; // XSTOP  -->  XINIT #0,#0
             break;
           default:
             // [error_INTERNAL]
@@ -1414,6 +1490,7 @@ export class SpinResolver {
       throw new Error('Address must not exceed $FFFFF');
     }
     foundRelativeStatus = backslashFound ? false : this.hubMode ? address >= 0x400 : address < 0x400;
+    this.logMessage(`tryImmediateOrRelative() foundBack=(${backslashFound}), foundRelative=(${foundRelativeStatus}), address=(${address})`);
     return [foundRelativeStatus, address];
   }
 
@@ -2208,6 +2285,7 @@ export class SpinResolver {
     while (true) {
       currElement = this.getElement();
       if (currElement.type == eElementType.type_block && Number(currElement.value) == blockType) {
+        this.logMessage(`nextBlock() found element=[${currElement.toString()}]`);
         foundStatus = true;
         break;
       }
@@ -2471,6 +2549,7 @@ export class SpinResolver {
       }
     }
 
+    // check for DAT stuff
     // FIXME: TODO: not handling orgh symbols
 
     return resultStatus;
@@ -2846,7 +2925,7 @@ export class SpinResolver {
         // invert our 32bits
         a ^= mask32Bit;
         break;
-      case eOperationType.op_neg: //  -	(uses op_sub sym)
+      case eOperationType.op_neg: //  - (uses op_sub sym)
         if (isFloatInConBlock) {
           // our 32bit float  signbit in msb, 8 exponent bits, 23 mantissa bits
           a ^= msb32Bit;
@@ -2854,7 +2933,7 @@ export class SpinResolver {
           a = ((a ^ mask32Bit) + 1n) & mask32Bit;
         }
         break;
-      case eOperationType.op_fneg: // -.	(uses op_fsub sym)
+      case eOperationType.op_fneg: // -.  (uses op_fsub sym)
         a ^= msb32Bit;
         break;
       case eOperationType.op_abs: //  ABS
