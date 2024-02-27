@@ -18,6 +18,7 @@ export class SpinElement {
   private _midStringComma: boolean = false; // valid only if type_comma
   private _isSymbol: boolean = false; // valid when element referrs to symbol in source code
   private _symbolLength: number = 0; // valid only when _isSymbol is true
+  private _sourceSymbolWasUndefined: boolean = false; // valid only when _isSymbol is true
 
   constructor(fileID: number, type: eElementType, value: bigint | string, lineIndex: number, charIndex: number) {
     this._fileId = fileID;
@@ -35,6 +36,19 @@ export class SpinElement {
   get refersToSymbol(): boolean {
     // Return T/F where T means this element refers to a symbol found in source code
     return this._isSymbol;
+  }
+
+  // getElement() does symbol lookup and replacement
+  //  however, we need to know if the original element
+  //  was undefined
+  //        symbolWasUndefined()       sets this condition
+  //  while sourceSymbolWasUndefined() tests this condition
+  public setSourceElementWasUndefined() {
+    this._sourceSymbolWasUndefined = true;
+  }
+
+  get sourceElementWasUndefined(): boolean {
+    return this._sourceSymbolWasUndefined;
   }
 
   get sourceCharacterEndOffset(): number {

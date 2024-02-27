@@ -502,7 +502,7 @@ export class SpinResolver {
               } else if (currElement.type == eElementType.type_fvar) {
                 // HANDLE FVar... [0,1] where 1 is signed fvar
                 const isSigned = currElement.value == 1n;
-                const fvarResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                const fvarResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
                 if (isSigned) {
                   if ((BigInt(fvarResult.value) & BigInt(0xf0000000)) != BigInt(0xf0000000)) {
                     // [error_fvar]
@@ -517,6 +517,7 @@ export class SpinResolver {
                   this.compileRfvar(fvarResult.value);
                 }
               } else {
+                // DAT declaring long data
                 this.backElement();
                 let multiplier: number = 1;
                 const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_IntOrFloat : eMode.BM_IntOnly;
@@ -539,7 +540,7 @@ export class SpinResolver {
               //
               // ASM dir: FIT {address}
               this.errorIfSymbol();
-              const addressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+              const addressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
               if (this.hubMode) {
                 if (this.hubOrg > Number(addressResult.value)) {
                   // [error_haefl]
@@ -561,7 +562,7 @@ export class SpinResolver {
               this.advanceToNextCogLong();
               this.wordSize = eWordSize.WS_Long_Res;
               this.enterDatSymbol();
-              const countResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+              const countResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
               // NOTE: omitting the 0x400 error detection (shouldn't be needed)
               this.cogOrg = this.cogOrg + (Number(countResult.value) << 2);
               if (this.cogOrg > this.cogOrgLimit) {
@@ -576,7 +577,7 @@ export class SpinResolver {
                 throw new Error('ORGF is not allowed in ORGH mode');
               }
               this.errorIfSymbol();
-              const cogAddressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+              const cogAddressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
               const tmpCogAddress = Number(cogAddressResult.value) << 2;
               if (tmpCogAddress > this.cogOrgLimit) {
                 // [error_cael]
@@ -601,7 +602,7 @@ export class SpinResolver {
               this.cogOrgLimit = 0x1f8 << 2;
               if (this.nextElementType() != eElementType.type_end) {
                 // get our (optional) address
-                const cogAddressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                const cogAddressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
                 if (Number(cogAddressResult.value) > 0x400) {
                   // [error_caexl]
                   throw new Error('Cog address exceeds $400 limit');
@@ -610,7 +611,7 @@ export class SpinResolver {
                 this.cogOrgLimit = (Number(cogAddressResult.value) >= 0x200 ? 0x400 : 0x200) << 2;
                 if (this.checkComma()) {
                   // get our (optional) [,{limit}]] and adopt it
-                  const cogLimitResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                  const cogLimitResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
                   if (Number(cogLimitResult.value) > 0x400) {
                     // [error_caexl]
                     throw new Error('Cog address exceeds $400 limit');
@@ -634,7 +635,7 @@ export class SpinResolver {
 
               if (this.nextElementType() != eElementType.type_end) {
                 // get our (optional) address
-                const hubAddressResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                const hubAddressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
                 if (this.pasmMode == false) {
                   if (Number(hubAddressResult.value) < 0x400) {
                     // [error_habxl]
@@ -650,7 +651,7 @@ export class SpinResolver {
 
                 if (this.checkComma()) {
                   // get our (optional) [,{limit}]] and adopt it
-                  const hubLimitResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                  const hubLimitResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
                   this.hubOrgLimit = Number(hubLimitResult.value);
                   if (this.hubOrgLimit < this.hubOrg) {
                     // [error_hael]
@@ -861,7 +862,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+            const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b111) {
               // [error_smb0t7]
               throw new Error('Selector must be 0 to 7');
@@ -877,7 +878,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b111) {
             // [error_smb0t7]
             throw new Error('Selector must be 0 to 7');
@@ -898,7 +899,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+            const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b11) {
               // [error_smb0t3]
               throw new Error('Selector must be 0 to 3');
@@ -914,7 +915,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b11) {
             // [error_smb0t3]
             throw new Error('Selector must be 0 to 3');
@@ -935,7 +936,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+            const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b1) {
               // [error_smb0t1]
               throw new Error('Selector must be 0 to 1');
@@ -951,7 +952,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b1) {
             // [error_smb0t1]
             throw new Error('Selector must be 0 to 1');
@@ -994,7 +995,7 @@ export class SpinResolver {
         if (this.checkAt()) {
           // rep @,s/#
           this.instructionImage |= 1 << 19;
-          const instructionCountResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const instructionCountResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           let instructionCount: number = Number(instructionCountResult.value);
           this.getComma();
           this.trySImmediate(); // get repetition count
@@ -1142,7 +1143,7 @@ export class SpinResolver {
           this.getPound();
           const backslashFound: boolean = this.checkBackslash(); // and remove it if found
           this.orghSymbolFlag = false;
-          const addressResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const addressResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           const address: number = Number(addressResult.value);
           if (address > 0xfffff) {
             // [error_amnex]
@@ -1173,7 +1174,7 @@ export class SpinResolver {
         // AUGS or AUGD
         {
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           // install upper 23 bits as immediate into AUGD/AUGS
           this.instructionImage |= Number(valueResult.value) >> 9;
         }
@@ -1198,7 +1199,7 @@ export class SpinResolver {
         // modcz/modc/modz
         if (allowedEffects & 0b10) {
           // we have MODC or MODCZ
-          const flagBitsResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const flagBitsResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           // place into upper four bits of d field
           this.instructionImage |= (Number(flagBitsResult.value) & 0b1111) << (9 + 4);
           if (allowedEffects & 0b01) {
@@ -1208,7 +1209,7 @@ export class SpinResolver {
         }
         if (allowedEffects & 0b01) {
           // we have MODZ (or MODCZ)
-          const flagBitsResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const flagBitsResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           // place into lower four bits of d field
           this.instructionImage |= (Number(flagBitsResult.value) & 0b1111) << (9 + 0);
         }
@@ -1381,7 +1382,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << immediateBitNumber;
       if (this.checkPound()) {
         // have '##' (big immediate) case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
         // emit AUGD Instruction
         this.emitAugDS(eAugType.AT_D, Number(valueResult.value));
         // place remainder in D field
@@ -1411,7 +1412,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << 18;
       if (this.checkPound()) {
         // have '##' (big immediate) case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
         // emit AUGD or AUGS Instruction
         this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
         // place remainder in S field
@@ -1436,7 +1437,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << 18;
       if (this.checkPound()) {
         // this is our '##' case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
         // tryS_rel32:
         if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
@@ -1453,7 +1454,7 @@ export class SpinResolver {
         this.instructionImage |= branchAddress & 0x1ff;
       } else {
         // this is our '#' case
-        const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
         if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
           branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
@@ -1483,7 +1484,7 @@ export class SpinResolver {
     let address: number = 0;
     // check for '\' absolute override
     const backslashFound: boolean = this.checkBackslash(); // and remove backslash if found
-    const addressResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+    const addressResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
     address = Number(addressResult.value);
     if (address > 0xfffff) {
       // [error_amnex]
@@ -1566,7 +1567,7 @@ export class SpinResolver {
         if (this.checkPound()) {
           this.getPound(); // our second '#' MUST be here
           // this is our '##' case (20-bit index value)
-          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const indexResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           let indexValue = Number(indexResult.value);
           if ((pointerField & (0x40 | 0x10)) == (0x40 | 0x10)) {
             indexValue = -indexValue;
@@ -1578,7 +1579,7 @@ export class SpinResolver {
           pointerField = 0; // prevent pointerField from being ORd-in again later
         } else {
           // no '##'
-          const indexResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const indexResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           let indexValue = Number(indexResult.value);
           // is positive value
           if (pointerField & 0x40) {
@@ -1607,13 +1608,13 @@ export class SpinResolver {
         this.instructionImage |= 1 << 18;
         if (this.checkPound()) {
           // this is our '##' case (20-bit index value)
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
           // install lower 9 bits of constant
           this.instructionImage |= Number(valueResult.value) & 0x1ff;
         } else {
           // have '#' but constrained to 8-bit value! (not 9-bit)
-          const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
           const value = Number(valueResult.value);
           if (value > 255) {
             // [error_cmbf0t255]
@@ -1689,7 +1690,7 @@ export class SpinResolver {
   private tryValueReg(): number {
     // return value [0x000-0x1ff]
     let value: number = 0;
-    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+    const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
     value = Number(valueResult.value);
     if (value > 0x1ff) {
       // [error_rcex]
@@ -1701,7 +1702,7 @@ export class SpinResolver {
   private tryValueCon(): number {
     // return value [0-511]
     let value: number = 0;
-    const valueResult = this.getValue(eMode.BM_IntOnly, this.pasmResolveMode);
+    const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
     value = Number(valueResult.value);
     if (value > 511) {
       // [error_cmbf0t511]
@@ -2538,6 +2539,22 @@ export class SpinResolver {
           // return the converted result
           resultStatus.value = BigInt(roundedUInt32);
         }
+      } else if (mode == eMode.BM_Operand) {
+        const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
+        if (didFindLocal) {
+          this.logMessage(`* getCon FOUND local symbol element=[${currElement.toString()}]`);
+          // we have a local symbol... (must be undef or is storage type)
+          // replace curr elem with this symbol...
+          currElement = this.getElement(); // put us in proper place in element list
+          currElement.setType(symbol.type);
+          currElement.setValue(symbol.value); // this is our LOCAL internal name:  sym'0000
+        }
+
+        const haveUndefinedSymbol = this.checkUndefined(currElement, resolve);
+        if (haveUndefinedSymbol == false) {
+          // check local  XYZZY
+          // FIXME: TODO: not handling DAT symbols
+        }
       } else if (currElement.type == eElementType.type_undefined) {
         this.numberStack.setUnresolved();
         if (resolve == eResolve.BR_Must) {
@@ -2549,10 +2566,31 @@ export class SpinResolver {
       }
     }
 
-    // check for DAT stuff
-    // FIXME: TODO: not handling orgh symbols
-
     return resultStatus;
+  }
+
+  private checkUndefined(element: SpinElement, resolve: eResolve): boolean {
+    // for obj.con references ... and ...
+    let undefinedStatus: boolean = false;
+    if (element.type == eElementType.type_undefined) {
+      this.numberStack.setUnresolved();
+      // do we have a '.' preceeding a user name?
+      if (this.checkDot()) {
+        // is the next element a user undefined symbol?
+        const nextElement = this.getElement(); // position to bad element! so "throw" line-number is correct -OR- caller doesn't see this again
+        if (!(nextElement.type == eElementType.type_undefined || nextElement.sourceElementWasUndefined)) {
+          // [error_eacn]
+          throw new Error('Expected a constant name');
+        }
+      }
+      // have one or both undefined
+      if (resolve == eResolve.BR_Must) {
+        // [error_us]
+        throw new Error(`Undefined symbol`);
+      }
+      undefinedStatus = true;
+    }
+    return undefinedStatus;
   }
 
   private checkLeftParen(): boolean {
@@ -2868,6 +2906,7 @@ export class SpinResolver {
           currElement.sourceLineIndex,
           currElement.sourceCharacterOffset
         );
+        currElement.setSourceElementWasUndefined(); // mark this NEW symbol as replacing an undefined symbol
       }
     }
     //this.logMessage(`* GETele GOT i#${this.elementIndex - 1}, e=[${this.spinElements[this.elementIndex - 1].toString()}]`);

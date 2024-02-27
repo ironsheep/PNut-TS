@@ -111,7 +111,22 @@ export class Spin2Parser {
         // EX: TYPE: CON             VALUE: 13F7B1C0          NAME: CLK_FREQ
         for (const [key, value] of mainSymbols) {
           const symbol: iSymbol = value;
-          const symbolType: string = symbol.type == eElementType.type_con ? 'CON      ' : 'CON_FLOAT';
+          let symbolType: string;
+          switch (symbol.type) {
+            case eElementType.type_con:
+              symbolType = 'CON      ';
+              break;
+            case eElementType.type_con_float:
+              symbolType = 'CON_FLOAT';
+              break;
+            case eElementType.type_dat_long:
+              symbolType = 'DAT_LONG ';
+              break;
+
+            default:
+              symbolType = `?? ${symbol.type} ??`;
+              break;
+          }
           const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
           stream.write(`TYPE: ${symbolType}       VALUE: ${hexValue}          NAME: ${symbol.name}\n`);
         }
