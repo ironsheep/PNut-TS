@@ -167,6 +167,7 @@ export class SpinResolver {
     this.determine_clock();
     this.compile_con_blocks_2nd();
     if (this.context.passOptions.afterConBlock == false) {
+      this.logMessage('* compile_dat_blocks()');
       this.compile_dat_blocks();
     }
   }
