@@ -132,7 +132,7 @@ export class Spin2Parser {
         }
       }
       // emit spin version
-      stream.write(`\n\nSpin2_v${this.srcFile.versionNumber}\n\n`);
+      stream.write(`\nSpin2_v${this.srcFile.versionNumber}\n\n`);
       // emit: CLKMODE, CLKFREQ, XINFREQ if present
       let symbol = mainSymbols.get('CLKMODE_');
       if (symbol !== undefined) {

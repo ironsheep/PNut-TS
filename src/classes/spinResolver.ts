@@ -98,6 +98,7 @@ export class SpinResolver {
   private orghOffset: number = 0;
   private cogOrg: number = 0 << 2; // byte-address
   private cogOrgLimit: number = 0x1f8 << 2; // byte-address limit
+  private inlineLocalsStart: number = 0x1e0; // address
   private pasmMode: boolean = false;
   private fitToSize: boolean = false;
   private wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
@@ -109,6 +110,7 @@ export class SpinResolver {
   private clkMode: number = 0;
   private clkFreq: number = 0;
   private xinFreq: number = 0;
+  private inlineModeForGetConstant: boolean = false;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -389,6 +391,7 @@ export class SpinResolver {
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
     this.logMessage(`* compile_dat_blocks() inLineMode=(${inLineMode})`);
+    this.inlineModeForGetConstant = inLineMode;
     if (inLineMode) {
       this.activeSymbolTable = eSymbolTableId.STI_INLINE;
     }
@@ -474,11 +477,12 @@ export class SpinResolver {
           }
           this.symbolName = this.weHaveASymbol ? currElement.stringValue : '';
 
-          if (this.weHaveASymbol) {
+          if (this.weHaveASymbol || isDatStorage) {
             currElement = this.getElement(); // moving on to next (past this symbol)
           }
 
           if (currElement.type == eElementType.type_end) {
+            this.logMessage(`* compile_dat_blocks() enter symbol [${this.symbolName}]`);
             this.enterDatSymbol();
             // back to top of loop to get first elem of new line
             continue;
@@ -732,6 +736,8 @@ export class SpinResolver {
       this.inlineSymbols.reset();
       this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
     }
+    // clear so no lingering side-effects
+    this.inlineModeForGetConstant = false;
   }
 
   private advanceToNextCogLong() {
@@ -1980,9 +1986,10 @@ export class SpinResolver {
           throw new Error('Cog symbol must be long-aligned');
         }
         // NOTE: cog address is bytes
-        value = BigInt(this.objImage.offset | (this.cogOrg << (32 - 10)));
+        value = BigInt(this.objImage.offset | (this.cogOrg << (32 - 14)));
       }
       const newSymbol: iSymbol = { name: this.symbolName, type: type, value: value };
+      //this.logMessage(`* enterDatSymbol() calling record symbol [${newSymbol}]`);
       this.recordSymbol(newSymbol);
     }
   }
@@ -2061,6 +2068,9 @@ export class SpinResolver {
   }
 
   private recordSymbol(newSymbol: iSymbol) {
+    this.logMessage(
+      `* recordSymbol() name=[${newSymbol.name}], type=[${eElementType[newSymbol.type]}], value=($${Number(newSymbol.value).toString(16)})`
+    );
     switch (this.activeSymbolTable) {
       case eSymbolTableId.STI_MAIN:
         this.mainSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
@@ -2336,7 +2346,7 @@ export class SpinResolver {
           this.logMessage(`* skipping + operator`);
         }
       } while (currElement.isPlus);
-      this.logMessage(`* currElement=[${currElement.toString()}]`);
+      this.logMessage(`* resolvExp() currElement=[${currElement.toString()}]`);
 
       // NOTE: we could move negation handling to here from within getConstant()
 
@@ -2347,6 +2357,7 @@ export class SpinResolver {
         // place it on our stack and we're done
         this.numberStack.push(resolution.value);
       } else {
+        this.logMessage(`* resolvExp() did NOT find constant... mode=[${eMode[mode]}]`);
         // no constant found, currElement is not a constant
         currElement = this.SubToNeg(currElement); // these did NOT affect the element list!
         currElement = this.FSubToFNeg(currElement);
@@ -2370,6 +2381,9 @@ export class SpinResolver {
           this.resolveExp(mode, resolve, this.lowestPrecedence);
           this.getRightParen();
         } else {
+          //if (mode == eMode.BM_Spin2) {
+          //  // go to fail_spin2_con_exp:
+          //}
           // [error_eacuool]
           throw new Error('Expected a constant, unary operator, or "("');
         }
@@ -2464,6 +2478,7 @@ export class SpinResolver {
   private getConstant(mode: eMode, resolve: eResolve, element: SpinElement): iConstantReturn {
     let currElement = element;
     const resultStatus: iConstantReturn = { value: 0n, foundConstant: true };
+    this.logMessage(`* getCon mode=(${eMode[mode]}), resolve=(${eResolve[resolve]}), ele=[${element.toString()}]`);
     // this 'check_constant', now 'try_constant' in Pnut
     // trying to resolve spin2 constant
 
@@ -2471,31 +2486,33 @@ export class SpinResolver {
     currElement = this.SubToNeg(currElement);
     if (currElement.operation == eOperationType.op_neg) {
       // if the next element is a constant we can negate it
-      const nextElement = this.getElement();
-      this.logMessage(`* nextElement=[${nextElement.toString()}]`);
-      if (nextElement.isConstantInt) {
+      if (this.nextElementType() == eElementType.type_con) {
         // coerce element to negative value
+        const nextElement = this.getElement();
+        this.logMessage(`* nextElement=[${nextElement.toString()}]`);
         resultStatus.value = (~nextElement.value + 1n) & BigInt(0xffffffff);
         this.checkIntMode(); // throw if we were float
         // if not set then set else
-        // TODO: do we need to remove '-' from element list
-      } else if (nextElement.isConstantFloat) {
+      } else if (this.nextElementType() == eElementType.type_con_float) {
         // coerce element to negative value
         // NOTE: ~~ this coerces the value to be a number
+        const nextElement = this.getElement();
+        this.logMessage(`* nextElement=[${nextElement.toString()}]`);
         resultStatus.value = BigInt(nextElement.value) ^ BigInt(0x80000000);
         this.checkFloatMode(); // throw if we were int
         // if not set then set else
-        // TODO: do we need to remove '-' from element list
       } else {
-        this.backElement(); // leave the constant
+        // we didn't find a constant
         resultStatus.foundConstant = false;
       }
     } else {
-      // what else is our minus sign preceeding
+      // continuing without a '-' sign
       if (currElement.isConstantInt) {
+        // have integer constant
         resultStatus.value = BigInt(currElement.value);
         this.checkIntMode();
       } else if (currElement.isConstantFloat) {
+        // have float constant
         resultStatus.value = BigInt(currElement.value);
         this.checkFloatMode();
       } else if (currElement.type == eElementType.type_float) {
@@ -2539,34 +2556,121 @@ export class SpinResolver {
           // return the converted result
           resultStatus.value = BigInt(roundedUInt32);
         }
-      } else if (mode == eMode.BM_Operand) {
-        const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
-        if (didFindLocal) {
-          this.logMessage(`* getCon FOUND local symbol element=[${currElement.toString()}]`);
-          // we have a local symbol... (must be undef or is storage type)
-          // replace curr elem with this symbol...
-          currElement = this.getElement(); // put us in proper place in element list
-          currElement.setType(symbol.type);
-          currElement.setValue(symbol.value); // this is our LOCAL internal name:  sym'0000
+      } else {
+        // DAT section handling
+        this.logMessage(`* getCon DAT section handling`);
+        if (mode == eMode.BM_Operand) {
+          const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
+          if (didFindLocal) {
+            this.logMessage(`* getCon FOUND local symbol element=[${currElement.toString()}]`);
+            // we have a local symbol... (must be undef or is storage type)
+            // replace curr elem with this symbol...
+            currElement = this.getElement(); // put us in proper place in element list
+            currElement.setType(symbol.type);
+            currElement.setValue(symbol.value); // this is our LOCAL internal name:  sym'0000
+          }
         }
-
         const haveUndefinedSymbol = this.checkUndefined(currElement, resolve);
         if (haveUndefinedSymbol == false) {
-          // check local  XYZZY
-          // FIXME: TODO: not handling DAT symbols
+          this.logMessage(`* getCON haveUndefinedSymbol`);
+          // FIXME: TODO: handle DAT symbols
+          if (currElement.type == eElementType.type_dollar) {
+            // HANDLE an origin symbol
+            if (mode != eMode.BM_Operand) {
+              // [error_oinah]
+              throw new Error('"$" is not allowed here');
+            }
+            this.checkIntMode();
+            resultStatus.value = BigInt(this.hubMode ? this.hubOrg : this.cogOrg >> 2);
+          } else if (currElement.type == eElementType.type_register) {
+            this.logMessage(`* getCON type_register`);
+            // HANDLE a cog register
+            if (mode != eMode.BM_Operand) {
+              // [error_rinah]
+              throw new Error('Register is not allowed here');
+            }
+            this.checkIntMode();
+            resultStatus.value = BigInt(currElement.value);
+          } else if (this.inlineModeForGetConstant) {
+            this.logMessage(`* getCON inlineModeForGetConstant`);
+            // HANDLE DAT Local variable now in register for inline access
+            if (currElement.type == eElementType.type_loc_byte || currElement.type == eElementType.type_loc_word) {
+              // [error_lvmb]
+              // We don't quite like this message (so we adjusted to not match PNut)
+              throw new Error('Local variable must be LONG and within first 16 longs');
+            }
+            if (currElement.type == eElementType.type_loc_long) {
+              if (currElement.numberValue & 0b11 || currElement.numberValue >= 0x10 << 2) {
+                // [error_lvmb]
+                // We don't quite like this message (so we adjusted to not match PNut)
+                throw new Error('Local variable must be LONG and within first 16 longs');
+              }
+            }
+            // return address of local var
+            resultStatus.value = BigInt((currElement.numberValue >> 2) + this.inlineLocalsStart);
+          } else if (currElement.type == eElementType.type_obj) {
+            // HANDLE object.constant reference
+            /*
+            this.getDot();
+            let [objSymbolFound, type, value] = this.getObjSymbol(currElement.numberValue);
+            if (objSymbolFound == false) {
+              // [error_eacn]
+              throw new Error('Expected a constant name');
+            }
+            // TODO create new element replacing current and pass new
+            return this.getConstant(mode, resolve, currElement);
+            */
+            throw new Error('[CODE] type object not yet coded');
+          } else if (currElement.type == eElementType.type_at) {
+            // HANDLE address of DAT symbol
+            this.checkIntMode();
+            let nextElement = this.getElement();
+            if (this.checkDat(nextElement, mode) || nextElement.type == eElementType.type_hub_long) {
+              // we have DAT variable address
+              resultStatus.value = BigInt(currElement.numberValue && 0xfffff);
+            } else {
+              if (this.checkUndefined(nextElement, resolve) == false) {
+                // [error_eads]
+                throw new Error('Expected a DAT symbol');
+              }
+            }
+          } else if (this.checkDat(currElement, mode)) {
+            // HANDLE DAT symbol itself
+            this.logMessage(`* getCON DAT symbol elem=[${currElement.toString()}]`);
+            this.checkIntMode();
+            if (mode == eMode.BM_Operand) {
+              // within pasm instruction
+              if (currElement.numberValue >= 0xfff00000) {
+                this.orghSymbolFlag = true;
+                resultStatus.value = BigInt((currElement.numberValue + (this.pasmMode ? 0 : this.orghOffset)) & 0xfffff);
+              } else {
+                resultStatus.value = BigInt((currElement.numberValue >> (32 - 12)) & 0xfffff);
+              }
+            } else {
+              // outside of pasm instruction - address of DAT variable
+              resultStatus.value = BigInt(currElement.numberValue & 0xfffff);
+            }
+          } else {
+            // we didn't find a constant
+            resultStatus.foundConstant = false;
+          }
         }
-      } else if (currElement.type == eElementType.type_undefined) {
-        this.numberStack.setUnresolved();
-        if (resolve == eResolve.BR_Must) {
-          // [error_us]
-          throw new Error(`Undefined symbol`);
-        }
-      } else {
-        resultStatus.foundConstant = false;
       }
     }
-
+    this.logMessage(`* getConstant() EXIT w/foundConstant=(${resultStatus.foundConstant})`);
     return resultStatus;
+  }
+
+  private checkDat(element: SpinElement, mode: eMode): boolean {
+    // note this can modify the passed element!!
+    if (mode == eMode.BM_Operand && element.type == eElementType.type_dat_long_res) {
+      element.setType(eElementType.type_dat_long);
+    }
+    return element.type == eElementType.type_dat_byte || element.type == eElementType.type_dat_word || element.type == eElementType.type_dat_long;
+  }
+
+  private getObjSymbol(value: number): [boolean, eElementType, number] {
+    return [false, eElementType.type_asm_cond, 0];
   }
 
   private checkUndefined(element: SpinElement, resolve: eResolve): boolean {
@@ -2590,6 +2694,7 @@ export class SpinResolver {
       }
       undefinedStatus = true;
     }
+    this.logMessage(`* checkUndefined(elem=[${element.toString()}]) undefinedStatus=(${undefinedStatus})`);
     return undefinedStatus;
   }
 
@@ -2899,6 +3004,7 @@ export class SpinResolver {
     if (currElement.type === eElementType.type_undefined) {
       const foundSymbol = this.mainSymbols.get(currElement.stringValue);
       if (foundSymbol !== undefined) {
+        this.logMessage(`* getElement() replacing element=[${currElement.toString()}]`);
         currElement = new SpinElement(
           currElement.fileId,
           foundSymbol.type,
@@ -2906,15 +3012,18 @@ export class SpinResolver {
           currElement.sourceLineIndex,
           currElement.sourceCharacterOffset
         );
+        this.logMessage(`*       with element=[${currElement.toString()}]`);
         currElement.setSourceElementWasUndefined(); // mark this NEW symbol as replacing an undefined symbol
       }
     }
-    //this.logMessage(`* GETele GOT i#${this.elementIndex - 1}, e=[${this.spinElements[this.elementIndex - 1].toString()}]`);
-    //if (currElement.type != eElementType.type_end_file) {
-    //  this.logMessage(`* GETele NEXT i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
-    //} else {
-    //  this.logMessage(`* GETele NEXT -- at EOF --`);
-    //}
+    /*
+    this.logMessage(`* GETele GOT i#${this.elementIndex - 1}, e=[${this.spinElements[this.elementIndex - 1].toString()}]`);
+    if (currElement.type != eElementType.type_end_file) {
+      this.logMessage(`* GETele NEXT i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
+    } else {
+      this.logMessage(`* GETele NEXT -- at EOF --`);
+    }
+    */
 
     return currElement;
   }
