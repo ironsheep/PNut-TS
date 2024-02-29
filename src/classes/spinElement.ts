@@ -258,6 +258,28 @@ export class SpinElement {
     return status;
   }
 
+  get isDatVar(): boolean {
+    let status: boolean = false;
+    if (
+      (this._type == eElementType.type_dat_byte || this._type == eElementType.type_dat_word || this._type == eElementType.type_dat_long) &&
+      typeof this._value === 'bigint'
+    ) {
+      status = true;
+    }
+    return status;
+  }
+
+  get isInstruction(): boolean {
+    let status: boolean = false;
+    if (
+      (this._type == eElementType.type_i_flex || this._type == eElementType.type_asm_inst || this._type == eElementType.type_op) &&
+      typeof this._value === 'bigint'
+    ) {
+      status = true;
+    }
+    return status;
+  }
+
   public setSymbolLength(length: number) {
     // called when this element refers to a symbol in source code
     this._isSymbol = length > 0 ? true : false;
@@ -286,8 +308,8 @@ export class SpinElement {
       const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
       valueInterp = `(${float32ToHexString(valueBigInt)})`;
     } else if (this.valueIsNumber) {
-      if (this.isOperation) {
-        valueInterp = `(0x${this.value.toString(16).toUpperCase()})`;
+      if (this.isInstruction || this.isDatVar) {
+        valueInterp = `(0x${this.value.toString(16).padStart(8, '0').toUpperCase()})`;
       } else {
         valueInterp = `(${this.value})`;
       }

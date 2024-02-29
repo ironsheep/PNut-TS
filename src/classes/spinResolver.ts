@@ -806,7 +806,7 @@ export class SpinResolver {
     //  next 2 are flag permissions
     let allowedEffects: number = (instructionValue >> 9) & 0x03;
     this.logMessage(
-      `* assembleInstructionFromLine() instructionBinary=($${instructionBinary.toString(16)}), operandType=($${operandType.toString(16)}), allowedEffects=(0b${allowedEffects.toString(2)})`
+      `* assembleInstructionFromLine() instructionBinary=(0x${instructionBinary.toString(16).toUpperCase()}), operandType=(0x${operandType.toString(16).toUpperCase()}), allowedEffects=(0b${allowedEffects.toString(2)})`
     );
     this.instructionImage = asmCondition << 28;
     this.instructionImage |= operandType >= eValueType.operand_d ? 0x0d600000 | instructionBinary : instructionBinary << 19;
@@ -1596,7 +1596,7 @@ export class SpinResolver {
         } else {
           // no '##'
           const indexResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
-          let indexValue = Number(indexResult.value);
+          let indexValue = Number(this.signExtendFrom32Bit(indexResult.value));
           // is positive value
           if (pointerField & 0x40) {
             // we are modifying...
@@ -1607,6 +1607,7 @@ export class SpinResolver {
             pointerField = (pointerField & 0xe0) | (pointerField & 0x10 ? -indexValue & 0x1f : indexValue & 0x0f);
           } else {
             // not modifying, have negative-to-positive case
+
             if (indexValue < -32 || indexValue > 31) {
               // [error_picmr6b]
               throw new Error('PTRA/PTRB index constant must range from -32 to 31');
@@ -1735,68 +1736,80 @@ export class SpinResolver {
       instructionValue = Number(element.value);
     } else if (element.type == eElementType.type_op) {
       needAsmLookup = true;
-      switch (Number(element.operation)) {
-        case eOpcode.oc_abs:
+      switch (element.operation) {
+        case eOperationType.op_abs:
           instructionValue = eAsmcode.ac_abs;
           break;
-        case eOpcode.oc_encod:
+        case eOperationType.op_encod:
           instructionValue = eAsmcode.ac_encod;
           break;
-        case eOpcode.oc_decod:
+        case eOperationType.op_decod:
           instructionValue = eAsmcode.ac_decod;
           break;
-        case eOpcode.oc_bmask:
+        case eOperationType.op_bmask:
           instructionValue = eAsmcode.ac_bmask;
           break;
-        case eOpcode.oc_ones:
+        case eOperationType.op_ones:
           instructionValue = eAsmcode.ac_ones;
           break;
-        case eOpcode.oc_qlog:
+        case eOperationType.op_qlog:
           instructionValue = eAsmcode.ac_qlog;
           break;
-        case eOpcode.oc_qexp:
+        case eOperationType.op_qexp:
           instructionValue = eAsmcode.ac_qexp;
           break;
-        case eOpcode.oc_sar:
+        case eOperationType.op_sar:
           instructionValue = eAsmcode.ac_sar;
           break;
-        case eOpcode.oc_ror:
+        case eOperationType.op_ror:
           instructionValue = eAsmcode.ac_ror;
           break;
-        case eOpcode.oc_rol:
+        case eOperationType.op_rol:
           instructionValue = eAsmcode.ac_rol;
           break;
-        case eOpcode.oc_rev:
+        case eOperationType.op_rev:
           instructionValue = eAsmcode.ac_rev;
           break;
-        case eOpcode.oc_zerox:
+        case eOperationType.op_zerox:
           instructionValue = eAsmcode.ac_zerox;
           break;
-        case eOpcode.oc_signx:
+        case eOperationType.op_signx:
           instructionValue = eAsmcode.ac_signx;
           break;
-        case eOpcode.oc_sca:
+        case eOperationType.op_sca:
           instructionValue = eAsmcode.ac_sca;
           break;
-        case eOpcode.oc_scas:
+        case eOperationType.op_scas:
           instructionValue = eAsmcode.ac_scas;
-          break;
-        case eOpcode.oc_lognot_name:
-          instructionValue = eAsmcode.ac_not;
-          break;
-        case eOpcode.oc_logand_name:
-          instructionValue = eAsmcode.ac_and;
-          break;
-        case eOpcode.oc_logxor_name:
-          instructionValue = eAsmcode.ac_xor;
-          break;
-        case eOpcode.oc_logor_name:
-          instructionValue = eAsmcode.ac_or;
           break;
 
         default:
           instructionFoundStatus = false;
           break;
+      }
+      // some instructions have alias... we have to handle these differently
+      if (instructionFoundStatus == false) {
+        instructionFoundStatus = true;
+        if (element.isAlias == false) {
+          switch (element.operation) {
+            case eOperationType.op_lognot:
+              instructionValue = eAsmcode.ac_not;
+              break;
+            case eOperationType.op_logand:
+              instructionValue = eAsmcode.ac_and;
+              break;
+            case eOperationType.op_logxor:
+              instructionValue = eAsmcode.ac_xor;
+              break;
+            case eOperationType.op_logor:
+              instructionValue = eAsmcode.ac_or;
+              break;
+
+            default:
+              instructionFoundStatus = false;
+              break;
+          }
+        }
       }
     } else if (element.type == eElementType.type_i_flex) {
       this.logMessage(`* checkInstruction() flexCode=(${element.byteCode})[${eByteCode[element.byteCode]}]`);
@@ -1876,7 +1889,9 @@ export class SpinResolver {
       // get asmCode values for type_op, and type_i_flex
       instructionValue = this.spinSymbolTables.asmcodeValue(instructionValue);
     }
-    this.logMessage(`* checkInstruction() instructionFoundStatus=(${instructionFoundStatus}), instructionValue=($${instructionValue.toString(16)})`);
+    this.logMessage(
+      `* checkInstruction() instructionFoundStatus=(${instructionFoundStatus}), instructionValue=(0x${instructionValue.toString(16).padStart(8, '0').toUpperCase()})`
+    );
     return [instructionFoundStatus, instructionValue];
   }
 
