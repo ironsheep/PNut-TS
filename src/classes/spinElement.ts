@@ -4,7 +4,7 @@
 import { float32ToHexString } from '../utils/float32';
 // src/classes/parseUtils.ts
 
-import { eElementType, eFlexcodes, eOperationType, eValueType, getElementTypeString } from './types';
+import { eByteCode, eElementType, eOperationType, eValueType, getElementTypeString } from './types';
 //import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
@@ -152,7 +152,7 @@ export class SpinElement {
   //
   // special for type_i_flex: elements
   //
-  get flexCode(): eFlexcodes {
+  get byteCode(): eByteCode {
     // returns the op_* value
     let desiredValue: number = -1;
     if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {

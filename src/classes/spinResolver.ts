@@ -10,7 +10,7 @@
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
-import { eElementType, eFlexcodes, eOperationType, eValueType } from './types';
+import { eByteCode, eElementType, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
@@ -43,7 +43,8 @@ enum eResolve {
 enum eMode {
   BM_IntOrFloat,
   BM_IntOnly,
-  BM_Operand,
+  BM_OperandIntOrFloat,
+  BM_OperandIntOnly,
   BM_Spin2
 }
 
@@ -167,7 +168,7 @@ export class SpinResolver {
     this.determine_clock();
     this.compile_con_blocks_2nd();
     if (this.context.passOptions.afterConBlock == false) {
-      this.logMessage('* compile_dat_blocks()');
+      this.logMessage('* COMPILE_dat_blocks()');
       this.compile_dat_blocks();
     }
   }
@@ -175,21 +176,21 @@ export class SpinResolver {
   private compile_con_blocks_1st() {
     // true here means very-first pass!
     const FIRST_PASS: boolean = true;
-    this.logMessage('* compile_con_blocks_1st() 1of2');
+    this.logMessage('* COMPILE_con_blocks_1st() 1of2');
     this.compile_con_blocks(eResolve.BR_Try, FIRST_PASS);
-    this.logMessage('* compile_con_blocks_1st() 2of2');
+    this.logMessage('* COMPILE_con_blocks_1st() 2of2');
     this.compile_con_blocks(eResolve.BR_Try);
   }
 
   private compile_con_blocks_2nd() {
-    this.logMessage('* compile_con_blocks_2nd() 1of2');
+    this.logMessage('* COMPILE_con_blocks_2nd() 1of2');
     this.compile_con_blocks(eResolve.BR_Try);
-    this.logMessage('* compile_con_blocks_2nd() 2of2');
+    this.logMessage('* COMPILE_con_blocks_2nd() 2of2');
     this.compile_con_blocks(eResolve.BR_Must);
   }
 
   private compile_dat_blocks_fn() {
-    this.logMessage('* compile_dat_blocks_fn()');
+    this.logMessage('* COMPILE_dat_blocks_fn()');
   }
 
   private determine_clock() {
@@ -299,8 +300,10 @@ export class SpinResolver {
     }
 
     // record our symbols
-    this.mainSymbols.add('CLKMODE_', eElementType.type_con, BigInt(this.clkMode));
-    this.mainSymbols.add('CLKFREQ_', eElementType.type_con, BigInt(this.clkFreq));
+    let tempSymbol: iSymbol = { name: 'CLKMODE_', type: eElementType.type_con, value: BigInt(this.clkMode) };
+    this.recordSymbol(tempSymbol);
+    tempSymbol = { name: 'CLKFREQ_', type: eElementType.type_con, value: BigInt(this.clkFreq) };
+    this.recordSymbol(tempSymbol);
   }
 
   private pllCalc(inputFrequency: number, requestedFrequency: number, allowedError: number): [number, number] {
@@ -391,7 +394,7 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
-    this.logMessage(`* compile_dat_blocks() inLineMode=(${inLineMode})`);
+    this.logMessage(`* COMPILE_dat_blocks() inLineMode=(${inLineMode})`);
     this.inlineModeForGetConstant = inLineMode;
     if (inLineMode) {
       this.activeSymbolTable = eSymbolTableId.STI_INLINE;
@@ -459,12 +462,13 @@ export class SpinResolver {
 
           const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
           if (didFindLocal) {
-            this.logMessage(`* FOUND local symbol element=[${currElement.toString()}]`);
             // we have a local symbol... (must be undef or is storage type)
             // replace curr elem with this symbol...
-            currElement = this.getElement(); // put us in proper place in element list
+            this.logMessage(`*  ISLocal  curr element=[${currElement.toString()}]`);
+            // TODO: we are reusing currElement is this safe???
             currElement.setType(symbol.type);
             currElement.setValue(symbol.value); // this is our LOCAL internal name:  sym'0000
+            this.logMessage(`* FOUND local symbol element=[${currElement.toString()}]`);
             isLocalSymbol = true;
           }
           this.weHaveASymbol = currElement.type == eElementType.type_undefined;
@@ -477,13 +481,15 @@ export class SpinResolver {
             throw new Error('Symbol is already defined');
           }
           this.symbolName = this.weHaveASymbol ? currElement.stringValue : '';
+          this.logMessage(`* compile_dat_blocks() symbolName=[${this.symbolName}]`);
 
           if (this.weHaveASymbol || isDatStorage) {
             currElement = this.getElement(); // moving on to next (past this symbol)
+            this.logMessage(`*  SYM/STORAGE  next element=[${currElement.toString()}]`);
           }
 
           if (currElement.type == eElementType.type_end) {
-            this.logMessage(`* compile_dat_blocks() enter symbol [${this.symbolName}]`);
+            this.logMessage(`* COMPILE_dat_blocks() enter symbol [${this.symbolName}]`);
             this.enterDatSymbol();
             // back to top of loop to get first elem of new line
             continue;
@@ -507,7 +513,7 @@ export class SpinResolver {
               } else if (currElement.type == eElementType.type_fvar) {
                 // HANDLE FVar... [0,1] where 1 is signed fvar
                 const isSigned = currElement.value == 1n;
-                const fvarResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+                const fvarResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
                 if (isSigned) {
                   if ((BigInt(fvarResult.value) & BigInt(0xf0000000)) != BigInt(0xf0000000)) {
                     // [error_fvar]
@@ -525,7 +531,7 @@ export class SpinResolver {
                 // DAT declaring long data
                 this.backElement();
                 let multiplier: number = 1;
-                const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_IntOrFloat : eMode.BM_IntOnly;
+                const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_OperandIntOrFloat : eMode.BM_OperandIntOnly;
                 const valueResult = this.getValue(getForm, this.pasmResolveMode);
                 if (this.checkLeftBracket()) {
                   const multiplierResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
@@ -545,7 +551,7 @@ export class SpinResolver {
               //
               // ASM dir: FIT {address}
               this.errorIfSymbol();
-              const addressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+              const addressResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
               if (this.hubMode) {
                 if (this.hubOrg > Number(addressResult.value)) {
                   // [error_haefl]
@@ -567,7 +573,7 @@ export class SpinResolver {
               this.advanceToNextCogLong();
               this.wordSize = eWordSize.WS_Long_Res;
               this.enterDatSymbol();
-              const countResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+              const countResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
               // NOTE: omitting the 0x400 error detection (shouldn't be needed)
               this.cogOrg = this.cogOrg + (Number(countResult.value) << 2);
               if (this.cogOrg > this.cogOrgLimit) {
@@ -582,7 +588,7 @@ export class SpinResolver {
                 throw new Error('ORGF is not allowed in ORGH mode');
               }
               this.errorIfSymbol();
-              const cogAddressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+              const cogAddressResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
               const tmpCogAddress = Number(cogAddressResult.value) << 2;
               if (tmpCogAddress > this.cogOrgLimit) {
                 // [error_cael]
@@ -607,7 +613,7 @@ export class SpinResolver {
               this.cogOrgLimit = 0x1f8 << 2;
               if (this.nextElementType() != eElementType.type_end) {
                 // get our (optional) address
-                const cogAddressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+                const cogAddressResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
                 if (Number(cogAddressResult.value) > 0x400) {
                   // [error_caexl]
                   throw new Error('Cog address exceeds $400 limit');
@@ -616,7 +622,7 @@ export class SpinResolver {
                 this.cogOrgLimit = (Number(cogAddressResult.value) >= 0x200 ? 0x400 : 0x200) << 2;
                 if (this.checkComma()) {
                   // get our (optional) [,{limit}]] and adopt it
-                  const cogLimitResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+                  const cogLimitResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
                   if (Number(cogLimitResult.value) > 0x400) {
                     // [error_caexl]
                     throw new Error('Cog address exceeds $400 limit');
@@ -640,7 +646,7 @@ export class SpinResolver {
 
               if (this.nextElementType() != eElementType.type_end) {
                 // get our (optional) address
-                const hubAddressResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+                const hubAddressResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
                 if (this.pasmMode == false) {
                   if (Number(hubAddressResult.value) < 0x400) {
                     // [error_habxl]
@@ -656,7 +662,7 @@ export class SpinResolver {
 
                 if (this.checkComma()) {
                   // get our (optional) [,{limit}]] and adopt it
-                  const hubLimitResult = this.getValue(eMode.BM_Operand, eResolve.BR_Must);
+                  const hubLimitResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
                   this.hubOrgLimit = Number(hubLimitResult.value);
                   if (this.hubOrgLimit < this.hubOrg) {
                     // [error_hael]
@@ -751,6 +757,7 @@ export class SpinResolver {
   }
 
   private isThereAnInstruction(element: SpinElement): boolean {
+    this.logMessage(`isThereAnInstruction()`);
     // return
     let instructionFoundStatus: boolean = false;
     if (element.type == eElementType.type_asm_cond) {
@@ -798,7 +805,9 @@ export class SpinResolver {
     const operandType: eValueType = (instructionValue >> 11) & 0x3f;
     //  next 2 are flag permissions
     let allowedEffects: number = (instructionValue >> 9) & 0x03;
-
+    this.logMessage(
+      `* assembleInstructionFromLine() instructionBinary=($${instructionBinary.toString(16)}), operandType=($${operandType.toString(16)}), allowedEffects=(0b${allowedEffects.toString(2)})`
+    );
     this.instructionImage = asmCondition << 28;
     this.instructionImage |= operandType >= eValueType.operand_d ? 0x0d600000 | instructionBinary : instructionBinary << 19;
     // handle operands
@@ -869,7 +878,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+            const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b111) {
               // [error_smb0t7]
               throw new Error('Selector must be 0 to 7');
@@ -885,7 +894,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b111) {
             // [error_smb0t7]
             throw new Error('Selector must be 0 to 7');
@@ -906,7 +915,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+            const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b11) {
               // [error_smb0t3]
               throw new Error('Selector must be 0 to 3');
@@ -922,7 +931,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b11) {
             // [error_smb0t3]
             throw new Error('Selector must be 0 to 3');
@@ -943,7 +952,7 @@ export class SpinResolver {
             this.trySImmediate();
             this.getComma();
             this.getPound();
-            const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+            const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b1) {
               // [error_smb0t1]
               throw new Error('Selector must be 0 to 1');
@@ -959,7 +968,7 @@ export class SpinResolver {
           this.trySImmediate();
           this.getComma();
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b1) {
             // [error_smb0t1]
             throw new Error('Selector must be 0 to 1');
@@ -1002,7 +1011,7 @@ export class SpinResolver {
         if (this.checkAt()) {
           // rep @,s/#
           this.instructionImage |= 1 << 19;
-          const instructionCountResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const instructionCountResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           let instructionCount: number = Number(instructionCountResult.value);
           this.getComma();
           this.trySImmediate(); // get repetition count
@@ -1150,7 +1159,7 @@ export class SpinResolver {
           this.getPound();
           const backslashFound: boolean = this.checkBackslash(); // and remove it if found
           this.orghSymbolFlag = false;
-          const addressResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const addressResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           const address: number = Number(addressResult.value);
           if (address > 0xfffff) {
             // [error_amnex]
@@ -1181,7 +1190,7 @@ export class SpinResolver {
         // AUGS or AUGD
         {
           this.getPound();
-          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           // install upper 23 bits as immediate into AUGD/AUGS
           this.instructionImage |= Number(valueResult.value) >> 9;
         }
@@ -1206,7 +1215,7 @@ export class SpinResolver {
         // modcz/modc/modz
         if (allowedEffects & 0b10) {
           // we have MODC or MODCZ
-          const flagBitsResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const flagBitsResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           // place into upper four bits of d field
           this.instructionImage |= (Number(flagBitsResult.value) & 0b1111) << (9 + 4);
           if (allowedEffects & 0b01) {
@@ -1216,7 +1225,7 @@ export class SpinResolver {
         }
         if (allowedEffects & 0b01) {
           // we have MODZ (or MODCZ)
-          const flagBitsResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const flagBitsResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           // place into lower four bits of d field
           this.instructionImage |= (Number(flagBitsResult.value) & 0b1111) << (9 + 0);
         }
@@ -1389,7 +1398,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << immediateBitNumber;
       if (this.checkPound()) {
         // have '##' (big immediate) case
-        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
         // emit AUGD Instruction
         this.emitAugDS(eAugType.AT_D, Number(valueResult.value));
         // place remainder in D field
@@ -1419,7 +1428,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << 18;
       if (this.checkPound()) {
         // have '##' (big immediate) case
-        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
         // emit AUGD or AUGS Instruction
         this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
         // place remainder in S field
@@ -1444,7 +1453,7 @@ export class SpinResolver {
       this.instructionImage |= 1 << 18;
       if (this.checkPound()) {
         // this is our '##' case
-        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
         // tryS_rel32:
         if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
@@ -1461,7 +1470,7 @@ export class SpinResolver {
         this.instructionImage |= branchAddress & 0x1ff;
       } else {
         // this is our '#' case
-        const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+        const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
         if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
           branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
@@ -1491,7 +1500,7 @@ export class SpinResolver {
     let address: number = 0;
     // check for '\' absolute override
     const backslashFound: boolean = this.checkBackslash(); // and remove backslash if found
-    const addressResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+    const addressResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
     address = Number(addressResult.value);
     if (address > 0xfffff) {
       // [error_amnex]
@@ -1574,7 +1583,7 @@ export class SpinResolver {
         if (this.checkPound()) {
           this.getPound(); // our second '#' MUST be here
           // this is our '##' case (20-bit index value)
-          const indexResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const indexResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           let indexValue = Number(indexResult.value);
           if ((pointerField & (0x40 | 0x10)) == (0x40 | 0x10)) {
             indexValue = -indexValue;
@@ -1586,7 +1595,7 @@ export class SpinResolver {
           pointerField = 0; // prevent pointerField from being ORd-in again later
         } else {
           // no '##'
-          const indexResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const indexResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           let indexValue = Number(indexResult.value);
           // is positive value
           if (pointerField & 0x40) {
@@ -1615,13 +1624,13 @@ export class SpinResolver {
         this.instructionImage |= 1 << 18;
         if (this.checkPound()) {
           // this is our '##' case (20-bit index value)
-          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           this.emitAugDS(eAugType.AT_S, Number(valueResult.value));
           // install lower 9 bits of constant
           this.instructionImage |= Number(valueResult.value) & 0x1ff;
         } else {
           // have '#' but constrained to 8-bit value! (not 9-bit)
-          const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+          const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           const value = Number(valueResult.value);
           if (value > 255) {
             // [error_cmbf0t255]
@@ -1697,7 +1706,7 @@ export class SpinResolver {
   private tryValueReg(): number {
     // return value [0x000-0x1ff]
     let value: number = 0;
-    const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+    const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
     value = Number(valueResult.value);
     if (value > 0x1ff) {
       // [error_rcex]
@@ -1709,7 +1718,7 @@ export class SpinResolver {
   private tryValueCon(): number {
     // return value [0-511]
     let value: number = 0;
-    const valueResult = this.getValue(eMode.BM_Operand, this.pasmResolveMode);
+    const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
     value = Number(valueResult.value);
     if (value > 511) {
       // [error_cmbf0t511]
@@ -1721,9 +1730,11 @@ export class SpinResolver {
   private checkInstruction(element: SpinElement): [boolean, number] {
     let instructionFoundStatus: boolean = true;
     let instructionValue: number = 0;
+    let needAsmLookup: boolean = false;
     if (element.type == eElementType.type_asm_inst) {
       instructionValue = Number(element.value);
     } else if (element.type == eElementType.type_op) {
+      needAsmLookup = true;
       switch (Number(element.operation)) {
         case eOpcode.oc_abs:
           instructionValue = eAsmcode.ac_abs;
@@ -1788,65 +1799,67 @@ export class SpinResolver {
           break;
       }
     } else if (element.type == eElementType.type_i_flex) {
-      switch (element.flexCode) {
-        case eFlexcodes.fc_hubset:
+      this.logMessage(`* checkInstruction() flexCode=(${element.byteCode})[${eByteCode[element.byteCode]}]`);
+      needAsmLookup = true;
+      switch (element.byteCode) {
+        case eByteCode.bc_hubset:
           instructionValue = eAsmcode.ac_hubset;
           break;
-        case eFlexcodes.fc_coginit:
+        case eByteCode.bc_coginit:
           instructionValue = eAsmcode.ac_coginit;
           break;
-        case eFlexcodes.fc_cogstop:
+        case eByteCode.bc_cogstop:
           instructionValue = eAsmcode.ac_cogstop;
           break;
-        case eFlexcodes.fc_cogid:
+        case eByteCode.bc_cogid:
           instructionValue = eAsmcode.ac_cogid;
           break;
-        case eFlexcodes.fc_getrnd:
+        case eByteCode.bc_getrnd:
           instructionValue = eAsmcode.ac_getrnd;
           break;
-        case eFlexcodes.fc_getct:
+        case eByteCode.bc_getct:
           instructionValue = eAsmcode.ac_getct;
           break;
-        case eFlexcodes.fc_wrpin:
+        case eByteCode.bc_wrpin:
           instructionValue = eAsmcode.ac_wrpin;
           break;
-        case eFlexcodes.fc_wxpin:
+        case eByteCode.bc_wxpin:
           instructionValue = eAsmcode.ac_wxpin;
           break;
-        case eFlexcodes.fc_wypin:
+        case eByteCode.bc_wypin:
           instructionValue = eAsmcode.ac_wypin;
           break;
-        case eFlexcodes.fc_akpin:
+        case eByteCode.bc_akpin:
           instructionValue = eAsmcode.ac_akpin;
           break;
-        case eFlexcodes.fc_rdpin:
+        case eByteCode.bc_rdpin:
           instructionValue = eAsmcode.ac_rdpin;
           break;
-        case eFlexcodes.fc_rqpin:
+        case eByteCode.bc_rqpin:
           instructionValue = eAsmcode.ac_rqpin;
           break;
-        case eFlexcodes.fc_locknew:
+        case eByteCode.bc_locknew:
           instructionValue = eAsmcode.ac_locknew;
           break;
-        case eFlexcodes.fc_lockret:
+        case eByteCode.bc_lockret:
           instructionValue = eAsmcode.ac_lockret;
           break;
-        case eFlexcodes.fc_locktry:
+        case eByteCode.bc_locktry:
           instructionValue = eAsmcode.ac_locktry;
           break;
-        case eFlexcodes.fc_lockrel:
+        case eByteCode.bc_lockrel:
           instructionValue = eAsmcode.ac_lockrel;
           break;
-        case eFlexcodes.fc_cogatn:
+        case eByteCode.bc_cogatn:
           instructionValue = eAsmcode.ac_cogatn;
           break;
-        case eFlexcodes.fc_pollatn:
+        case eByteCode.bc_pollatn:
           instructionValue = eAsmcode.ac_pollatn;
           break;
-        case eFlexcodes.fc_waitatn:
+        case eByteCode.bc_waitatn:
           instructionValue = eAsmcode.ac_waitatn;
           break;
-        case eFlexcodes.fc_call:
+        case eByteCode.bc_call:
           instructionValue = eAsmcode.ac_call;
           break;
 
@@ -1859,7 +1872,11 @@ export class SpinResolver {
     } else {
       instructionFoundStatus = false;
     }
-
+    if (instructionFoundStatus == true && needAsmLookup) {
+      // get asmCode values for type_op, and type_i_flex
+      instructionValue = this.spinSymbolTables.asmcodeValue(instructionValue);
+    }
+    this.logMessage(`* checkInstruction() instructionFoundStatus=(${instructionFoundStatus}), instructionValue=($${instructionValue.toString(16)})`);
     return [instructionFoundStatus, instructionValue];
   }
 
@@ -2040,6 +2057,9 @@ export class SpinResolver {
       symbolFound = tmpSymbolFound;
       symbolFoundStatus = true;
     }
+    this.logMessage(
+      `* checkLocalSymbol() symbolFoundStatus=(${symbolFoundStatus}), symbolFound=[${symbolFound.name}, [${eElementType[symbolFound.type]}], ${symbolFound.value}]`
+    );
     return [symbolFoundStatus, symbolFound];
   }
 
@@ -2069,24 +2089,32 @@ export class SpinResolver {
   }
 
   private recordSymbol(newSymbol: iSymbol) {
-    this.logMessage(
-      `* recordSymbol() name=[${newSymbol.name}], type=[${eElementType[newSymbol.type]}], value=($${Number(newSymbol.value).toString(16)})`
-    );
+    let symbolNumber: number = 0;
+    let tableName: string = '';
     switch (this.activeSymbolTable) {
       case eSymbolTableId.STI_MAIN:
         this.mainSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        symbolNumber = this.mainSymbols.length;
+        tableName = 'mainSymbols';
         break;
       case eSymbolTableId.STI_LOCAL:
         this.localSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        symbolNumber = this.localSymbols.length;
+        tableName = 'localSymbols';
         break;
       case eSymbolTableId.STI_INLINE:
         this.inlineSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        symbolNumber = this.inlineSymbols.length;
+        tableName = 'inlineSymbols';
         break;
       default:
         // [error_INTERNAL]
         throw new Error('[CODE] known table ID!');
         break;
     }
+    this.logMessage(
+      `* recordSymbol() ${tableName}[${symbolNumber}] name=[${newSymbol.name}], type=[${eElementType[newSymbol.type]}], value=($${Number(BigInt(newSymbol.value) & BigInt(0xffffffff)).toString(16)})`
+    );
   }
 
   // TODO: upcoming: try spin2 constant expression
@@ -2268,6 +2296,10 @@ export class SpinResolver {
     this.recordObjectConstant(symbolName, interfaceType, symbolValue.value);
     // record our symbol
     this.mainSymbols.add(symbolName, symbolType, symbolValue.value);
+    const symbolNumber = this.mainSymbols.length;
+    this.logMessage(
+      `* recordSymbolValue() mainSymbols[${symbolNumber}] name=[${symbolName}], type=[${eElementType[symbolType]}], value=($${Number(BigInt(symbolValue.value) & BigInt(0xffffffff)).toString(16)})`
+    );
   }
 
   private checkImportedParam() {
@@ -2560,13 +2592,13 @@ export class SpinResolver {
       } else {
         // DAT section handling
         this.logMessage(`* getCon DAT section handling`);
-        if (mode == eMode.BM_Operand) {
+        if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
           const [didFindLocal, symbol] = this.checkLocalSymbol(currElement);
           if (didFindLocal) {
             this.logMessage(`* getCon FOUND local symbol element=[${currElement.toString()}]`);
             // we have a local symbol... (must be undef or is storage type)
             // replace curr elem with this symbol...
-            currElement = this.getElement(); // put us in proper place in element list
+            // TODO: we are reusing currElement is this safe???
             currElement.setType(symbol.type);
             currElement.setValue(symbol.value); // this is our LOCAL internal name:  sym'0000
           }
@@ -2577,7 +2609,7 @@ export class SpinResolver {
           // FIXME: TODO: handle DAT symbols
           if (currElement.type == eElementType.type_dollar) {
             // HANDLE an origin symbol
-            if (mode != eMode.BM_Operand) {
+            if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
               // [error_oinah]
               throw new Error('"$" is not allowed here');
             }
@@ -2586,7 +2618,7 @@ export class SpinResolver {
           } else if (currElement.type == eElementType.type_register) {
             this.logMessage(`* getCON type_register`);
             // HANDLE a cog register
-            if (mode != eMode.BM_Operand) {
+            if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
               // [error_rinah]
               throw new Error('Register is not allowed here');
             }
@@ -2639,7 +2671,7 @@ export class SpinResolver {
             // HANDLE DAT symbol itself
             this.logMessage(`* getCON DAT symbol elem=[${currElement.toString()}]`);
             this.checkIntMode();
-            if (mode == eMode.BM_Operand) {
+            if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
               // within pasm instruction
               if (currElement.numberValue >= 0xfff00000) {
                 this.orghSymbolFlag = true;
@@ -2664,7 +2696,7 @@ export class SpinResolver {
 
   private checkDat(element: SpinElement, mode: eMode): boolean {
     // note this can modify the passed element!!
-    if (mode == eMode.BM_Operand && element.type == eElementType.type_dat_long_res) {
+    if ((mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) && element.type == eElementType.type_dat_long_res) {
       element.setType(eElementType.type_dat_long);
     }
     return element.type == eElementType.type_dat_byte || element.type == eElementType.type_dat_word || element.type == eElementType.type_dat_long;

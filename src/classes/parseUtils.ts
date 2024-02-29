@@ -2959,7 +2959,7 @@ export class SpinSymbolTables {
     return returnValue;
   }
 
-  private asmcodeValue(asmcodeId: eAsmcode): number {
+  public asmcodeValue(asmcodeId: eAsmcode): number {
     // retrieve the computed value for a given asmcode id
     let returnValue: number = 0;
     if (this.asmcodeValues.has(asmcodeId)) {
