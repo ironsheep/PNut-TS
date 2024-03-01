@@ -16,16 +16,29 @@ export class SpinElement {
   private _value: bigint | string = '';
   private _type: eElementType = eElementType.type_undefined;
   private _midStringComma: boolean = false; // valid only if type_comma
-  private _isSymbol: boolean = false; // valid when element referrs to symbol in source code
+  private _isSymbol: boolean = false; // valid when element refers to symbol in source code
   private _symbolLength: number = 0; // valid only when _isSymbol is true
   private _sourceSymbolWasUndefined: boolean = false; // valid only when _isSymbol is true
 
-  constructor(fileID: number, type: eElementType, value: bigint | string, lineIndex: number, charIndex: number) {
-    this._fileId = fileID;
-    this._type = type;
-    this._value = value;
-    this._sourceLineIndex = lineIndex;
-    this._sourceCharacterOffset = charIndex;
+  constructor(fileID: number, type: eElementType, value: bigint | string, lineIndex: number, charIndex: number, copy?: SpinElement) {
+    if (copy) {
+      this._fileId = copy._fileId;
+      this._type = copy._type;
+      this._value = copy._value;
+      this._sourceLineIndex = copy._sourceLineIndex;
+      this._sourceCharacterOffset = copy._sourceCharacterOffset;
+      this._midStringComma = copy._midStringComma; // valid only if type_comma
+      this._isSymbol = copy._isSymbol; // valid when element referrs to symbol in source code
+      this._symbolLength = copy._symbolLength; // valid only when _isSymbol is true
+      this._sourceSymbolWasUndefined = copy._sourceSymbolWasUndefined; // valid only when _isSymbol is true
+    } else {
+      // if not copy constructor then load these five specifically
+      this._fileId = fileID;
+      this._type = type;
+      this._value = value;
+      this._sourceLineIndex = lineIndex;
+      this._sourceCharacterOffset = charIndex;
+    }
   }
 
   get fileId(): number {
@@ -34,6 +47,7 @@ export class SpinElement {
   }
 
   get refersToSymbol(): boolean {
+    /// this IS isSymbol()!!
     // Return T/F where T means this element refers to a symbol found in source code
     return this._isSymbol;
   }
@@ -81,10 +95,10 @@ export class SpinElement {
     return returnedValue;
   }
 
-  get numberValue(): number {
-    let returnedValue: number = 0;
+  get bigintValue(): bigint {
+    let returnedValue: bigint = 0n;
     if (typeof this._value === 'bigint') {
-      returnedValue = Number(this._value);
+      returnedValue = this._value;
     }
     return returnedValue;
   }
@@ -101,16 +115,20 @@ export class SpinElement {
     return this._sourceCharacterOffset;
   }
 
-  get isLineEnd(): boolean {
-    return this._type == eElementType.type_end;
-  }
-
   get valueIsNumber(): boolean {
     return typeof this._value === 'bigint';
   }
 
   get valueIsString(): boolean {
     return typeof this._value === 'string';
+  }
+
+  get isLineEnd(): boolean {
+    return this._type == eElementType.type_end;
+  }
+
+  get isTypeUndefined(): boolean {
+    return this._type == eElementType.type_undefined;
   }
 
   get isConstantFloat(): boolean {
@@ -286,6 +304,11 @@ export class SpinElement {
     this._symbolLength = length;
   }
 
+  public getSymbolLength(): number {
+    // called when this element refers to a symbol in source code
+    return this._symbolLength;
+  }
+
   set midStringComma(enable: boolean) {
     if (this._type == eElementType.type_comma) {
       this._midStringComma = enable;
@@ -309,7 +332,8 @@ export class SpinElement {
       valueInterp = `(${float32ToHexString(valueBigInt)})`;
     } else if (this.valueIsNumber) {
       if (this.isInstruction || this.isDatVar) {
-        valueInterp = `(0x${this.value.toString(16).padStart(8, '0').toUpperCase()})`;
+        const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
+        valueInterp = `(${float32ToHexString(valueBigInt)})`;
       } else {
         valueInterp = `(${this.value})`;
       }
