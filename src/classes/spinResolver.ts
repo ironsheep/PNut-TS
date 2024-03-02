@@ -109,7 +109,7 @@ export class SpinResolver {
   private symbolName: string = '';
   private pasmResolveMode: eResolve = eResolve.BR_Try;
   private instructionImage: number = 0;
-  private orghSymbolFlag: boolean = false; // set by getConstant()
+  private locOrghSymbolFlag: boolean = false; // set by getConstant()
   private clkMode: number = 0;
   private clkFreq: number = 0;
   private xinFreq: number = 0;
@@ -522,7 +522,7 @@ export class SpinResolver {
             this.wordSize = Number(this.currElement.value); // NOTE: this matches our enum values
             this.enterDatSymbol(); // process pending symbol
             do {
-              let currSize = this.wordSize;
+              let currSize: eWordSize = this.wordSize;
               this.currElement = this.getElement(); // moving on to next (past this symbol)
               if (this.currElement.type == eElementType.type_end) {
                 break;
@@ -1015,6 +1015,7 @@ export class SpinResolver {
         break;
       case eValueType.operand_dsp:
         // inst d,s/#/ptra/ptrb
+        this.logMessage(`* operand_dsp: we got one!`);
         this.tryD();
         this.getComma();
         this.tryPtraPtrb();
@@ -1177,9 +1178,11 @@ export class SpinResolver {
           this.getComma();
           this.getPound();
           const backslashFound: boolean = this.checkBackslash(); // and remove it if found
-          this.orghSymbolFlag = false;
+          this.locOrghSymbolFlag = false; // clear before getValue() possibly sets
+          // the following getValue() can set this.locOrghSymbolFlag
           const addressResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           const address: number = Number(addressResult.value);
+          this.logMessage(`* operand_loc: dRegister=[${hexString(dRegister)}], address=[${hexString(address)}]`);
           if (address > 0xfffff) {
             // [error_amnex]
             throw new Error('Address must not exceed $FFFFF');
@@ -1191,11 +1194,10 @@ export class SpinResolver {
           } else {
             // don't have '\'
             if (address >= 0x400) {
-              this.orghSymbolFlag = true;
+              this.locOrghSymbolFlag = true;
             }
             // set symbol flag iff flag and hub mode are different
-            this.orghSymbolFlag !== this.hubMode;
-            if (this.orghSymbolFlag) {
+            if (this.locOrghSymbolFlag !== this.hubMode) {
               // install address
               this.instructionImage |= address;
             } else {
@@ -1232,6 +1234,7 @@ export class SpinResolver {
         break;
       case eValueType.operand_cz:
         // modcz/modc/modz
+        this.instructionImage |= 1 << 18;
         if (allowedEffects & 0b10) {
           // we have MODC or MODCZ
           const flagBitsResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
@@ -1277,68 +1280,74 @@ export class SpinResolver {
         break;
       case eValueType.operand_pushpop:
         // push/pop
-        switch (this.instructionImage & 0b11) {
-          case 0b00:
-            this.instructionImage = 0x0c640161; // PUSHA  D/# --> WRLONG  D/#,PTRA++
-            this.tryDImmediate(19);
-            break;
-          case 0b01:
-            this.instructionImage = 0x0c6401e1; // PUSHB  D/# --> WRLONG  D/#,PTRB++
-            this.tryDImmediate(19);
-            break;
-          case 0b10:
-            this.instructionImage = 0x0b04015f; // POPA D --> RDLONG  D,--PTRA
-            this.tryD();
-            break;
-          case 0b11:
-            this.instructionImage = 0x0b0401df; // POPB D --> RDLONG  D,--PTRB
-            this.tryD();
-            break;
+        {
+          const flags = this.instructionImage & 0xf0000000;
+          switch (this.instructionImage & 0b11) {
+            case 0b00:
+              this.instructionImage = flags | 0x0c640161; // PUSHA  D/# --> WRLONG  D/#,PTRA++
+              this.tryDImmediate(19);
+              break;
+            case 0b01:
+              this.instructionImage = flags | 0x0c6401e1; // PUSHB  D/# --> WRLONG  D/#,PTRB++
+              this.tryDImmediate(19);
+              break;
+            case 0b10:
+              this.instructionImage = flags | 0x0b04015f; // POPA D --> RDLONG  D,--PTRA
+              this.tryD();
+              break;
+            case 0b11:
+              this.instructionImage = flags | 0x0b0401df; // POPB D --> RDLONG  D,--PTRB
+              this.tryD();
+              break;
+          }
         }
         break;
       case eValueType.operand_xlat:
         // inst [RET*, RES*, XSTOP]
-        switch (this.instructionImage & 0b1111) {
-          case 0b0000:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002d; // RET
-            break;
-          case 0b0001:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002e; // RETA
-            break;
-          case 0b0010:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0d64002f; // RETB
-            break;
-          case 0b0011:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bffff; // RETI0  -->  CALLD INB,INB   WCZ
-            break;
-          case 0b0100:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff5; // RETI1  -->  CALLD INB,$1F5  WCZ
-            break;
-          case 0b0101:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff3; // RETI2  -->  CALLD INB,$1F3  WCZ
-            break;
-          case 0b0110:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfff1; // RETI3  -->  CALLD INB,$1F1  WCZ
-            break;
-          case 0b0111:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3bfdff; // RESI0  -->  CALLD INA,INB   WCZ
-            break;
-          case 0b1000:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be9f5; // RESI1  -->  CALLD $1F4,$1F5 WCZ
-            break;
-          case 0b1001:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be5f3; // RESI2  -->  CALLD $1F2,$1F3 WCZ
-            break;
-          case 0b1010:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0b3be1f1; // RESI3  -->  CALLD $1F0,$1F1 WCZ
-            break;
-          case 0b1011:
-            this.instructionImage = (this.instructionImage & 0xf0000000) | 0x0cac0000; // XSTOP  -->  XINIT #0,#0
-            break;
-          default:
-            // [error_INTERNAL]
-            throw new Error('[CODE] unexpected XLAT instruction');
-            break;
+        {
+          const flags = this.instructionImage & 0xf0000000;
+          switch (this.instructionImage & 0b1111) {
+            case 0b0000:
+              this.instructionImage = flags | 0x0d64002d; // RET
+              break;
+            case 0b0001:
+              this.instructionImage = flags | 0x0d64002e; // RETA
+              break;
+            case 0b0010:
+              this.instructionImage = flags | 0x0d64002f; // RETB
+              break;
+            case 0b0011:
+              this.instructionImage = flags | 0x0b3bffff; // RETI0  -->  CALLD INB,INB   WCZ
+              break;
+            case 0b0100:
+              this.instructionImage = flags | 0x0b3bfff5; // RETI1  -->  CALLD INB,$1F5  WCZ
+              break;
+            case 0b0101:
+              this.instructionImage = flags | 0x0b3bfff3; // RETI2  -->  CALLD INB,$1F3  WCZ
+              break;
+            case 0b0110:
+              this.instructionImage = flags | 0x0b3bfff1; // RETI3  -->  CALLD INB,$1F1  WCZ
+              break;
+            case 0b0111:
+              this.instructionImage = flags | 0x0b3bfdff; // RESI0  -->  CALLD INA,INB   WCZ
+              break;
+            case 0b1000:
+              this.instructionImage = flags | 0x0b3be9f5; // RESI1  -->  CALLD $1F4,$1F5 WCZ
+              break;
+            case 0b1001:
+              this.instructionImage = flags | 0x0b3be5f3; // RESI2  -->  CALLD $1F2,$1F3 WCZ
+              break;
+            case 0b1010:
+              this.instructionImage = flags | 0x0b3be1f1; // RESI3  -->  CALLD $1F0,$1F1 WCZ
+              break;
+            case 0b1011:
+              this.instructionImage = flags | 0x0cac0000; // XSTOP  -->  XINIT #0,#0
+              break;
+            default:
+              // [error_INTERNAL]
+              throw new Error('[CODE] unexpected XLAT instruction');
+              break;
+          }
         }
         break;
       case eValueType.operand_akpin:
@@ -1544,105 +1553,109 @@ export class SpinResolver {
   }
 
   private tryPtraPtrb() {
+    // @@chkpab:
     // check for ptra/ptrb expression
-    let foundPtraPtrb: boolean = true;
-    let pointerField: number = 0; // work area for instruction bits
+    let ptrFound: boolean = true;
+    let ptrBits: number = 0; // work area for instruction bits
 
-    let nextElement: SpinElement = this.getElement();
+    this.getElement(); // get pre incr/decr or ptra/ptrb
     // check for pre increment/decrement of ptra/ptrb
-    if (nextElement.type == eElementType.type_inc) {
+    if (this.currElement.type == eElementType.type_inc) {
       // have ++(ptra/ptrb)?
-      nextElement = this.getElement();
-      const [foundPtr, fieldBit] = this.checkPtr();
+      this.getElement(); // get ptra/ptrb
+      const [foundPtr, ptrSelectBit] = this.checkPtr();
       if (foundPtr) {
         // ++ptra/ptrb, set update bit, set index to +1
-        pointerField |= fieldBit | 0x40 | 0x01;
+        ptrBits |= ptrSelectBit | 0x40 | 0x01;
       } else {
         // no pointer found (not (++)ptra/ptrb, back up)
         this.backElement();
         this.backElement();
-        foundPtraPtrb = false;
+        ptrFound = false;
       }
-    } else if (nextElement.type == eElementType.type_dec) {
+    } else if (this.currElement.type == eElementType.type_dec) {
       // have --(ptra/ptrb)?
-      nextElement = this.getElement();
-      const [foundPtr, fieldBit] = this.checkPtr();
+      this.getElement(); // get ptra/ptrb
+      const [foundPtr, ptrSelectBit] = this.checkPtr();
       if (foundPtr) {
         // --ptra/ptrb, set update bit, set index to -1
-        pointerField |= fieldBit | 0x40 | 0x1f;
+        ptrBits |= ptrSelectBit | 0x40 | 0x1f;
       } else {
         // no pointer found (not (--)ptra/ptrb, back up)
         this.backElement();
         this.backElement();
-        foundPtraPtrb = false;
+        ptrFound = false;
       }
     } else {
-      const [foundPtr, fieldBit] = this.checkPtr();
+      // curr element is ptra/ptrb...
+      const [foundPtr, ptrSelectBit] = this.checkPtr();
       if (foundPtr) {
         // we have a ptr, do we have post incr or decr?
-        let nextElement: SpinElement = this.getElement();
-        if (nextElement.type == eElementType.type_inc) {
+        this.currElement = this.getElement();
+        if (this.currElement.type == eElementType.type_inc) {
           // ptra/ptrb++, set update and post bits, set index to +1
-          pointerField |= fieldBit | 0x40 | 0x20 | 0x01;
-        } else if (nextElement.type == eElementType.type_dec) {
+          ptrBits |= ptrSelectBit | 0x40 | 0x20 | 0x01;
+        } else if (this.currElement.type == eElementType.type_dec) {
           // ptra/ptrb--, set update and post bits, set index to -1
-          pointerField |= fieldBit | 0x40 | 0x20 | 0x1f;
+          ptrBits |= ptrSelectBit | 0x40 | 0x20 | 0x1f;
         } else {
           // no post ++/--, return this element
           this.backElement();
+          ptrBits |= ptrSelectBit;
         }
       } else {
         // no ptra/ptrb(++/--), back up
         this.backElement();
-        foundPtraPtrb = false;
+        ptrFound = false;
       }
     }
-    if (foundPtraPtrb) {
-      // set immediate bit and ptra/ptrb bit
-      pointerField |= (1 << 18) | 0x100;
+    this.logMessage(`* tryPtraPtrb() ptrBits=[${hexString(ptrBits)}], ptrFound=(${ptrFound})`);
+    if (ptrFound) {
+      // @@trys_imm_pab:
+      ptrBits |= (1 << 18) | 0x100;
       // if we have index value...
       if (this.checkLeftBracket()) {
-        // .. check for pound, pound
+        // .. check for pound, pound index value
         if (this.checkPound()) {
           this.getPound(); // our second '#' MUST be here
           // this is our '##' case (20-bit index value)
           const indexResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
-          let indexValue = Number(indexResult.value);
-          if ((pointerField & (0x40 | 0x10)) == (0x40 | 0x10)) {
+          let indexValue: number = Number(this.signExtendFrom32Bit(indexResult.value));
+          if ((ptrBits & (0x40 | 0x10)) == (0x40 | 0x10)) {
             indexValue = -indexValue;
           }
-          pointerField = ((pointerField & 0x1e0) << (20 - 5)) | (indexValue & 0xfffff);
-          this.emitAugDS(eAugType.AT_S, pointerField);
+          ptrBits = ((0x100 | (ptrBits & 0xe0)) << (20 - 5)) | (indexValue & 0xfffff);
+          this.emitAugDS(eAugType.AT_S, ptrBits);
           // set immediate bit, install lower 9 bits of constant
-          this.instructionImage |= (1 << 18) | (pointerField &= 0x1ff);
-          pointerField = 0; // prevent pointerField from being ORd-in again later
+          this.instructionImage |= (1 << 18) | (ptrBits &= 0x1ff);
+          ptrBits = 0; // prevent ptrBits from being ORd-in again later
         } else {
-          // no '##'
+          // no '##' (single '#' was never allowed)
+          // set immediate bit and ptra/ptrb bit
           const indexResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
-          let indexValue = Number(this.signExtendFrom32Bit(indexResult.value));
+          const indexValue: number = Number(this.signExtendFrom32Bit(indexResult.value));
           // is positive value
-          if (pointerField & 0x40) {
+          if (ptrBits & 0x40) {
             // we are modifying...
             if (indexValue < 1 || indexValue > 16) {
               // [error_picmr116]
               throw new Error('PTRA/PTRB index constant must range from 1 to 16');
             }
-            pointerField = (pointerField & 0xe0) | (pointerField & 0x10 ? -indexValue & 0x1f : indexValue & 0x0f);
+            ptrBits = (ptrBits & 0xffffffe0) | (ptrBits & 0x10 ? -indexValue & 0x1f : indexValue & 0x0f);
           } else {
             // not modifying, have negative-to-positive case
-
             if (indexValue < -32 || indexValue > 31) {
               // [error_picmr6b]
               throw new Error('PTRA/PTRB index constant must range from -32 to 31');
             }
-            pointerField &= 0xc0;
-            pointerField |= indexValue & 0x3f;
+            ptrBits = (ptrBits & 0xffffffc0) | (indexValue & 0x3f);
           }
         }
         this.getRightBracket();
       }
-      this.instructionImage |= pointerField;
+      this.instructionImage |= ptrBits;
     } else {
+      // no ptr value or index value?!
       // .. check for pound..
       if (this.checkPound()) {
         this.instructionImage |= 1 << 18;
@@ -1670,15 +1683,16 @@ export class SpinResolver {
 
   private checkPtr(): [boolean, number] {
     let foundPtr: boolean = false;
-    let fieldBit: number = 0;
+    let ptrSelectBit: number = 0;
     if (this.currElement.type == eElementType.type_register) {
       const regValue: number = Number(this.currElement.value);
       if ((regValue & 0x1fe) == 0x1f8) {
-        fieldBit = (regValue & 0x001) << 7;
+        ptrSelectBit = (regValue & 0x001) << 7;
         foundPtr = true;
       }
     }
-    return [foundPtr, fieldBit];
+    this.logMessage(`* checkPtr() regValue=[${hexString(this.currElement.value)}], ptrSelectBit=[${ptrSelectBit}], foundPtr=(${foundPtr})`);
+    return [foundPtr, ptrSelectBit];
   }
 
   private checkCogHubCrossing(address: number) {
@@ -2024,11 +2038,10 @@ export class SpinResolver {
         case eWordSize.WS_Long_Res:
           type = eElementType.type_dat_long_res;
           this.wordSize = eWordSize.WS_Long;
-          // FIXME: TODO: we need to review this to ensure no other effects
           break;
         default:
           // [error_INTERNAL]
-          throw new Error('[CODE] unexpected wordSize!');
+          throw new Error(`[CODE] unexpected wordSize=(${this.wordSize}) !`);
       }
       if (this.hubMode) {
         value = BigInt(this.objImage.offset | 0xfff00000) & BigInt(0xffffffff);
@@ -2721,7 +2734,7 @@ export class SpinResolver {
               this.logMessage(`* getCON DAT symbol currElement=[${this.currElement.toString()}]`);
               if (this.currElement.bigintValue >= BigInt(0xfff00000)) {
                 this.logMessage(`* getCON DAT symbol have hub address this.pasmMode=(${this.pasmMode})`);
-                this.orghSymbolFlag = true;
+                this.locOrghSymbolFlag = true;
                 resultStatus.value = (this.currElement.bigintValue + BigInt(this.pasmMode ? 0 : this.orghOffset)) & BigInt(0xfffff);
               } else {
                 resultStatus.value = (this.currElement.bigintValue >> (32n - 12n)) & BigInt(0xfffff);
