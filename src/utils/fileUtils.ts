@@ -14,10 +14,10 @@ export function getSourceSymbol(context: Context, element: SpinElement): string 
   const srcDocument: SpinDocument | undefined = context.sourceFiles.getFileHavingID(element.fileId);
   if (srcDocument !== undefined && element.refersToSymbol) {
     const sourceLine: string = srcDocument.lineAt(element.sourceLineIndex).text;
-    context.logger.logMessage(`funcGetSourceSymbol() sourceLine=[${sourceLine}](${element.sourceCharacterEndOffset})`);
+    //context.logger.logMessage(`funcGetSourceSymbol() sourceLine=[${sourceLine}](${element.sourceCharacterEndOffset})`);
     desiredSymbol = sourceLine.substring(element.sourceCharacterOffset, element.sourceCharacterEndOffset).toUpperCase();
-  } else {
-    context.logger.logMessage(`funcGetSourceSymbol() refersToSymbol==FALSE!!!)`);
+    //} else {
+    //  context.logger.logMessage(`funcGetSourceSymbol() refersToSymbol==FALSE!!!)`);
   }
   return desiredSymbol;
 }

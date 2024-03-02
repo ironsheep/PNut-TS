@@ -4,6 +4,14 @@
 
 'use strict';
 // src/utils/float32.ts
+export function hexString(value: bigint | number | string): string {
+  // general non-masked bigint to float
+  if (typeof value === 'string') {
+    return value;
+  } else {
+    return `0x${BigInt(value).toString(16).padStart(8, '0').toUpperCase()}`;
+  }
+}
 
 export function stringToFloat32(numStr: string): bigint {
   // used by: spinElementizer.ts

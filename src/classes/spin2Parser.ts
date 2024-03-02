@@ -114,21 +114,34 @@ export class Spin2Parser {
           let symbolType: string;
           switch (symbol.type) {
             case eElementType.type_con:
-              symbolType = 'CON      ';
+              symbolType = 'CON';
               break;
             case eElementType.type_con_float:
               symbolType = 'CON_FLOAT';
               break;
             case eElementType.type_dat_long:
-              symbolType = 'DAT_LONG ';
+              symbolType = 'DAT_LONG';
+              break;
+
+            case eElementType.type_dat_long_res:
+              symbolType = 'DAT_LONG_RES';
+              break;
+
+            case eElementType.type_dat_word:
+              symbolType = 'DAT_WORD';
+              break;
+
+            case eElementType.type_dat_byte:
+              symbolType = 'DAT_BYTE';
               break;
 
             default:
               symbolType = `?? ${symbol.type} ??`;
               break;
           }
+          const symbolTypeFixed = `${symbolType.padEnd(15, ' ')}`;
           const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
-          stream.write(`TYPE: ${symbolType}       VALUE: ${hexValue}          NAME: ${symbol.name}\n`);
+          stream.write(`TYPE: ${symbolTypeFixed} VALUE: ${hexValue}          NAME: ${symbol.name}\n`);
         }
       }
       // emit spin version
@@ -165,7 +178,7 @@ export class Spin2Parser {
       */
 
       // emit hub-bytes use
-      stream.write(`\n\nHub bytes:          ${objImage.offset}\n\n`);
+      stream.write(`\n\nHub bytes:       ${objImage.offset.toLocaleString().replace(/,/g, '_')}\n\n`);
 
       // if we have object data, dump it
       if (objImage.offset > 0) {
@@ -200,7 +213,7 @@ export class Spin2Parser {
   }
 
   private rightAlignedDecimalValue(value: number, width: number): string {
-    const interpValue: string = `${value.toLocaleString().padStart(width)}`;
+    const interpValue: string = `${value.toLocaleString().padStart(width).replace(/,/g, '_')}`;
     return interpValue;
   }
 
