@@ -1,0 +1,6 @@
+{
+  "name": "full suite of tests",
+  "roots": ["<rootDir>/dist/tests/DAT_COMPILE/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": false
+}
