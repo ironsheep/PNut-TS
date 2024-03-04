@@ -55,11 +55,11 @@
  (49) -- Ln#20(1) type_asm_dir, (3) [ORG]
  (50) -- Ln#20(4) type_end
  (51) -- Ln#21(0) type_undefined, "PASM" [PASM]
- (52) -- Ln#21(5) type_asm_inst, (61535) [DRVNOT]
+ (52) -- Ln#21(5) type_asm_inst, (0xF05F) [DRVNOT]
  (53) -- Ln#21(12) type_pound
  (54) -- Ln#21(13) type_con, (0)
  (55) -- Ln#21(14) type_end
- (56) -- Ln#22(1) type_asm_inst, (37296) [JMP]
+ (56) -- Ln#22(1) type_asm_inst, (0x91B0) [JMP]
  (57) -- Ln#22(5) type_pound
  (58) -- Ln#22(6) type_dollar
  (59) -- Ln#22(7) type_op, (0x1A8B0624) op_sub
@@ -79,7 +79,7 @@
  (73) -- Ln#26(3) type_comma
  (74) -- Ln#26(4) type_under, (0) [_]
  (75) -- Ln#26(6) type_assign
- (76) -- Ln#26(9) type_i_flex, (37520) [XYPOL]
+ (76) -- Ln#26(9) type_i_flex, (0x9290) [XYPOL]
  (77) -- Ln#26(14) type_left
  (78) -- Ln#26(15) type_undefined, "X" [X]
  (79) -- Ln#26(16) type_comma

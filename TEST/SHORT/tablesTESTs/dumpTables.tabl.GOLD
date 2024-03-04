@@ -2642,8 +2642,8 @@ if_nc_and_nz  0x00000001
 if_nc_and_z  0x00000002
 if_nc_or_nz  0x00000007
 if_nc_or_z  0x0000000B
-if_never  0x00000000
 if_nz  0x00000005
+if_ret  0x00000000
 if_z  0x0000000A
 ;
 info_con  0x00000000

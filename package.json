@@ -7,7 +7,7 @@
     "compile": "tsc && chmod +x dist/pnut-ts.js",
     "start": "npm run compile && dist/pnut-ts.js",
     "help": "npm run compile && dist/pnut-ts.js --help",
-    "test": "jest -c jest-short-config.json",
+    "test": "jest -c jest-short-only-config.json",
     "test-full": "npm run compile && jest -c jest-full-config.json",
     "test-datpasm": "npm run compile && jest -c jest-datpasm-only-config.json",
     "test-full-only": "npm run compile && jest -c jest-full-only-config.json",
