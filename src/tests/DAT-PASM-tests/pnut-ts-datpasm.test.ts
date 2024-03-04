@@ -5,7 +5,7 @@ import path from 'path';
 import glob from 'glob';
 
 // test lives in <rootDir>/src/tests/FULL
-const dirPath = path.resolve(__dirname, '../../../TEST/DAT_COMPILE');
+const dirPath = path.resolve(__dirname, '../../../TEST/DAT-PASM-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
 describe('Test directory existence', () => {
