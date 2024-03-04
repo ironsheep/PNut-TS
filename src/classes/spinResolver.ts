@@ -261,6 +261,8 @@ export class SpinResolver {
       }
     }
 
+    this.logMessage(`* determine_clock() _clkfreq=(${_clkFreq})`);
+
     // make sure neither CLKMODE_ nor CLKFREQ_ were declared
     if (symbolsFoundBits & 0b11000000) {
       // [error_cccbd]
@@ -377,10 +379,10 @@ export class SpinResolver {
       _divd = 64;
       do {
         // -- LOOP while _divd...
-        _fpfd = Math.fround(_xinfreq / _divd);
-        _mult = Math.fround((_post * _divd * _clkfreq) / _xinfreq);
-        _fvco = Math.fround((_xinfreq * _mult) / _divd);
-        _fout = Math.fround(_fvco / _post);
+        _fpfd = Math.round(_xinfreq / _divd);
+        _mult = Math.round((_post * _divd * _clkfreq) / _xinfreq);
+        _fvco = Math.round((_xinfreq * _mult) / _divd);
+        _fout = Math.round(_fvco / _post);
         _abse = Math.abs(_fout - _clkfreq);
         // does this setting have lower or same _error?
         // is _fpfd at least 250KHz?
@@ -393,6 +395,7 @@ export class SpinResolver {
           _found = true;
           _error = _abse;
           // set PLL mode: set the PLL-enable bit, set the divider field, set the multiplier field, set the post divider field
+          this.logMessage(`* pllCalc() _divd=(${_divd}), _mult=(${_mult}), _pppp=(${_pppp})`);
           _mode = (1 << 24) | ((_divd - 1) << 18) | ((_mult - 1) << 8) | (((_pppp - 1) & 0b1111) << 4);
           // set PLL frequency
           _freq = _fout;
@@ -405,6 +408,7 @@ export class SpinResolver {
       // [error_pllscnba]
       throw new Error('PLL settings could not be achieved per _CLKFREQ');
     }
+    this.logMessage(`* pllCalc(${inputFrequency}, ${requestedFrequency}, ${allowedError}) -> [_mode=(${hexString(_mode)}), _freq=(${_freq})]`);
     return [_mode, _freq];
   }
 
