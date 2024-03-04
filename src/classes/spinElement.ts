@@ -74,7 +74,15 @@ export class SpinElement {
   }
 
   get value(): string | bigint {
-    return this._value;
+    let tempValue: bigint = 0n;
+    if (typeof this._value === 'string' && this._value.length == 1) {
+      tempValue = BigInt(this._value.charCodeAt(0));
+    } else if (typeof this._value === 'string') {
+      return this._value;
+    } else {
+      tempValue = this._value;
+    }
+    return tempValue;
   }
 
   public setType(newType: eElementType) {
@@ -99,6 +107,8 @@ export class SpinElement {
     let returnedValue: bigint = 0n;
     if (typeof this._value === 'bigint') {
       returnedValue = this._value;
+    } else if (typeof this._value === 'string' && this._value.length == 1) {
+      returnedValue = BigInt(this._value.charCodeAt(0));
     }
     return returnedValue;
   }

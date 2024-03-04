@@ -178,7 +178,8 @@ export class Spin2Parser {
       */
 
       // emit hub-bytes use
-      stream.write(`\n\nHub bytes:       ${objImage.offset.toLocaleString().replace(/,/g, '_')}\n\n`);
+      const lenString: string = this.rightAlignedDecimalValue(objImage.offset, 11);
+      stream.write(`\n\nHub bytes: ${lenString}\n\n`);
 
       // if we have object data, dump it
       if (objImage.offset > 0) {
