@@ -16,7 +16,6 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
-import { timeStamp } from 'console';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -725,6 +724,7 @@ export class SpinResolver {
             // HANDLE if-condition, and/or instruction
             // write symbol if present
             this.advanceToNextCogLong();
+            this.wordSize = eWordSize.WS_Long;
             this.enterDatSymbol(); // have an instruction
             this.assembleInstructionFromLine();
             this.getEndOfLine();
@@ -1505,21 +1505,24 @@ export class SpinResolver {
         const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
         if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
-          branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
-          const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
-          branchAddress -= orgAddress + 4;
+          branchAddress = (this.hubMode ? Number(valueResult.value) - this.hubOrg : (Number(valueResult.value) << 2) - this.cogOrg) - 4;
+          //branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
+          //const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
+          //branchAddress -= orgAddress + 4;
+          this.logMessage(`* trySRel() hubMode=(${this.hubMode}) value=${hexString(valueResult.value)}, branchAddress=${hexString(branchAddress)}`);
           if (branchAddress & 0b11) {
             // [error_rainawi]
             throw new Error('Relative address is not aligned with instruction');
           }
           // check signed number
           // TODO: watch that this doesn't do weird stuff! (fix math if does!)
+          branchAddress >>= 2;
           if (branchAddress < -0x100 || branchAddress > 0xff) {
             // [error_raioor]
             throw new Error('Relative address is out of range');
           }
         }
-        this.instructionImage |= (branchAddress >> 2) & 0x1ff;
+        this.instructionImage |= branchAddress & 0x1ff;
       }
     } else {
       // have register case
@@ -2581,15 +2584,14 @@ export class SpinResolver {
       if (this.nextElementType() == eElementType.type_con) {
         // coerce element to negative value
         const nextElement: SpinElement = this.getElement();
-        this.logMessage(`* nextElement=[${nextElement.toString()}]`);
-        resultStatus.value = (~nextElement.value + 1n) & BigInt(0xffffffff);
+        this.logMessage(`* type_con nextElement=[${nextElement.toString()}]`);
+        resultStatus.value = ((nextElement.bigintValue ^ BigInt(0xffffffff)) + 1n) & BigInt(0xffffffff);
         this.checkIntMode(); // throw if we were float
         // if not set then set else
       } else if (this.nextElementType() == eElementType.type_con_float) {
         // coerce element to negative value
-        // NOTE: ~~ this coerces the value to be a number
         const nextElement: SpinElement = this.getElement();
-        this.logMessage(`* nextElement=[${nextElement.toString()}]`);
+        this.logMessage(`* type_con_float nextElement=[${nextElement.toString()}]`);
         resultStatus.value = BigInt(nextElement.value) ^ BigInt(0x80000000);
         this.checkFloatMode(); // throw if we were int
         // if not set then set else
@@ -3140,7 +3142,7 @@ export class SpinResolver {
     const false32Bit: bigint = 0n;
 
     this.logMessage(
-      `resolver(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConBlock})`
+      `resolveOperation(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConBlock})`
     );
 
     // conditioning the incoming params
@@ -3154,10 +3156,12 @@ export class SpinResolver {
 
     switch (operation) {
       case eOperationType.op_bitnot: // !
+        this.logMessage(`resolveOperation() have op_bitnot:`);
         // invert our 32bits
         a ^= mask32Bit;
         break;
       case eOperationType.op_neg: //  - (uses op_sub sym)
+        this.logMessage(`resolveOperation() have op_neg:`);
         if (isFloatInConBlock) {
           // our 32bit float  signbit in msb, 8 exponent bits, 23 mantissa bits
           a ^= msb32Bit;
