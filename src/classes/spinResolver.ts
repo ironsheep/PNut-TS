@@ -114,6 +114,9 @@ export class SpinResolver {
   private xinFreq: number = 0;
   private inlineModeForGetConstant: boolean = false;
 
+  // VAR processing support data
+  private varPtr: number = 4;
+
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
@@ -139,6 +142,10 @@ export class SpinResolver {
 
   get xinFrequency(): number {
     return this.xinFreq;
+  }
+
+  get varBytes(): number {
+    return this.varPtr;
   }
   // for lister  ^^^
 
@@ -194,6 +201,9 @@ export class SpinResolver {
     this.compile_con_blocks_2nd();
     if (this.context.passOptions.afterConBlock == false) {
       this.logMessage('* COMPILE_dat_blocks()');
+      if (this.pasmMode == false) {
+        this.compile_var_blocks();
+      }
       this.compile_dat_blocks();
     }
   }
@@ -212,6 +222,108 @@ export class SpinResolver {
     this.compile_con_blocks(eResolve.BR_Try);
     this.logMessage('* COMPILE_con_blocks_2nd() 2of2');
     this.compile_con_blocks(eResolve.BR_Must);
+  }
+
+  private compile_var_blocks() {
+    // Compile var blocks
+    this.logMessage('* compile_var_blocks()');
+    this.varPtr = 4; // leave room for the long pointer to object
+    this.elementIndex = 0; // start from head of element list
+
+    // for each VAR block...
+    while (this.nextBlock(eValueType.block_var)) {
+      // BLOCK loop
+      do {
+        // LINE loop
+        this.getElement();
+        if (this.currElement.type == eElementType.type_end_file) {
+          break;
+        }
+
+        // is this ALIGNW or ALIGNL?
+        const [foundAlign, alignMask] = this.checkAlign(); // alignw, alignl?
+        if (foundAlign) {
+          this.alignVar(alignMask);
+          this.getEndOfLine();
+          continue; // align[wl] is only text on line
+        }
+
+        // is this a size (BYTE, WORD, LONG)?
+        let wordSize: number = eWordSize.WS_Long; // NOTE: this matches our enum values
+        if (this.currElement.type == eElementType.type_size) {
+          wordSize = Number(this.currElement.value); // NOTE: this matches our enum values
+          this.getElement();
+        }
+
+        // ok, had to have one of these three!
+        if (this.currElement.isTypeUndefined) {
+          this.backElement();
+        } else {
+          // our symbol/element was NOT undefined!
+          // [error_eauvnsa]
+          throw new Error('Expected a unique variable name, BYTE, WORD, LONG, ALIGNW, or ALIGNL');
+        }
+
+        do {
+          this.currElement = this.getElement();
+          if (this.currElement.isTypeUndefined == false) {
+            // [error_eauvn]
+            throw new Error('Expected a unique variable name');
+          }
+          const symbolName: string = this.currElement.stringValue;
+          let count: number = 1; // we default to count of one being allocated
+          if (this.checkLeftBracket()) {
+            // we have [count]. Get the value, replacing our 1
+            let countResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+            if (countResult.value > BigInt(this.hubOrgLimit)) {
+              // [error_tmvsid]
+              throw new Error('Too much variable space is declared');
+            }
+            count = Number(countResult.value);
+            this.getRightBracket();
+          }
+          // now record [count|1] instances with symbol name at start
+          const newVarSymbol: iSymbol = { name: symbolName, type: eElementType.type_var_byte + wordSize, value: BigInt(this.varPtr) };
+          this.varPtr += count << wordSize;
+          if (this.varPtr > this.hubOrgLimit) {
+            // [error_tmvsid]
+            throw new Error('Too much variable space is declared');
+          }
+          this.recordSymbol(newVarSymbol);
+        } while (this.getCommaOrEndOfLine());
+
+        // not end of this block, yet...
+      } while (this.nextElementType() != eElementType.type_block);
+    }
+    this.alignVar(0b11); // align to next long for start of next instance
+  }
+
+  private checkAlign(): [boolean, number] {
+    // do we have an ALIGNW or ALIGNL
+    let foundAlignStatus: boolean = false;
+    let alignMask: number = 0;
+    if (this.currElement.type == eElementType.type_asm_dir) {
+      const pasmDirective: number = Number(this.currElement.value);
+      if (pasmDirective == eValueType.dir_alignw) {
+        alignMask = 0b01;
+        foundAlignStatus = true;
+      } else if (pasmDirective == eValueType.dir_alignl) {
+        alignMask = 0b11;
+        foundAlignStatus = true;
+      }
+    }
+    return [foundAlignStatus, alignMask];
+  }
+
+  private alignVar(alignMask: number) {
+    // now force our alignment
+    while (this.varPtr & alignMask) {
+      this.varPtr++;
+    }
+    if (this.varPtr > this.hubOrgLimit) {
+      // [error_tmvsid]
+      throw new Error('Too much variable space is declared');
+    }
   }
 
   private compile_dat_blocks_fn() {
@@ -1510,9 +1622,6 @@ export class SpinResolver {
         if (this.pasmResolveMode == eResolve.BR_Must) {
           this.checkCogHubCrossing(Number(valueResult.value));
           branchAddress = (this.hubMode ? Number(valueResult.value) - this.hubOrg : (Number(valueResult.value) << 2) - this.cogOrg) - 4;
-          //branchAddress = Number(valueResult.value) << (this.hubMode ? 0 : 2);
-          //const orgAddress = this.hubMode ? this.hubOrg : this.cogOrg;
-          //branchAddress -= orgAddress + 4;
           this.logMessage(`* trySRel() hubMode=(${this.hubMode}) value=${hexString(valueResult.value)}, branchAddress=${hexString(branchAddress)}`);
           if (branchAddress & 0b11) {
             // [error_rainawi]
@@ -2388,18 +2497,18 @@ export class SpinResolver {
     let element: SpinElement;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      element = this.getElement();
-      if (element.type == eElementType.type_block && Number(element.value) == blockType) {
-        this.logMessage(`nextBlock() found element=[${element.toString()}]`);
+      this.getElement();
+      if (this.currElement.type == eElementType.type_block && Number(this.currElement.value) == blockType) {
+        this.logMessage(`nextBlock() found element=[${this.currElement.toString()}]`);
         foundStatus = true;
         break;
       }
-      if (element.type == eElementType.type_end_file) {
+      if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
     }
     if (foundStatus == true) {
-      if (element.sourceCharacterOffset != 0) {
+      if (this.currElement.sourceCharacterOffset != 0) {
         // [error_bdmbifc]
         throw new Error('Block designator must be in first column');
       }
@@ -2879,10 +2988,10 @@ export class SpinResolver {
 
   private getCommaOrEndOfLine(): boolean {
     let foundCommaStatus: boolean = false;
-    let element = this.getElement();
-    if (element.type == eElementType.type_comma) {
+    this.getElement();
+    if (this.currElement.type == eElementType.type_comma) {
       foundCommaStatus = true;
-    } else if (element.type != eElementType.type_end) {
+    } else if (this.currElement.type != eElementType.type_end) {
       // [error_ecoeol]
       throw new Error('Expected "," or end of line');
     }

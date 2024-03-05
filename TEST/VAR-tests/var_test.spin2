@@ -1,0 +1,9 @@
+var
+  byte v1
+  alignw
+  byte v2
+  alignl
+  byte ab,bb[2],cb[3]
+  word aw,bw[2],cw[3]
+  long al,bl[2],cl[3]
+  j,k[2],l[3]

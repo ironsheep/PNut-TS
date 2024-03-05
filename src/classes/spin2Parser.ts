@@ -135,6 +135,18 @@ export class Spin2Parser {
               symbolType = 'DAT_BYTE';
               break;
 
+            case eElementType.type_var_byte:
+              symbolType = 'VAR_BYTE';
+              break;
+
+            case eElementType.type_var_word:
+              symbolType = 'VAR_WORD';
+              break;
+
+            case eElementType.type_var_long:
+              symbolType = 'VAR_LONG';
+              break;
+
             default:
               symbolType = `?? ${symbol.type} ??`;
               break;
@@ -176,6 +188,10 @@ export class Spin2Parser {
         objImage.append(newByte);
       }
       */
+
+      const varBytes: number = this.spinResolver.varBytes;
+      const varString: string = this.rightAlignedDecimalValue(varBytes, 11);
+      stream.write(`\n\nVAR bytes: ${varString}\n\n`);
 
       // emit hub-bytes use
       const lenString: string = this.rightAlignedDecimalValue(objImage.offset, 11);
