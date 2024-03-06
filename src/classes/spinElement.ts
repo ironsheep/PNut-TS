@@ -95,6 +95,12 @@ export class SpinElement {
     this._value = newValue;
   }
 
+  public negateBigIntValue(): bigint {
+    // negate our 32bit value in-place!
+    this._value = ((this.bigintValue ^ BigInt(0xffffffff)) + 1n) & BigInt(0xffffffff);
+    return this._value;
+  }
+
   get stringValue(): string {
     let returnedValue: string = '';
     if (typeof this._value === 'string') {
@@ -250,7 +256,7 @@ export class SpinElement {
     return status;
   }
 
-  get isAssign(): boolean {
+  get isAssignable(): boolean {
     let status: boolean = false;
     if (this._type == eElementType.type_op && typeof this._value === 'bigint') {
       // macro v7 parm (v7 << 27)

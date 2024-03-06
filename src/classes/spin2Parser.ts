@@ -61,24 +61,7 @@ export class Spin2Parser {
     this.spinElements = this.elementizer.getFileElements();
     this.spinResolver.setElements(this.spinElements);
 
-    // now loop thru elements found
-    this.logMessage(''); // blank line
-    this.logMessage('// ---------------------------------------');
-    this.logMessage(`- displaying ${this.spinElements.length} entries`);
-    let currSourceLine: number = -1;
-    for (let index = 0; index < this.spinElements.length; index++) {
-      const element = this.spinElements[index];
-      if (element.sourceLineIndex != currSourceLine) {
-        const sourceLine: string = this.srcFile.lineAt(element.sourceLineIndex).text;
-        this.logMessage(`  -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) [${sourceLine}]`);
-        currSourceLine = element.sourceLineIndex;
-      }
-      const symbolName = getSourceSymbol(this.context, element);
-      const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
-      this.logMessage(` (${index + 1}) -- ${element.toString()}${symbolInterp}`);
-    }
-    this.logMessage('\\ ---------------------------------------');
-    this.logMessage(''); // blank line
+    this.P2ListElements(); // blank line
 
     // if regression reporting enabled then generate the report
     if (this.context.reportOptions.writeElementsReport) {
@@ -96,6 +79,7 @@ export class Spin2Parser {
     this.logMessage('* P2Compile2() - ENTRY');
     this.spinResolver.compile2();
   }
+
   public P2List() {
     this.logMessage('* P2List() - ENTRY');
     if (this.context.compileOptions.writeListing) {
@@ -223,6 +207,27 @@ export class Spin2Parser {
     }
   }
 
+  private P2ListElements() {
+    this.logMessage(''); // blank line
+    this.logMessage('// ---------------------------------------');
+    this.logMessage(`- displaying ${this.spinElements.length} entries`);
+    let currSourceLine: number = -1;
+    // now loop thru elements found
+    for (let index = 0; index < this.spinElements.length; index++) {
+      const element = this.spinElements[index];
+      if (element.sourceLineIndex != currSourceLine) {
+        const sourceLine: string = this.srcFile.lineAt(element.sourceLineIndex).text;
+        this.logMessage(`  -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) [${sourceLine}]`);
+        currSourceLine = element.sourceLineIndex;
+      }
+      const symbolName = getSourceSymbol(this.context, element);
+      const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
+      this.logMessage(` (${index + 1}) -- ${element.toString()}${symbolInterp}`);
+    }
+    this.logMessage('\\ ---------------------------------------');
+    this.logMessage('');
+  }
+
   private rightAlignedHexValue(value: number, width: number): string {
     const symbolValue: string = `$${float32ToHexString(BigInt(value)).replace('0x', '').padStart(8, '0')}`;
     const interpValue: string = `${symbolValue.padStart(width)}`;
@@ -238,7 +243,7 @@ export class Spin2Parser {
     // our list is in class objexct
     const spinElements: SpinElement[] = this.spinElements;
     this.spinResolver.setElements(this.spinElements);
-    this.spinResolver.resolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
+    this.spinResolver.testResolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
     // now process list of elements, writing to our symbol tables
     // the dump symbol tables to listing file
   }

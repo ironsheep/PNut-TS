@@ -16,12 +16,25 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
+import exp from 'constants';
 
 // Internal types used for passing complex values
 interface iValueReturn {
   value: bigint;
   isResolved: boolean;
   isFloat: boolean;
+}
+
+interface iVariableReturn {
+  isVariable: boolean;
+  type: eElementType;
+  address: number;
+  elementIndex: number;
+  wordSize: eWordSize;
+  sizeOverrideFlag: boolean;
+  indexFlag: boolean;
+  bitfieldFlag: boolean;
+  bitfieldConstantFlag: boolean;
 }
 
 interface iConstantReturn {
@@ -100,7 +113,6 @@ export class SpinResolver {
   private orghOffset: number = 0;
   private cogOrg: number = 0 << 2; // byte-address
   private cogOrgLimit: number = 0x1f8 << 2; // byte-address limit
-  private inlineLocalsStart: number = 0x1e0; // address
   private pasmMode: boolean = false;
   private fitToSize: boolean = false;
   private wordSize: eWordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
@@ -114,8 +126,17 @@ export class SpinResolver {
   private xinFreq: number = 0;
   private inlineModeForGetConstant: boolean = false;
 
+  // registers
+  private inlineLimit: number = 0x120; // address
+  private mrecvReg: number = 0x1d2; // address
+  private msendReg: number = 0x1d3; // address
+  private pasmRegs: number = 0x1d8; // address
+  private inlineLocalsStart: number = 0x1e0; // address
+
   // VAR processing support data
   private varPtr: number = 4;
+
+  // Spin2 processing support data
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -173,6 +194,48 @@ export class SpinResolver {
     }
   }
 
+  public compile2() {
+    this.determine_clock();
+    this.compile_con_blocks_2nd();
+    if (this.context.passOptions.afterConBlock == false) {
+      this.logMessage('* COMPILE_dat_blocks()');
+      if (this.pasmMode == false) {
+        this.compile_var_blocks();
+      }
+      this.compile_dat_blocks();
+    }
+  }
+
+  public testResolveExp(mode: eMode, resolve: eResolve, precedence: number) {
+    // expose this interface for testing
+    this.resolveExp(mode, resolve, precedence);
+  }
+  //
+  //  Operation Solver
+  //
+  public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConBlock: boolean): number {
+    // forward to whaterever the name becomes...
+    const endingValue: number = Number(this.resolveOperation(BigInt(parmA), BigInt(parmB), operation, isFloatInConBlock));
+    this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConBlock}) => (${endingValue})`);
+    return endingValue;
+  }
+
+  private compile_con_blocks_1st() {
+    // true here means very-first pass!
+    const FIRST_PASS: boolean = true;
+    this.logMessage('* COMPILE_con_blocks_1st() 1of2');
+    this.compile_con_blocks(eResolve.BR_Try, FIRST_PASS);
+    this.logMessage('* COMPILE_con_blocks_1st() 2of2');
+    this.compile_con_blocks(eResolve.BR_Try);
+  }
+
+  private compile_con_blocks_2nd() {
+    this.logMessage('* COMPILE_con_blocks_2nd() 1of2');
+    this.compile_con_blocks(eResolve.BR_Try);
+    this.logMessage('* COMPILE_con_blocks_2nd() 2of2');
+    this.compile_con_blocks(eResolve.BR_Must);
+  }
+
   private determinePasmMode(): boolean {
     // determine_mode:
     let pasmModeStatus: boolean = true;
@@ -194,34 +257,6 @@ export class SpinResolver {
     } while (element.type != eElementType.type_end_file);
     this.logMessage(`* determinePasmMode() = (${pasmModeStatus})`);
     return pasmModeStatus;
-  }
-
-  public compile2() {
-    this.determine_clock();
-    this.compile_con_blocks_2nd();
-    if (this.context.passOptions.afterConBlock == false) {
-      this.logMessage('* COMPILE_dat_blocks()');
-      if (this.pasmMode == false) {
-        this.compile_var_blocks();
-      }
-      this.compile_dat_blocks();
-    }
-  }
-
-  private compile_con_blocks_1st() {
-    // true here means very-first pass!
-    const FIRST_PASS: boolean = true;
-    this.logMessage('* COMPILE_con_blocks_1st() 1of2');
-    this.compile_con_blocks(eResolve.BR_Try, FIRST_PASS);
-    this.logMessage('* COMPILE_con_blocks_1st() 2of2');
-    this.compile_con_blocks(eResolve.BR_Try);
-  }
-
-  private compile_con_blocks_2nd() {
-    this.logMessage('* COMPILE_con_blocks_2nd() 1of2');
-    this.compile_con_blocks(eResolve.BR_Try);
-    this.logMessage('* COMPILE_con_blocks_2nd() 2of2');
-    this.compile_con_blocks(eResolve.BR_Must);
   }
 
   private compile_var_blocks() {
@@ -654,13 +689,13 @@ export class SpinResolver {
                     // [error_fvar]
                     throw new Error('FVAR/FVARS data is too big');
                   }
-                  this.compileRfvars(fvarResult.value);
+                  this.compileDatRfvars(fvarResult.value);
                 } else {
                   if ((BigInt(fvarResult.value) & BigInt(0xe0000000)) != 0n) {
                     // [error_fvar]
                     throw new Error('FVAR/FVARS data is too big');
                   }
-                  this.compileRfvar(fvarResult.value);
+                  this.compileDatRfvar(fvarResult.value);
                 }
               } else {
                 // DAT declaring long data
@@ -830,7 +865,7 @@ export class SpinResolver {
                 throw new Error('ALIGNW/ALIGNL not allowed within inline assembly code');
               }
               while (this.objImage.offset & (pasmDirective == eValueType.dir_alignl ? 0x03 : 0x01)) {
-                this.enterByte(0n);
+                this.enterDataByte(0n);
               }
             }
             // ensure this gets to end-of-line check (throw error if not)
@@ -851,7 +886,7 @@ export class SpinResolver {
               // [error_eidbwloe]
               throw new Error('Expected instruction, directive, BYTE/WORD/LONG, or END');
             }
-            this.enterLong(BigInt(0xfd64002d)); // enter a RET istruction
+            this.enterDataLong(BigInt(0xfd64002d)); // enter a RET istruction
             this.getEndOfLine();
           } else if (this.currElement.type == eElementType.type_file) {
             //
@@ -887,7 +922,7 @@ export class SpinResolver {
     // advance to next cog-long boundary
     if (this.hubMode == false) {
       while (this.cogOrg & 0x03) {
-        this.enterByte(0n);
+        this.enterDataByte(0n);
       }
     }
   }
@@ -1479,12 +1514,12 @@ export class SpinResolver {
           // assemble 'hubset ##clkmode & $ffff_fffc'
           this.instructionImage = instructionCondition | 0x0d640000 | ((this.clkMode & 0x1fc) << 9);
           this.emitAugDS(eAugType.AT_D, this.clkMode);
-          this.enterLong(BigInt(this.instructionImage));
+          this.enterDataLong(BigInt(this.instructionImage));
           // assemble 'waitx ##20_000_000/100' - (10ms to switch)
           const waitTime: number = 20000000 / 100;
           this.instructionImage = instructionCondition | 0x0d64001f | ((waitTime & 0x1ff) << 9);
           this.emitAugDS(eAugType.AT_D, waitTime);
-          this.enterLong(BigInt(this.instructionImage));
+          this.enterDataLong(BigInt(this.instructionImage));
           // assemble 'hubset ##clkmode'
           this.instructionImage = instructionCondition | 0x0d640000 | ((this.clkMode & 0x1ff) << 9);
           this.emitAugDS(eAugType.AT_D, this.clkMode);
@@ -1530,7 +1565,7 @@ export class SpinResolver {
       this.instructionImage |= attemptedEffects << 19;
     }
     // write instruction to obj image
-    this.enterLong(BigInt(this.instructionImage));
+    this.enterDataLong(BigInt(this.instructionImage));
   }
 
   private tryD() {
@@ -1854,7 +1889,7 @@ export class SpinResolver {
     // insert our aug value
     augInstruction |= (augValue >> 9) & 0x7fffff;
     // write instruction to obj image
-    this.enterLong(BigInt(augInstruction));
+    this.enterDataLong(BigInt(augInstruction));
   }
 
   private tryValueReg(): number {
@@ -2051,11 +2086,11 @@ export class SpinResolver {
     }
   }
 
-  private enterByte(byteValue: bigint) {
+  private enterDataByte(byteValue: bigint) {
     this.enterData(byteValue, eWordSize.WS_Byte, 1, false);
   }
 
-  private enterLong(longValue: bigint) {
+  private enterDataLong(longValue: bigint) {
     this.enterData(longValue, eWordSize.WS_Long, 1, false);
   }
 
@@ -2134,6 +2169,35 @@ export class SpinResolver {
       }
     }
     return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+  }
+
+  private compileDatRfvar(value: bigint) {
+    // generates 1-4 bytes (unsigned)
+    const masks = [BigInt(0x1fffff80), BigInt(0x1fffc000), BigInt(0x1fe00000)];
+    for (let i = 0; i < masks.length; i++) {
+      if (value & masks[i]) {
+        this.enterDataByte(BigInt(((Number(value) >> (7 * i)) & 0x7f) | 0x80));
+      } else {
+        this.enterDataByte(BigInt((Number(value) >> (7 * i)) & 0x7f));
+        return;
+      }
+    }
+    this.enterDataByte(BigInt((Number(value) >> 21) & 0xff));
+  }
+
+  private compileDatRfvars(value: bigint) {
+    // generates 1-4 bytes (signed)
+    const masks = [
+      { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
+      { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
+      { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
+    ];
+    for (let i = 0; i < masks.length; i++) {
+      if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
+        return this.compileDatRfvar(value & masks[i].bits);
+      }
+    }
+    return this.compileDatRfvar(value & BigInt(0x1fffffff)); // 29 bits
   }
 
   private enterDatSymbol() {
@@ -2534,8 +2598,31 @@ export class SpinResolver {
     return isFloat;
   }
 
-  public resolveExp(mode: eMode, resolve: eResolve, precedence: number) {
-    // leaves answer on stack
+  private compileExpressionCheckCon(): iValueReturn {
+    const savedObjPtr: number = this.objImage.offset;
+    const compileResult = this.compileExpression();
+    if (compileResult.isResolved) {
+      // restore the object offset (backup over the compiled constant)
+      this.objImage.setOffsetTo(savedObjPtr);
+    }
+    return compileResult;
+  }
+
+  private compileExpression(): iValueReturn {
+    //  Compile expression with sub-expressions
+    // PNut compile_exp:
+    const tryExpressionResult = this.trySpin2ConExpression();
+    if (tryExpressionResult.isResolved) {
+      this.compileConstant(tryExpressionResult.value);
+    } else {
+      this.topExpression(this.lowestPrecedence);
+    }
+    return tryExpressionResult;
+  }
+
+  private topExpression(precedence: number) {
+    // compile this expression
+    // PNut @@topexp:
     let currPrecedence: number = precedence;
     //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
     if (--currPrecedence < 0) {
@@ -2548,13 +2635,34 @@ export class SpinResolver {
           this.logMessage(`* skipping + operator`);
         }
       } while (this.currElement.isPlus);
+
+      this.negConToCon(); // these do NOT affect the element list! only the global currElement copy
+      this.SubToNeg();
+      this.FSubToFNeg();
+
+      if (this.currElement.type == eElementType.type_atat) {
+        this.topExpression(0); // with prec of 0
+        this.objWrByte(eByteCode.bc_add_pbase);
+        return;
+      } else if (this.currElement.isUnary) {
+        const savedElement: SpinElement = this.currElement;
+        if (this.checkEqual()) {
+          // we are now doing an assignment of some sort
+          if (savedElement.isAssignable == false) {
+            // [error_tocbufa]
+            throw new Error('This operator cannot be used for assignment');
+          }
+          this.getVariable(); // XYZZY topExpression()
+        }
+      }
+
+      /*
       const activeOperation: eOperationType = this.currElement.operation;
       const activePrecedence: number = this.currElement.precedence;
       const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
       this.logMessage(`* resolvExp() currElement=[${this.currElement.toString()}]`);
 
       // NOTE: we could move negation handling to here from within getConstant()
-
       // attempt to get a constant
       const resolution = this.getConstant(mode, resolve);
       if (resolution.foundConstant) {
@@ -2569,7 +2677,7 @@ export class SpinResolver {
 
         if (this.currElement.isUnary) {
           // our element is a unary operation
-          this.checkDualModeOp(activeFloatCompatibility); // (this IS in good place...)
+          this.checkDualModeOp(activeFloatCompatibility, mode); // (this IS in good place...)
           this.resolveExp(mode, resolve, activePrecedence);
           // Perform Unary
           const aValue = this.numberStack.pop();
@@ -2586,11 +2694,13 @@ export class SpinResolver {
           this.resolveExp(mode, resolve, this.lowestPrecedence);
           this.getRightParen();
         } else {
-          //if (mode == eMode.BM_Spin2) {
-          //  // go to fail_spin2_con_exp:
-          //}
-          // [error_eacuool]
-          throw new Error('Expected a constant, unary operator, or "("');
+          if (mode == eMode.BM_Spin2) {
+            // [error_NEW for Pnut-ts]
+            throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
+          } else {
+            // [error_eacuool]
+            throw new Error('Expected a constant, unary operator, or "("');
+          }
         }
       }
     } else {
@@ -2636,7 +2746,263 @@ export class SpinResolver {
           }
         } else if (this.currElement.isBinary) {
           // we have binary operator
-          this.checkDualModeOp(activeFloatCompatibility); // NOTE: maybe this moves down below exit?
+          this.checkDualModeOp(activeFloatCompatibility, mode); // NOTE: maybe this moves down below exit?
+          if (activePrecedence == currPrecedence) {
+            // Perform Binary
+            this.resolveExp(mode, resolve, currPrecedence); // push rhs value
+            // Perform binary
+            const bValue = this.numberStack.pop();
+            const aValue = this.numberStack.pop();
+            let exprResult: bigint = 0n;
+            if (this.numberStack.isUnresolved) {
+              this.logMessage(
+                `* SKIP Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[activeOperation]}]`
+              );
+            } else {
+              this.logMessage(
+                `* Perform Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[activeOperation]}]`
+              );
+              exprResult = this.resolveOperation(aValue, bValue, activeOperation, this.mathMode == eMathMode.MM_FloatMode);
+            }
+            this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
+            this.numberStack.push(exprResult);
+            // let loop occur
+          } else {
+            // not a binary precedence
+            this.backElement(); // leave the constant
+            break; // done,  exit loop
+          }
+        } else {
+          // not a binary precedence
+          this.backElement(); // leave the constant
+          break; // done,  exit loop
+        }
+      }
+    */
+    }
+    //this.logMessage(`resolveExp(${precedence}) - EXIT`);
+  }
+
+  private negConToCon() {
+    if (this.currElement.type == eElementType.type_op && this.currElement.operation == eOperationType.op_sub) {
+      this.getElement();
+      if (this.currElement.isConstantInt) {
+        this.currElement.negateBigIntValue();
+      } else if (this.currElement.isConstantFloat) {
+        this.currElement.setValue(BigInt(this.currElement.bigintValue) ^ BigInt(0x80000000));
+      } else {
+        this.backElement(); // return our element
+      }
+    }
+  }
+
+  private compileConstant(value: bigint) {
+    // compile this constant
+    const workingValue: number = Number(this.signExtendFrom32Bit(value));
+    if (workingValue >= -1 && workingValue <= 14) {
+      // -1 to 14
+      this.objWrByte(eByteCode.bc_con_n | ((workingValue + 1) & 0x0f));
+    } else if (workingValue >= 0 && workingValue <= 0xff) {
+      // 0 to 0xff
+      this.objWrByte(eByteCode.bc_con_rfbyte);
+      this.objWrByte(workingValue);
+    } else if (workingValue >= -0x100 && workingValue <= -1) {
+      // -0x100 to -1
+      this.objWrByte(eByteCode.bc_con_rfbyte_not);
+      this.objWrByte(~workingValue);
+    } else if (this.constantWasDecoded(workingValue)) {
+      // nothing more to do...
+    } else if (workingValue >= 0 && workingValue <= 0xffff) {
+      // 0 to 0xFFFF
+      this.objWrByte(eByteCode.bc_con_rfword);
+      this.objWrWord(workingValue);
+    } else if (workingValue >= -0x10000 && workingValue <= -1) {
+      // -0x10000 to -1
+      this.objWrByte(eByteCode.bc_con_rfword_not);
+      this.objWrWord(~workingValue);
+    } else {
+      // the long value
+      this.objWrByte(eByteCode.bc_con_rflong);
+      this.objWrLong(workingValue);
+    }
+  }
+
+  private constantWasDecoded(value: number): boolean {
+    let didDecodeStatus: boolean = false;
+    for (let shiftValue = 0; shiftValue < 0x20; shiftValue++) {
+      if (1 << shiftValue == value) {
+        this.objWrByte(eByteCode.bc_con_rfbyte_decod);
+        this.objWrByte(shiftValue);
+        didDecodeStatus = true;
+        break;
+      } else if (((1 << shiftValue) ^ 0xffffffff) == value) {
+        this.objWrByte(eByteCode.bc_con_rfbyte_decod_not);
+        this.objWrByte(shiftValue);
+        didDecodeStatus = true;
+        break;
+      } else if ((2 << shiftValue) - 1 == value) {
+        this.objWrByte(eByteCode.bc_con_rfbyte_bmask);
+        this.objWrByte(shiftValue);
+        didDecodeStatus = true;
+        break;
+      } else if ((((2 << shiftValue) - 1) ^ 0xffffffff) == value) {
+        this.objWrByte(eByteCode.bc_con_rfbyte_bmask_not);
+        this.objWrByte(shiftValue);
+        didDecodeStatus = true;
+        break;
+      }
+    }
+    return didDecodeStatus;
+  }
+
+  private objWrLong(longValue: number) {
+    this.objWrWord(longValue & 0xffff);
+    this.objWrWord((longValue >> 16) & 0xffff);
+  }
+
+  private objWrWord(wordValue: number) {
+    this.objWrByte(wordValue & 0xff);
+    this.objWrByte((wordValue >> 8) & 0xff);
+  }
+
+  private objWrByte(byteValue: number) {
+    this.objImage.append(byteValue & 0xff);
+  }
+
+  private trySpin2ConExpression(): iValueReturn {
+    // PNut try_spin2_con_exp:
+    const valueResult: iValueReturn = { value: 0n, isResolved: false, isFloat: false };
+    this.numberStack.reset(); // empty our stack
+    const savedElementIndex = this.elementIndex - 1;
+    let didResolve: boolean = true;
+    try {
+      this.resolveExp(eMode.BM_Spin2, eResolve.BR_Must, this.lowestPrecedence);
+    } catch (error) {
+      // code to handle the exception
+      if (error instanceof Error) {
+        if (error.message !== '[INTERNAL] Spin2 Constant failed to resolve') {
+          // forward to actually cause our compiler stop
+          throw new Error(error.message);
+        }
+      }
+      this.elementIndex = savedElementIndex;
+      this.getElement();
+      didResolve = false;
+    } finally {
+      if (didResolve) {
+        const value: bigint = this.numberStack.pop();
+        valueResult.value = value;
+        valueResult.isResolved = true;
+      }
+    }
+    return valueResult;
+  }
+
+  private resolveExp(mode: eMode, resolve: eResolve, precedence: number) {
+    // leaves answer on stack
+    let currPrecedence: number = precedence;
+    //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
+    if (--currPrecedence < 0) {
+      // we need to resove the term!
+
+      // skip leading pluses
+      do {
+        this.getElement();
+        if (this.currElement.isPlus) {
+          this.logMessage(`* skipping + operator`);
+        }
+      } while (this.currElement.isPlus);
+      const activeOperation: eOperationType = this.currElement.operation;
+      const activePrecedence: number = this.currElement.precedence;
+      const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
+      this.logMessage(`* resolvExp() currElement=[${this.currElement.toString()}]`);
+
+      // NOTE: we could move negation handling to here from within getConstant()
+
+      // attempt to get a constant
+      const resolution = this.getConstant(mode, resolve);
+      if (resolution.foundConstant) {
+        // we have a constant in hand
+        // place it on our stack and we're done
+        this.numberStack.push(resolution.value);
+      } else {
+        this.logMessage(`* resolvExp() did NOT find constant... mode=[${eMode[mode]}]`);
+        // no constant found, currElement is not a constant
+        this.SubToNeg(); // these do NOT affect the element list! only the global currElement copy
+        this.FSubToFNeg();
+
+        if (this.currElement.isUnary) {
+          // our element is a unary operation
+          this.checkDualModeOp(activeFloatCompatibility, mode); // (this IS in good place...)
+          this.resolveExp(mode, resolve, activePrecedence);
+          // Perform Unary
+          const aValue = this.numberStack.pop();
+          let exprResult: bigint = 0n;
+          if (this.numberStack.isUnresolved) {
+            this.logMessage(`* SKIP Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[activeOperation]}]`);
+          } else {
+            this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[activeOperation]}]`);
+            exprResult = this.resolveOperation(aValue, 0n, activeOperation, this.mathMode == eMathMode.MM_FloatMode);
+          }
+          this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
+          this.numberStack.push(exprResult);
+        } else if (this.currElement.type == eElementType.type_left) {
+          this.resolveExp(mode, resolve, this.lowestPrecedence);
+          this.getRightParen();
+        } else {
+          if (mode == eMode.BM_Spin2) {
+            // [error_NEW for Pnut-ts]
+            throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
+          } else {
+            // [error_eacuool]
+            throw new Error('Expected a constant, unary operator, or "("');
+          }
+        }
+      }
+    } else {
+      // precendence is NOT zero (> 0)
+      this.resolveExp(mode, resolve, currPrecedence);
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        this.getElement();
+        this.logMessage(`* resolvExp() LOOP currElement=[${this.currElement.toString()}]`);
+        const activeOperation: eOperationType = this.currElement.operation;
+        const activePrecedence: number = this.currElement.precedence;
+        const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
+        if (this.currElement.isTernary) {
+          // we have '?' op
+          this.logMessage(`* Have op ternary`);
+          if (currPrecedence == activePrecedence) {
+            this.logMessage(`* Ternary Precedence`);
+            // Perform Ternary
+            this.resolveExp(mode, resolve, this.lowestPrecedence); // push true value
+            this.getColon();
+            this.resolveExp(mode, resolve, this.lowestPrecedence); // push false value
+            const falseValue = this.numberStack.pop();
+            const trueValue = this.numberStack.pop();
+            const decisionValue = this.numberStack.pop();
+            let exprResult: bigint = 0n;
+            if (this.numberStack.isUnresolved) {
+              this.logMessage(
+                `* SKIP Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[activeOperation]}]`
+              );
+            } else {
+              this.logMessage(
+                `* Perform Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[activeOperation]}]`
+              );
+              exprResult = decisionValue != 0n ? trueValue : falseValue;
+            }
+            this.numberStack.push(exprResult);
+            this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
+            break; // done,  exit loop
+          } else {
+            // not a binary op
+            this.backElement(); // leave the constant
+            break; // done,  exit loop
+          }
+        } else if (this.currElement.isBinary) {
+          // we have binary operator
+          this.checkDualModeOp(activeFloatCompatibility, mode); // NOTE: maybe this moves down below exit?
           if (activePrecedence == currPrecedence) {
             // Perform Binary
             this.resolveExp(mode, resolve, currPrecedence); // push rhs value
@@ -2672,9 +3038,9 @@ export class SpinResolver {
     //this.logMessage(`resolveExp(${precedence}) - EXIT`);
   }
 
-  private checkDualModeOp(isElementFloatCompatible: boolean) {
+  private checkDualModeOp(isElementFloatCompatible: boolean, mode: eMode) {
     // [preview_op]
-    if (isElementFloatCompatible == false) {
+    if (isElementFloatCompatible == false && mode != eMode.BM_Spin2) {
       if (this.mathMode == eMathMode.MM_FloatMode) {
         // [error_ionaifpe]
         throw new Error('Integer operator not allowed in floating-point expression');
@@ -2688,180 +3054,218 @@ export class SpinResolver {
     const resultStatus: iConstantReturn = { value: 0n, foundConstant: true };
     this.logMessage(`* getCon mode=(${eMode[mode]}), resolve=(${eResolve[resolve]}), ele=[${(this, this.currElement.toString())}]`);
     // this 'check_constant', now 'try_constant' in Pnut
-    // trying to resolve spin2 constant
 
-    // replace our currElement with an oc_neg [sub-to-neg] if it was sub!
-    this.SubToNeg();
-    if (this.currElement.operation == eOperationType.op_neg) {
-      // if the next element is a constant we can negate it
-      if (this.nextElementType() == eElementType.type_con) {
-        // coerce element to negative value
-        const nextElement: SpinElement = this.getElement();
-        this.logMessage(`* type_con nextElement=[${nextElement.toString()}]`);
-        resultStatus.value = ((nextElement.bigintValue ^ BigInt(0xffffffff)) + 1n) & BigInt(0xffffffff);
-        this.checkIntMode(); // throw if we were float
-        // if not set then set else
-      } else if (this.nextElementType() == eElementType.type_con_float) {
-        // coerce element to negative value
-        const nextElement: SpinElement = this.getElement();
-        this.logMessage(`* type_con_float nextElement=[${nextElement.toString()}]`);
-        resultStatus.value = BigInt(nextElement.value) ^ BigInt(0x80000000);
-        this.checkFloatMode(); // throw if we were int
-        // if not set then set else
+    if (mode == eMode.BM_Spin2) {
+      // trying to resolve spin2 constant
+      if (this.SubToNeg()) {
+        this.getElement(); // get element following the minus sign
+        if (this.currElement.isConstantInt) {
+          resultStatus.value = this.currElement.negateBigIntValue();
+        } else if (this.currElement.isConstantFloat) {
+          resultStatus.value = BigInt(this.currElement.bigintValue) ^ BigInt(0x80000000);
+        } else {
+          this.backElement(); // return this element
+          this.backElement(); // return the minus sign
+          resultStatus.foundConstant = false;
+        }
+      }
+
+      if (this.currElement.isConstantInt) {
+        resultStatus.value = this.currElement.bigintValue;
+      } else if (this.currElement.isConstantFloat) {
+        resultStatus.value = this.currElement.bigintValue;
+      } else if (this.currElement.type == eElementType.type_pound) {
+        this.getElement();
+        const registerAddress: number = Number((this.currElement.bigintValue & BigInt(0xfff00000)) >> (32n - 12n));
+        if (this.isDatStorageType() && registerAddress < 0x400) {
+          resultStatus.value = BigInt(registerAddress);
+        } else {
+          // [error_eregsym]
+          throw new Error('Expected a register symbol');
+        }
+      } else if (this.currElement.type == eElementType.type_obj) {
+        // TODO: handle object stuff
+        if (this.checkDot() == false) {
+          // [error_NEW for Pnut-ts]
+          throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
+        }
       } else {
-        // we didn't find a constant
         resultStatus.foundConstant = false;
       }
     } else {
-      // continuing without a '-' sign
-      if (this.currElement.isConstantInt) {
-        // have integer constant
-        resultStatus.value = this.currElement.bigintValue;
-        this.checkIntMode();
-      } else if (this.currElement.isConstantFloat) {
-        // have float constant
-        resultStatus.value = this.currElement.bigintValue;
-        this.checkFloatMode();
-      } else if (this.currElement.type == eElementType.type_float) {
-        // have FLOAT()
-        this.checkFloatMode();
-        this.getLeftParen();
-        this.mathMode = eMathMode.MM_IntMode;
-        this.logMessage(`* mathMode = Int`);
-        this.resolveExp(mode, resolve, this.lowestPrecedence); // places result on stack
-        this.mathMode = eMathMode.MM_FloatMode;
-        this.logMessage(`* mathMode = Float`);
-        this.getRightParen();
-        const intValue = this.numberStack.pop(); // get result
-        // convert uint32 to float
-        // FIXME: TODO: this needs to make "1" into a 1.0
-        const floatValue: number = Number(intValue) / 1.0;
-        // return the converted result
-        resultStatus.value = numberToBigIntFloat32(floatValue);
-      } else if (this.currElement.type == eElementType.type_trunc || this.currElement.type == eElementType.type_round) {
-        // have TRUNC() or ROUND()
-        // TODO: determine if we care about overflow checking... because we don't do any here
-        this.checkIntMode();
-        this.getLeftParen();
-        this.mathMode = eMathMode.MM_FloatMode;
-        this.logMessage(`* mathMode = Float`);
-        this.resolveExp(mode, resolve, this.lowestPrecedence); // places result on stack
-        this.mathMode = eMathMode.MM_IntMode;
-        this.logMessage(`* mathMode = Int`);
-        this.getRightParen();
-        const float32Value = this.numberStack.pop(); // get result
-        // convert uint32 to float
-        const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
-        if (this.currElement.type == eElementType.type_trunc) {
-          // truncate our float value
-          const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
-          // return the converted result
-          resultStatus.value = BigInt(truncatedUInt32);
-        } else if (this.currElement.type == eElementType.type_round) {
-          // truncate our float value
-          const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
-          // return the converted result
-          resultStatus.value = BigInt(roundedUInt32);
+      // replace our currElement with an oc_neg [sub-to-neg] if it was sub!
+      this.SubToNeg();
+      if (this.currElement.operation == eOperationType.op_neg) {
+        // if the next element is a constant we can negate it
+        if (this.nextElementType() == eElementType.type_con) {
+          // coerce element to negative value
+          this.getElement();
+          this.logMessage(`* type_con e=[${this.currElement.toString()}]`);
+          resultStatus.value = ((this.currElement.bigintValue ^ BigInt(0xffffffff)) + 1n) & BigInt(0xffffffff);
+          this.checkIntMode(); // throw if we were float
+          // if not set then set else
+        } else if (this.nextElementType() == eElementType.type_con_float) {
+          // coerce element to negative value
+          this.getElement();
+          this.logMessage(`* type_con_float e=[${this.currElement.toString()}]`);
+          resultStatus.value = BigInt(this.currElement.value) ^ BigInt(0x80000000);
+          this.checkFloatMode(); // throw if we were int
+          // if not set then set else
+        } else {
+          // we didn't find a constant
+          resultStatus.foundConstant = false;
         }
       } else {
-        // DAT section handling
-        this.logMessage(`* getCon DAT section handling`);
-        let didFindLocal: boolean = false;
-        let symbol: iSymbol = { name: '', type: eElementType.type_undefined, value: 0n };
-        if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
-          [didFindLocal, symbol] = this.checkLocalSymbol();
-          if (didFindLocal) {
-            this.logMessage(`* getCon FOUND local symbol value=[${hexString(symbol.value)}]`);
-            // we have a local symbol... (must be undef or is storage type)
+        // continuing without a '-' sign
+        if (this.currElement.isConstantInt) {
+          // have integer constant
+          resultStatus.value = this.currElement.bigintValue;
+          this.checkIntMode();
+        } else if (this.currElement.isConstantFloat) {
+          // have float constant
+          resultStatus.value = this.currElement.bigintValue;
+          this.checkFloatMode();
+        } else if (this.currElement.type == eElementType.type_float) {
+          // have FLOAT()
+          this.checkFloatMode();
+          this.getLeftParen();
+          this.mathMode = eMathMode.MM_IntMode;
+          this.logMessage(`* mathMode = Int`);
+          this.resolveExp(mode, resolve, this.lowestPrecedence); // places result on stack
+          this.mathMode = eMathMode.MM_FloatMode;
+          this.logMessage(`* mathMode = Float`);
+          this.getRightParen();
+          const intValue = this.numberStack.pop(); // get result
+          // convert uint32 to float
+          // FIXME: TODO: this needs to make "1" into a 1.0
+          const floatValue: number = Number(intValue) / 1.0;
+          // return the converted result
+          resultStatus.value = numberToBigIntFloat32(floatValue);
+        } else if (this.currElement.type == eElementType.type_trunc || this.currElement.type == eElementType.type_round) {
+          // have TRUNC() or ROUND()
+          // TODO: determine if we care about overflow checking... because we don't do any here
+          this.checkIntMode();
+          this.getLeftParen();
+          this.mathMode = eMathMode.MM_FloatMode;
+          this.logMessage(`* mathMode = Float`);
+          this.resolveExp(mode, resolve, this.lowestPrecedence); // places result on stack
+          this.mathMode = eMathMode.MM_IntMode;
+          this.logMessage(`* mathMode = Int`);
+          this.getRightParen();
+          const float32Value = this.numberStack.pop(); // get result
+          // convert uint32 to float
+          const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
+          if (this.currElement.type == eElementType.type_trunc) {
+            // truncate our float value
+            const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
+            // return the converted result
+            resultStatus.value = BigInt(truncatedUInt32);
+          } else if (this.currElement.type == eElementType.type_round) {
+            // truncate our float value
+            const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
+            // return the converted result
+            resultStatus.value = BigInt(roundedUInt32);
           }
-        }
-        // have checkUndefined() consider the local symbol type if it is present
-        const haveUndefinedSymbol = this.checkUndefined(resolve, didFindLocal, symbol.type);
-        if (haveUndefinedSymbol == false) {
-          this.logMessage(`* getCON haveUndefinedSymbol == false`);
-          // FIXME: TODO: handle DAT symbols
-          if (this.currElement.type == eElementType.type_dollar) {
-            // HANDLE an origin symbol
-            if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
-              // [error_oinah]
-              throw new Error('"$" is not allowed here');
+        } else {
+          // DAT section handling
+          this.logMessage(`* getCon DAT section handling`);
+          let didFindLocal: boolean = false;
+          let symbol: iSymbol = { name: '', type: eElementType.type_undefined, value: 0n };
+          if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
+            [didFindLocal, symbol] = this.checkLocalSymbol();
+            if (didFindLocal) {
+              this.logMessage(`* getCon FOUND local symbol value=[${hexString(symbol.value)}]`);
+              // we have a local symbol... (must be undef or is storage type)
             }
-            this.checkIntMode();
-            resultStatus.value = BigInt(this.hubMode ? this.hubOrg : this.cogOrg >> 2);
-          } else if (this.currElement.type == eElementType.type_register) {
-            this.logMessage(`* getCON type_register`);
-            // HANDLE a cog register
-            if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
-              // [error_rinah]
-              throw new Error('Register is not allowed here');
-            }
-            this.checkIntMode();
-            resultStatus.value = this.currElement.bigintValue;
-          } else if (this.inlineModeForGetConstant) {
-            this.logMessage(`* getCON inlineModeForGetConstant`);
-            // HANDLE DAT Local variable now in register for inline access
-            if (this.currElement.type == eElementType.type_loc_byte || this.currElement.type == eElementType.type_loc_word) {
-              // [error_lvmb]
-              // We don't quite like this message (so we adjusted to not match PNut)
-              throw new Error('Local variable must be LONG and within first 16 longs');
-            }
-            if (this.currElement.type == eElementType.type_loc_long) {
-              if (this.currElement.bigintValue & BigInt(0b11) || this.currElement.bigintValue >= BigInt(0x10 << 2)) {
+          }
+          // have checkUndefined() consider the local symbol type if it is present
+          const haveUndefinedSymbol = this.checkUndefined(resolve, didFindLocal, symbol.type);
+          if (haveUndefinedSymbol == false) {
+            this.logMessage(`* getCON haveUndefinedSymbol == false`);
+            // FIXME: TODO: handle DAT symbols
+            if (this.currElement.type == eElementType.type_dollar) {
+              // HANDLE an origin symbol
+              if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
+                // [error_oinah]
+                throw new Error('"$" is not allowed here');
+              }
+              this.checkIntMode();
+              resultStatus.value = BigInt(this.hubMode ? this.hubOrg : this.cogOrg >> 2);
+            } else if (this.currElement.type == eElementType.type_register) {
+              this.logMessage(`* getCON type_register`);
+              // HANDLE a cog register
+              if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
+                // [error_rinah]
+                throw new Error('Register is not allowed here');
+              }
+              this.checkIntMode();
+              resultStatus.value = this.currElement.bigintValue;
+            } else if (this.inlineModeForGetConstant) {
+              this.logMessage(`* getCON inlineModeForGetConstant`);
+              // HANDLE DAT Local variable now in register for inline access
+              if (this.currElement.type == eElementType.type_loc_byte || this.currElement.type == eElementType.type_loc_word) {
                 // [error_lvmb]
                 // We don't quite like this message (so we adjusted to not match PNut)
                 throw new Error('Local variable must be LONG and within first 16 longs');
               }
-            }
-            // return address of local var
-            resultStatus.value = (this.currElement.bigintValue >> 2n) + BigInt(this.inlineLocalsStart);
-          } else if (this.currElement.type == eElementType.type_obj) {
-            // HANDLE object.constant reference
-            /*
-            this.getDot();
-            let [objSymbolFound, type, value] = this.getObjSymbol(currElement.bigintValue);
-            if (objSymbolFound == false) {
-              // [error_eacn]
-              throw new Error('Expected a constant name');
-            }
-            // TODO create new element replacing current and pass new
-            return this.getConstant(mode, resolve);
-            */
-            throw new Error('[CODE] type object not yet coded');
-          } else if (this.currElement.type == eElementType.type_at) {
-            // HANDLE address of DAT symbol
-            this.checkIntMode();
-            this.currElement = this.getElement();
-            if (this.checkDat(mode) || this.currElement.type == eElementType.type_hub_long) {
-              // we have DAT variable address
-              resultStatus.value = this.currElement.bigintValue & BigInt(0xfffff);
-              this.logMessage(`* getConstant() have @ e=[${this.currElement.toString()}, value=(${hexString(resultStatus.value)})]`);
-            } else {
-              if (this.checkUndefined(resolve) == false) {
-                // [error_eads]
-                throw new Error('Expected a DAT symbol');
+              if (this.currElement.type == eElementType.type_loc_long) {
+                if (this.currElement.bigintValue & BigInt(0b11) || this.currElement.bigintValue >= BigInt(0x10 << 2)) {
+                  // [error_lvmb]
+                  // We don't quite like this message (so we adjusted to not match PNut)
+                  throw new Error('Local variable must be LONG and within first 16 longs');
+                }
               }
-            }
-          } else if (this.checkDat(mode)) {
-            // HANDLE DAT symbol itself
-            this.checkIntMode();
-            if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
-              // within pasm instruction
-              this.logMessage(`* getCON DAT symbol currElement=[${this.currElement.toString()}]`);
-              if (this.currElement.bigintValue >= BigInt(0xfff00000)) {
-                this.logMessage(`* getCON DAT symbol have hub address this.pasmMode=(${this.pasmMode})`);
-                this.locOrghSymbolFlag = true;
-                resultStatus.value = (this.currElement.bigintValue + BigInt(this.pasmMode ? 0 : this.orghOffset)) & BigInt(0xfffff);
+              // return address of local var
+              resultStatus.value = (this.currElement.bigintValue >> 2n) + BigInt(this.inlineLocalsStart);
+            } else if (this.currElement.type == eElementType.type_obj) {
+              // HANDLE object.constant reference
+              /*
+              this.getDot();
+              let [objSymbolFound, type, value] = this.getObjSymbol(currElement.bigintValue);
+              if (objSymbolFound == false) {
+                // [error_eacn]
+                throw new Error('Expected a constant name');
+              }
+              // TODO create new element replacing current and pass new
+              return this.getConstant(mode, resolve);
+              */
+              throw new Error('[CODE] type object not yet coded');
+            } else if (this.currElement.type == eElementType.type_at) {
+              // HANDLE address of DAT symbol
+              this.checkIntMode();
+              this.currElement = this.getElement();
+              if (this.checkDat(mode) || this.currElement.type == eElementType.type_hub_long) {
+                // we have DAT variable address
+                resultStatus.value = this.currElement.bigintValue & BigInt(0xfffff);
+                this.logMessage(`* getConstant() have @ e=[${this.currElement.toString()}, value=(${hexString(resultStatus.value)})]`);
               } else {
-                resultStatus.value = (this.currElement.bigintValue >> (32n - 12n)) & BigInt(0xfffff);
+                if (this.checkUndefined(resolve) == false) {
+                  // [error_eads]
+                  throw new Error('Expected a DAT symbol');
+                }
               }
+            } else if (this.checkDat(mode)) {
+              // HANDLE DAT symbol itself
+              this.checkIntMode();
+              if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
+                // within pasm instruction
+                this.logMessage(`* getCON DAT symbol currElement=[${this.currElement.toString()}]`);
+                if (this.currElement.bigintValue >= BigInt(0xfff00000)) {
+                  this.logMessage(`* getCON DAT symbol have hub address this.pasmMode=(${this.pasmMode})`);
+                  this.locOrghSymbolFlag = true;
+                  resultStatus.value = (this.currElement.bigintValue + BigInt(this.pasmMode ? 0 : this.orghOffset)) & BigInt(0xfffff);
+                } else {
+                  resultStatus.value = (this.currElement.bigintValue >> (32n - 12n)) & BigInt(0xfffff);
+                }
+              } else {
+                // outside of pasm instruction - address of DAT variable
+                resultStatus.value = this.currElement.bigintValue & BigInt(0xfffff);
+              }
+              this.logMessage(`* getCON DAT symbol elem=[${this.currElement.toString()}] value=0x${resultStatus.value.toString(16)}`);
             } else {
-              // outside of pasm instruction - address of DAT variable
-              resultStatus.value = this.currElement.bigintValue & BigInt(0xfffff);
+              // we didn't find a constant
+              resultStatus.foundConstant = false;
             }
-            this.logMessage(`* getCON DAT symbol elem=[${this.currElement.toString()}] value=0x${resultStatus.value.toString(16)}`);
-          } else {
-            // we didn't find a constant
-            resultStatus.foundConstant = false;
           }
         }
       }
@@ -3018,7 +3422,218 @@ export class SpinResolver {
     return foundCommaStatus;
   }
 
-  // more here!!
+  private getVariable(): iVariableReturn {
+    const resultVariable = this.checkVariable();
+    if (resultVariable.isVariable == false) {
+      // [error_eav]
+      throw new Error('Expected a variable');
+    }
+    return resultVariable;
+  }
+
+  private checkVariable(): iVariableReturn {
+    let resultVariable: iVariableReturn = {
+      isVariable: true,
+      type: eElementType.type_undefined,
+      address: 0,
+      elementIndex: 0,
+      wordSize: 0,
+      sizeOverrideFlag: false,
+      indexFlag: false,
+      bitfieldFlag: false,
+      bitfieldConstantFlag: false
+    };
+
+    // preserve initial values (PNut al,ebx)
+    let variableType: eElementType = this.currElement.type;
+    let variableAddress: number = Number(this.currElement.bigintValue);
+
+    switch (variableType) {
+      case eElementType.type_recv:
+        variableType = eElementType.type_register;
+        variableAddress = this.mrecvReg;
+        break;
+      case eElementType.type_send:
+        variableType = eElementType.type_register;
+        variableAddress = this.msendReg;
+        break;
+    }
+
+    resultVariable.address = variableAddress;
+    resultVariable.elementIndex = this.elementIndex; // next to be gotten
+    resultVariable.address &= 0xfffff; // forecast for structure stuff
+
+    switch (variableType) {
+      case eElementType.type_loc_byte:
+      case eElementType.type_loc_word:
+      case eElementType.type_loc_long:
+        resultVariable.type = eElementType.type_loc_byte;
+        resultVariable.wordSize = variableType - eElementType.type_loc_byte;
+        this.checkVariableSizeOverride(resultVariable);
+        this.checkVariableIndex(resultVariable);
+        this.checkVariableBitfield(resultVariable);
+        break;
+
+      case eElementType.type_var_byte:
+      case eElementType.type_var_word:
+      case eElementType.type_var_long:
+        resultVariable.type = eElementType.type_var_byte;
+        resultVariable.wordSize = variableType - eElementType.type_var_byte;
+        this.checkVariableSizeOverride(resultVariable);
+        this.checkVariableIndex(resultVariable);
+        this.checkVariableBitfield(resultVariable);
+        break;
+
+      case eElementType.type_dat_byte:
+      case eElementType.type_dat_word:
+      case eElementType.type_dat_long:
+        resultVariable.type = eElementType.type_dat_byte;
+        resultVariable.wordSize = variableType - eElementType.type_dat_byte;
+        this.checkVariableSizeOverride(resultVariable);
+        this.checkVariableIndex(resultVariable);
+        this.checkVariableBitfield(resultVariable);
+        break;
+
+      case eElementType.type_hub_byte:
+      case eElementType.type_hub_word:
+      case eElementType.type_hub_long:
+        resultVariable.type = eElementType.type_hub_byte;
+        resultVariable.wordSize = variableType - eElementType.type_hub_byte;
+        this.checkVariableSizeOverride(resultVariable);
+        this.checkVariableIndex(resultVariable);
+        this.checkVariableBitfield(resultVariable);
+        break;
+
+      case eElementType.type_reg:
+        {
+          this.getLeftBracket();
+          const registerResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
+          const registerAddress: number = Number(this.signExtendFrom32Bit(registerResult.value));
+          if (registerAddress < 0 || registerAddress > 511) {
+            // [error_cmbf0t511]
+            throw new Error('Constant must be from 0 to 511');
+          }
+          this.getRightBracket();
+          resultVariable.type = eElementType.type_register;
+          resultVariable.address = registerAddress;
+          resultVariable.elementIndex = this.elementIndex; // after the right bracket
+          this.checkVariableIndex(resultVariable);
+          this.checkVariableBitfield(resultVariable);
+        }
+        break;
+
+      case eElementType.type_field:
+        resultVariable.type = eElementType.type_field;
+        this.skipIndex();
+        this.checkVariableIndex(resultVariable); // this sets the flag if present
+        break;
+
+      case eElementType.type_register:
+        resultVariable.type = eElementType.type_register;
+        this.checkVariableIndex(resultVariable);
+        this.checkVariableBitfield(resultVariable);
+        break;
+
+      case eElementType.type_size:
+        {
+          const [foundIndex, elementIndex] = this.checkIndex();
+          if (foundIndex == false) {
+            resultVariable.isVariable = false;
+          } else {
+            resultVariable.type = eElementType.type_size;
+            resultVariable.wordSize = variableAddress;
+            this.checkVariableIndex(resultVariable);
+            this.checkVariableBitfield(resultVariable);
+          }
+        }
+        break;
+
+      default:
+        resultVariable.isVariable = false;
+        break;
+    }
+    return resultVariable;
+  }
+
+  //    HOLD
+
+  private checkVariableSizeOverride(resultSoFar: iVariableReturn) {
+    if (this.checkDot()) {
+      this.getElement();
+      if (this.currElement.type == eElementType.type_size) {
+        resultSoFar.wordSize = Number(this.currElement.bigintValue);
+        resultSoFar.sizeOverrideFlag = true;
+      } else {
+        // not a size... so back out
+        this.backElement();
+        this.backElement();
+      }
+    }
+  }
+
+  private checkVariableIndex(resultSoFar: iVariableReturn) {
+    // PNut (not in PNut):
+    let [foundIndex, elementIndex] = this.checkIndex();
+    if (foundIndex) {
+      resultSoFar.indexFlag = true;
+    }
+  }
+
+  private checkVariableBitfield(resultSoFar: iVariableReturn) {
+    // PNut (not in PNut):
+    if (this.checkDot()) {
+      resultSoFar.bitfieldFlag = true;
+      this.getLeftBracket();
+      const expressionAReturn = this.skipExpressionCheckCon();
+      if (expressionAReturn.isResolved) {
+        resultSoFar.bitfieldConstantFlag = true;
+      }
+      // do we have a range?
+      if (this.checkDotDot()) {
+        const expressionBReturn = this.skipExpressionCheckCon();
+        if (expressionBReturn.isResolved == false) {
+          // don't have both expressions!
+          resultSoFar.bitfieldConstantFlag = false;
+        }
+      }
+      this.getRightBracket();
+    }
+  }
+
+  private checkIndex(): [boolean, number] {
+    // PNut: check_index:
+    let indexPresentStatus: boolean = false;
+    let elementIndex: number = 0;
+    if (this.checkLeftBracket()) {
+      elementIndex = this.elementIndex - 1;
+      indexPresentStatus = true;
+      this.skipExpression();
+      this.getRightBracket();
+    }
+    return [indexPresentStatus, elementIndex];
+  }
+
+  private skipIndex() {
+    // Pnut skip_index:
+    this.getLeftBracket();
+    this.skipExpression();
+    this.getRightBracket();
+  }
+
+  private skipExpression() {
+    // Pnut skip_exp:
+    const savedObjOffset = this.objImage.offset;
+    this.compileExpression();
+    this.objImage.setOffsetTo(savedObjOffset);
+  }
+
+  private skipExpressionCheckCon(): iValueReturn {
+    // PNut skip_exp_check_con:
+    const savedObjOffset = this.objImage.offset;
+    const constantReturn = this.compileExpressionCheckCon();
+    this.objImage.setOffsetTo(savedObjOffset);
+    return constantReturn;
+  }
 
   private getLeftParen() {
     const nextElement: SpinElement = this.getElement();
@@ -3158,12 +3773,15 @@ export class SpinResolver {
     }
   }
 
-  private SubToNeg() {
+  private SubToNeg(): boolean {
     // replace our element with a better element
+    let elementAdjustedStatus: boolean = false;
     if (this.currElement.operation == eOperationType.op_sub) {
       // replace our element with an oc_neg [sub-to-neg]
       this.currElement.setValue(BigInt(this.spinSymbolTables.opcodeValue(eOpcode.oc_neg)) & BigInt(0xffffffff));
+      elementAdjustedStatus = true;
     }
+    return elementAdjustedStatus;
   }
 
   private FSubToFNeg() {
@@ -3230,16 +3848,6 @@ export class SpinResolver {
     this.elementIndex -= 2;
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.elementIndex++]);
     this.logMessage(`* BACKele i#${this.elementIndex}, e=[${this.currElement.toString()}]`);
-  }
-
-  //
-  //  Operation Solver
-  //
-  public regressionTestResolver(parmA: number, parmB: number, operation: eOperationType, isFloatInConBlock: boolean): number {
-    // forward to whaterever the name becomes...
-    const endingValue: number = Number(this.resolveOperation(BigInt(parmA), BigInt(parmB), operation, isFloatInConBlock));
-    this.logMessage(`regressionTestResolver(${parmA}, ${parmB}, ${operation}, ${isFloatInConBlock}) => (${endingValue})`);
-    return endingValue;
   }
 
   private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConBlock: boolean): bigint {
