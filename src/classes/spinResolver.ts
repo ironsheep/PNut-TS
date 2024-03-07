@@ -3431,6 +3431,111 @@ export class SpinResolver {
     return resultVariable;
   }
 
+  private compileVariable(variable: iVariableReturn) {
+    // XYZZY compileVariable()
+    const resumeIndex: number = this.elementIndex - 1;
+    this.elementIndex = variable.elementIndex;
+
+    // runtime-resolved bitfield
+    if (variable.bitfieldFlag && variable.bitfieldConstantFlag == false) {
+      const saveIndex: number = this.elementIndex - 1;
+      if (variable.type == eElementType.type_size) {
+        this.skipIndex();
+      }
+      if (variable.sizeOverrideFlag == true) {
+        this.getDot();
+        this.getSize();
+      }
+      if (variable.indexFlag == true) {
+        this.skipIndex();
+      }
+      this.getDot();
+      this.getLeftBracket();
+      this.compileExpression(); // standalone or lower end of range
+      if (this.checkDotDot()) {
+        this.compileExpression(); // upper end of range
+        // handle low and high of range
+        this.objWrByte(eByteCode.bc_bitrange); // prepare for add
+        this.objWrByte(eByteCode.bc_addbits); // add then result back on stack
+      }
+      this.getRightBracket();
+      this.elementIndex = saveIndex; // return to starting location
+    }
+    // field
+    //
+    if (variable.type == eElementType.type_field) {
+      this.compileIndex();
+      if (variable.indexFlag == true) {
+        this.compileIndex();
+        this.objWrByte(eByteCode.bc_setup_field_pi);
+      } else {
+        this.objWrByte(eByteCode.bc_setup_field_p);
+      }
+    }
+    // register
+    //  REG[register][index]{.[bitfield]}
+    //  (or actual register name constants)
+    if (variable.type == eElementType.type_register) {
+      if (variable.address >= this.pasmRegs && variable.address <= this.pasmRegs + 7 && variable.indexFlag == false) {
+        this.objWrByte(eByteCode.bc_setup_reg_1D8_1F8 + (variable.address - this.pasmRegs));
+      } else if (variable.address >= 0x1f8 && variable.address <= 0x1ff && variable.indexFlag == false) {
+        this.objWrByte(eByteCode.bc_setup_reg_1D8_1F8 + (variable.address - 0x1f8 + 8));
+      } else {
+        if (variable.indexFlag == true) {
+          // have an index
+          const valueReturn = this.compileIndexCheckCon();
+          if (valueReturn.isResolved) {
+            // we have a constant
+            this.objWrByte(eByteCode.bc_setup_reg);
+            // FIXME: TODO: check for 0-0x1ff else throw error out-of-bounds (not in PNut)
+            variable.address += Number(valueReturn.value);
+          } else {
+            // we have runtime eval not constant
+            this.objWrByte(eByteCode.bc_setup_reg_pi);
+          }
+        } else {
+          // don't have an index
+          this.objWrByte(eByteCode.bc_setup_reg);
+        }
+        const signedRegister: number = variable.address & 0x100 ? variable.address | 0xfffffe00 : variable.address & 0x1ff;
+        this.compileRfvars(BigInt(signedRegister));
+      }
+    }
+
+    // type size
+    //  [BYTE|WORD|LONG][address][index]{.[bitfield]}
+    if (variable.type == eElementType.type_size) {
+      this.compileIndex();
+      if (variable.indexFlag == true) {
+        this.compileIndex();
+        this.objWrByte(eByteCode.bc_setup_byte_pb_pi + variable.wordSize); // pop base and index
+      } else {
+        this.objWrByte(eByteCode.bc_setup_byte_pa + variable.wordSize); // pop address
+      }
+    }
+
+    // type have real variable
+    if (variable.sizeOverrideFlag == true) {
+      this.getDot();
+      this.getSize();
+      variable.wordSize = Number(this.currElement.bigintValue);
+    }
+
+    // TODO: tomorrow resume with 16 var longs no index
+    // 16 local longs with no index
+    // possible index on...
+
+    // do stuff and generate stuff
+    this.elementIndex = resumeIndex; // return to location at entry
+  }
+
+  private compileIndexCheckCon(): iValueReturn {
+    this.getLeftBracket();
+    const valueReturn = this.compileExpressionCheckCon();
+    this.getRightBracket();
+    return valueReturn;
+  }
+
   private checkVariable(): iVariableReturn {
     let resultVariable: iVariableReturn = {
       isVariable: true,
@@ -3598,6 +3703,13 @@ export class SpinResolver {
       }
       this.getRightBracket();
     }
+  }
+
+  private compileIndex() {
+    // Pnut compile_index:
+    this.getLeftBracket();
+    this.compileExpression();
+    this.getRightBracket();
   }
 
   private checkIndex(): [boolean, number] {
