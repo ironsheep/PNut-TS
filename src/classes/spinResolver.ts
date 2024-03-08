@@ -16,7 +16,6 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
-import exp from 'constants';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -35,6 +34,15 @@ interface iVariableReturn {
   indexFlag: boolean;
   bitfieldFlag: boolean;
   bitfieldConstantFlag: boolean;
+  operation: eVariableOperation;
+  assignmentBytecode: eByteCode; // used iff VO_ASSIGN
+}
+
+enum eVariableOperation {
+  VO_Unknown,
+  VO_READ,
+  VO_WRITE,
+  VO_ASSIGN
 }
 
 interface iConstantReturn {
@@ -3461,6 +3469,7 @@ export class SpinResolver {
       this.getRightBracket();
       this.elementIndex = saveIndex; // return to starting location
     }
+
     // field
     //
     if (variable.type == eElementType.type_field) {
@@ -3471,7 +3480,9 @@ export class SpinResolver {
       } else {
         this.objWrByte(eByteCode.bc_setup_field_p);
       }
+      this.compileVariableReadWriteAssign(variable);
     }
+
     // register
     //  REG[register][index]{.[bitfield]}
     //  (or actual register name constants)
@@ -3483,12 +3494,13 @@ export class SpinResolver {
       } else {
         if (variable.indexFlag == true) {
           // have an index
-          const valueReturn = this.compileIndexCheckCon();
+          const valueReturn = this.compileIndexCheckCon(); // local version of @@compileindex:
           if (valueReturn.isResolved) {
             // we have a constant
             this.objWrByte(eByteCode.bc_setup_reg);
-            // FIXME: TODO: check for 0-0x1ff else throw error out-of-bounds (not in PNut)
+            // TODO: ?? check for 0-0x1ff else throw error out-of-bounds (not in PNut)
             variable.address += Number(valueReturn.value);
+            // NOTE: this could likely be optimized to use single byte opcodes (as we did above)
           } else {
             // we have runtime eval not constant
             this.objWrByte(eByteCode.bc_setup_reg_pi);
@@ -3500,6 +3512,8 @@ export class SpinResolver {
         const signedRegister: number = variable.address & 0x100 ? variable.address | 0xfffffe00 : variable.address & 0x1ff;
         this.compileRfvars(BigInt(signedRegister));
       }
+      this.compileVariableBitfield(variable);
+      this.compileVariableReadWriteAssign(variable);
     }
 
     // type size
@@ -3512,16 +3526,62 @@ export class SpinResolver {
       } else {
         this.objWrByte(eByteCode.bc_setup_byte_pa + variable.wordSize); // pop address
       }
+      this.compileVariableBitfield(variable);
+      this.compileVariableReadWriteAssign(variable);
     }
 
-    // type have real variable
+    // adjust wordSize if override is present
     if (variable.sizeOverrideFlag == true) {
       this.getDot();
       this.getSize();
       variable.wordSize = Number(this.currElement.bigintValue);
     }
 
-    // TODO: tomorrow resume with 16 var longs no index
+    // handle var...
+    if (
+      variable.type == eElementType.type_var_byte &&
+      variable.wordSize == eWordSize.WS_Long &&
+      (variable.address & 0b11) == 0 &&
+      variable.address < 16 * 4 &&
+      variable.indexFlag == false
+    ) {
+      this.objWrByte(eByteCode.bc_setup_var_0_15 + (variable.address >> 2)); // one of our first 16
+      this.compileVariableBitfield(variable);
+      this.compileVariableReadWriteAssign(variable);
+    }
+
+    // handle loc...
+    if (
+      variable.type == eElementType.type_loc_byte &&
+      variable.wordSize == eWordSize.WS_Long &&
+      (variable.address & 0b11) == 0 &&
+      variable.address < 16 * 4 &&
+      variable.indexFlag == false
+    ) {
+      if (variable.bitfieldFlag == true && variable.operation === eVariableOperation.VO_ASSIGN) {
+        this.objWrByte(eByteCode.bc_setup_local_0_15 + (variable.address >> 2)); // one of our first 16
+        this.compileVariableBitfield(variable);
+        this.compileVariableReadWriteAssign(variable);
+      } else if (variable.operation === eVariableOperation.VO_WRITE) {
+        this.objWrByte(eByteCode.bc_write_local_0_15 + (variable.address >> 2)); // one of our first 16
+      } else {
+        this.objWrByte(eByteCode.bc_read_local_0_15 + (variable.address >> 2)); // one of our first 16
+      }
+    }
+
+    // handle hub...
+    if (
+      // XYZZY tomorrow!!!
+      variable.type == eElementType.type_hub_byte &&
+      variable.wordSize == eWordSize.WS_Long &&
+      (variable.address & 0b11) == 0 &&
+      variable.address < 16 * 4 &&
+      variable.indexFlag == false
+    ) {
+      //
+    }
+
+    // Resume with 16 var longs no index
     // 16 local longs with no index
     // possible index on...
 
@@ -3529,7 +3589,69 @@ export class SpinResolver {
     this.elementIndex = resumeIndex; // return to location at entry
   }
 
+  private compileVariableReadWriteAssign(variable: iVariableReturn) {
+    switch (variable.operation) {
+      case eVariableOperation.VO_READ:
+        this.objWrByte(eByteCode.bc_read);
+        break;
+
+      case eVariableOperation.VO_WRITE:
+        this.objWrByte(eByteCode.bc_write);
+        break;
+
+      case eVariableOperation.VO_ASSIGN:
+        this.objWrByte(variable.assignmentBytecode);
+        break;
+    }
+  }
+
+  private compileVariableBitfield(variable: iVariableReturn) {
+    // PNut @@enterbit:
+    if (variable.bitfieldFlag === true) {
+      this.getDot();
+      this.getLeftBracket();
+      if (variable.bitfieldConstantFlag == false) {
+        this.skipExpression(); // already compiled, skip it
+        if (this.checkDotDot()) {
+          this.skipExpression();
+        }
+        // not constant bitfield, already compiled
+        this.objWrByte(eByteCode.bc_setup_bfield_pop);
+      } else {
+        // bitfieldConstantFlag is true
+        const firstValueReturn = this.skipExpressionCheckCon();
+        if (firstValueReturn.isResolved === false) {
+          // [error_eicon]
+          throw new Error('Expected integer constant');
+        }
+        const firstValue: number = Number(BigInt(firstValueReturn.value) & BigInt(0x3ff));
+        let encodedBitfield: number = firstValue; // default: count of additional bits | bit number
+        if (this.checkDotDot()) {
+          // we have a bit plus additional bit(s)
+          const secondValueReturn = this.skipExpressionCheckCon();
+          if (secondValueReturn.isResolved === false) {
+            // [error_eicon]
+            throw new Error('Expected integer constant');
+          }
+          const secondValue: number = Number(BigInt(secondValueReturn.value) & BigInt(0x3ff));
+          // encode: count of additional bits | bit number
+          encodedBitfield = (((firstValue - secondValue) & 0x1f) << 5) | (secondValue & 0x1f);
+        }
+        if (encodedBitfield <= 0x1f) {
+          // have single bit
+          this.objWrByte(eByteCode.bc_setup_bfield_0_31 + encodedBitfield);
+        } else {
+          // have bit plus additional bit(s)
+          this.objWrByte(eByteCode.bc_setup_bfield_rfvar);
+          this.compileRfvar(BigInt(encodedBitfield));
+        }
+      }
+      this.getRightBracket();
+    }
+  }
+
   private compileIndexCheckCon(): iValueReturn {
+    // PNut @@compileindex: (local version of compileIndex)
     this.getLeftBracket();
     const valueReturn = this.compileExpressionCheckCon();
     this.getRightBracket();
@@ -3546,7 +3668,9 @@ export class SpinResolver {
       sizeOverrideFlag: false,
       indexFlag: false,
       bitfieldFlag: false,
-      bitfieldConstantFlag: false
+      bitfieldConstantFlag: false,
+      operation: eVariableOperation.VO_Unknown,
+      assignmentBytecode: 0
     };
 
     // preserve initial values (PNut al,ebx)
