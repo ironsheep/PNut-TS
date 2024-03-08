@@ -38,6 +38,11 @@ interface iVariableReturn {
   assignmentBytecode: eByteCode; // used iff VO_ASSIGN
 }
 
+enum eCompOp {
+  CO_Clear,
+  CO_Set
+}
+
 enum eVariableOperation {
   VO_Unknown,
   VO_READ,
@@ -140,6 +145,7 @@ export class SpinResolver {
   private msendReg: number = 0x1d3; // address
   private pasmRegs: number = 0x1d8; // address
   private inlineLocalsStart: number = 0x1e0; // address
+  private clkfreqAddress: number = 0x44; // address
 
   // VAR processing support data
   private varPtr: number = 4;
@@ -2150,21 +2156,7 @@ export class SpinResolver {
     }
   }
 
-  private compileRfvar(value: bigint) {
-    // generates 1-4 bytes (unsigned)
-    const masks = [BigInt(0x1fffff80), BigInt(0x1fffc000), BigInt(0x1fe00000)];
-    for (let i = 0; i < masks.length; i++) {
-      if (value & masks[i]) {
-        this.objImage.append(((Number(value) >> (7 * i)) & 0x7f) | 0x80);
-      } else {
-        this.objImage.append((Number(value) >> (7 * i)) & 0x7f);
-        return;
-      }
-    }
-    this.objImage.append((Number(value) >> 21) & 0xff);
-  }
-
-  private compileRfvars(value: bigint) {
+  private compileDatRfvars(value: bigint) {
     // generates 1-4 bytes (signed)
     const masks = [
       { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
@@ -2173,10 +2165,10 @@ export class SpinResolver {
     ];
     for (let i = 0; i < masks.length; i++) {
       if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
-        return this.compileRfvar(value & masks[i].bits);
+        return this.compileDatRfvar(value & masks[i].bits);
       }
     }
-    return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+    return this.compileDatRfvar(value & BigInt(0x1fffffff)); // 29 bits
   }
 
   private compileDatRfvar(value: bigint) {
@@ -2191,21 +2183,6 @@ export class SpinResolver {
       }
     }
     this.enterDataByte(BigInt((Number(value) >> 21) & 0xff));
-  }
-
-  private compileDatRfvars(value: bigint) {
-    // generates 1-4 bytes (signed)
-    const masks = [
-      { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
-      { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
-      { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
-    ];
-    for (let i = 0; i < masks.length; i++) {
-      if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
-        return this.compileDatRfvar(value & masks[i].bits);
-      }
-    }
-    return this.compileDatRfvar(value & BigInt(0x1fffffff)); // 29 bits
   }
 
   private enterDatSymbol() {
@@ -3430,18 +3407,9 @@ export class SpinResolver {
     return foundCommaStatus;
   }
 
-  private getVariable(): iVariableReturn {
-    const resultVariable = this.checkVariable();
-    if (resultVariable.isVariable == false) {
-      // [error_eav]
-      throw new Error('Expected a variable');
-    }
-    return resultVariable;
-  }
-
   private compileVariable(variable: iVariableReturn) {
-    // XYZZY compileVariable()
     const resumeIndex: number = this.elementIndex - 1;
+    let workIsComplete: boolean = false;
     this.elementIndex = variable.elementIndex;
 
     // runtime-resolved bitfield
@@ -3481,6 +3449,7 @@ export class SpinResolver {
         this.objWrByte(eByteCode.bc_setup_field_p);
       }
       this.compileVariableReadWriteAssign(variable);
+      workIsComplete = true; // DONE
     }
 
     // register
@@ -3514,6 +3483,7 @@ export class SpinResolver {
       }
       this.compileVariableBitfield(variable);
       this.compileVariableReadWriteAssign(variable);
+      workIsComplete = true; // DONE
     }
 
     // type size
@@ -3528,6 +3498,7 @@ export class SpinResolver {
       }
       this.compileVariableBitfield(variable);
       this.compileVariableReadWriteAssign(variable);
+      workIsComplete = true; // DONE
     }
 
     // adjust wordSize if override is present
@@ -3537,7 +3508,7 @@ export class SpinResolver {
       variable.wordSize = Number(this.currElement.bigintValue);
     }
 
-    // handle var...
+    // handle var... special case, first 16 longs
     if (
       variable.type == eElementType.type_var_byte &&
       variable.wordSize == eWordSize.WS_Long &&
@@ -3548,9 +3519,10 @@ export class SpinResolver {
       this.objWrByte(eByteCode.bc_setup_var_0_15 + (variable.address >> 2)); // one of our first 16
       this.compileVariableBitfield(variable);
       this.compileVariableReadWriteAssign(variable);
+      workIsComplete = true; // DONE
     }
 
-    // handle loc...
+    // handle loc... special case, first 16 longs
     if (
       variable.type == eElementType.type_loc_byte &&
       variable.wordSize == eWordSize.WS_Long &&
@@ -3567,26 +3539,126 @@ export class SpinResolver {
       } else {
         this.objWrByte(eByteCode.bc_read_local_0_15 + (variable.address >> 2)); // one of our first 16
       }
+      workIsComplete = true; // DONE
     }
 
-    // handle hub...
-    if (
-      // XYZZY tomorrow!!!
-      variable.type == eElementType.type_hub_byte &&
-      variable.wordSize == eWordSize.WS_Long &&
-      (variable.address & 0b11) == 0 &&
-      variable.address < 16 * 4 &&
-      variable.indexFlag == false
-    ) {
-      //
+    // handle hub byte/word/long with possible index
+    if (variable.type == eElementType.type_hub_byte) {
+      // special handling for CLKFREQ read
+      if (
+        variable.wordSize == eWordSize.WS_Long &&
+        variable.operation === eVariableOperation.VO_READ &&
+        variable.address == this.clkfreqAddress &&
+        variable.indexFlag == false &&
+        variable.bitfieldFlag == false
+      ) {
+        this.objWrByte(eByteCode.bc_hub_bytecode);
+        this.objWrByte(eByteCode.bc_read_clkfreq);
+      } else {
+        // not a CLKFREQ read
+        this.compileConstant(BigInt(variable.address));
+        if (variable.indexFlag == true) {
+          this.compileIndex();
+          this.objWrByte(eByteCode.bc_setup_byte_pb_pi + variable.wordSize);
+        } else {
+          this.objWrByte(eByteCode.bc_setup_byte_pa);
+        }
+        this.compileVariableBitfield(variable);
+        this.compileVariableReadWriteAssign(variable);
+      }
+      workIsComplete = true; // DONE
     }
 
-    // Resume with 16 var longs no index
-    // 16 local longs with no index
-    // possible index on...
-
-    // do stuff and generate stuff
+    // handle leftover cases of variable access (DAT, VAR, PUB/PRI(loc))
+    if (workIsComplete == false) {
+      let accessBytecode: number = eByteCode.bc_setup_byte_pbase + variable.wordSize * 6;
+      switch (variable.type) {
+        case eElementType.type_dat_byte: // pbase - program base
+          accessBytecode += 0;
+          break;
+        case eElementType.type_var_byte: // vbase - variable base
+          accessBytecode += 1;
+          break;
+        case eElementType.type_loc_byte: // dbase - stack base
+          accessBytecode += 2;
+          break;
+      }
+      if (variable.indexFlag == true) {
+        accessBytecode += 3;
+        const indexReturn: iValueReturn = this.compileIndexCheckCon();
+        if (indexReturn.isResolved) {
+          this.objWrByte(accessBytecode - 3); // undo the +3, not needed when index
+          this.compileRfvar(BigInt(variable.address) + (indexReturn.value << BigInt(variable.wordSize)));
+        } else {
+          this.objWrByte(accessBytecode);
+          this.compileRfvar(BigInt(variable.address));
+        }
+      } else {
+        this.objWrByte(accessBytecode);
+        this.compileRfvar(BigInt(variable.address));
+      }
+      this.compileVariableBitfield(variable);
+      this.compileVariableReadWriteAssign(variable);
+      // NOTE: possible post optimization did we wind up in one of our 16 vars
+    }
     this.elementIndex = resumeIndex; // return to location at entry
+  }
+
+  private compileVariableClearSetInst(variable: iVariableReturn, mode: eCompOp) {
+    // PNut: compile_var_clrset_inst:
+    const bytecode: eByteCode = mode == eCompOp.CO_Clear ? eByteCode.bc_con_n + 1 : eByteCode.bc_con_n;
+    this.objWrByte(bytecode);
+    variable.operation = eVariableOperation.VO_WRITE;
+    this.compileVariable(variable); // this is var~ // var~~
+  }
+
+  private compileVariableClearSetTerm(variable: iVariableReturn, mode: eCompOp) {
+    // PNut: compile_var_clrset_term:
+    const bytecode: eByteCode = mode == eCompOp.CO_Clear ? eByteCode.bc_con_n + 1 : eByteCode.bc_con_n;
+    this.objWrByte(bytecode);
+    variable.operation = eVariableOperation.VO_ASSIGN;
+    // uses post assignment to effect var~ // var~~
+    variable.assignmentBytecode = eByteCode.bc_var_swap; // this is \value post assignment
+    this.compileVariable(variable);
+  }
+
+  private compileVariableRead() {
+    // PNut: compile_var_read:
+    const variable: iVariableReturn = this.getVariable();
+    variable.operation = eVariableOperation.VO_READ;
+    this.compileVariable(variable);
+  }
+
+  private compileVariableWrite() {
+    // PNut: compile_var_write:
+    const variable: iVariableReturn = this.getVariable();
+    variable.operation = eVariableOperation.VO_WRITE;
+    this.compileVariable(variable);
+  }
+
+  private compileVariableExpression(variable: iVariableReturn, bytecode: eByteCode) {
+    // PNut: compile_var_exp:
+    this.compileExpression(); // cause constant to be written
+    variable.operation = eVariableOperation.VO_ASSIGN;
+    variable.assignmentBytecode = bytecode;
+    this.compileVariable(variable);
+  }
+
+  private compileVariablePre(bytecode: eByteCode) {
+    // PNut: compile_var_pre:
+    const variable: iVariableReturn = this.getVariable();
+    variable.operation = eVariableOperation.VO_ASSIGN;
+    variable.assignmentBytecode = bytecode;
+    this.compileVariable(variable);
+  }
+
+  private getVariable(): iVariableReturn {
+    const variableResult: iVariableReturn = this.checkVariable();
+    if (variableResult.isVariable == false) {
+      // [error_eav]
+      throw new Error('Expected a variable');
+    }
+    return variableResult;
   }
 
   private compileVariableReadWriteAssign(variable: iVariableReturn) {
@@ -3648,6 +3720,35 @@ export class SpinResolver {
       }
       this.getRightBracket();
     }
+  }
+
+  private compileRfvars(value: bigint) {
+    // generates 1-4 bytes (signed)
+    const masks = [
+      { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
+      { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
+      { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
+    ];
+    for (let i = 0; i < masks.length; i++) {
+      if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
+        return this.compileRfvar(value & masks[i].bits);
+      }
+    }
+    return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+  }
+
+  private compileRfvar(value: bigint) {
+    // generates 1-4 bytes (unsigned)
+    const masks = [BigInt(0x1fffff80), BigInt(0x1fffc000), BigInt(0x1fe00000)];
+    for (let i = 0; i < masks.length; i++) {
+      if (value & masks[i]) {
+        this.objImage.append(((Number(value) >> (7 * i)) & 0x7f) | 0x80);
+      } else {
+        this.objImage.append((Number(value) >> (7 * i)) & 0x7f);
+        return;
+      }
+    }
+    this.objImage.append((Number(value) >> 21) & 0xff);
   }
 
   private compileIndexCheckCon(): iValueReturn {
