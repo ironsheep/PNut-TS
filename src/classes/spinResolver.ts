@@ -106,6 +106,7 @@ export class SpinResolver {
   private numberStack: NumberStack;
   private spinSymbolTables: SpinSymbolTables;
   private lowestPrecedence: number;
+  private ternaryPrecedence: number;
 
   // these first two may go away
   private autoSymbols: SymbolTable = new SymbolTable(); // neverechanging symbols
@@ -159,6 +160,7 @@ export class SpinResolver {
     this.spinSymbolTables = new SpinSymbolTables(ctx);
     this.objImage = new ObjectImage(ctx);
     this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
+    this.ternaryPrecedence = this.spinSymbolTables.ternaryPrecedence;
     this.numberStack.enableLogging(this.isLogging);
   }
 
@@ -2010,9 +2012,9 @@ export class SpinResolver {
         }
       }
     } else if (this.currElement.type == eElementType.type_i_flex) {
-      this.logMessage(`* checkInstruction() flexCode=(${this.currElement.byteCode})[${eByteCode[this.currElement.byteCode]}]`);
+      this.logMessage(`* checkInstruction() flexCode=(${this.currElement.flexByteCode})[${eByteCode[this.currElement.flexByteCode]}]`);
       needAsmLookup = true;
-      switch (this.currElement.byteCode) {
+      switch (this.currElement.flexByteCode) {
         case eByteCode.bc_hubset:
           instructionValue = eAsmcode.ac_hubset;
           break;
@@ -2608,10 +2610,11 @@ export class SpinResolver {
   private topExpression(precedence: number) {
     // compile this expression
     // PNut @@topexp:
+    // XYZZY topExpression()   -- recheck all of this against code
     let currPrecedence: number = precedence;
     //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
     if (--currPrecedence < 0) {
-      // we need to resove the term!
+      // we need to resolve the term!
 
       // skip leading pluses
       do {
@@ -2624,11 +2627,9 @@ export class SpinResolver {
       this.negConToCon(); // these do NOT affect the element list! only the global currElement copy
       this.SubToNeg();
       this.FSubToFNeg();
-
       if (this.currElement.type == eElementType.type_atat) {
         this.topExpression(0); // with prec of 0
         this.objWrByte(eByteCode.bc_add_pbase);
-        return;
       } else if (this.currElement.isUnary) {
         const savedElement: SpinElement = this.currElement;
         if (this.checkEqual()) {
@@ -2637,11 +2638,52 @@ export class SpinResolver {
             // [error_tocbufa]
             throw new Error('This operator cannot be used for assignment');
           }
-          this.getVariable(); // XYZZY topExpression()
+          const bytecode: eByteCode = savedElement.byteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write_push);
+          this.compileVariablePre(bytecode);
+        } else {
+          // unary but NOT assignment
+          this.topExpression(savedElement.precedence);
+          this.enterExpOp(savedElement);
         }
+      } else if (this.currElement.type == eElementType.type_left) {
+        // have left parem
+        this.topExpression(this.lowestPrecedence);
+        this.getRightParen();
+      } else {
+        this.compileTerm();
       }
+    } else {
+      // precedence is 0 or greater
+      this.topExpression(precedence);
+      do {
+        this.getElement();
+        if (this.currElement.isTernary) {
+          if (precedence == this.ternaryPrecedence) {
+            // have ternary op and is time to resolve it...
+            this.topExpression(this.lowestPrecedence);
+            this.getColon();
+            this.topExpression(this.lowestPrecedence);
+            this.objWrByte(eByteCode.bc_ternary);
+            break;
+          } else {
+            // not ternary prec.
+            this.backElement();
+            break;
+          }
+        } else if (this.currElement.isBinary == false || precedence != this.currElement.precedence) {
+          this.backElement();
+          break;
+        } else {
+          // have binary and time to resolve it
+          this.topExpression(precedence);
+          this.enterExpOp(this.currElement);
+        }
+        //
+        // eslint-disable-next-line no-constant-condition
+      } while (true);
+    }
 
-      /*
+    /*
       const activeOperation: eOperationType = this.currElement.operation;
       const activePrecedence: number = this.currElement.precedence;
       const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
@@ -2764,8 +2806,19 @@ export class SpinResolver {
         }
       }
     */
-    }
     //this.logMessage(`resolveExp(${precedence}) - EXIT`);
+  }
+
+  private compileTerm() {
+    // XYZZY compileTerm()   -- add this code
+  }
+
+  private enterExpOp(element: SpinElement) {
+    // is f* instruction?
+    if (element.isHubcode) {
+      this.objWrByte(eByteCode.bc_hub_bytecode);
+    }
+    this.objWrByte(element.byteCode);
   }
 
   private negConToCon() {
@@ -3652,7 +3705,15 @@ export class SpinResolver {
     this.compileVariable(variable);
   }
 
+  private compileVariableAssign(variable: iVariableReturn, bytecode: eByteCode) {
+    // PNut: compile_var_assign:
+    variable.operation = eVariableOperation.VO_ASSIGN;
+    variable.assignmentBytecode = bytecode;
+    this.compileVariable(variable);
+  }
+
   private getVariable(): iVariableReturn {
+    // PNut: get_variable:
     const variableResult: iVariableReturn = this.checkVariable();
     if (variableResult.isVariable == false) {
       // [error_eav]

@@ -186,7 +186,7 @@ export class SpinElement {
   //
   // special for type_i_flex: elements
   //
-  get byteCode(): eByteCode {
+  get flexByteCode(): eByteCode {
     // returns the op_* value
     let desiredValue: number = -1;
     if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
@@ -219,7 +219,7 @@ export class SpinElement {
     return desiredValue;
   }
 
-  get bytecode(): number {
+  get byteCode(): number {
     // returns the op_* value
     let desiredValue: number = 0;
     if (this._type == eElementType.type_op && typeof this._value === 'bigint') {

@@ -1008,7 +1008,8 @@ export class SpinSymbolTables {
   private find_symbol_s2: iSpinSymbol[] = [];
   private find_symbol_s3: iSpinSymbol[] = [];
 
-  public readonly lowestPrecedence = 14 + 1; // this is ternary + 1
+  public readonly ternaryPrecedence = 14;
+  public readonly lowestPrecedence = this.ternaryPrecedence + 1;
 
   constructor(ctx: Context) {
     this.context = ctx;
