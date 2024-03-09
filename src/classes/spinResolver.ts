@@ -10,7 +10,7 @@
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
-import { eByteCode, eElementType, eOperationType, eValueType } from './types';
+import { eByteCode, eElementType, eFlexcode, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, hexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
@@ -2610,7 +2610,6 @@ export class SpinResolver {
   private compileSubExpression(precedence: number) {
     // compile this expression - recursively
     // PNut @@topexp:
-    // XYZZY compileSubExpression()   -- recheck all of this against code
     let currPrecedence: number = precedence;
     this.logMessage(`compileSubExpression(${precedence}) - ENTRY`);
     if (--currPrecedence < 0) {
@@ -2686,7 +2685,139 @@ export class SpinResolver {
   }
 
   private compileTerm() {
+    // PNut compile_term:
     // XYZZY compileTerm()   -- add this code
+    const elementType: eElementType = this.currElement.type;
+    const elementValue: number = Number(this.currElement.bigintValue);
+    if (this.currElement.isConstantInt || this.currElement.isConstantFloat) {
+      this.compileConstant(this.currElement.bigintValue);
+    } else if (this.currElement.type == eElementType.type_constr) {
+      this.compileConString();
+    } else if (this.currElement.type == eElementType.type_conlstr) {
+      this.compileConLString();
+    } else if (this.currElement.type == eElementType.type_size && this.checkLeftParen()) {
+      this.compileConData(elementValue);
+    } else if (this.currElement.type == eElementType.type_float) {
+      this.compileFlex(eFlexcode.fc_float);
+    } else if (this.currElement.type == eElementType.type_round) {
+      this.compileFlex(eFlexcode.fc_round);
+    } else if (this.currElement.type == eElementType.type_trunc) {
+      this.compileFlex(eFlexcode.fc_trunc);
+    }
+  }
+
+  private compileFlex(flexCode: eFlexcode) {
+    // Compile flex instruction
+    // PNut compile_flex:
+    this.getLeftParen();
+    //  // symbol		=		bytecode + (params shl 8) + (results shl 11) + (pinfld shl 14) + (hubcode shl 15)
+    //         endm
+    const flexEncodedValue: number = this.spinSymbolTables.flexValue(flexCode);
+    const bytecode: number = flexEncodedValue & 0xff;
+    const paramCount: number = (flexEncodedValue >> 8) & 0b111;
+    const resultCount: number = (flexEncodedValue >> 11) & 0b111;
+    const isPinField: boolean = (flexEncodedValue >> 14) & 1 ? true : false;
+    const isHubCode: boolean = (flexEncodedValue >> 15) & 1 ? true : false;
+    if (paramCount > 0) {
+      // XYZZY we really should put code here Sat Nite!
+    } else {
+      this.getRightParen();
+      if (isHubCode) {
+        this.objWrByte(eByteCode.bc_hub_bytecode);
+      }
+      this.objWrByte(bytecode);
+    }
+  }
+
+  private compileConData(initialWordSize: number) {
+    // Compile term - BYTE/WORD/LONG(value, value, BYTE/WORD/LONG value)
+    // PNut ct_condata:
+    this.objWrByte(eByteCode.bc_string);
+    const offSetToLength = this.objImage.offset;
+    this.objWrByte(0); // place holder for length
+    let dataCount: number = 0;
+    do {
+      let wordSize: eWordSize = initialWordSize;
+      if (this.nextElementType() == eElementType.type_size) {
+        this.getElement();
+        wordSize = Number(this.currElement.bigintValue);
+      }
+      const allowedMode: eMode = wordSize == eWordSize.WS_Long ? eMode.BM_IntOrFloat : eMode.BM_IntOnly;
+      const dataReturn: iValueReturn = this.getValue(allowedMode, eResolve.BR_Must);
+      const data: number = Number(dataReturn.value);
+      switch (wordSize) {
+        case eWordSize.WS_Byte:
+          this.objWrByte(data);
+          dataCount += 1;
+          break;
+        case eWordSize.WS_Word:
+          this.objWrWord(data);
+          dataCount += 2;
+          break;
+        case eWordSize.WS_Long:
+          this.objWrLong(data);
+          dataCount += 4;
+          break;
+      }
+      if (dataCount > 255) {
+        // [error_bwldcx]
+        throw new Error('BYTE/WORD/LONG data cannot exceed 255 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    // and place final data length just before data in object
+    this.objImage.write(dataCount, offSetToLength);
+  }
+
+  private compileConString() {
+    // Compile term - STRING("constantstring")
+    // PNut ct_constr:
+    this.getLeftParen();
+    this.objWrByte(eByteCode.bc_string);
+    const offSetToLength = this.objImage.offset;
+    this.objWrByte(0); // place holder for length
+    let charCount: number = 0;
+    do {
+      let charReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      if (BigInt(charReturn.value) < 1n || BigInt(charReturn.value) > 255n) {
+        // [error_scmrf]
+        throw new Error('STRING characters must range from 1 to 255');
+      }
+      this.objWrByte(Number(charReturn.value));
+      if (++charCount > 254) {
+        // [error_sdcx]
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    this.objWrByte(0); // place zero terminator
+    // and place final string length just before string in object
+    this.objImage.write(charCount + 1, offSetToLength);
+  }
+
+  private compileConLString() {
+    // Compile term - STRING("constantstring")
+    // PNut ct_constr:
+    this.getLeftParen();
+    this.objWrByte(eByteCode.bc_string);
+    const offSetToLength = this.objImage.offset;
+    this.objWrByte(0); // place holder for length for interpreter
+    this.objWrByte(0); // place holder for length for user
+    let charCount: number = 0;
+    do {
+      let charReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      if ((BigInt(charReturn.value) & BigInt(0xffffff00)) != 0n) {
+        // [error_lscmrf]
+        throw new Error('LSTRING characters must range from 0 to 255');
+      }
+      this.objWrByte(Number(charReturn.value));
+      if (++charCount > 254) {
+        // [error_sdcx]
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    // and place interpreter string length just before length and string in object
+    this.objImage.write(charCount + 1, offSetToLength);
+    // and place final string length just before string in object
+    this.objImage.write(charCount, offSetToLength + 1);
   }
 
   private enterExpOp(element: SpinElement) {
@@ -3318,8 +3449,8 @@ export class SpinResolver {
   }
 
   private getEndOfLine() {
-    let element = this.getElement();
-    if (element.type != eElementType.type_end) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_end) {
       // [error_eeol]
       throw new Error('Expected end of line');
     }
@@ -3327,10 +3458,10 @@ export class SpinResolver {
 
   private getCommaOrRightParen(): boolean {
     let foundCommaStatus: boolean = false;
-    let element = this.getElement();
-    if (element.type == eElementType.type_comma) {
+    this.getElement();
+    if (this.currElement.type == eElementType.type_comma) {
       foundCommaStatus = true;
-    } else if (element.type != eElementType.type_right) {
+    } else if (this.currElement.type != eElementType.type_right) {
       // [error_ecor]
       throw new Error('Expected "," or ")"');
     }

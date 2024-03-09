@@ -803,7 +803,7 @@ export enum eByteCode {
   bc_float = 178 // 0xb2
 }
 
-export enum eFlexcodes {
+export enum eFlexcode {
   fc_coginit,
   fc_coginit_push,
   fc_cogstop,

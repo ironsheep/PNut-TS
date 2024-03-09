@@ -5,7 +5,7 @@
 
 // a collection of generally useful functions for parsing spin
 
-import { eElementType, eValueType, eByteCode, eOperationType } from './types';
+import { eElementType, eValueType, eByteCode, eOperationType, eFlexcode } from './types';
 import { Context } from '../utils/context';
 
 export interface iSpinSymbol {
@@ -2972,7 +2972,7 @@ export class SpinSymbolTables {
     return returnValue;
   }
 
-  private flexValue(flexId: eFlexcode): number {
+  public flexValue(flexId: eFlexcode): number {
     // retrieve the computed value for a given flexcode id
     let returnValue: number = 0;
     if (this.flexcodeValues.has(flexId)) {
@@ -3345,72 +3345,6 @@ export enum eAsmcode {
   ac_asmclk,
   ac_nop,
   ac_debug
-}
-
-// unofficial enum - internal use ONLY
-enum eFlexcode {
-  fc_coginit,
-  fc_coginit_push,
-  fc_cogstop,
-  fc_cogid,
-  fc_cogchk,
-  fc_getrnd,
-  fc_getct,
-  fc_pollct,
-  fc_waitct,
-  fc_pinwrite,
-  fc_pinlow,
-  fc_pinhigh,
-  fc_pintoggle,
-  fc_pinfloat,
-  fc_pinread,
-  fc_pinstart,
-  fc_pinclear,
-  fc_wrpin,
-  fc_wxpin,
-  fc_wypin,
-  fc_akpin,
-  fc_rdpin,
-  fc_rqpin,
-  fc_locknew,
-  fc_lockret,
-  fc_locktry,
-  fc_lockrel,
-  fc_lockchk,
-  fc_cogatn,
-  fc_pollatn,
-  fc_waitatn,
-  fc_hubset,
-  fc_clkset,
-  fc_regexec,
-  fc_regload,
-  fc_call,
-  fc_getregs,
-  fc_setregs,
-  fc_bytemove,
-  fc_bytefill,
-  fc_wordmove,
-  fc_wordfill,
-  fc_longmove,
-  fc_longfill,
-  fc_strsize,
-  fc_strcomp,
-  fc_strcopy,
-  fc_getcrc,
-  fc_waitus,
-  fc_waitms,
-  fc_getms,
-  fc_getsec,
-  fc_muldiv64,
-  fc_qsin,
-  fc_qcos,
-  fc_rotxy,
-  fc_polxy,
-  fc_xypol,
-  fc_nan,
-  fc_round,
-  fc_trunc,
-  fc_float
 }
 
 // unofficial enum - internal use ONLY

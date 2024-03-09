@@ -110,7 +110,7 @@ export class PNutInTypeScript {
         //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
         if (error.name === 'CommanderError') {
           this.context.logger.logMessage(``); // our blank line so prompt is not too close after output
-          //this.context.logger.logMessage(`  xyzzy `);
+          //this.context.logger.logMessage(`  xyzxzy `);
           if (error.message !== '(outputHelp)') {
             this.context.logger.logMessage(`  (See --help for available options)\n`);
             //this.program.outputHelp();
