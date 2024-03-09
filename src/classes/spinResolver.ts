@@ -2602,17 +2602,17 @@ export class SpinResolver {
     if (tryExpressionResult.isResolved) {
       this.compileConstant(tryExpressionResult.value);
     } else {
-      this.topExpression(this.lowestPrecedence);
+      this.compileSubExpression(this.lowestPrecedence);
     }
     return tryExpressionResult;
   }
 
-  private topExpression(precedence: number) {
-    // compile this expression
+  private compileSubExpression(precedence: number) {
+    // compile this expression - recursively
     // PNut @@topexp:
-    // XYZZY topExpression()   -- recheck all of this against code
+    // XYZZY compileSubExpression()   -- recheck all of this against code
     let currPrecedence: number = precedence;
-    //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
+    this.logMessage(`compileSubExpression(${precedence}) - ENTRY`);
     if (--currPrecedence < 0) {
       // we need to resolve the term!
 
@@ -2628,7 +2628,7 @@ export class SpinResolver {
       this.SubToNeg();
       this.FSubToFNeg();
       if (this.currElement.type == eElementType.type_atat) {
-        this.topExpression(0); // with prec of 0
+        this.compileSubExpression(0); // with prec of 0
         this.objWrByte(eByteCode.bc_add_pbase);
       } else if (this.currElement.isUnary) {
         const savedElement: SpinElement = this.currElement;
@@ -2641,28 +2641,29 @@ export class SpinResolver {
           const bytecode: eByteCode = savedElement.byteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write_push);
           this.compileVariablePre(bytecode);
         } else {
-          // unary but NOT assignment
-          this.topExpression(savedElement.precedence);
+          // normal unary, NOT assignment
+          this.compileSubExpression(savedElement.precedence);
           this.enterExpOp(savedElement);
         }
       } else if (this.currElement.type == eElementType.type_left) {
         // have left parem
-        this.topExpression(this.lowestPrecedence);
+        this.compileSubExpression(this.lowestPrecedence);
         this.getRightParen();
       } else {
         this.compileTerm();
       }
     } else {
       // precedence is 0 or greater
-      this.topExpression(precedence);
-      do {
+      this.compileSubExpression(precedence);
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
         this.getElement();
         if (this.currElement.isTernary) {
           if (precedence == this.ternaryPrecedence) {
-            // have ternary op and is time to resolve it...
-            this.topExpression(this.lowestPrecedence);
+            // have ternary op and is time to resolve it... (prec. match)
+            this.compileSubExpression(this.lowestPrecedence);
             this.getColon();
-            this.topExpression(this.lowestPrecedence);
+            this.compileSubExpression(this.lowestPrecedence);
             this.objWrByte(eByteCode.bc_ternary);
             break;
           } else {
@@ -2674,139 +2675,14 @@ export class SpinResolver {
           this.backElement();
           break;
         } else {
-          // have binary and time to resolve it
-          this.topExpression(precedence);
+          // have binary and time to resolve it (prec. match)
+          this.compileSubExpression(precedence);
           this.enterExpOp(this.currElement);
         }
-        //
-        // eslint-disable-next-line no-constant-condition
-      } while (true);
+      }
     }
 
-    /*
-      const activeOperation: eOperationType = this.currElement.operation;
-      const activePrecedence: number = this.currElement.precedence;
-      const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
-      this.logMessage(`* resolvExp() currElement=[${this.currElement.toString()}]`);
-
-      // NOTE: we could move negation handling to here from within getConstant()
-      // attempt to get a constant
-      const resolution = this.getConstant(mode, resolve);
-      if (resolution.foundConstant) {
-        // we have a constant in hand
-        // place it on our stack and we're done
-        this.numberStack.push(resolution.value);
-      } else {
-        this.logMessage(`* resolvExp() did NOT find constant... mode=[${eMode[mode]}]`);
-        // no constant found, currElement is not a constant
-        this.SubToNeg(); // these do NOT affect the element list! only the global currElement copy
-        this.FSubToFNeg();
-
-        if (this.currElement.isUnary) {
-          // our element is a unary operation
-          this.checkDualModeOp(activeFloatCompatibility, mode); // (this IS in good place...)
-          this.resolveExp(mode, resolve, activePrecedence);
-          // Perform Unary
-          const aValue = this.numberStack.pop();
-          let exprResult: bigint = 0n;
-          if (this.numberStack.isUnresolved) {
-            this.logMessage(`* SKIP Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[activeOperation]}]`);
-          } else {
-            this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[activeOperation]}]`);
-            exprResult = this.resolveOperation(aValue, 0n, activeOperation, this.mathMode == eMathMode.MM_FloatMode);
-          }
-          this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
-          this.numberStack.push(exprResult);
-        } else if (this.currElement.type == eElementType.type_left) {
-          this.resolveExp(mode, resolve, this.lowestPrecedence);
-          this.getRightParen();
-        } else {
-          if (mode == eMode.BM_Spin2) {
-            // [error_NEW for Pnut-ts]
-            throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
-          } else {
-            // [error_eacuool]
-            throw new Error('Expected a constant, unary operator, or "("');
-          }
-        }
-      }
-    } else {
-      // precendence is NOT zero (> 0)
-      this.resolveExp(mode, resolve, currPrecedence);
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        this.getElement();
-        this.logMessage(`* resolvExp() LOOP currElement=[${this.currElement.toString()}]`);
-        const activeOperation: eOperationType = this.currElement.operation;
-        const activePrecedence: number = this.currElement.precedence;
-        const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
-        if (this.currElement.isTernary) {
-          // we have '?' op
-          this.logMessage(`* Have op ternary`);
-          if (currPrecedence == activePrecedence) {
-            this.logMessage(`* Ternary Precedence`);
-            // Perform Ternary
-            this.resolveExp(mode, resolve, this.lowestPrecedence); // push true value
-            this.getColon();
-            this.resolveExp(mode, resolve, this.lowestPrecedence); // push false value
-            const falseValue = this.numberStack.pop();
-            const trueValue = this.numberStack.pop();
-            const decisionValue = this.numberStack.pop();
-            let exprResult: bigint = 0n;
-            if (this.numberStack.isUnresolved) {
-              this.logMessage(
-                `* SKIP Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[activeOperation]}]`
-              );
-            } else {
-              this.logMessage(
-                `* Perform Ternary F=(${falseValue}), T=(${trueValue}), decision=(${decisionValue}), op=[${eOperationType[activeOperation]}]`
-              );
-              exprResult = decisionValue != 0n ? trueValue : falseValue;
-            }
-            this.numberStack.push(exprResult);
-            this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
-            break; // done,  exit loop
-          } else {
-            // not a binary op
-            this.backElement(); // leave the constant
-            break; // done,  exit loop
-          }
-        } else if (this.currElement.isBinary) {
-          // we have binary operator
-          this.checkDualModeOp(activeFloatCompatibility, mode); // NOTE: maybe this moves down below exit?
-          if (activePrecedence == currPrecedence) {
-            // Perform Binary
-            this.resolveExp(mode, resolve, currPrecedence); // push rhs value
-            // Perform binary
-            const bValue = this.numberStack.pop();
-            const aValue = this.numberStack.pop();
-            let exprResult: bigint = 0n;
-            if (this.numberStack.isUnresolved) {
-              this.logMessage(
-                `* SKIP Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[activeOperation]}]`
-              );
-            } else {
-              this.logMessage(
-                `* Perform Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[activeOperation]}]`
-              );
-              exprResult = this.resolveOperation(aValue, bValue, activeOperation, this.mathMode == eMathMode.MM_FloatMode);
-            }
-            this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
-            this.numberStack.push(exprResult);
-            // let loop occur
-          } else {
-            // not a binary precedence
-            this.backElement(); // leave the constant
-            break; // done,  exit loop
-          }
-        } else {
-          // not a binary precedence
-          this.backElement(); // leave the constant
-          break; // done,  exit loop
-        }
-      }
-    */
-    //this.logMessage(`resolveExp(${precedence}) - EXIT`);
+    //this.logMessage(`compileSubExpression(${precedence}) - EXIT`);
   }
 
   private compileTerm() {
@@ -2814,6 +2690,7 @@ export class SpinResolver {
   }
 
   private enterExpOp(element: SpinElement) {
+    // PNut @@enterop:
     // is f* instruction?
     if (element.isHubcode) {
       this.objWrByte(eByteCode.bc_hub_bytecode);
