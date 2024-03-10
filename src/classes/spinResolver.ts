@@ -38,6 +38,12 @@ interface iVariableReturn {
   assignmentBytecode: eByteCode; // used iff VO_ASSIGN
 }
 
+interface iObjectSymbolReturn {
+  isObjectPub: boolean;
+  type: eElementType;
+  value: number;
+}
+
 enum eCompOp {
   CO_Clear,
   CO_Set
@@ -140,13 +146,14 @@ export class SpinResolver {
   private xinFreq: number = 0;
   private inlineModeForGetConstant: boolean = false;
 
-  // registers
-  private inlineLimit: number = 0x120; // address
-  private mrecvReg: number = 0x1d2; // address
-  private msendReg: number = 0x1d3; // address
-  private pasmRegs: number = 0x1d8; // address
-  private inlineLocalsStart: number = 0x1e0; // address
-  private clkfreqAddress: number = 0x44; // address
+  // registers / constants
+  private readonly inlineLimit: number = 0x120; // address
+  private readonly mrecvReg: number = 0x1d2; // address
+  private readonly msendReg: number = 0x1d3; // address
+  private readonly pasmRegs: number = 0x1d8; // address
+  private readonly inlineLocalsStart: number = 0x1e0; // address
+  private readonly clkfreqAddress: number = 0x44; // address
+  private readonly results_limit: number = 15; // max return values
 
   // VAR processing support data
   private varPtr: number = 4;
@@ -2713,20 +2720,96 @@ export class SpinResolver {
     //  // symbol		=		bytecode + (params shl 8) + (results shl 11) + (pinfld shl 14) + (hubcode shl 15)
     //         endm
     const flexEncodedValue: number = this.spinSymbolTables.flexValue(flexCode);
+    // break out the values from within...
     const bytecode: number = flexEncodedValue & 0xff;
     const paramCount: number = (flexEncodedValue >> 8) & 0b111;
     const resultCount: number = (flexEncodedValue >> 11) & 0b111;
     const isPinField: boolean = (flexEncodedValue >> 14) & 1 ? true : false;
     const isHubCode: boolean = (flexEncodedValue >> 15) & 1 ? true : false;
+    // XYZZY compileFlex()  -- add this code
     if (paramCount > 0) {
-      // XYZZY we really should put code here Sat Nite!
-    } else {
-      this.getRightParen();
-      if (isHubCode) {
-        this.objWrByte(eByteCode.bc_hub_bytecode);
+      if (isPinField) {
+        this.compileParameter();
       }
-      this.objWrByte(bytecode);
     }
+    this.getRightParen();
+    if (isHubCode) {
+      this.objWrByte(eByteCode.bc_hub_bytecode);
+    }
+    this.objWrByte(bytecode);
+  }
+
+  private getMethodPointer(): iVariableReturn {
+    // Get method pointer variable - must be long/reg without bitfield
+    // PNut get_method_ptr:
+    const variableReturn: iVariableReturn = this.getVariable();
+    if (
+      variableReturn.bitfieldFlag == true ||
+      (variableReturn.wordSize == eWordSize.WS_Long || variableReturn.type == eElementType.type_register) == false
+    ) {
+      // [error_mpmblv]
+      throw new Error('Method pointers must be long variables without bitfields');
+    }
+    return variableReturn;
+  }
+
+  private scanToRightParen() {
+    // Scan to right parenthesis
+    // PNut scan_to_right: (after left paren)
+    let nestingCount: number = 1;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      this.getElement();
+      if (this.currElement.type == eElementType.type_end) {
+        // [error_eright]
+        throw new Error('Expected ")"');
+      }
+      if (this.currElement.type == eElementType.type_left) {
+        nestingCount++;
+      }
+      if (this.currElement.type == eElementType.type_right) {
+        nestingCount--;
+      }
+      if (nestingCount <= 0) {
+        break;
+      }
+    }
+  }
+
+  private scanToRightBracket() {
+    // Scan to ']'
+    // PNut scan_to_rightb: (after left bracket)
+    let nestingCount: number = 1;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      this.getElement();
+      if (this.currElement.type == eElementType.type_end) {
+        // [error_erightb]
+        throw new Error('Expected "]"');
+      }
+      if (this.currElement.type == eElementType.type_leftb) {
+        nestingCount++;
+      }
+      if (this.currElement.type == eElementType.type_rightb) {
+        nestingCount--;
+      }
+      if (nestingCount <= 0) {
+        break;
+      }
+    }
+  }
+
+  private compileParameter() {
+    // Compile a parameter - accommodates instructions/methods with multiple return values
+    // on exit, eax holds number of actual parameters compiled
+    //
+    //	rotxy/polxy/xypol
+    //	obj{[]}.method({params,...})
+    //	method({params,...})
+    //	var({params,...}):2+
+    //
+    // PNut compile_parameter:
+    // XYZZY compileParameter()  -- add this code
   }
 
   private compileConData(initialWordSize: number) {
@@ -2997,7 +3080,7 @@ export class SpinResolver {
           this.getRightParen();
         } else {
           if (mode == eMode.BM_Spin2) {
-            // [error_NEW for Pnut-ts]
+            // [error_NEW for Pnut-ts] (BEING CAPTURED)
             throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
           } else {
             // [error_eacuool]
@@ -3130,11 +3213,18 @@ export class SpinResolver {
           throw new Error('Expected a register symbol');
         }
       } else if (this.currElement.type == eElementType.type_obj) {
-        // TODO: handle object stuff
+        // TODO: handle Spin2 object-instance reference
+        const savedElement: SpinElement = this.currElement;
         if (this.checkDot() == false) {
-          // [error_NEW for Pnut-ts]
+          // [error_NEW for Pnut-ts] (BEING CAPTURED)
           throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
         }
+        let [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
+        if (type == eElementType.type_objpub) {
+          // [error_NEW for Pnut-ts] (BEING CAPTURED)
+          throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
+        }
+        resultStatus.value = BigInt(value);
       } else {
         resultStatus.foundConstant = false;
       }
@@ -3265,17 +3355,17 @@ export class SpinResolver {
               resultStatus.value = (this.currElement.bigintValue >> 2n) + BigInt(this.inlineLocalsStart);
             } else if (this.currElement.type == eElementType.type_obj) {
               // HANDLE object.constant reference
-              /*
+              const savedElement: SpinElement = this.currElement;
               this.getDot();
-              let [objSymbolFound, type, value] = this.getObjSymbol(currElement.bigintValue);
-              if (objSymbolFound == false) {
+              let [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
+              if (type == eElementType.type_objpub) {
                 // [error_eacn]
                 throw new Error('Expected a constant name');
               }
-              // TODO create new element replacing current and pass new
+              // Adjust element replacing current and pass new
+              this.currElement.setType(type);
+              this.currElement.setValue(BigInt(value));
               return this.getConstant(mode, resolve);
-              */
-              throw new Error('[CODE] type object not yet coded');
             } else if (this.currElement.type == eElementType.type_at) {
               // HANDLE address of DAT symbol
               this.checkIntMode();
@@ -3334,8 +3424,9 @@ export class SpinResolver {
     return dataStatus;
   }
 
-  private getObjSymbol(value: number): [boolean, eElementType, number] {
-    return [false, eElementType.type_asm_cond, 0];
+  private getObjSymbol(value: number): [eElementType, number] {
+    // PNut get_obj_symbol:
+    return [eElementType.type_undefined, 0];
   }
 
   private checkUndefined(resolve: eResolve, haveLocalType: boolean = false, localType: eElementType = eElementType.type_undefined): boolean {
@@ -3722,6 +3813,7 @@ export class SpinResolver {
 
   private getVariable(): iVariableReturn {
     // PNut: get_variable:
+    this.getElement();
     const variableResult: iVariableReturn = this.checkVariable();
     if (variableResult.isVariable == false) {
       // [error_eav]
@@ -3829,6 +3921,40 @@ export class SpinResolver {
   }
 
   private checkVariable(): iVariableReturn {
+    //
+    //	field - type_field
+    //	------------------
+    //
+    //	FIELD[memfield]
+    //	FIELD[memfield][index]
+    //
+    //
+    //	register - type_register
+    //	------------------------
+    //
+    //	regname
+    //	regname.[bitfield]
+    //	regname[index]
+    //	regname[index].[bitfield]
+    //
+    //
+    //	hub memory - type_loc_???? / type_var_???? / type_dat_???? / type_hub_????
+    //	--------------------------------------------------------------------------
+    //
+    //	hubname{.BYTE/WORD/LONG}
+    //	hubname{.BYTE/WORD/LONG}.[bitfield]
+    //	hubname{.BYTE/WORD/LONG}[index]
+    //	hubname{.BYTE/WORD/LONG}[index].[bitfield]
+    //
+    //
+    //	hub memory - type_size
+    //	----------------------
+    //
+    //	BYTE/WORD/LONG[base]
+    //	BYTE/WORD/LONG[base].[bitfield]
+    //	BYTE/WORD/LONG[base][index]
+    //	BYTE/WORD/LONG[base][index].[bitfield]
+    //
     let resultVariable: iVariableReturn = {
       isVariable: true,
       type: eElementType.type_undefined,
@@ -3954,7 +4080,40 @@ export class SpinResolver {
     return resultVariable;
   }
 
-  //    HOLD
+  private checkVariableMethod(): [boolean, number] {
+    // Check for var({params,...}){:returns}
+    //  on exit, z=1 if method with number of return values in ebx
+    // PNut check_var_method:
+    let foundMethodStatus: boolean = false;
+    let countOfParameters: number = 0;
+    const variableResult: iVariableReturn = this.checkVariable();
+    if (variableResult.isVariable) {
+      if (this.checkLeftParen()) {
+        if (variableResult.type == eElementType.type_register && variableResult.address == this.mrecvReg) {
+          // have RECV(), no parameters allowed, one return value
+          this.getRightParen();
+          countOfParameters = 1;
+          foundMethodStatus = true;
+        } else if (variableResult.type == eElementType.type_register && variableResult.address == this.msendReg) {
+          // have SEND(param{,...}), parameters allowed, no return value (0 is default!)
+          this.scanToRightParen();
+          foundMethodStatus = true;
+        } else {
+          this.scanToRightParen();
+          // if no following colon then return 0 (0 is default!)
+          foundMethodStatus = true;
+          if (this.checkColon()) {
+            countOfParameters = this.getConInt();
+            if (countOfParameters > this.results_limit) {
+              // [error_loxre]
+              throw new Error('Limit of 15 results exceeded');
+            }
+          }
+        }
+      }
+    }
+    return [foundMethodStatus, countOfParameters];
+  }
 
   private checkVariableSizeOverride(resultSoFar: iVariableReturn) {
     if (this.checkDot()) {
@@ -4039,6 +4198,15 @@ export class SpinResolver {
     const constantReturn = this.compileExpressionCheckCon();
     this.objImage.setOffsetTo(savedObjOffset);
     return constantReturn;
+  }
+
+  private getConInt(): number {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_con) {
+      // [error_eicon]
+      throw new Error('Expected integer constant');
+    }
+    return Number(this.currElement.bigintValue);
   }
 
   private getLeftParen() {
