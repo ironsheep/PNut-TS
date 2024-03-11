@@ -16,6 +16,7 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
+import { urlToHttpOptions } from 'url';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -38,10 +39,10 @@ interface iVariableReturn {
   assignmentBytecode: eByteCode; // used iff VO_ASSIGN
 }
 
-interface iObjectSymbolReturn {
-  isObjectPub: boolean;
-  type: eElementType;
-  value: number;
+enum eResultRequirements {
+  RR_None,
+  RR_One,
+  RR_OneOrMore
 }
 
 enum eCompOp {
@@ -2687,9 +2688,8 @@ export class SpinResolver {
         }
       }
     }
-
-    //this.logMessage(`compileSubExpression(${precedence}) - EXIT`);
   }
+  //this.logMessage(`compileSubExpression(${precedence}) - EXIT`);
 
   private compileTerm() {
     // PNut compile_term:
@@ -2718,7 +2718,6 @@ export class SpinResolver {
     // PNut compile_flex:
     this.getLeftParen();
     //  // symbol		=		bytecode + (params shl 8) + (results shl 11) + (pinfld shl 14) + (hubcode shl 15)
-    //         endm
     const flexEncodedValue: number = this.spinSymbolTables.flexValue(flexCode);
     // break out the values from within...
     const bytecode: number = flexEncodedValue & 0xff;
@@ -2799,7 +2798,7 @@ export class SpinResolver {
     }
   }
 
-  private compileParameter() {
+  private compileParameter(): number {
     // Compile a parameter - accommodates instructions/methods with multiple return values
     // on exit, eax holds number of actual parameters compiled
     //
@@ -2810,7 +2809,63 @@ export class SpinResolver {
     //
     // PNut compile_parameter:
     // XYZZY compileParameter()  -- add this code
+    let compiledParameterCount: number = -1; // flag saying we need to compile expression
+    const savedElementIndex: number = this.elementIndex - 1;
+    this.getElement();
+    if (this.currElement.type == eElementType.type_i_flex) {
+      compiledParameterCount = this.currElement.flexResultCount;
+      if (this.currElement.flexResultCount >= 2) {
+        const flexCode: eFlexcode = this.spinSymbolTables.getFlexcodeFromBytecode(this.currElement.flexByteCode);
+        this.compileFlex(flexCode);
+      }
+    } else if (this.currElement.type == eElementType.type_obj) {
+      const savedElement: SpinElement = this.currElement;
+      this.checkIndex();
+      this.getDot();
+      let [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
+      if (type == eElementType.type_objpub) {
+        // remember ct_objpub()
+        this.elementIndex = savedElementIndex;
+        const returnValueCount: number = (value >> 20) & 0x0f;
+        // PNut @@checkmult2:
+        if (returnValueCount >= 2) {
+          this.getElement();
+          this.ct_objpub(eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
+          compiledParameterCount = returnValueCount;
+        }
+      }
+    } else if (this.currElement.type == eElementType.type_method) {
+      // remember ct_method()
+      this.elementIndex = savedElementIndex;
+      const returnValueCount: number = this.currElement.methodResultCount;
+      // PNut @@checkmult2:
+      if (returnValueCount >= 2) {
+        this.getElement();
+        this.ct_method(eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
+        compiledParameterCount = returnValueCount;
+      }
+      // XYZZY continue validation compileParameter()
+    } else {
+      // remember ct_method_ptr()
+      const [isMethod, parameterCount] = this.checkVariableMethod();
+      if (isMethod) {
+        this.getElement();
+        this.ct_method_ptr(savedElementIndex, eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
+        compiledParameterCount = parameterCount;
+      }
+    }
+    if (compiledParameterCount == -1) {
+      // PNut @@single:
+      this.elementIndex = savedElementIndex;
+      this.compileExpression();
+      compiledParameterCount = 1;
+    }
+    return compiledParameterCount;
   }
+
+  private ct_objpub(results: eResultRequirements, byteCode: eByteCode) {}
+  private ct_method(results: eResultRequirements, byteCode: eByteCode) {}
+  private ct_method_ptr(elementIndex: number, results: eResultRequirements, byteCode: eByteCode) {}
 
   private compileConData(initialWordSize: number) {
     // Compile term - BYTE/WORD/LONG(value, value, BYTE/WORD/LONG value)

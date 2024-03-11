@@ -190,8 +190,80 @@ export class SpinElement {
     // returns the op_* value
     let desiredValue: number = -1;
     if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
-      // macro v1 parm (v1 << 0) 8 bits
+      // macro bytecode ls-8 bits
       desiredValue = Number(this._value & BigInt(0xff)); // 8 ls-bits
+    }
+    return desiredValue;
+  }
+
+  get flexParamCount(): number {
+    // returns the count of parameters
+    let desiredValue: number = -1;
+    if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
+      // macro (params shl 8) 3-bits
+      desiredValue = Number((BigInt(this._value) >> 8n) & BigInt(0b111)); // 3 ls-bits
+    }
+    return desiredValue;
+  }
+
+  get flexResultCount(): number {
+    // returns the count of return values
+    let desiredValue: number = -1;
+    if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
+      // macro (results shl 11) 3 bits
+      desiredValue = Number((BigInt(this._value) >> 11n) & BigInt(0b111)); // 3 ls-bits
+    }
+    return desiredValue;
+  }
+
+  get flexIsPinField(): boolean {
+    // returns the count of return values
+    let desiredValue: boolean = false;
+    if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
+      // macro (pinfld shl 14) 1-bit
+      desiredValue = Number((BigInt(this._value) >> 14n) & BigInt(0b1)) ? true : false;
+    }
+    return desiredValue;
+  }
+
+  get flexIsHUbCode(): boolean {
+    // returns the count of return values
+    let desiredValue: boolean = false;
+    if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
+      // macro (hubcode shl 15) 1-bit
+      desiredValue = Number((BigInt(this._value) >> 15n) & BigInt(0b1)) ? true : false;
+    }
+    return desiredValue;
+  }
+
+  //
+  // special for type_method: elements
+  //
+  get methodResultCount(): number {
+    // returns the count of return values for type_method
+    let desiredValue: number = -1;
+    if (this._type == eElementType.type_method && typeof this._value === 'bigint') {
+      // macro (results shl 20) 4 bits
+      desiredValue = Number((BigInt(this._value) >> 20n) & BigInt(0b1111)); // 4 ls-bits
+    }
+    return desiredValue;
+  }
+  get methodParamterCount(): number {
+    // returns the count of return values for type_method
+    let desiredValue: number = -1;
+    if (this._type == eElementType.type_method && typeof this._value === 'bigint') {
+      // macro (params shl 24) 7 bits
+      desiredValue = Number((BigInt(this._value) >> 24n) & BigInt(0x7f)); // 7 ls-bits
+    }
+    return desiredValue;
+  }
+
+  get methodIsPub(): boolean {
+    // returns the count of return values for type_method
+    let desiredValue: boolean = false;
+    if (this._type == eElementType.type_method && typeof this._value === 'bigint') {
+      // macro (pub/pri shl 31) 1 bit
+      desiredValue = Number((BigInt(this._value) >> 31n) & BigInt(0b1)) ? true : false; //  ls-bit
     }
     return desiredValue;
   }

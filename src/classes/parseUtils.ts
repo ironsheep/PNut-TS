@@ -1004,6 +1004,7 @@ export class SpinSymbolTables {
   private flexcodeValues = new Map<eFlexcode, number>();
   private asmcodeValues = new Map<eAsmcode, number>();
   private opcodeValues = new Map<eOpcode, number>();
+  private byteCodeToFlexCodeMap = new Map<eByteCode, eFlexcode>();
   private find_symbol_s1: iSpinSymbol[] = [];
   private find_symbol_s2: iSpinSymbol[] = [];
   private find_symbol_s3: iSpinSymbol[] = [];
@@ -2740,8 +2741,28 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.EVENT_XRL, { type: eElementType.type_con, value: 13 });
     this.automatic_symbols.set(SYMBOLS.EVENT_ATN, { type: eElementType.type_con, value: 14 });
     this.automatic_symbols.set(SYMBOLS.EVENT_QMT, { type: eElementType.type_con, value: 15 });
+
+    // Populate the reverse map
+    for (const [fcValue, value] of this.flexcodeValues) {
+      const bcValue: number = value & 0xff;
+      this.byteCodeToFlexCodeMap.set(bcValue, fcValue);
+    }
   }
 
+  // Function to get fc_ value from bc_ value
+  public getFlexcodeFromBytecode(bcValue: eByteCode): eFlexcode {
+    let foundFlexCode: eFlexcode = 0;
+    if (this.byteCodeToFlexCodeMap.has(bcValue)) {
+      const tmpFlexCode = this.byteCodeToFlexCodeMap.get(bcValue);
+      if (tmpFlexCode) {
+        foundFlexCode = tmpFlexCode;
+      } else {
+        // [error_INTERNAL]
+        throw new Error(`[INTERNAL] failed to located fc_ value for bc_ (${bcValue})[${eByteCode[bcValue]}]`);
+      }
+    }
+    return foundFlexCode;
+  }
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
     this.isLogging = enable;
