@@ -1889,13 +1889,13 @@ export class SpinResolver {
   private getCorZ(): number {
     // return asmCondition if present?
     let logicFunction: number = 0b00;
-    const nextElement: SpinElement = this.getElement();
+    this.getElement();
     if (
-      nextElement.type == eElementType.type_asm_effect2 ||
-      (nextElement.type == eElementType.type_asm_effect && Number(nextElement.value) != 0b11)
+      this.currElement.type == eElementType.type_asm_effect2 ||
+      (this.currElement.type == eElementType.type_asm_effect && Number(this.currElement.value) != 0b11)
     ) {
-      this.instructionImage |= (Number(nextElement.value) & 0b11) << 19;
-      logicFunction = Number(nextElement.value) >> 2;
+      this.instructionImage |= (Number(this.currElement.value) & 0b11) << 19;
+      logicFunction = Number(this.currElement.value) >> 2;
     } else {
       // [error_ewaox]
       throw new Error('Expected WC, WZ, ANDC, ANDZ, ORC, ORZ, XORC, or XORZ');
@@ -2710,6 +2710,10 @@ export class SpinResolver {
       this.compileFlex(eFlexcode.fc_round);
     } else if (this.currElement.type == eElementType.type_trunc) {
       this.compileFlex(eFlexcode.fc_trunc);
+    } else if (this.currElement.type == eElementType.type_back) {
+      this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap_push);
+    } else if (this.currElement.type == eElementType.type_obj) {
+      this.ct_objpubcon(eResultRequirements.RR_One, eByteCode.bc_drop_push);
     }
   }
 
@@ -2724,21 +2728,23 @@ export class SpinResolver {
     const resultCount: number = (flexEncodedValue >> 11) & 0b111;
     const isPinField: boolean = (flexEncodedValue >> 14) & 1 ? true : false;
     const isHubCode: boolean = (flexEncodedValue >> 15) & 1 ? true : false;
-    // XYZZY compileFlex()  -- REVIEW this code
 
     this.getLeftParen();
     if (paramCount > 0) {
       if (isPinField) {
-        // pinfieldConstantFlag is true
+        // we have a pinfield
         const savedElementIndex: number = this.elementIndex - 1;
         const savedObjectOffset: number = this.objImage.offset;
         let remainingParamCount = paramCount;
         let numberReturnValues: number = this.compileParameter();
         // if first parameter returns single value followed by '..', pinfield
         if (--numberReturnValues == 0) {
+          // we have 1 parameter which is a pinfield description
           if (this.checkDotDot()) {
+            // restore locations (element index and object offset)
             this.objImage.setOffsetTo(savedObjectOffset);
             this.elementIndex = savedElementIndex;
+
             let failedToResolveValue: boolean = false;
             const firstValueReturn = this.skipExpressionCheckCon();
             if (firstValueReturn.isResolved == false) {
@@ -2771,6 +2777,7 @@ export class SpinResolver {
             }
             if (failedToResolveValue) {
               // one or more failures to resolve
+              // restore locations (element index and object offset)
               this.objImage.setOffsetTo(savedObjectOffset);
               this.elementIndex = savedElementIndex;
               this.compileExpression();
@@ -2785,12 +2792,14 @@ export class SpinResolver {
             }
           } else {
             // no DOT DOT
+            // restore locations (element index and object offset)
             this.objImage.setOffsetTo(savedObjectOffset);
             this.elementIndex = savedElementIndex;
             this.compileParametersNoParens(paramCount);
           }
         } else {
           // more than 1 return value
+          // restore locations (element index and object offset)
           this.objImage.setOffsetTo(savedObjectOffset);
           this.elementIndex = savedElementIndex;
           this.compileParametersNoParens(paramCount);
@@ -2948,9 +2957,80 @@ export class SpinResolver {
     return compiledParameterCount;
   }
 
-  private ct_objpub(results: eResultRequirements, byteCode: eByteCode) {}
-  private ct_method(results: eResultRequirements, byteCode: eByteCode) {}
-  private ct_method_ptr(elementIndex: number, results: eResultRequirements, byteCode: eByteCode) {}
+  private ct_try(results: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - \obj{[]}.method({param,...}), \method({param,...}), \var({param,...}){:results}
+    // PNut ct_try:
+    this.getElement();
+    if (this.currElement.type == eElementType.type_obj) {
+      // \obj{[]}.method({param,...}) ?
+      this.ct_objpub(results, byteCode);
+    } else if (this.currElement.type == eElementType.type_method) {
+      // \method({param,...}) ?
+      this.ct_method(results, byteCode);
+    } else {
+      const savedElementIndex: number = this.elementIndex - 1;
+      const variableResult: iVariableReturn = this.checkVariable();
+      if (variableResult.isVariable) {
+        // \var({param,...}){:results} ?
+        this.getLeftParen();
+        this.ct_method_ptr(savedElementIndex, results, byteCode);
+      } else {
+        // [error_eamoov]
+        throw new Error('Expected a method, object, or variable');
+      }
+    }
+  }
+
+  private ct_look(results: eResultRequirements, byteCode: eByteCode) {
+    // XYZZY need code ct_look()
+  }
+
+  private ct_objpubcon(results: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - obj{[]}.method({param,...}) or obj.con
+    // PNut ct_objpubcon:
+    const savedElementIndex: number = this.elementIndex - 1;
+    const savedElement: SpinElement = this.currElement; // our type_obj element on entry
+    const [foundIndex, elementIndex] = this.checkIndex();
+    if (foundIndex) {
+      // compile obj{[]}.method({param,...})
+      this.elementIndex = savedElementIndex;
+      this.getElement();
+      this.ct_objpub(results, byteCode);
+    } else {
+      // could be object constant OR object method
+      this.getDot();
+      const [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
+      if (type == eElementType.type_objpub) {
+        // compile obj.method({param,...})
+        this.elementIndex = savedElementIndex;
+        this.getElement();
+        this.ct_objpub(results, byteCode);
+      } else {
+        // compile obj.constant (integer or float)
+        this.compileConstant(BigInt(value));
+      }
+    }
+  }
+
+  private ct_objpub(results: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - obj{[]}.method({param,...})
+    // PNut ct_objpub:
+    // XYZZY need code ct_objpub()
+    this.objWrByte(byteCode);
+
+    // XYZZY we are here!!!
+
+    const savedElementIndex: number = this.elementIndex - 1;
+    const [foundIndex, elementIndex] = this.checkIndex();
+  }
+
+  private ct_method(results: eResultRequirements, byteCode: eByteCode) {
+    // XYZZY need code ct_method()
+  }
+
+  private ct_method_ptr(elementIndex: number, results: eResultRequirements, byteCode: eByteCode) {
+    // XYZZY need code ct_method_ptr()
+  }
 
   private compileConData(initialWordSize: number) {
     // Compile term - BYTE/WORD/LONG(value, value, BYTE/WORD/LONG value)
@@ -3577,8 +3657,8 @@ export class SpinResolver {
       // do we have a '.' preceeding a user name?
       if (this.checkDot()) {
         // is the next element a user undefined symbol?
-        const nextElement: SpinElement = this.getElement(); // position to bad element! so "throw" line-number is correct -OR- caller doesn't see this again
-        if (!(nextElement.type == eElementType.type_undefined || nextElement.sourceElementWasUndefined)) {
+        this.getElement(); // position to bad element! so "throw" line-number is correct -OR- caller doesn't see this again
+        if (!(this.currElement.type == eElementType.type_undefined || this.currElement.sourceElementWasUndefined)) {
           // [error_eacn]
           throw new Error('Expected a constant name');
         }
@@ -4350,118 +4430,118 @@ export class SpinResolver {
   }
 
   private getLeftParen() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_left) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_left) {
       // [error_eleft]
       throw new Error('Expected "("');
     }
   }
 
   private getRightParen() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_right) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_right) {
       // [error_eright]
       throw new Error('Expected ")"');
     }
   }
 
   private getLeftBracket() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_leftb) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_leftb) {
       // [error_eleftb]
       throw new Error('Expected "["');
     }
   }
 
   private getRightBracket() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_rightb) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_rightb) {
       // [error_erightb]
       throw new Error('Expected "]"');
     }
   }
 
   private getComma() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_comma) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_comma) {
       // [error_ecomma]
       throw new Error('Expected ","');
     }
   }
   private getPound() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_pound) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_pound) {
       // [error_epound]
       throw new Error('Expected "#"');
     }
   }
   private getEqual() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_equal) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_equal) {
       // [error_eequal]
       throw new Error('Expected "="');
     }
   }
 
   private getColon() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_colon) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_colon) {
       // [error_ecolon]
       throw new Error('Expected ":"');
     }
   }
 
   private getDot() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_dot) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_dot) {
       // [error_edot]
       throw new Error('Expected "."');
     }
   }
 
   private getDotDot() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_dotdot) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_dotdot) {
       // [error_edotdot]
       throw new Error('Expected ".."');
     }
   }
 
   private getAssign() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_assign) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_assign) {
       // [error_eassign]
       throw new Error('Expected ":="');
     }
   }
 
   private getSize() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_size) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_size) {
       // [error_ebwl]
       throw new Error('Expected BYTE/WORD/LONG');
     }
   }
 
   private getFrom() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_from) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_from) {
       // [error_efrom]
       throw new Error('Expected FROM');
     }
   }
 
   private getTo() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_to) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_to) {
       // [error_eto]
       throw new Error('Expected TO');
     }
   }
 
   private getWith() {
-    const nextElement: SpinElement = this.getElement();
-    if (nextElement.type != eElementType.type_with) {
+    this.getElement();
+    if (this.currElement.type != eElementType.type_with) {
       // [error_ewith]
       throw new Error('Expected WITH');
     }
