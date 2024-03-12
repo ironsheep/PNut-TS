@@ -2716,7 +2716,6 @@ export class SpinResolver {
   private compileFlex(flexCode: eFlexcode) {
     // Compile flex instruction
     // PNut compile_flex:
-    this.getLeftParen();
     //  // symbol		=		bytecode + (params shl 8) + (results shl 11) + (pinfld shl 14) + (hubcode shl 15)
     const flexEncodedValue: number = this.spinSymbolTables.flexValue(flexCode);
     // break out the values from within...
@@ -2725,10 +2724,80 @@ export class SpinResolver {
     const resultCount: number = (flexEncodedValue >> 11) & 0b111;
     const isPinField: boolean = (flexEncodedValue >> 14) & 1 ? true : false;
     const isHubCode: boolean = (flexEncodedValue >> 15) & 1 ? true : false;
-    // XYZZY compileFlex()  -- add this code
+    // XYZZY compileFlex()  -- REVIEW this code
+
+    this.getLeftParen();
     if (paramCount > 0) {
       if (isPinField) {
-        this.compileParameter();
+        // pinfieldConstantFlag is true
+        const savedElementIndex: number = this.elementIndex - 1;
+        const savedObjectOffset: number = this.objImage.offset;
+        let remainingParamCount = paramCount;
+        let numberReturnValues: number = this.compileParameter();
+        // if first parameter returns single value followed by '..', pinfield
+        if (--numberReturnValues == 0) {
+          if (this.checkDotDot()) {
+            this.objImage.setOffsetTo(savedObjectOffset);
+            this.elementIndex = savedElementIndex;
+            let failedToResolveValue: boolean = false;
+            const firstValueReturn = this.skipExpressionCheckCon();
+            if (firstValueReturn.isResolved == false) {
+              // failed to resulve secondValue
+              failedToResolveValue = true;
+            } else {
+              const firstValue: number = Number(BigInt(firstValueReturn.value) & BigInt(0x3f));
+              let encodedBitfield: number = firstValue; // default: pin number
+              this.getDotDot();
+              // we have a pin plus additional pin(s)
+              const secondValueReturn = this.skipExpressionCheckCon();
+              if (secondValueReturn.isResolved == false) {
+                // failed to resulve firstValue
+                failedToResolveValue = true;
+              } else {
+                const secondValue: number = Number(BigInt(secondValueReturn.value) & BigInt(0x3f));
+                if ((firstValue ^ secondValue) & 0x20) {
+                  // [error_pmbttsp]
+                  throw new Error('Pins must belong to the same port');
+                }
+                // encode: count of additional bits | bit number
+                encodedBitfield = (((firstValue - secondValue) & 0x1f) << 6) | (secondValue & 0x3f);
+                // have pin plus additional pin(s)
+                this.compileConstant(BigInt(encodedBitfield));
+                if (--remainingParamCount > 0) {
+                  this.getComma();
+                  this.compileParametersNoParens(remainingParamCount);
+                }
+              }
+            }
+            if (failedToResolveValue) {
+              // one or more failures to resolve
+              this.objImage.setOffsetTo(savedObjectOffset);
+              this.elementIndex = savedElementIndex;
+              this.compileExpression();
+              this.getDotDot();
+              this.compileExpression();
+              this.objWrByte(eByteCode.bc_bitrange);
+              this.objWrByte(eByteCode.bc_addpins);
+              if (--remainingParamCount > 0) {
+                this.getComma();
+                this.compileParametersNoParens(remainingParamCount);
+              }
+            }
+          } else {
+            // no DOT DOT
+            this.objImage.setOffsetTo(savedObjectOffset);
+            this.elementIndex = savedElementIndex;
+            this.compileParametersNoParens(paramCount);
+          }
+        } else {
+          // more than 1 return value
+          this.objImage.setOffsetTo(savedObjectOffset);
+          this.elementIndex = savedElementIndex;
+          this.compileParametersNoParens(paramCount);
+        }
+      } else {
+        // NOT a pinField
+        this.compileParametersNoParens(paramCount);
       }
     }
     this.getRightParen();
@@ -2798,6 +2867,23 @@ export class SpinResolver {
     }
   }
 
+  private compileParametersNoParens(count: number) {
+    // PNut compile_parameters_np:
+    let parametersRemaining: number = count;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const numberReturnValues = this.compileParameter();
+      parametersRemaining -= numberReturnValues;
+      if (parametersRemaining < 0) {
+        // [error_enope]
+        throw new Error('Expected number of parameters exceeded');
+      } else if (parametersRemaining == 0) {
+        break; // matched expected, get outta here
+      }
+      this.getComma();
+    }
+  }
+
   private compileParameter(): number {
     // Compile a parameter - accommodates instructions/methods with multiple return values
     // on exit, eax holds number of actual parameters compiled
@@ -2808,15 +2894,15 @@ export class SpinResolver {
     //	var({params,...}):2+
     //
     // PNut compile_parameter:
-    // XYZZY compileParameter()  -- add this code
     let compiledParameterCount: number = -1; // flag saying we need to compile expression
     const savedElementIndex: number = this.elementIndex - 1;
     this.getElement();
     if (this.currElement.type == eElementType.type_i_flex) {
-      compiledParameterCount = this.currElement.flexResultCount;
-      if (this.currElement.flexResultCount >= 2) {
+      const flexResultCount: number = this.currElement.flexResultCount;
+      if (flexResultCount >= 2) {
         const flexCode: eFlexcode = this.spinSymbolTables.getFlexcodeFromBytecode(this.currElement.flexByteCode);
         this.compileFlex(flexCode);
+        compiledParameterCount = flexResultCount;
       }
     } else if (this.currElement.type == eElementType.type_obj) {
       const savedElement: SpinElement = this.currElement;
@@ -2836,7 +2922,6 @@ export class SpinResolver {
       }
     } else if (this.currElement.type == eElementType.type_method) {
       // remember ct_method()
-      this.elementIndex = savedElementIndex;
       const returnValueCount: number = this.currElement.methodResultCount;
       // PNut @@checkmult2:
       if (returnValueCount >= 2) {
@@ -2844,16 +2929,16 @@ export class SpinResolver {
         this.ct_method(eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
         compiledParameterCount = returnValueCount;
       }
-      // XYZZY continue validation compileParameter()
     } else {
       // remember ct_method_ptr()
-      const [isMethod, parameterCount] = this.checkVariableMethod();
-      if (isMethod) {
+      const [isMethod, returnCount] = this.checkVariableMethod();
+      if (isMethod && returnCount >= 2) {
         this.getElement();
         this.ct_method_ptr(savedElementIndex, eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
-        compiledParameterCount = parameterCount;
+        compiledParameterCount = returnCount;
       }
     }
+    // if no count found so far then treat it as 1 and compile the expression
     if (compiledParameterCount == -1) {
       // PNut @@single:
       this.elementIndex = savedElementIndex;
@@ -4140,14 +4225,14 @@ export class SpinResolver {
     //  on exit, z=1 if method with number of return values in ebx
     // PNut check_var_method:
     let foundMethodStatus: boolean = false;
-    let countOfParameters: number = 0;
+    let returnValueCount: number = 0;
     const variableResult: iVariableReturn = this.checkVariable();
     if (variableResult.isVariable) {
       if (this.checkLeftParen()) {
         if (variableResult.type == eElementType.type_register && variableResult.address == this.mrecvReg) {
           // have RECV(), no parameters allowed, one return value
           this.getRightParen();
-          countOfParameters = 1;
+          returnValueCount = 1;
           foundMethodStatus = true;
         } else if (variableResult.type == eElementType.type_register && variableResult.address == this.msendReg) {
           // have SEND(param{,...}), parameters allowed, no return value (0 is default!)
@@ -4158,8 +4243,8 @@ export class SpinResolver {
           // if no following colon then return 0 (0 is default!)
           foundMethodStatus = true;
           if (this.checkColon()) {
-            countOfParameters = this.getConInt();
-            if (countOfParameters > this.results_limit) {
+            returnValueCount = this.getConInt();
+            if (returnValueCount > this.results_limit) {
               // [error_loxre]
               throw new Error('Limit of 15 results exceeded');
             }
@@ -4167,7 +4252,7 @@ export class SpinResolver {
         }
       }
     }
-    return [foundMethodStatus, countOfParameters];
+    return [foundMethodStatus, returnValueCount];
   }
 
   private checkVariableSizeOverride(resultSoFar: iVariableReturn) {
