@@ -16,7 +16,6 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
-import { urlToHttpOptions } from 'url';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -2876,9 +2875,17 @@ export class SpinResolver {
     }
   }
 
-  private compileParametersNoParens(count: number) {
+  private compileParameters(parameterCount: number) {
+    this.getLeftParen();
+    if (parameterCount > 0) {
+      this.compileParametersNoParens(parameterCount);
+    }
+    this.getRightParen();
+  }
+
+  private compileParametersNoParens(parameterCount: number) {
     // PNut compile_parameters_np:
-    let parametersRemaining: number = count;
+    let parametersRemaining: number = parameterCount;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const numberReturnValues = this.compileParameter();
@@ -2917,11 +2924,11 @@ export class SpinResolver {
       const savedElement: SpinElement = this.currElement;
       this.checkIndex();
       this.getDot();
-      let [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
-      if (type == eElementType.type_objpub) {
+      let [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+      if (objSymType == eElementType.type_objpub) {
         // remember ct_objpub()
         this.elementIndex = savedElementIndex;
-        const returnValueCount: number = (value >> 20) & 0x0f;
+        const returnValueCount: number = (objSymValue >> 20) & 0x0f;
         // PNut @@checkmult2:
         if (returnValueCount >= 2) {
           this.getElement();
@@ -2957,23 +2964,23 @@ export class SpinResolver {
     return compiledParameterCount;
   }
 
-  private ct_try(results: eResultRequirements, byteCode: eByteCode) {
+  private ct_try(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - \obj{[]}.method({param,...}), \method({param,...}), \var({param,...}){:results}
     // PNut ct_try:
     this.getElement();
     if (this.currElement.type == eElementType.type_obj) {
       // \obj{[]}.method({param,...}) ?
-      this.ct_objpub(results, byteCode);
+      this.ct_objpub(resultsNeeded, byteCode);
     } else if (this.currElement.type == eElementType.type_method) {
       // \method({param,...}) ?
-      this.ct_method(results, byteCode);
+      this.ct_method(resultsNeeded, byteCode);
     } else {
       const savedElementIndex: number = this.elementIndex - 1;
       const variableResult: iVariableReturn = this.checkVariable();
       if (variableResult.isVariable) {
         // \var({param,...}){:results} ?
         this.getLeftParen();
-        this.ct_method_ptr(savedElementIndex, results, byteCode);
+        this.ct_method_ptr(savedElementIndex, resultsNeeded, byteCode);
       } else {
         // [error_eamoov]
         throw new Error('Expected a method, object, or variable');
@@ -2981,11 +2988,11 @@ export class SpinResolver {
     }
   }
 
-  private ct_look(results: eResultRequirements, byteCode: eByteCode) {
+  private ct_look(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // XYZZY need code ct_look()
   }
 
-  private ct_objpubcon(results: eResultRequirements, byteCode: eByteCode) {
+  private ct_objpubcon(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - obj{[]}.method({param,...}) or obj.con
     // PNut ct_objpubcon:
     const savedElementIndex: number = this.elementIndex - 1;
@@ -2995,41 +3002,166 @@ export class SpinResolver {
       // compile obj{[]}.method({param,...})
       this.elementIndex = savedElementIndex;
       this.getElement();
-      this.ct_objpub(results, byteCode);
+      this.ct_objpub(resultsNeeded, byteCode);
     } else {
       // could be object constant OR object method
       this.getDot();
-      const [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
-      if (type == eElementType.type_objpub) {
+      const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+      if (objSymType == eElementType.type_objpub) {
         // compile obj.method({param,...})
         this.elementIndex = savedElementIndex;
         this.getElement();
-        this.ct_objpub(results, byteCode);
+        this.ct_objpub(resultsNeeded, byteCode);
       } else {
         // compile obj.constant (integer or float)
-        this.compileConstant(BigInt(value));
+        this.compileConstant(BigInt(objSymValue));
       }
     }
   }
 
-  private ct_objpub(results: eResultRequirements, byteCode: eByteCode) {
+  private ct_objpub(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - obj{[]}.method({param,...})
     // PNut ct_objpub:
-    // XYZZY need code ct_objpub()
     this.objWrByte(byteCode);
-
-    // XYZZY we are here!!!
-
-    const savedElementIndex: number = this.elementIndex - 1;
-    const [foundIndex, elementIndex] = this.checkIndex();
+    const objectIndex: number = Number(this.currElement.bigintValue); // contains method addr
+    const [foundIndex, elementIndexOfIndex] = this.checkIndex();
+    this.getDot();
+    // if type_objpub: then objSymValue is methodValue: 7-bit parameterCount, 4-bit resultCount, 20-bit Address
+    const [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+    if (objSymType != eElementType.type_objpub) {
+      // [error_eamn]
+      throw new Error('Expected a method name');
+    }
+    this.confirmResult(resultsNeeded, objSymValue);
+    const parameterCount: number = (objSymValue >> 24) & 0x7f;
+    this.compileParameters(parameterCount);
+    if (foundIndex) {
+      this.compileOutOfSequenceExpression(elementIndexOfIndex);
+    }
+    this.objWrByte(foundIndex ? eByteCode.bc_call_obji_sub : eByteCode.bc_call_obj_sub);
+    this.compileRfvar(BigInt(objectIndex & 0xffffff));
+    this.compileRfvar(BigInt(objSymValue & 0xfffff));
   }
 
-  private ct_method(results: eResultRequirements, byteCode: eByteCode) {
-    // XYZZY need code ct_method()
+  private ct_method(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - method({param,...})
+    // PNut ct_method:
+    // fields 7-bit parameterCount, 4-bit resultCount, 20-bit Address
+    const methodValue: number = Number(this.currElement.bigintValue);
+    this.confirmResult(resultsNeeded, methodValue);
+    this.objWrByte(byteCode);
+    const parameterCount: number = (methodValue >> 24) & 0x7f;
+    this.compileParameters(parameterCount);
+    this.objWrByte(eByteCode.bc_call_sub);
+    this.compileRfvar(BigInt(methodValue & 0xfffff));
   }
 
-  private ct_method_ptr(elementIndex: number, results: eResultRequirements, byteCode: eByteCode) {
+  private ct_method_ptr(elementIndex: number, resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - var({param,...}){:results} or RECV() or SEND(param{,...})
+    // PNut ct_method_ptr:
     // XYZZY need code ct_method_ptr()
+    this.elementIndex = elementIndex;
+    const methodResult: iVariableReturn = this.getMethodPointer();
+    if (methodResult.type == eElementType.type_register && methodResult.address == this.mrecvReg) {
+      if (byteCode != eByteCode.bc_drop_push) {
+        // [error_recvcbu]
+        throw new Error('RECV() can be used only as a term and \\RECV() is not allowed');
+      }
+      this.getLeftParen();
+      this.getRightParen();
+      this.objWrByte(eByteCode.bc_call_recv);
+    } else if (methodResult.type == eElementType.type_register && methodResult.address == this.msendReg) {
+      if (byteCode != eByteCode.bc_drop) {
+        // [error_sendcbu]
+        throw new Error('SEND() can be used only as an instruction and \\SEND() is not allowed');
+      }
+      this.compileInstructionSend();
+    } else {
+      //
+    }
+  }
+
+  private compileInstructionSend() {
+    // Compile instruction - SEND()
+    // PNut ci_send:
+    // XYZZY needs code: compileInstructionSend()
+    this.getLeftParen();
+    if (this.checkRightParen()) {
+      // [error_esendd]
+      throw new Error('Expected SEND data');
+    }
+    do {
+      // this is @@trynext:
+      let byteCount: number = 0;
+      const savedElementIndex: number = this.elementIndex - 1;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // this is @@trybytes:
+        this.getElement();
+        if (this.currElement.type != eElementType.type_con || this.currElement.bigintValue > 255n) {
+          break;
+        }
+        byteCount++;
+        if (this.checkComma() == false) {
+          break;
+        }
+      }
+      // this is @@notbyte:
+      this.elementIndex = savedElementIndex;
+      if (byteCount >= 2) {
+        this.objWrByte(eByteCode.bc_call_send_bytes);
+        this.compileRfvar(BigInt(byteCount));
+        do {
+          // this is @@enterbytes:
+          this.getElement();
+          this.objWrByte(Number(this.currElement.bigintValue));
+          if (byteCount == 1) {
+            this.getComma();
+          }
+        } while (--byteCount);
+      } else {
+        // this is @@tryother:
+        // byteCount < 2
+        const valueIsOnStack: boolean = this.compileParameterSend();
+        if (valueIsOnStack) {
+          this.objWrByte(eByteCode.bc_call_send);
+        }
+        break;
+      }
+      // this is @@checkmore:
+    } while (this.getCommaOrRightParen());
+  }
+
+  private compileParameterSend(): boolean {
+    // Compile a parameter for SEND - accommodates methods with no return value
+    // obj{[]}.method({params,...})
+    // method({params,...})
+    // var({params,...}){:1}
+    // PNut compile_parameter_send:
+    // XYZZY code for compileParameterSend()
+    return false;
+  }
+
+  private compileOutOfSequenceExpression(elementIndex: number) {
+    // PNut compile_oos_exp:
+    const savedElementIndex: number = this.elementIndex - 1;
+    this.elementIndex = elementIndex;
+    this.compileExpression();
+    this.elementIndex = savedElementIndex;
+  }
+
+  private confirmResult(resultsNeeded: eResultRequirements, value: number) {
+    // PNut confirm_result:
+    if (resultsNeeded != eResultRequirements.RR_None) {
+      const numberResults: number = (value >> 20) & 0x0f;
+      if (numberResults == 0) {
+        // [error_tmrnr]
+        throw new Error('This method returns no results');
+      } else if (numberResults > 1 && resultsNeeded == eResultRequirements.RR_One) {
+        // [error_tmrmr]
+        throw new Error('This method returns multiple results');
+      }
+    }
   }
 
   private compileConData(initialWordSize: number) {
@@ -3439,12 +3571,12 @@ export class SpinResolver {
           // [error_NEW for Pnut-ts] (BEING CAPTURED)
           throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
         }
-        let [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
-        if (type == eElementType.type_objpub) {
+        const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+        if (objSymType == eElementType.type_objpub) {
           // [error_NEW for Pnut-ts] (BEING CAPTURED)
           throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
         }
-        resultStatus.value = BigInt(value);
+        resultStatus.value = BigInt(objSymValue);
       } else {
         resultStatus.foundConstant = false;
       }
@@ -3577,14 +3709,14 @@ export class SpinResolver {
               // HANDLE object.constant reference
               const savedElement: SpinElement = this.currElement;
               this.getDot();
-              let [type, value] = this.getObjSymbol(Number(savedElement.bigintValue));
-              if (type == eElementType.type_objpub) {
+              const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+              if (objSymType == eElementType.type_objpub) {
                 // [error_eacn]
                 throw new Error('Expected a constant name');
               }
               // Adjust element replacing current and pass new
-              this.currElement.setType(type);
-              this.currElement.setValue(BigInt(value));
+              this.currElement.setType(objSymType);
+              this.currElement.setValue(BigInt(objSymValue));
               return this.getConstant(mode, resolve);
             } else if (this.currElement.type == eElementType.type_at) {
               // HANDLE address of DAT symbol
