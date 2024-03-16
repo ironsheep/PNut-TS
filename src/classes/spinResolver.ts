@@ -154,6 +154,7 @@ export class SpinResolver {
   private readonly inlineLocalsStart: number = 0x1e0; // address
   private readonly clkfreqAddress: number = 0x44; // address
   private readonly results_limit: number = 15; // max return values
+  private readonly params_limit: number = 127; // max parameter values
 
   // VAR processing support data
   private varPtr: number = 4;
@@ -3077,14 +3078,39 @@ export class SpinResolver {
       }
       this.compileInstructionSend();
     } else {
-      //
+      // this is @@notsend:
+      this.objWrByte(byteCode);
+      const parameterCount: number = this.compileParameterMethodPtr();
+      if (this.checkColon()) {
+        const returnValueCount: number = this.getConInt();
+        if (returnValueCount > this.results_limit) {
+          // [error_loxre]
+          throw new Error(`Limit of ${this.results_limit} results exceeded`);
+        }
+      }
     }
+  }
+
+  private compileParameterMethodPtr(): number {
+    // Compile term - var({param,...}){:results} or RECV() or SEND(param{,...})
+    // PNut compile_parameters_mptr:
+    let parameterCount: number = 0;
+    this.getLeftParen();
+    if (this.checkRightParen() == false) {
+      do {
+        parameterCount += this.compileParameter();
+        if (parameterCount > this.params_limit) {
+          // [error_loxpe]
+          throw new Error(`Limit of ${this.params_limit} parameters exceeded`);
+        }
+      } while (this.getCommaOrRightParen());
+    }
+    return parameterCount;
   }
 
   private compileInstructionSend() {
     // Compile instruction - SEND()
     // PNut ci_send:
-    // XYZZY needs code: compileInstructionSend()
     this.getLeftParen();
     if (this.checkRightParen()) {
       // [error_esendd]
@@ -3134,12 +3160,77 @@ export class SpinResolver {
 
   private compileParameterSend(): boolean {
     // Compile a parameter for SEND - accommodates methods with no return value
-    // obj{[]}.method({params,...})
-    // method({params,...})
-    // var({params,...}){:1}
     // PNut compile_parameter_send:
-    // XYZZY code for compileParameterSend()
-    return false;
+    let valueOnStackStatus: boolean = false;
+    const savedElementIndex: number = this.elementIndex - 1;
+    this.getElement();
+    if (this.currElement.type == eElementType.type_obj) {
+      //  obj{[]}.method({params,...})
+      const objectIndex: number = Number(this.currElement.bigintValue);
+      this.checkIndex();
+      this.getDot();
+      let [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+      this.elementIndex = savedElementIndex;
+      let returnValueCount: number = 0;
+      if (objSymType == eElementType.type_objpub) {
+        // remember ct_objpub()
+        // @@checkmult:
+        returnValueCount = (objSymValue >> 20) & 0x0f;
+        // PNut @@checkmult2:
+        if (returnValueCount > 1) {
+          // [error_spmcrmv]
+          throw new Error('SEND parameter methods cannot return multiple values');
+        } else if (returnValueCount == 0) {
+          //no return value
+          this.getElement();
+          this.ct_objpub(eResultRequirements.RR_None, eByteCode.bc_drop);
+        }
+      }
+      if (objSymType != eElementType.type_objpub || (objSymType == eElementType.type_objpub && returnValueCount == 1)) {
+        // have obj_con or obj_con_float
+        // this is @@exp:
+        this.compileExpression();
+        valueOnStackStatus = true;
+      }
+    } else if (this.currElement.type == eElementType.type_method) {
+      //  method({params,...})
+      // this is  @@checkmult:
+      const returnValueCount: number = this.currElement.methodResultCount;
+      // this is @@checkmult2:
+      if (returnValueCount > 1) {
+        // [error_spmcrmv]
+        throw new Error('SEND parameter methods cannot return multiple values');
+      } else if (returnValueCount == 1) {
+        // this is @@exp:
+        this.compileExpression();
+        valueOnStackStatus = true;
+      } else {
+        //no return value (returnValueCount == 0)
+        this.getElement();
+        this.ct_method(eResultRequirements.RR_None, eByteCode.bc_drop);
+      }
+    } else {
+      //  var({params,...}){:1}
+      const [isMethod, returnCount] = this.checkVariableMethod();
+      this.elementIndex = savedElementIndex;
+      if (isMethod) {
+        // this is @@checkmult2:
+        if (returnCount > 1) {
+          // [error_spmcrmv]
+          throw new Error('SEND parameter methods cannot return multiple values');
+        } else if (returnCount == 0) {
+          //no return value
+          this.getElement();
+          this.ct_method_ptr(savedElementIndex, eResultRequirements.RR_None, eByteCode.bc_drop);
+        }
+      }
+      if (isMethod == false || (isMethod && returnCount == 1)) {
+        // this is @@exp:
+        this.compileExpression();
+        valueOnStackStatus = true;
+      }
+    }
+    return valueOnStackStatus;
   }
 
   private compileOutOfSequenceExpression(elementIndex: number) {
