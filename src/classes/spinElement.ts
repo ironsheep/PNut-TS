@@ -427,7 +427,7 @@ export class SpinElement {
       }
     } else if (this.valueIsString) {
       if (this.value !== '') {
-        valueInterp = `"${this.value}"`;
+        valueInterp = `"${this._value}"`;
       }
     }
     return valueInterp;
