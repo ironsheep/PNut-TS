@@ -16,6 +16,8 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
+import { runInThisContext } from 'vm';
+import { BlockStack, eNestType } from './blockStack';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -36,6 +38,19 @@ interface iVariableReturn {
   bitfieldConstantFlag: boolean;
   operation: eVariableOperation;
   assignmentBytecode: eByteCode; // used iff VO_ASSIGN
+}
+
+enum eOptimizerMethod {
+  OM_Look,
+  OM_If,
+  OM_IfNot,
+  OM_Case,
+  OM_CaseFast,
+  OM_Repeat,
+  OM_RepeatPreWhileUntil,
+  OM_RepeatCount,
+  OM_RepeatCountVar,
+  OM_RepeatVar
 }
 
 enum eResultRequirements {
@@ -160,16 +175,19 @@ export class SpinResolver {
   private varPtr: number = 4;
 
   // Spin2 processing support data
+  private blockStack: BlockStack;
 
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
+    this.blockStack = new BlockStack(ctx);
     this.isLogging = this.context.logOptions.logResolver;
     this.spinSymbolTables = new SpinSymbolTables(ctx);
     this.objImage = new ObjectImage(ctx);
     this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
     this.ternaryPrecedence = this.spinSymbolTables.ternaryPrecedence;
     this.numberStack.enableLogging(this.isLogging);
+    this.blockStack.enableLogging(this.isLogging);
   }
 
   public setElements(updatedElementList: SpinElement[]) {
@@ -2965,6 +2983,102 @@ export class SpinResolver {
     return compiledParameterCount;
   }
 
+  private ct_constr() {
+    // Compile term - STRING("constantstring")
+    // PNut ct_constr:
+    this.getLeftParen();
+    this.objWrByte(eByteCode.bc_string);
+    const patchLocation: number = this.objImage.offset;
+    this.objWrByte(0); // emit placeholder
+    let stringLength: number = 1;
+    do {
+      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      if (valueReturn.value < 1n || valueReturn.value > 255n) {
+        // [error_scmrf]
+        throw new Error('STRING characters must range from 1 to 255');
+      }
+      this.objWrByte(Number(valueReturn.value));
+      if (++stringLength > 255) {
+        // [error_sdcx]
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    this.objWrByte(0); // emit string terminator
+    this.objImage.write(stringLength, patchLocation);
+  }
+
+  private ct_conlstr() {
+    // Compile term - LSTRING("constantstring", zero_ok, zero_ok)
+    // PNut ct_conlstr:
+    this.getLeftParen();
+    this.objWrByte(eByteCode.bc_string);
+    const patchLocation: number = this.objImage.offset;
+    this.objWrByte(0); // emit placeholder - interpreter length
+    this.objWrByte(0); // emit placeholder - user length
+    let stringLength: number = 1;
+    do {
+      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      if (valueReturn.value > 255n) {
+        // [error_lscmrf]
+        throw new Error('LSTRING characters must range from 0 to 255');
+      }
+      this.objWrByte(Number(valueReturn.value));
+      if (++stringLength > 255) {
+        // [error_sdcx]
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    this.objImage.write(stringLength, patchLocation);
+    this.objImage.write(stringLength - 1, patchLocation + 1);
+  }
+
+  private ct_condata(wordSize: eWordSize) {
+    // Compile term - BYTE/WORD/LONG(value, value, BYTE/WORD/LONG value)
+    // PNut ct_condata:
+    this.objWrByte(eByteCode.bc_string);
+    const patchLocation: number = this.objImage.offset;
+    this.objWrByte(0); // emit placeholder
+    let dataLength: number = 0;
+    do {
+      let currWordSize: eWordSize = wordSize;
+      this.getElement();
+      if (this.currElement.type == eElementType.type_size) {
+        currWordSize = Number(this.currElement.bigintValue);
+      } else {
+        this.backElement();
+      }
+      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOrFloat, eResolve.BR_Must);
+      const data: number = Number(this.signExtendFrom32Bit(valueReturn.value));
+      switch (currWordSize) {
+        case eWordSize.WS_Byte:
+          if (data < -0x80 || data > 0xff) {
+            // [error_NEW]
+            throw new Error('BYTE data must be from -$80 to $FF');
+          }
+          this.objWrByte(data);
+          dataLength += 1;
+          break;
+        case eWordSize.WS_Word:
+          if (data < -0x8000 || data > 0xffff) {
+            // [error_NEW]
+            throw new Error('WORD data must be from -$8000 to $FFFF');
+          }
+          this.objWrWord(data);
+          dataLength += 2;
+          break;
+        case eWordSize.WS_Long:
+          this.objWrLong(data);
+          dataLength += 4;
+          break;
+      }
+      if (dataLength > 255) {
+        // [error_bwldcx]
+        throw new Error('BYTE/WORD/LONG data cannot exceed 255 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    this.objImage.write(dataLength, patchLocation);
+  }
+
   private ct_try(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - \obj{[]}.method({param,...}), \method({param,...}), \var({param,...}){:results}
     // PNut ct_try:
@@ -2990,7 +3104,231 @@ export class SpinResolver {
   }
 
   private ct_look(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
-    // XYZZY need code ct_look()
+    // Compile term - LOOKUP/LOOKDOWN
+    // PNut ct_look:
+    const lookType: number = Number(this.currElement.bigintValue);
+    this.new_bnest(eNestType.NT_Look, 1);
+    this.optimizeBlock(eOptimizerMethod.OM_Look, lookType);
+    this.end_bnest();
+  }
+
+  private blockLook(lookType: number) {
+    // code for eOptimizerMethod.OM_Look
+    // PNut ct_look:@@comp:
+    this.compile_bstack_address(0);
+    this.getLeftParen();
+    this.compileExpression(); // compile target value
+    this.getColon();
+    this.objWrByte(eByteCode.bc_con_n + 1 + (lookType & 1)); // lookupz or lookup
+    do {
+      let tempLookType = (lookType >> 1) & 0b01;
+      const isRange: boolean = this.compileRange(); // compile (next) value/range
+      if (isRange) {
+        tempLookType |= 0b10;
+      }
+      // create (bc_lookup_value, bc_lookdown_value, bc_lookup_range, bc_lookdown_range) code
+      this.objWrByte(eByteCode.bc_lookup_value + tempLookType);
+    } while (this.getCommaOrRightParen());
+    this.objWrByte(eByteCode.bc_look_done);
+    this.write_bstack_ptr(0);
+  }
+
+  private compileRange(): boolean {
+    let rangeFoundStatus: boolean = false;
+    this.compileExpression();
+    if (this.checkDotDot()) {
+      this.compileExpression();
+      rangeFoundStatus = true;
+    }
+    return rangeFoundStatus;
+  }
+
+  private new_bnest(type: eNestType, size: number) {
+    this.blockStack.add(type, size);
+  }
+  private redo_bnest(type: eNestType) {
+    this.blockStack.overrideType(type);
+  }
+
+  private end_bnest() {
+    this.blockStack.remove();
+  }
+
+  private write_bstack(index: number, value: number) {
+    this.blockStack.write(index, value);
+  }
+
+  private write_bstack_ptr(index: number) {
+    const offset: number = this.objImage.offset;
+    this.blockStack.write(index, offset);
+  }
+
+  private compile_bstack_address(index: number) {
+    const address: number = this.blockStack.read(index);
+    if (address > 0xffff) {
+      this.objWrByte(eByteCode.bc_con_rflong);
+      this.objWrLong(address);
+    } else if (address > 0xff) {
+      this.objWrByte(eByteCode.bc_con_rfword);
+      this.objWrWord(address);
+    } else {
+      this.objWrByte(eByteCode.bc_con_rfbyte);
+      this.objWrByte(address);
+    }
+  }
+
+  private compile_bstack_branch(index: number, byteCode: eByteCode) {
+    const address: number = this.blockStack.read(index);
+    this.compileBranch(byteCode, address);
+  }
+
+  private compileBranch(byteCode: eByteCode, address: number) {
+    // PNut compile_branch:
+    this.objWrByte(byteCode);
+    this.compileRfvars(BigInt(address - this.objImage.offset));
+  }
+
+  private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
+    // Optimizing block compiler
+    // PNut optimize_block:
+    // XYZZY need missing code optimizeBlock()
+    const savedElementIndex = this.elementIndex - 1;
+    const savedObjOffset = this.objImage.offset;
+    let lastOffset: number = 0;
+    let notDone: boolean = true;
+    do {
+      // restore for next pass
+      this.elementIndex = savedElementIndex;
+      this.objImage.setOffsetTo(savedObjOffset);
+      // call block compiler
+      switch (methodId) {
+        case eOptimizerMethod.OM_Case:
+          this.blockCase();
+          break;
+        case eOptimizerMethod.OM_CaseFast:
+          this.blockCaseFast();
+          break;
+        case eOptimizerMethod.OM_If:
+          this.blockIf();
+          break;
+        case eOptimizerMethod.OM_IfNot:
+          this.blockIfNot();
+          break;
+        case eOptimizerMethod.OM_Look:
+          this.blockLook(subType);
+          break;
+        case eOptimizerMethod.OM_Repeat:
+          this.blockRepeat();
+          break;
+        case eOptimizerMethod.OM_RepeatCount:
+          this.blockRepeatCount();
+          break;
+        case eOptimizerMethod.OM_RepeatCountVar:
+          this.blockRepeatCountVar();
+          break;
+        case eOptimizerMethod.OM_RepeatPreWhileUntil:
+          this.blockRepeatPreWhileUntil();
+          break;
+        case eOptimizerMethod.OM_RepeatVar:
+          this.blockRepeatVar();
+          break;
+
+        default:
+          break;
+      }
+      notDone = lastOffset != this.objImage.offset;
+      lastOffset = this.objImage.offset;
+    } while (notDone);
+  }
+
+  private blockCase() {
+    // PNut
+    // XYZZY blockCase
+  }
+
+  private blockCaseFast() {
+    // PNut
+    // XYZZY blockCaseFast
+  }
+
+  private blockIf() {
+    // PNut
+    // XYZZY blockIf
+  }
+
+  private blockIfNot() {
+    // PNut
+    // XYZZY blockIfNot
+  }
+
+  private blockRepeat() {
+    // PNut
+    // XYZZY blockRepeat
+  }
+
+  private blockRepeatCount() {
+    // PNut
+    // XYZZY blockRepeatCount
+  }
+
+  private blockRepeatCountVar() {
+    // PNut
+    // XYZZY blockRepeatCountVar
+  }
+
+  private blockRepeatPreWhileUntil() {
+    // PNut
+    // XYZZY blockRepeatPreWhileUntil
+  }
+
+  private blockRepeatVar() {
+    // PNut
+    // XYZZY blockRepeatVar
+  }
+
+  private ct_cogspin(byteCode: eByteCode) {
+    // Compile term - COGSPIN(cog,method(parameters),stackadr)
+    // XYZZY need code ct_cogspin()
+    this.getLeftParen();
+    this.compileExpression();
+    this.getComma();
+    const startElementIndex = this.elementIndex - 1;
+    this.getElement(); // method/obj/var
+    if (this.currElement.type == eElementType.type_obj) {
+      const objectIndex: number = Number(this.currElement.bigintValue);
+      this.checkIndex();
+      this.getDot();
+      let [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+      if (objSymType != eElementType.type_objpub) {
+        // [error_eamn]
+        throw new Error('Expected a method name');
+      }
+      const parameterCount: number = (objSymValue >> 24) & 0x7f;
+      this.compileParameters(parameterCount);
+      const savedElementIndex = this.elementIndex - 1; // push
+      this.elementIndex = startElementIndex;
+      //this.ct_at(eResultRequirements.RR_None, eByteCode:byteCode);
+      this.elementIndex = savedElementIndex; // pop
+      // XYZZY we are here!!!
+    } else if (this.currElement.type == eElementType.type_method) {
+      const returnValueCount: number = this.currElement.methodResultCount;
+      this.compileParameters(returnValueCount);
+      const savedElementIndex = this.elementIndex - 1; // push
+      this.elementIndex = startElementIndex;
+      //this.ct_at(eResultRequirements.RR_None, eByteCode:byteCode);
+      this.elementIndex = savedElementIndex; // pop
+    } else {
+      const [isMethod, returnCount] = this.checkVariableMethod();
+      if (isMethod == false) {
+        // [error_eamomp]
+        throw new Error('Expected a method, object, or method pointer');
+      }
+    }
+  }
+
+  private ct_at(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - @"string", @obj{[]}.method, @method, or @hubvar
+    // XYZZY need code ct_at()
   }
 
   private ct_objpubcon(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
@@ -3060,10 +3398,10 @@ export class SpinResolver {
   private ct_method_ptr(elementIndex: number, resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - var({param,...}){:results} or RECV() or SEND(param{,...})
     // PNut ct_method_ptr:
-    // XYZZY need code ct_method_ptr()
-    this.elementIndex = elementIndex;
+    this.elementIndex = elementIndex; // start from passed elementIndex
     const methodResult: iVariableReturn = this.getMethodPointer();
     if (methodResult.type == eElementType.type_register && methodResult.address == this.mrecvReg) {
+      // have  RECV()
       if (byteCode != eByteCode.bc_drop_push) {
         // [error_recvcbu]
         throw new Error('RECV() can be used only as a term and \\RECV() is not allowed');
@@ -3072,23 +3410,39 @@ export class SpinResolver {
       this.getRightParen();
       this.objWrByte(eByteCode.bc_call_recv);
     } else if (methodResult.type == eElementType.type_register && methodResult.address == this.msendReg) {
+      // have  SEND(param{,...})
       if (byteCode != eByteCode.bc_drop) {
         // [error_sendcbu]
         throw new Error('SEND() can be used only as an instruction and \\SEND() is not allowed');
       }
       this.compileInstructionSend();
     } else {
+      // have var({param,...}){:results} (long is method-pointer)
       // this is @@notsend:
       this.objWrByte(byteCode);
       const parameterCount: number = this.compileParameterMethodPtr();
+      let returnValueCount: number = 0;
       if (this.checkColon()) {
-        const returnValueCount: number = this.getConInt();
+        returnValueCount = this.getConInt();
         if (returnValueCount > this.results_limit) {
           // [error_loxre]
           throw new Error(`Limit of ${this.results_limit} results exceeded`);
         }
       }
+      // this is @@noresults:
+      this.confirmResult(resultsNeeded, returnValueCount << 20);
+      // this is @@varread:
+      const savedElementIndex: number = this.elementIndex - 1; // push
+      this.elementIndex = elementIndex; // restart from passed elementIndex
+      this.compileVariableRead(); // get method pointer
+      this.elementIndex = savedElementIndex; // pop
+      this.objWrByte(eByteCode.bc_call_ptr); // invoke method
     }
+  }
+
+  private ct_upat(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+    // Compile term - ^@var
+    // need code ct_upat()
   }
 
   private compileParameterMethodPtr(): number {
@@ -3243,6 +3597,7 @@ export class SpinResolver {
 
   private confirmResult(resultsNeeded: eResultRequirements, value: number) {
     // PNut confirm_result:
+    // NOTE: value is methodValue: 7-bit parameterCount, 4-bit resultCount, 20-bit Address
     if (resultsNeeded != eResultRequirements.RR_None) {
       const numberResults: number = (value >> 20) & 0x0f;
       if (numberResults == 0) {
