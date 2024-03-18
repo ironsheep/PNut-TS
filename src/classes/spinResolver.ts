@@ -2551,14 +2551,17 @@ export class SpinResolver {
 
   private checkImportedParam() {
     //  checkParam - is parameter? substitute value
+    // XYZZY checkImportedParam()
   }
 
   private recordObjectConstant(name: string, type: number, value: bigint) {
     // add to this objects' public interface
+    // XYZZY recordObjectConstant()
   }
 
   private recordPub(name: string, resultCount: number, parameterCount: number) {
     // add to this objects' public interface
+    // XYZZY recordPub()
   }
 
   private verify(value: iValueReturn) {
@@ -3191,7 +3194,7 @@ export class SpinResolver {
   private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
     // Optimizing block compiler
     // PNut optimize_block:
-    // XYZZY need missing code optimizeBlock()
+    // XYZZY optimizeBlock()
     const savedElementIndex = this.elementIndex - 1;
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
@@ -3288,12 +3291,13 @@ export class SpinResolver {
 
   private ct_cogspin(byteCode: eByteCode) {
     // Compile term - COGSPIN(cog,method(parameters),stackadr)
-    // XYZZY need code ct_cogspin()
+    // PNut ct_cogspin:
     this.getLeftParen();
     this.compileExpression();
     this.getComma();
     const startElementIndex = this.elementIndex - 1;
     this.getElement(); // method/obj/var
+    let parameterCount: number = 0;
     if (this.currElement.type == eElementType.type_obj) {
       const objectIndex: number = Number(this.currElement.bigintValue);
       this.checkIndex();
@@ -3303,32 +3307,118 @@ export class SpinResolver {
         // [error_eamn]
         throw new Error('Expected a method name');
       }
-      const parameterCount: number = (objSymValue >> 24) & 0x7f;
+      // here is @@method:
+      parameterCount = (objSymValue >> 24) & 0x7f;
       this.compileParameters(parameterCount);
+      // compile a method point without affecting elementIndex
       const savedElementIndex = this.elementIndex - 1; // push
       this.elementIndex = startElementIndex;
-      //this.ct_at(eResultRequirements.RR_None, eByteCode:byteCode);
+      this.ct_at();
       this.elementIndex = savedElementIndex; // pop
-      // XYZZY we are here!!!
     } else if (this.currElement.type == eElementType.type_method) {
-      const returnValueCount: number = this.currElement.methodResultCount;
-      this.compileParameters(returnValueCount);
+      parameterCount = this.currElement.methodParameterCount;
+      this.compileParameters(parameterCount);
+      // compile a method point without affecting elementIndex
       const savedElementIndex = this.elementIndex - 1; // push
       this.elementIndex = startElementIndex;
-      //this.ct_at(eResultRequirements.RR_None, eByteCode:byteCode);
+      this.ct_at();
       this.elementIndex = savedElementIndex; // pop
     } else {
-      const [isMethod, returnCount] = this.checkVariableMethod();
-      if (isMethod == false) {
+      // method_ptr
+      const variableReturn: iVariableReturn = this.checkVariable();
+      if (variableReturn.isVariable == false) {
         // [error_eamomp]
         throw new Error('Expected a method, object, or method pointer');
       }
+      /// here is @@method_ptr:
+      this.elementIndex = startElementIndex;
+      this.getMethodPointer();
+      parameterCount = this.compileParametersMethodPtr();
+      const savedElementIndex = this.elementIndex - 1; // push
+      this.elementIndex = startElementIndex;
+      this.compileVariableRead();
+      this.elementIndex = savedElementIndex; // pop
     }
+    // here is @@finish:
+    this.getComma();
+    this.compileExpression();
+    this.getRightParen();
+    this.objWrByte(eByteCode.bc_hub_bytecode);
+    this.objWrByte(eByteCode.bc_cogspin);
+    this.objWrByte(parameterCount);
+    this.objWrByte(byteCode);
   }
 
-  private ct_at(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+  private ct_at() {
     // Compile term - @"string", @obj{[]}.method, @method, or @hubvar
-    // XYZZY need code ct_at()
+    // PNut ct_at:
+    this.getElement();
+    if (this.currElement.type == eElementType.type_con) {
+      // here is @@string:
+      this.objWrByte(eByteCode.bc_string);
+      const patchLocation: number = this.objImage.offset;
+      this.objWrByte(0); // placeholder for now
+      let stringLength: number = 1;
+      this.backElement();
+      do {
+        const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+        if (valueReturn.value < 1n || valueReturn.value > 255n) {
+          // [error_scmrf]
+          throw new Error('STRING characters must range from 1 to 255');
+        }
+        this.objWrByte(Number(valueReturn.value));
+        if (++stringLength > 255) {
+          // [error_sdcx]
+          throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+        }
+        if (this.currElement.isMidStringComma == false) {
+          break;
+        }
+        this.getComma();
+        // eslint-disable-next-line no-constant-condition
+      } while (true);
+      this.objWrByte(0); // emit string terminator
+      this.objImage.write(stringLength, patchLocation); // replace the placeholder with length
+    } else if (this.currElement.type == eElementType.type_obj) {
+      // here is @@object:
+      const objectIndex: number = Number(this.currElement.bigintValue);
+      const [indexFound, objectElementIndex] = this.checkIndex();
+      this.getDot();
+      const [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+      if (objSymType != eElementType.type_objpub) {
+        // [error_eamn]
+        throw new Error('Expected a method name');
+      }
+      if (indexFound) {
+        this.compileOutOfSequenceExpression(objectElementIndex);
+      }
+      this.objWrByte(indexFound ? eByteCode.bc_mptr_obji_sub : eByteCode.bc_mptr_obj_sub);
+      this.compileRfvar(BigInt(objectIndex & 0xffffff));
+      this.compileRfvar(BigInt(objSymValue & 0xfffff));
+    } else if (this.currElement.type == eElementType.type_method) {
+      // here is @@method:
+      // get index to PUB/PRI then write it
+      const methodIndex: number = Number(this.currElement.bigintValue);
+      this.objWrByte(eByteCode.bc_mptr_sub);
+      this.compileRfvar(BigInt(methodIndex & 0xfffff));
+    } else {
+      // have @hubvar case
+      const variableReturn: iVariableReturn = this.checkVariable();
+      if (variableReturn.isVariable == false) {
+        // [error_easvmoo]
+        throw new Error('Expected a string, variable, method, or object');
+      }
+      // here is @@var:
+      if (variableReturn.type == eElementType.type_register) {
+        // [error_arina]
+        throw new Error('@register is not allowed, use ^@ to get field pointer');
+      }
+      if (variableReturn.bitfieldFlag) {
+        // [error_ainafbf]
+        throw new Error('@ is not allowed for bitfields, use ^@ to get field pointer');
+      }
+      this.compileVariableAssign(variableReturn, eByteCode.bc_get_addr);
+    }
   }
 
   private ct_objpubcon(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
@@ -3420,7 +3510,7 @@ export class SpinResolver {
       // have var({param,...}){:results} (long is method-pointer)
       // this is @@notsend:
       this.objWrByte(byteCode);
-      const parameterCount: number = this.compileParameterMethodPtr();
+      const parameterCount: number = this.compileParametersMethodPtr();
       let returnValueCount: number = 0;
       if (this.checkColon()) {
         returnValueCount = this.getConInt();
@@ -3442,10 +3532,17 @@ export class SpinResolver {
 
   private ct_upat(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - ^@var
-    // need code ct_upat()
+    // PNut ct_upat:
+    this.getElement();
+    const variableReturn: iVariableReturn = this.checkVariable();
+    if (variableReturn.isVariable == false) {
+      // [error_eav]
+      throw new Error('Expected a variable');
+    }
+    this.compileVariableAssign(variableReturn, eByteCode.bc_get_field);
   }
 
-  private compileParameterMethodPtr(): number {
+  private compileParametersMethodPtr(): number {
     // Compile term - var({param,...}){:results} or RECV() or SEND(param{,...})
     // PNut compile_parameters_mptr:
     let parameterCount: number = 0;

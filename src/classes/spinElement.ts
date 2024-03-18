@@ -248,7 +248,7 @@ export class SpinElement {
     }
     return desiredValue;
   }
-  get methodParamterCount(): number {
+  get methodParameterCount(): number {
     // returns the count of return values for type_method
     let desiredValue: number = -1;
     if (this._type == eElementType.type_method && typeof this._value === 'bigint') {
