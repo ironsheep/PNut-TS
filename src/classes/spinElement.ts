@@ -171,6 +171,14 @@ export class SpinElement {
     return this._type == eElementType.type_op && this.operation == eOperationType.op_sub;
   }
 
+  get isLogNot(): boolean {
+    return this._type == eElementType.type_op && this.operation == eOperationType.op_lognot;
+  }
+
+  get isBitNot(): boolean {
+    return this._type == eElementType.type_op && this.operation == eOperationType.op_bitnot;
+  }
+
   public operationString(): string {
     return eOperationType[this.operation] !== undefined ? eOperationType[this.operation] : '{OP-NOT-FOUND}';
   }

@@ -2735,8 +2735,63 @@ export class SpinResolver {
       this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap_push);
     } else if (this.currElement.type == eElementType.type_obj) {
       this.ct_objpubcon(eResultRequirements.RR_One, eByteCode.bc_drop_push);
+    } else if (this.currElement.type == eElementType.type_method) {
+      this.ct_method(eResultRequirements.RR_One, eByteCode.bc_drop_push);
+    } else if (this.currElement.type == eElementType.type_i_look) {
+      this.ct_look();
+    } else if (this.currElement.type == eElementType.type_i_cogspin) {
+      this.ct_cogspin(eByteCode.bc_coginit_push);
+    } else if (this.currElement.type == eElementType.type_i_flex) {
+      if (this.currElement.flexByteCode == eByteCode.bc_coginit) {
+        this.compileFlex(eFlexcode.fc_coginit_push);
+      } else {
+        if (this.currElement.flexResultCount != 1) {
+          // [error_etmrasr]
+          throw new Error('Expression terms must return a single result');
+        }
+        const flexCode: eFlexcode = this.spinSymbolTables.getFlexcodeFromBytecode(this.currElement.flexByteCode);
+        this.compileFlex(flexCode);
+      }
+    } else if (this.currElement.type == eElementType.type_at) {
+      this.ct_at();
+    } else if (this.currElement.type == eElementType.type_upat) {
+      this.ct_upat();
+    } else if (this.currElement.type == eElementType.type_inc) {
+      this.compileVariablePre(eByteCode.bc_var_preinc_push);
+    } else if (this.currElement.type == eElementType.type_dec) {
+      this.compileVariablePre(eByteCode.bc_var_predec_push);
+    } else if (this.currElement.type == eElementType.type_rnd) {
+      this.compileVariablePre(eByteCode.bc_var_rnd_push);
+    } else {
+      const startElementIndex = this.elementIndex - 1;
+      const variableResult: iVariableReturn = this.checkVariable();
+      if (variableResult.isVariable == false) {
+        // [error_eaet]
+        throw new Error('Expected an expression term');
+      }
+      this.currElement = this.getElement();
+      if (this.currElement.type == eElementType.type_left) {
+        this.ct_method_ptr(startElementIndex, eResultRequirements.RR_One, eByteCode.bc_drop_push);
+      } else if (this.currElement.type == eElementType.type_inc) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+      } else if (this.currElement.type == eElementType.type_dec) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postdec_push);
+      } else if (this.currElement.isLogNot) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+      } else if (this.currElement.isBitNot) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+      } else if (this.currElement.type == eElementType.type_back) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+      } else if (this.currElement.type == eElementType.type_til) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+      } else if (this.currElement.type == eElementType.type_tiltil) {
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+      }
+      // XYZZY we are here!
     }
   }
+
+  private checkLogNot() {}
 
   private compileFlex(flexCode: eFlexcode) {
     // Compile flex instruction
@@ -3106,7 +3161,7 @@ export class SpinResolver {
     }
   }
 
-  private ct_look(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+  private ct_look() {
     // Compile term - LOOKUP/LOOKDOWN
     // PNut ct_look:
     const lookType: number = Number(this.currElement.bigintValue);
@@ -3530,7 +3585,7 @@ export class SpinResolver {
     }
   }
 
-  private ct_upat(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+  private ct_upat() {
     // Compile term - ^@var
     // PNut ct_upat:
     this.getElement();
