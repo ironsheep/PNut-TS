@@ -5,28 +5,28 @@
 'use strict';
 
 import { Context } from '../utils/context';
-
-export enum eNestType {
-  NT_Unknown,
-  NT_Look
-}
+import { eElementType } from './types';
 
 // src/classes/numberStack.ts
 export class BlockNestLevel {
   private context: Context;
   private isLogging: boolean = false;
-  private _type: eNestType;
+  private _type: eElementType;
   private _size: number;
   private _addressStack: number[];
 
-  constructor(ctx: Context, type: eNestType, size: number) {
+  constructor(ctx: Context, type: eElementType, size: number) {
     this.context = ctx;
     this._type = type;
     this._size = size;
     this._addressStack = Array(size).fill(0x7ffff);
   }
 
-  public setType(type: eNestType) {
+  get type(): eElementType {
+    return this._type;
+  }
+
+  public setType(type: eElementType) {
     this._type = type;
   }
 
@@ -65,11 +65,19 @@ export class BlockStack {
     this.context = ctx;
   }
 
+  get topIndex(): number {
+    return this._stack.length > 0 ? this._stack.length - 1 : -1;
+  }
+
+  get isEmpty(): boolean {
+    return this._stack.length > 0 ? false : true;
+  }
+
   get topNestLevel(): BlockNestLevel {
     return this._stack[this._stack.length - 1];
   }
 
-  public add(type: eNestType, size: number) {
+  public add(type: eElementType, size: number) {
     // allocate our new top-level entry
     const nextLevel: BlockNestLevel = new BlockNestLevel(this.context, type, size);
     this._stack.push(nextLevel);
@@ -82,7 +90,7 @@ export class BlockStack {
     }
   }
 
-  public overrideType(type: eNestType) {
+  public overrideType(type: eElementType) {
     if (this._stack.length > 0) {
       this.topNestLevel.setType(type);
     } else {
@@ -108,9 +116,41 @@ export class BlockStack {
     return desiredValue;
   }
 
+  public readAtLevel(levelIndex: number, index: number): number {
+    let desiredValue: number = 0;
+    if (levelIndex >= 0 && levelIndex < this._stack.length) {
+      const tmpLevelRecord = this.nestLevelAt(levelIndex);
+      if (tmpLevelRecord !== undefined) {
+        desiredValue = tmpLevelRecord.value(index);
+      }
+    }
+    return desiredValue;
+  }
+
+  public typeAtLevel(levelIndex: number): eElementType {
+    let desiredType: eElementType = eElementType.type_undefined; // random dumb choice
+    if (levelIndex >= 0 && levelIndex < this._stack.length) {
+      const tmpLevelRecord = this.nestLevelAt(levelIndex);
+      if (tmpLevelRecord !== undefined) {
+        desiredType = tmpLevelRecord.type;
+      }
+    }
+    return desiredType;
+  }
+
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
     this.isLogging = enable;
+  }
+
+  private nestLevelAt(levelIndex: number): BlockNestLevel | undefined {
+    let nestLevelRecord: BlockNestLevel | undefined = undefined;
+    if (levelIndex >= 0 && levelIndex < this._stack.length) {
+      nestLevelRecord = this._stack[levelIndex];
+    } else {
+      this.logMessage(`ERROR: nestLevelAt() attempt to read level out of range!`);
+    }
+    return nestLevelRecord;
   }
 
   private logMessage(message: string): void {

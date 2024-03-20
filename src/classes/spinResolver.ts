@@ -16,8 +16,7 @@ import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
-import { runInThisContext } from 'vm';
-import { BlockStack, eNestType } from './blockStack';
+import { BlockStack } from './blockStack';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -176,6 +175,7 @@ export class SpinResolver {
 
   // Spin2 processing support data
   private blockStack: BlockStack;
+  private subResults: number = 0;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -2623,7 +2623,6 @@ export class SpinResolver {
     }
     return compileResult;
   }
-
   private compileExpression(): iValueReturn {
     //  Compile expression with sub-expressions
     // PNut compile_exp:
@@ -2709,39 +2708,316 @@ export class SpinResolver {
         }
       }
     }
+    //this.logMessage(`compileSubExpression(${precedence}) - EXIT`);
   }
-  //this.logMessage(`compileSubExpression(${precedence}) - EXIT`);
+
+  private compileInstruction() {
+    // Instruction Compiler
+    // PNut compile_inst:
+    if (this.currElement.type == eElementType.type_back) {
+      this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap);
+    } else if (this.currElement.type == eElementType.type_obj) {
+      // obj{[]}.method({param,...})?
+      this.ct_objpub(eResultRequirements.RR_None, eByteCode.bc_drop);
+    } else if (this.currElement.type == eElementType.type_method) {
+      // method({param,...})?
+      this.ct_method(eResultRequirements.RR_None, eByteCode.bc_drop);
+    } else if (this.currElement.type == eElementType.type_i_next_quit) {
+      // instruction 'NEXT'/'QUIT' ?
+      this.ci_next_quit();
+    } else if (this.currElement.type == eElementType.type_i_return) {
+      // instruction 'RETURN' ?
+      this.ci_return();
+    } else if (this.currElement.type == eElementType.type_i_abort) {
+      // instruction 'ABORT' ?
+      this.ci_abort();
+    } else if (this.currElement.type == eElementType.type_i_cogspin) {
+      // instruction 'COGSPIN' ?
+      this.ct_cogspin(eByteCode.bc_coginit);
+    } else if (this.currElement.type == eElementType.type_debug) {
+      // DEBUG()?
+      this.ci_debug();
+    } else if (this.currElement.type == eElementType.type_i_flex) {
+      // flex instruction?
+      if (this.currElement.flexResultCount > 0) {
+        // [error_ticobu]
+        throw new Error('This instruction can only be used as an expression term, since it returns results');
+      }
+      const flexCode: eFlexcode = this.spinSymbolTables.getFlexcodeFromBytecode(this.currElement.flexByteCode);
+      this.compileFlex(flexCode);
+    } else if (this.currElement.isAsmDirective(eValueType.dir_org)) {
+      // inline assembly?
+      this.compileInline();
+    } else if (this.currElement.type == eElementType.type_inc) {
+      // ++var ?
+      this.compileVariablePre(eByteCode.bc_var_inc);
+    } else if (this.currElement.type == eElementType.type_dec) {
+      // --var ?
+      this.compileVariablePre(eByteCode.bc_var_dec);
+    } else if (this.currElement.type == eElementType.type_rnd) {
+      // ??var ?
+      this.compileVariablePre(eByteCode.bc_var_rnd);
+    } else {
+      this.SubToNeg();
+      this.FSubToFNeg();
+      if (this.currElement.isUnary) {
+        this.ci_unary();
+      }
+      const savedElement: number = this.elementIndex - 1;
+      if (this.currElement.type == eElementType.type_under) {
+        // _,... := param(s),... ?
+        this.getComma();
+        this.compileVariableMultiple(savedElement);
+      }
+    }
+    // XYZZY we are here  compileInstruction()!!
+  }
+
+  private compileVariableMultiple(startElementIndex: number) {
+    // Compile multi-variable assignment - var,... := param(s),...
+    // PNut compile_var_multi:
+    const elementIndexStack: number[] = [];
+    this.elementIndex = startElementIndex;
+    let parameterCount: number = 0;
+    // eslint-disable-next-line no-constant-condition
+    do {
+      elementIndexStack.push(this.elementIndex - 1);
+      if (this.checkUnderscore() == false) {
+        this.getVariable();
+      }
+      parameterCount++;
+    } while (this.checkComma());
+    this.getAssign();
+    this.compileParametersNoParens(parameterCount);
+    // capture ending index
+    const endElementIndex = this.elementIndex - 1;
+    // set up for count down...
+    let remainingParameterCount: number = parameterCount;
+    do {
+      const tmpIndex: number | undefined = elementIndexStack.pop();
+      // ensure no underflow
+      if (tmpIndex !== undefined) {
+        this.elementIndex = tmpIndex;
+      } else {
+        throw new Error('ERROR: [CODE] compileVariableMultiple() underflowed internal stack');
+      }
+      if (this.checkUnderscore()) {
+        this.objWrByte(eByteCode.bc_pop);
+      } else {
+        this.compileVariableWrite();
+      }
+    } while (--remainingParameterCount);
+    // restore to end of current assignment statement
+    this.elementIndex = endElementIndex;
+  }
+
+  private compileInline() {
+    // Compile inline assembly section - first handle ORG operand(s)
+    // PNut compile_inline:
+    let inlineOrigin: number = 0;
+    let inlineLimit: number = this.inlineLimit;
+    // handle inline:  ORG {start{,limit}}
+    if (this.checkEndOfLine() == false) {
+      const startValueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      if (startValueReturn.value > BigInt(inlineLimit)) {
+        // [error_icaexl]
+        //throw new Error('Inline cog address exceeds $120 limit');
+        throw new Error(`Inline cog address exceeds $${this.inlineLimit.toString(16)} limit`);
+      }
+      inlineOrigin = Number(startValueReturn.value);
+      if (this.checkComma()) {
+        const limitValueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+        if (limitValueReturn.value > BigInt(inlineLimit)) {
+          // [error_icaexl]
+          //throw new Error('Inline cog address exceeds $120 limit');
+          throw new Error(`Inline cog address exceeds $${this.inlineLimit.toString(16)} limit`);
+        }
+        inlineLimit = Number(limitValueReturn.value);
+      }
+      // this is @@orgend:
+      this.getEndOfLine();
+    }
+    // this is @@org:
+    this.objWrByte(eByteCode.bc_hub_bytecode);
+    this.objWrByte(eByteCode.bc_inline);
+    this.objWrWord(inlineOrigin); // enter origin
+    this.objWrWord(0); // enter placeholder for length in longs
+    const patchLocation: number = this.objImage.offset;
+    const isInlineMode: boolean = true;
+    // compile inline section
+    this.compile_dat_blocks(isInlineMode, inlineOrigin << 2, inlineLimit << 2);
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if ((this.objImage.offset ^ patchLocation) & 0b11) {
+        this.objWrByte(0);
+      } else {
+        break;
+      }
+    }
+    const lengthInLongs: number = (this.objImage.offset - patchLocation) >> 2;
+    if (lengthInLongs == 0) {
+      // [error_isie]
+      throw new Error('Inline section is empty');
+    }
+    this.objImage.writeWord(lengthInLongs, patchLocation - 2); // replace the placeholder with length
+  }
+
+  private ci_next_quit() {
+    // Compile instruction - 'next'/'quit'
+    // PNut ci_next_quit:
+    const isQuit: boolean = this.currElement.bigintValue != 0n ? true : false; // T/F where T means quit vs. next
+    const isNext: boolean = isQuit == false;
+    let popCount: number = 0;
+    let nestLevel: number = this.blockStack.topIndex; // this is ecx
+    let byteCode: eByteCode;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (nestLevel < 0) {
+        // [error_tioawarb]
+        throw new Error('This instruction is only allowed within a REPEAT block');
+      }
+      const nestType: eElementType = this.blockStack.typeAtLevel(nestLevel);
+      byteCode = eByteCode.bc_jmp;
+      if (nestType == eElementType.type_repeat) {
+        break;
+      } else if (nestType == eElementType.type_repeat_var || nestType == eElementType.type_repeat_count_var) {
+        if (isQuit) {
+          popCount += 4 * 4;
+        }
+        break;
+      } else if (nestType == eElementType.type_repeat_count) {
+        byteCode = eByteCode.bc_jnz;
+        break;
+      } else if (nestType == eElementType.type_case) {
+        popCount += 2 * 4;
+      } else if (nestType == eElementType.type_case_fast) {
+        popCount += 1 * 4;
+      } else if (nestType == eElementType.type_if) {
+        // nothing to do...
+      } else {
+        // [error_internal]
+        throw new Error('Internal error! - ci_next_quit()');
+      }
+      nestLevel--;
+    }
+    // here is @@got
+    if (popCount > 0) {
+      if (popCount == 1 * 4) {
+        this.objWrByte(eByteCode.bc_pop);
+      } else {
+        this.objWrByte(eByteCode.bc_pop_rfvar);
+        this.compileRfvar(BigInt(popCount - 1 * 4));
+      }
+    }
+    // here is @@nopops:
+    if (isNext) {
+      const address: number = this.blockStack.readAtLevel(nestLevel, 0);
+      this.compileBranch(eByteCode.bc_jmp, address);
+    } else {
+      const address: number = this.blockStack.readAtLevel(nestLevel, 1);
+      this.compileBranch(byteCode, address);
+    }
+  }
+
+  private ci_return() {
+    // Compile instruction - 'return'
+    // PNut ci_return:
+    if (this.nextElementType() == eElementType.type_end) {
+      this.objWrByte(eByteCode.bc_return_results);
+    } else {
+      if (this.subResults == 0) {
+        // [error_eeol]
+        throw new Error('Expected end of line');
+      }
+      this.compileParametersNoParens(this.subResults);
+      this.objWrByte(eByteCode.bc_return_args);
+    }
+  }
+
+  private ci_abort() {
+    // Compile instruction - 'abort'
+    // PNut ci_abort:
+    if (this.nextElementType() == eElementType.type_end) {
+      this.objWrByte(eByteCode.bc_abort_0);
+    } else {
+      this.compileExpression();
+      this.objWrByte(eByteCode.bc_abort_arg);
+    }
+  }
+
+  private ci_send() {
+    // Compile instruction - SEND()
+    // PNut ci_send:
+    // XYZZY ci_send()
+  }
+
+  private ci_unary() {
+    // Compile instruction - unary var assignment
+    // PNut ci_unary:
+    if (this.currElement.isAssignable == false) {
+      // [error_tocbufa]
+      throw new Error('This operator cannot be used for assignment');
+    }
+    const byteCode: eByteCode = Number(this.currElement.byteCode);
+    const adjustedByteCode: number = byteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write);
+    this.getEqual();
+    this.compileVariablePre(adjustedByteCode);
+  }
+
+  private ci_debug() {
+    // Compile DEBUG for Spin2
+    // PNut ci_debug:
+    // XYZZY ci_debug()
+  }
+
+  private ci_debug_asm() {
+    // Compile DEBUG for assembler
+    // PNut ci_debug_asm:
+    // XYZZY ci_debug_asm()
+  }
 
   private compileTerm() {
     // PNut compile_term:
-    // XYZZY compileTerm()   -- add this code
     const elementType: eElementType = this.currElement.type;
     const elementValue: number = Number(this.currElement.bigintValue);
     if (this.currElement.isConstantInt || this.currElement.isConstantFloat) {
+      // constant integer? or constant float?
       this.compileConstant(this.currElement.bigintValue);
     } else if (this.currElement.type == eElementType.type_constr) {
+      // STRING?
       this.compileConString();
     } else if (this.currElement.type == eElementType.type_conlstr) {
+      // LSTRING?
       this.compileConLString();
     } else if (this.currElement.type == eElementType.type_size && this.checkLeftParen()) {
+      // BYTE/WORD/LONG?
       this.compileConData(elementValue);
     } else if (this.currElement.type == eElementType.type_float) {
+      // FLOAT?
       this.compileFlex(eFlexcode.fc_float);
     } else if (this.currElement.type == eElementType.type_round) {
+      // ROUND?
       this.compileFlex(eFlexcode.fc_round);
     } else if (this.currElement.type == eElementType.type_trunc) {
+      // TRUNC?
       this.compileFlex(eFlexcode.fc_trunc);
     } else if (this.currElement.type == eElementType.type_back) {
+      // \obj{[]}.method({param,...}), \method({param,...}), \var({param,...}){:results} ?
       this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap_push);
     } else if (this.currElement.type == eElementType.type_obj) {
+      // obj{[]}.method({param,...}) or obj.con ?
       this.ct_objpubcon(eResultRequirements.RR_One, eByteCode.bc_drop_push);
     } else if (this.currElement.type == eElementType.type_method) {
+      // method({param,...}) ?
       this.ct_method(eResultRequirements.RR_One, eByteCode.bc_drop_push);
     } else if (this.currElement.type == eElementType.type_i_look) {
+      // instruction LOOKUP/LOOKDOWN ?
       this.ct_look();
     } else if (this.currElement.type == eElementType.type_i_cogspin) {
+      // instruction COGSPIN ?
       this.ct_cogspin(eByteCode.bc_coginit_push);
     } else if (this.currElement.type == eElementType.type_i_flex) {
+      // flex instruction?
       if (this.currElement.flexByteCode == eByteCode.bc_coginit) {
         this.compileFlex(eFlexcode.fc_coginit_push);
       } else {
@@ -2753,45 +3029,70 @@ export class SpinResolver {
         this.compileFlex(flexCode);
       }
     } else if (this.currElement.type == eElementType.type_at) {
+      // @"string", @obj{[]}.method, @method, @hubvar ?
       this.ct_at();
     } else if (this.currElement.type == eElementType.type_upat) {
+      // ^@var
       this.ct_upat();
     } else if (this.currElement.type == eElementType.type_inc) {
+      // ++var ?
       this.compileVariablePre(eByteCode.bc_var_preinc_push);
     } else if (this.currElement.type == eElementType.type_dec) {
+      // --var ?
       this.compileVariablePre(eByteCode.bc_var_predec_push);
     } else if (this.currElement.type == eElementType.type_rnd) {
+      // ??var ?
       this.compileVariablePre(eByteCode.bc_var_rnd_push);
     } else {
       const startElementIndex = this.elementIndex - 1;
-      const variableResult: iVariableReturn = this.checkVariable();
+      const variableResult: iVariableReturn = this.checkVariable(); // var ?
       if (variableResult.isVariable == false) {
         // [error_eaet]
         throw new Error('Expected an expression term');
       }
-      this.currElement = this.getElement();
+      this.currElement = this.getElement(); // get element after variable
       if (this.currElement.type == eElementType.type_left) {
+        // var({param,...}){:results} ?
         this.ct_method_ptr(startElementIndex, eResultRequirements.RR_One, eByteCode.bc_drop_push);
       } else if (this.currElement.type == eElementType.type_inc) {
+        // var++ ?
         this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
       } else if (this.currElement.type == eElementType.type_dec) {
+        // var-- ?
         this.compileVariableAssign(variableResult, eByteCode.bc_var_postdec_push);
       } else if (this.currElement.isLogNot) {
-        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+        // var!! ?
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_lognot_push);
       } else if (this.currElement.isBitNot) {
-        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+        // var! ?
+        this.compileVariableAssign(variableResult, eByteCode.bc_var_bitnot_push);
       } else if (this.currElement.type == eElementType.type_back) {
-        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+        // var\x ?
+        this.compileVariableExpression(variableResult, eByteCode.bc_var_swap);
       } else if (this.currElement.type == eElementType.type_til) {
-        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+        // var~ ?
+        this.compileVariableClearSetTerm(variableResult, eCompOp.CO_Clear);
       } else if (this.currElement.type == eElementType.type_tiltil) {
-        this.compileVariableAssign(variableResult, eByteCode.bc_var_postinc_push);
+        // var~~ ?
+        this.compileVariableClearSetTerm(variableResult, eCompOp.CO_Set);
+      } else if (this.currElement.type == eElementType.type_assign) {
+        // var := x ?
+        this.compileVariableExpression(variableResult, eByteCode.bc_write_push);
+      } else if (this.currElement.isBinary && this.currElement.isAssignable && this.nextElementType() == eElementType.type_equal) {
+        const opByteCode: number = this.currElement.byteCode;
+        this.getElement(); // get the equal
+        this.compileExpression();
+        variableResult.operation = eVariableOperation.VO_ASSIGN;
+        variableResult.assignmentBytecode = opByteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write_push);
+        this.compileVariable(variableResult);
+      } else {
+        // here is @@notbin:
+        this.backElement();
+        variableResult.operation = eVariableOperation.VO_READ;
+        this.compileVariable(variableResult);
       }
-      // XYZZY we are here!
     }
   }
-
-  private checkLogNot() {}
 
   private compileFlex(flexCode: eFlexcode) {
     // Compile flex instruction
@@ -3165,7 +3466,7 @@ export class SpinResolver {
     // Compile term - LOOKUP/LOOKDOWN
     // PNut ct_look:
     const lookType: number = Number(this.currElement.bigintValue);
-    this.new_bnest(eNestType.NT_Look, 1);
+    this.new_bnest(eElementType.type_i_look, 1);
     this.optimizeBlock(eOptimizerMethod.OM_Look, lookType);
     this.end_bnest();
   }
@@ -3201,10 +3502,10 @@ export class SpinResolver {
     return rangeFoundStatus;
   }
 
-  private new_bnest(type: eNestType, size: number) {
+  private new_bnest(type: eElementType, size: number) {
     this.blockStack.add(type, size);
   }
-  private redo_bnest(type: eNestType) {
+  private redo_bnest(type: eElementType) {
     this.blockStack.overrideType(type);
   }
 

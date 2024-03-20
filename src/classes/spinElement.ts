@@ -276,6 +276,16 @@ export class SpinElement {
     return desiredValue;
   }
 
+  public isAsmDirective(directive: eValueType) {
+    // returns T/F where T means this element describes the directive requested
+    let desiredValue: boolean = false;
+    if (this._type == eElementType.type_asm_dir && typeof this._value === 'bigint') {
+      // is value our directive?
+      desiredValue = this.bigintValue == BigInt(directive);
+    }
+    return desiredValue;
+  }
+
   //
   // special for type_op: elements
   //
