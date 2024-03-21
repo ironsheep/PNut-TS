@@ -17,6 +17,7 @@ import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
+import { throws } from 'assert';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -169,6 +170,9 @@ export class SpinResolver {
   private readonly clkfreqAddress: number = 0x44; // address
   private readonly results_limit: number = 15; // max return values
   private readonly params_limit: number = 127; // max parameter values
+  private readonly if_limit: number = 256; // max if-chain length
+  private readonly case_limit: number = 256; // max cases
+  private readonly case_fast_limit: number = 256; // max cases
 
   // VAR processing support data
   private varPtr: number = 4;
@@ -2192,6 +2196,10 @@ export class SpinResolver {
     //XYZZY need code compile_sub_blocks:
   }
 
+  // ---------------------------------------------------------------
+  // Instruction Block Compiler
+  // ---------------------------------------------------------------
+
   private compileTopBlock() {
     // Compile instruction block
     // PNut compile_top_block:
@@ -2202,10 +2210,8 @@ export class SpinResolver {
   }
 
   private compileBlock() {
-    // Compile instruction block
     // PNut compile_block:
-    //XYZZY need code compile_block:
-    const savedColumn: number = this.lineColumn;
+    const savedScopeColumn: number = this.scopeColumn;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.getElement();
@@ -2215,24 +2221,151 @@ export class SpinResolver {
         this.backElement();
         break;
       }
-      if (savedColumn <= this.lineColumn) {
-        //XYZZY we are here!!
+      if (this.lineColumn <= this.scopeColumn) {
+        this.backElement();
+        break;
+      }
+      if (this.currElement.type == eElementType.type_if) {
+        // 'if' block?
+        this.cb_if();
+      } else if (this.currElement.type == eElementType.type_ifnot) {
+        // 'ifnot' block?
+        this.cb_if();
+      } else if (this.currElement.type == eElementType.type_case) {
+        // 'case' block?
+        this.cb_case();
+      } else if (this.currElement.type == eElementType.type_case_fast) {
+        // 'case_fast' block?
+        this.cb_case_fast();
+      } else if (this.currElement.type == eElementType.type_repeat) {
+        // 'repeat' block?
+        this.cb_repeat();
+      } else {
+        // no flow control structures, compile instruction
+        this.compileInstruction();
+        this.getEndOfLine();
       }
     }
     // restore column we had at entry
-    this.lineColumn = savedColumn;
+    this.scopeColumn = savedScopeColumn;
   }
 
   private cb_if() {
     // Compile block - 'if' / 'ifnot'
     // PNut cb_if:
-    //XYZZY need code cb_if:
+    let optimizerMethod: eOptimizerMethod;
+    optimizerMethod = this.currElement.type == eElementType.type_if ? eOptimizerMethod.OM_If : eOptimizerMethod.OM_IfNot;
+    this.scopeColumn = this.lineColumn;
+    this.new_bnest(eElementType.type_if, this.if_limit + 1);
+    this.optimizeBlock(optimizerMethod);
+    this.end_bnest();
+  }
+
+  private blockIfnIfNot(byteCode: eByteCode) {
+    // PNut cb_if: @@comp_if: and @@comp_ifnot:
+    // code for eOptimizerMethod.OM_If and OM_IfNot
+    let blockStackIndex: number = 1;
+    let branchByteCode: eByteCode = byteCode;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@cond:
+      this.compileExpression();
+      this.getEndOfLine();
+      this.compile_bstack_branch(blockStackIndex, branchByteCode);
+      // here is @@block:
+      this.compileBlock();
+      this.getElement();
+      if (this.currElement.type == eElementType.type_end_file) {
+        break;
+      }
+      // NOTE: getElement sets this.lineColumn
+      if (this.lineColumn < this.scopeColumn) {
+        this.backElement();
+        break;
+      }
+      const isElseIf: boolean = this.currElement.type == eElementType.type_elseif;
+      const isElseIfNot: boolean = this.currElement.type == eElementType.type_elseifnot;
+
+      if (isElseIf || isElseIfNot || this.currElement.type == eElementType.type_else) {
+        if (isElseIf || isElseIfNot) {
+          branchByteCode = isElseIf ? eByteCode.bc_jz : eByteCode.bc_jnz;
+        }
+        // here is @@jmpout
+        this.compile_bstack_branch(0, eByteCode.bc_jmp);
+        this.write_bstack_ptr(blockStackIndex);
+        blockStackIndex++;
+        if (isElseIf || isElseIfNot) {
+          if (blockStackIndex == this.if_limit + 2) {
+            // [error_loxee]
+            throw new Error('Limit of 256 ELSEIF/ELSEIFNOTs exceeded');
+          }
+        } else {
+          this.getEndOfLine();
+          this.compileBlock();
+          break;
+        }
+      } else {
+        // here is @@backup:
+        this.backElement();
+        break;
+      }
+      // loop
+    }
+    // here is @@done:
+    this.write_bstack_ptr(blockStackIndex);
+    this.write_bstack_ptr(0);
   }
 
   private cb_case() {
     // Compile block - 'case'
     // PNut cb_case:
     //XYZZY need code cb_case:
+    this.scopeColumn = this.lineColumn;
+    this.new_bnest(eElementType.type_case, this.case_limit + 1);
+    this.optimizeBlock(eOptimizerMethod.OM_Case);
+    this.end_bnest();
+  }
+
+  private blockCase() {
+    // PNut cb_case: @@comp:
+    // code for eOptimizerMethod.OM_Case
+    // XYZZY blockCase (we are here)
+    this.compile_bstack_address(0); // compile final address
+    this.compileExpression();
+    this.getEndOfLine();
+    const savedElementIndex = this.elementIndex - 1;
+    let haveOtherCase: boolean = false; // this is PNut ecx[31]
+    let caseCount: number = 0; // this is PNut ecx[30-0]
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@nextcase1
+      this.getElement();
+      if (this.currElement.type == eElementType.type_end_file) {
+        break;
+      }
+      this.backElement(); // TODO: let's verify this !!
+      if (this.lineColumn <= this.scopeColumn) {
+        break;
+      }
+      // if 'other' already encountered, error
+      if (haveOtherCase) {
+        // [error_omblc]
+        throw new Error('OTHER must be last case');
+      }
+      const savedScopeColumn: number = this.scopeColumn;
+      this.scopeColumn = this.lineColumn;
+      if (this.currElement.type == eElementType.type_other) {
+        // XYZZY we are here !!!
+      }
+    }
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@nextcase2
+      this.getElement();
+      if (this.currElement.type == eElementType.type_end_file) {
+        break;
+      }
+    }
   }
 
   private cb_case_fast() {
@@ -3671,7 +3804,6 @@ export class SpinResolver {
   private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
     // Optimizing block compiler
     // PNut optimize_block:
-    // XYZZY optimizeBlock()
     const savedElementIndex = this.elementIndex - 1;
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
@@ -3682,20 +3814,20 @@ export class SpinResolver {
       this.objImage.setOffsetTo(savedObjOffset);
       // call block compiler
       switch (methodId) {
+        case eOptimizerMethod.OM_Look:
+          this.blockLook(subType);
+          break;
+        case eOptimizerMethod.OM_If:
+          this.blockIfnIfNot(eByteCode.bc_jz);
+          break;
+        case eOptimizerMethod.OM_IfNot:
+          this.blockIfnIfNot(eByteCode.bc_jnz);
+          break;
         case eOptimizerMethod.OM_Case:
           this.blockCase();
           break;
         case eOptimizerMethod.OM_CaseFast:
           this.blockCaseFast();
-          break;
-        case eOptimizerMethod.OM_If:
-          this.blockIf();
-          break;
-        case eOptimizerMethod.OM_IfNot:
-          this.blockIfNot();
-          break;
-        case eOptimizerMethod.OM_Look:
-          this.blockLook(subType);
           break;
         case eOptimizerMethod.OM_Repeat:
           this.blockRepeat();
@@ -3721,24 +3853,9 @@ export class SpinResolver {
     } while (notDone);
   }
 
-  private blockCase() {
-    // PNut
-    // XYZZY blockCase
-  }
-
   private blockCaseFast() {
     // PNut
     // XYZZY blockCaseFast
-  }
-
-  private blockIf() {
-    // PNut
-    // XYZZY blockIf
-  }
-
-  private blockIfNot() {
-    // PNut
-    // XYZZY blockIfNot
   }
 
   private blockRepeat() {
