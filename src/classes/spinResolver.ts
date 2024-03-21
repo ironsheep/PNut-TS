@@ -2470,7 +2470,7 @@ export class SpinResolver {
     // Compile block - 'case_fast'
     // PNut cb_case_fast:
     this.scopeColumn = this.lineColumn;
-    this.new_bnest(eElementType.type_case_fast, this.case_fast_limit + 1);
+    this.new_bnest(eElementType.type_case_fast, this.case_fast_limit + 6 + 1); // 6 enum value
     this.optimizeBlock(eOptimizerMethod.OM_CaseFast);
     this.end_bnest();
   }
@@ -2482,12 +2482,12 @@ export class SpinResolver {
     this.compileExpression(); // compile case "target" value
     this.getEndOfLine();
     this.objWrByte(eByteCode.bc_case_fast_init);
-    this.objWrLong(0); // enter spacer for rflong
-    this.objWrWord(0); // enter spacer for rfword
+    this.objWrLong(0); // enter spacer for rflong (-6)
+    this.objWrWord(0); // enter spacer for rfword (-2)
     this.write_bstack(eCaseFast.CF_TablePtr, this.objImage.offset);
     this.write_bstack(eCaseFast.CF_SourcePtr, this.elementIndex - 1);
     this.write_bstack(eCaseFast.CF_MinValue, 0x7fffffff);
-    this.write_bstack(eCaseFast.CF_MaxValue, 0x80000000);
+    this.write_bstack(eCaseFast.CF_MaxValue, -0x80000000);
 
     let caseCount: number = 0; // this is PNut ecx register
     let haveOtherCase: boolean = false; // this is PNut dl register
@@ -2525,10 +2525,9 @@ export class SpinResolver {
         // here is @@nextrange1:
         // compile comma delimited MATCH declarations
         do {
-          // XYZZY blockCaseFast() WE ARE HERE!!
-          const [rangeStart, rangeEnd] = this.getRange();
-          this.updateMinMax(rangeStart);
-          this.updateMinMax(rangeEnd);
+          const [firstValue, lastValue] = this.getRange();
+          this.updateMinMax(firstValue);
+          this.updateMinMax(lastValue);
         } while (this.checkComma());
       }
       // here is @@getcolon1
@@ -2536,25 +2535,33 @@ export class SpinResolver {
       this.skipBlock();
       this.scopeColumn = savedScopeColumn;
     }
-
+    // here is @@done1:
     if (caseCount < 1) {
       // [error_nce]
       throw new Error('No cases encountered');
     }
-    if (haveOtherCase) {
-      //this.elementIndex = otherCaseElementIndex;
-      this.getElement();
-      this.getElement();
-      const savedScopeColumn: number = this.scopeColumn;
-      this.scopeColumn = this.lineColumn;
-      this.compileBlock();
-      this.scopeColumn = savedScopeColumn;
-    }
-    // here is @@noother:
-    this.objWrByte(eByteCode.bc_case_done);
-    // move back to beginning of case statement (1st match)
-    //this.elementIndex = savedCaseStartElementIndex;
+    const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
+    const minValue: number = this.read_bstack(eCaseFast.CF_MinValue);
+    const maxValue: number = this.read_bstack(eCaseFast.CF_MaxValue);
+    // image offset -6 refers to our 6 values at front
+    this.objImage.writeLong(minValue, tablePtr - 6);
+    const casesUsed: number = maxValue - minValue + 1;
+    this.objImage.writeWord(casesUsed, tablePtr - 2);
+
+    // init jump table with other case index
+    const otherCaseIndex: number = caseCount;
+    let caseIndex: number = 0;
+    do {
+      // here is @@inittable:
+      this.objWrWord(otherCaseIndex);
+    } while (++caseIndex <= casesUsed);
+    // point back to source after 'case_fast' line
+    this.elementIndex = this.read_bstack(eCaseFast.CF_SourcePtr);
+
+    // reset case count
     caseCount = 0; // ready to count again
+
+    // XYZZY  WE ARE HERE !!
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -2600,13 +2607,40 @@ export class SpinResolver {
 
   private getRange(): [number, number] {
     // PNut get_range:
-    // XYZZY need code getRange()
-    return [0, 0];
+    // return sign-extended values for low and high, ordered correctly
+    let [lowValue, highValue] = [0, 0];
+    const firstResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+    lowValue = Number(this.signExtendFrom32Bit(firstResult.value));
+    highValue = lowValue;
+    if (this.checkDotDot()) {
+      const secondResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      highValue = Number(this.signExtendFrom32Bit(secondResult.value));
+      // now order values correctly
+      if (lowValue > highValue) {
+        const holdValue = lowValue;
+        lowValue = highValue;
+        highValue = holdValue;
+      }
+    }
+    return [lowValue, highValue];
   }
 
-  private updateMinMax(value: number) {
+  private updateMinMax(newValue: number) {
     // PNut cb_case_fast: @@updateminmax
-    // XYZZY need code updateMinMax()
+    let existingMinValue: number = this.read_bstack(eCaseFast.CF_MinValue);
+    if (newValue < existingMinValue) {
+      this.write_bstack(eCaseFast.CF_MinValue, newValue);
+      existingMinValue = newValue;
+    }
+    let existingMaxValue: number = this.read_bstack(eCaseFast.CF_MaxValue);
+    if (newValue > existingMaxValue) {
+      this.write_bstack(eCaseFast.CF_MaxValue, newValue);
+      existingMaxValue = newValue;
+    }
+    if (existingMaxValue - existingMinValue > 255) {
+      // [error_cfvmbw]
+      throw new Error('CASE_FAST values must be within 255 of each other');
+    }
   }
 
   private cb_repeat() {
@@ -4009,6 +4043,11 @@ export class SpinResolver {
   private write_bstack_ptr(index: number) {
     const offset: number = this.objImage.offset;
     this.blockStack.write(index, offset);
+  }
+
+  private read_bstack(index: number): number {
+    const valueRead: number = this.blockStack.read(index);
+    return valueRead;
   }
 
   private compile_bstack_address(index: number) {

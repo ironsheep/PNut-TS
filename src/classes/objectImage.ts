@@ -66,6 +66,14 @@ export class ObjectImage {
     }
   }
 
+  public writeLong(uint32: number, offset: number) {
+    // replace existing value within image
+    if (offset >= 0 && offset <= this._objOffset - 4) {
+      this.writeWord(uint32, offset);
+      this.writeWord(uint32 >> 16, offset + 2);
+    }
+  }
+
   public reset() {
     // effectively empty our image
     this._objOffset = 0;
