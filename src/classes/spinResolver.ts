@@ -40,6 +40,15 @@ interface iVariableReturn {
   assignmentBytecode: eByteCode; // used iff VO_ASSIGN
 }
 
+enum eCaseFast {
+  CF_FinalAddr,
+  CF_TablePtr,
+  CF_SourcePtr,
+  CF_MinValue,
+  CF_MaxValue,
+  CF_TableAddr
+}
+
 enum eOptimizerMethod {
   OM_Look,
   OM_If,
@@ -2319,7 +2328,6 @@ export class SpinResolver {
   private cb_case() {
     // Compile block - 'case'
     // PNut cb_case:
-    //XYZZY need code cb_case:
     this.scopeColumn = this.lineColumn;
     this.new_bnest(eElementType.type_case, this.case_limit + 1);
     this.optimizeBlock(eOptimizerMethod.OM_Case);
@@ -2329,49 +2337,276 @@ export class SpinResolver {
   private blockCase() {
     // PNut cb_case: @@comp:
     // code for eOptimizerMethod.OM_Case
-    // XYZZY blockCase (we are here)
     this.compile_bstack_address(0); // compile final address
-    this.compileExpression();
+    this.compileExpression(); // compile case "target" value
     this.getEndOfLine();
-    const savedElementIndex = this.elementIndex - 1;
-    let haveOtherCase: boolean = false; // this is PNut ecx[31]
+    const savedCaseStartElementIndex = this.elementIndex - 1; // rember location of 1st case statement
     let caseCount: number = 0; // this is PNut ecx[30-0]
+    let haveOtherCase: boolean = false; // this is PNut ecx[31] bit of register
+    let otherCaseElementIndex: number = 0; // this is PNut edx register
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@nextcase1
-      this.getElement();
+      this.getElement(); // this sets this.lineColumn
+      const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
-      this.backElement(); // TODO: let's verify this !!
+      this.backElement(); // undo "Match" get
+
+      // if line is out-dented or same level we are done with case
       if (this.lineColumn <= this.scopeColumn) {
         break;
       }
-      // if 'other' already encountered, error
+      // if any match after 'other', error
       if (haveOtherCase) {
         // [error_omblc]
         throw new Error('OTHER must be last case');
       }
       const savedScopeColumn: number = this.scopeColumn;
       this.scopeColumn = this.lineColumn;
-      if (this.currElement.type == eElementType.type_other) {
-        // XYZZY we are here !!!
+      if (matchIsOtherCase) {
+        haveOtherCase = true;
+        this.getElement();
+        // save this index for 2nd loop
+        otherCaseElementIndex = this.elementIndex - 1;
+      } else {
+        // here is @@notother1:
+        if (++caseCount > this.case_limit) {
+          // [error_loxcase]
+          throw new Error(`Limit of ${this.case_limit} CASE elements exceeded`);
+        }
+        // here is @@nextrange:
+        // compile comma delimited MATCH declarations
+        do {
+          const byteCode: eByteCode = this.compileRange() ? eByteCode.bc_case_range : eByteCode.bc_case_value;
+          this.compile_bstack_branch(caseCount, byteCode);
+        } while (this.checkComma());
       }
+      // here is @@getcolon1
+      this.getColon();
+      this.skipBlock();
+      this.scopeColumn = savedScopeColumn;
     }
+
+    if (caseCount < 1) {
+      // [error_nce]
+      throw new Error('No cases encountered');
+    }
+    if (haveOtherCase) {
+      this.elementIndex = otherCaseElementIndex;
+      this.getElement();
+      this.getElement();
+      const savedScopeColumn: number = this.scopeColumn;
+      this.scopeColumn = this.lineColumn;
+      this.compileBlock();
+      this.scopeColumn = savedScopeColumn;
+    }
+    // here is @@noother:
+    this.objWrByte(eByteCode.bc_case_done);
+    // move back to beginning of case statement (1st match)
+    this.elementIndex = savedCaseStartElementIndex;
+    caseCount = 0; // ready to count again
+
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@nextcase2
-      this.getElement();
+      this.getElement(); // this sets this.lineColumn
+      const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
+      this.backElement(); // undo "Match" get
+
+      // if line is out-dented or same level we are done with case
+      if (this.lineColumn <= this.scopeColumn) {
+        break;
+      }
+
+      const savedScopeColumn: number = this.scopeColumn;
+      this.scopeColumn = this.lineColumn;
+      if (matchIsOtherCase) {
+        this.getElement();
+        this.getElement();
+        // skip 'other' declaration
+        this.skipBlock();
+      } else {
+        // here is @@notother2:
+        // here is @@skiprange:
+        // skip comma delimited MATCH declarations
+        do {
+          this.skipRange();
+        } while (this.checkComma());
+
+        this.getElement();
+        this.write_bstack_ptr(++caseCount);
+        this.compileBlock();
+        this.objWrByte(eByteCode.bc_case_done);
+      }
+      // here is @@skipped
+      this.scopeColumn = savedScopeColumn;
     }
+    // here is @@done2
+    this.write_bstack_ptr(0);
+  }
+
+  private skipBlock() {
+    // Skip block
+    // PNut skip_block:
+    const savedObjectOffset = this.objImage.offset;
+    this.compileBlock();
+    this.objImage.setOffsetTo(savedObjectOffset);
+  }
+
+  private skipRange() {
+    // Skip range
+    // PNut skip_range:
+    const savedObjectOffset = this.objImage.offset;
+    this.compileRange();
+    this.objImage.setOffsetTo(savedObjectOffset);
   }
 
   private cb_case_fast() {
     // Compile block - 'case_fast'
     // PNut cb_case_fast:
-    //XYZZY need code cb_case_fast:
+    this.scopeColumn = this.lineColumn;
+    this.new_bnest(eElementType.type_case_fast, this.case_fast_limit + 1);
+    this.optimizeBlock(eOptimizerMethod.OM_CaseFast);
+    this.end_bnest();
+  }
+
+  private blockCaseFast() {
+    // PNut cb_case_fast: @@comp
+    // code for eOptimizerMethod.OM_CaseFast
+    this.compile_bstack_address(eCaseFast.CF_FinalAddr); // compile final address
+    this.compileExpression(); // compile case "target" value
+    this.getEndOfLine();
+    this.objWrByte(eByteCode.bc_case_fast_init);
+    this.objWrLong(0); // enter spacer for rflong
+    this.objWrWord(0); // enter spacer for rfword
+    this.write_bstack(eCaseFast.CF_TablePtr, this.objImage.offset);
+    this.write_bstack(eCaseFast.CF_SourcePtr, this.elementIndex - 1);
+    this.write_bstack(eCaseFast.CF_MinValue, 0x7fffffff);
+    this.write_bstack(eCaseFast.CF_MaxValue, 0x80000000);
+
+    let caseCount: number = 0; // this is PNut ecx register
+    let haveOtherCase: boolean = false; // this is PNut dl register
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@nextcase1
+      this.getElement(); // this sets this.lineColumn
+      const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
+      if (this.currElement.type == eElementType.type_end_file) {
+        break;
+      }
+      this.backElement(); // undo "Match" get
+
+      // if line is out-dented or same level we are done with case
+      if (this.lineColumn <= this.scopeColumn) {
+        break;
+      }
+      // if any match after 'other', error
+      if (haveOtherCase) {
+        // [error_omblc]
+        throw new Error('OTHER must be last case');
+      }
+      const savedScopeColumn: number = this.scopeColumn;
+      this.scopeColumn = this.lineColumn;
+      if (matchIsOtherCase) {
+        haveOtherCase = true;
+        this.getElement();
+      } else {
+        // here is @@notother1:
+        if (++caseCount > this.case_fast_limit) {
+          // [error_loxcasef]
+          throw new Error(`Limit of ${this.case_fast_limit} CASE_FAST elements exceeded`);
+        }
+        // here is @@nextrange1:
+        // compile comma delimited MATCH declarations
+        do {
+          // XYZZY blockCaseFast() WE ARE HERE!!
+          const [rangeStart, rangeEnd] = this.getRange();
+          this.updateMinMax(rangeStart);
+          this.updateMinMax(rangeEnd);
+        } while (this.checkComma());
+      }
+      // here is @@getcolon1
+      this.getColon();
+      this.skipBlock();
+      this.scopeColumn = savedScopeColumn;
+    }
+
+    if (caseCount < 1) {
+      // [error_nce]
+      throw new Error('No cases encountered');
+    }
+    if (haveOtherCase) {
+      //this.elementIndex = otherCaseElementIndex;
+      this.getElement();
+      this.getElement();
+      const savedScopeColumn: number = this.scopeColumn;
+      this.scopeColumn = this.lineColumn;
+      this.compileBlock();
+      this.scopeColumn = savedScopeColumn;
+    }
+    // here is @@noother:
+    this.objWrByte(eByteCode.bc_case_done);
+    // move back to beginning of case statement (1st match)
+    //this.elementIndex = savedCaseStartElementIndex;
+    caseCount = 0; // ready to count again
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@nextcase2
+      this.getElement(); // this sets this.lineColumn
+      const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
+      if (this.currElement.type == eElementType.type_end_file) {
+        break;
+      }
+      this.backElement(); // undo "Match" get
+
+      // if line is out-dented or same level we are done with case
+      if (this.lineColumn <= this.scopeColumn) {
+        break;
+      }
+
+      const savedScopeColumn: number = this.scopeColumn;
+      this.scopeColumn = this.lineColumn;
+      if (matchIsOtherCase) {
+        this.getElement();
+        this.getElement();
+        // skip 'other' declaration
+        this.skipBlock();
+      } else {
+        // here is @@notother2:
+        // here is @@skiprange:
+        // skip comma delimited MATCH declarations
+        do {
+          this.skipRange();
+        } while (this.checkComma());
+
+        this.getElement();
+        this.write_bstack_ptr(++caseCount);
+        this.compileBlock();
+        this.objWrByte(eByteCode.bc_case_done);
+      }
+      // here is @@skipped
+      this.scopeColumn = savedScopeColumn;
+    }
+    // here is @@done2
+    this.write_bstack_ptr(0);
+  }
+
+  private getRange(): [number, number] {
+    // PNut get_range:
+    // XYZZY need code getRange()
+    return [0, 0];
+  }
+
+  private updateMinMax(value: number) {
+    // PNut cb_case_fast: @@updateminmax
+    // XYZZY need code updateMinMax()
   }
 
   private cb_repeat() {
@@ -3851,11 +4086,6 @@ export class SpinResolver {
       notDone = lastOffset != this.objImage.offset;
       lastOffset = this.objImage.offset;
     } while (notDone);
-  }
-
-  private blockCaseFast() {
-    // PNut
-    // XYZZY blockCaseFast
   }
 
   private blockRepeat() {
