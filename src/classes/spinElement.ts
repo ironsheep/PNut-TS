@@ -12,6 +12,7 @@ import { eByteCode, eElementType, eOperationType, eValueType, getElementTypeStri
 export class SpinElement {
   private _sourceLineIndex: number = 0;
   private _sourceCharacterOffset: number = 0;
+  private _expandedColumn: number = 1; // expanded using tabstop=8, 1 based counting: column=[1,n]
   private _fileId: number;
   private _value: bigint | string = '';
   private _type: eElementType = eElementType.type_undefined;
@@ -27,6 +28,7 @@ export class SpinElement {
       this._value = copy._value;
       this._sourceLineIndex = copy._sourceLineIndex;
       this._sourceCharacterOffset = copy._sourceCharacterOffset;
+      this._expandedColumn = copy._expandedColumn;
       this._midStringComma = copy._midStringComma; // valid only if type_comma
       this._isSymbol = copy._isSymbol; // valid when element referrs to symbol in source code
       this._symbolLength = copy._symbolLength; // valid only when _isSymbol is true
@@ -38,6 +40,7 @@ export class SpinElement {
       this._value = value;
       this._sourceLineIndex = lineIndex;
       this._sourceCharacterOffset = charIndex;
+      this._expandedColumn = 0; // we need to pass this in
     }
   }
 
@@ -129,6 +132,10 @@ export class SpinElement {
 
   get sourceCharacterOffset(): number {
     return this._sourceCharacterOffset;
+  }
+
+  get sourceColumnOffset(): number {
+    return this._expandedColumn;
   }
 
   get valueIsNumber(): boolean {

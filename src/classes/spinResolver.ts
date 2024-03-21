@@ -176,6 +176,8 @@ export class SpinResolver {
   // Spin2 processing support data
   private blockStack: BlockStack;
   private subResults: number = 0;
+  private lineColumn: number = 1; // PNut [column] [1,n]
+  private scopeColumn: number = 1; // PNut x86 'ebp' register
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -2184,6 +2186,71 @@ export class SpinResolver {
     }
   }
 
+  private compileSubBlocks() {
+    // Compile sub blocks
+    // PNut compile_sub_blocks:
+    //XYZZY need code compile_sub_blocks:
+  }
+
+  private compileTopBlock() {
+    // Compile instruction block
+    // PNut compile_top_block:
+    this.blockStack.reset();
+    this.scopeColumn = 0; // effectively -1
+    this.compileBlock();
+    this.objWrByte(eByteCode.bc_return_results);
+  }
+
+  private compileBlock() {
+    // Compile instruction block
+    // PNut compile_block:
+    //XYZZY need code compile_block:
+    const savedColumn: number = this.lineColumn;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      this.getElement();
+      if (this.currElement.type == eElementType.type_end_file) {
+        break;
+      } else if (this.currElement.type == eElementType.type_block) {
+        this.backElement();
+        break;
+      }
+      if (savedColumn <= this.lineColumn) {
+        //XYZZY we are here!!
+      }
+    }
+    // restore column we had at entry
+    this.lineColumn = savedColumn;
+  }
+
+  private cb_if() {
+    // Compile block - 'if' / 'ifnot'
+    // PNut cb_if:
+    //XYZZY need code cb_if:
+  }
+
+  private cb_case() {
+    // Compile block - 'case'
+    // PNut cb_case:
+    //XYZZY need code cb_case:
+  }
+
+  private cb_case_fast() {
+    // Compile block - 'case_fast'
+    // PNut cb_case_fast:
+    //XYZZY need code cb_case_fast:
+  }
+
+  private cb_repeat() {
+    // Compile block - 'repeat'
+    // PNut cb_repeat:
+    // NOTE:
+    //   bstack[0] = 'next' address
+    //   bstack[1] = 'quit' address
+    //   bstack[2] = loop address
+    //XYZZY need code cb_repeat:
+  }
+
   private compileDatRfvars(value: bigint) {
     // generates 1-4 bytes (signed)
     const masks = [
@@ -2758,19 +2825,73 @@ export class SpinResolver {
       // ??var ?
       this.compileVariablePre(eByteCode.bc_var_rnd);
     } else {
-      this.SubToNeg();
-      this.FSubToFNeg();
+      this.SubToNeg(); // Convert op_sub to op_neg
+      this.FSubToFNeg(); // Convert op_fsub to op_fneg
       if (this.currElement.isUnary) {
         this.ci_unary();
       }
-      const savedElement: number = this.elementIndex - 1;
+      // remember this element
+      const savedElementIndex: number = this.elementIndex - 1;
       if (this.currElement.type == eElementType.type_under) {
         // _,... := param(s),... ?
-        this.getComma();
-        this.compileVariableMultiple(savedElement);
+        this.getComma(); // this works since we are at the beginning of line!
+        this.compileVariableMultiple(savedElementIndex); // this handles the rest of the line
+      }
+      // @@notunder:
+      const variableReturn: iVariableReturn = this.checkVariable(); // variable ?
+      if (variableReturn.isVariable == false) {
+        // [error_eaiov]
+        throw new Error('Expected an instruction or variable');
+      }
+      this.currElement = this.getElement(); // get element after variable
+      if (this.currElement.type == eElementType.type_comma) {
+        // var,... := param(s),... ?
+        this.compileVariableMultiple(savedElementIndex);
+      } else if (this.currElement.type == eElementType.type_left) {
+        // var({param,...}){:results} ?
+        this.ct_method_ptr(savedElementIndex, eResultRequirements.RR_None, eByteCode.bc_drop);
+      } else if (this.currElement.type == eElementType.type_inc) {
+        // var++ ?
+        this.compileVariableAssign(variableReturn, eByteCode.bc_var_inc);
+      } else if (this.currElement.type == eElementType.type_dec) {
+        // var-- ?
+        this.compileVariableAssign(variableReturn, eByteCode.bc_var_dec);
+      } else if (this.currElement.isLogNot) {
+        // var!! ?
+        this.compileVariableAssign(variableReturn, eByteCode.bc_var_lognot);
+      } else if (this.currElement.isBitNot) {
+        // var! ?
+        this.compileVariableAssign(variableReturn, eByteCode.bc_var_bitnot);
+      } else if (this.currElement.type == eElementType.type_til) {
+        // var~ ?
+        this.compileVariableClearSetInst(variableReturn, eCompOp.CO_Clear);
+      } else if (this.currElement.type == eElementType.type_tiltil) {
+        // var~~ ?
+        this.compileVariableClearSetInst(variableReturn, eCompOp.CO_Set);
+      } else if (this.currElement.type == eElementType.type_assign) {
+        // var := ?
+        this.compileExpression();
+        variableReturn.operation = eVariableOperation.VO_WRITE;
+        this.compileVariable(variableReturn);
+      } else if (this.currElement.isBinary && this.nextElementType() == eElementType.type_equal) {
+        // var binary op assign (w/push)?
+        if (this.currElement.isAssignable == false) {
+          // [error_tocbufa]
+          throw new Error('This operator cannot be used for assignment');
+        }
+        const baseByteCode: eByteCode = this.currElement.byteCode;
+        this.compileExpression();
+        variableReturn.operation = eVariableOperation.VO_ASSIGN;
+        variableReturn.assignmentBytecode = baseByteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write);
+        this.compileVariable(variableReturn);
+        this.getEqual();
+      } else {
+        // here is @@notbin:
+        this.backElement(); // backup to variable
+        // [error_vnao]
+        throw new Error('Variable needs an operator');
       }
     }
-    // XYZZY we are here  compileInstruction()!!
   }
 
   private compileVariableMultiple(startElementIndex: number) {
@@ -5665,6 +5786,10 @@ export class SpinResolver {
 
     // save a copy of the element into our global
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, element);
+    // and make sure our column offset into the line is set
+    if (this.currElement.sourceColumnOffset != 0) {
+      this.lineColumn = this.currElement.sourceColumnOffset;
+    }
 
     return this.currElement; // NOTE: (WARNING!) this is a reference into our active element list
   }
@@ -5672,6 +5797,10 @@ export class SpinResolver {
   private backElement(): void {
     this.elementIndex -= 2;
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.elementIndex++]);
+    // and make sure our column offset into the line is set
+    if (this.currElement.sourceColumnOffset != 0) {
+      this.lineColumn = this.currElement.sourceColumnOffset;
+    }
     this.logMessage(`* BACKele i#${this.elementIndex}, e=[${this.currElement.toString()}]`);
   }
 

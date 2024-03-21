@@ -65,6 +65,10 @@ export class BlockStack {
     this.context = ctx;
   }
 
+  public reset() {
+    this._stack = [];
+  }
+
   get topIndex(): number {
     return this._stack.length > 0 ? this._stack.length - 1 : -1;
   }
@@ -73,7 +77,8 @@ export class BlockStack {
     return this._stack.length > 0 ? false : true;
   }
 
-  get topNestLevel(): BlockNestLevel {
+  private get topNestLevel(): BlockNestLevel {
+    // no worries this is enpty-stack-guarded by caller
     return this._stack[this._stack.length - 1];
   }
 
