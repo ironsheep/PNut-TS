@@ -51,6 +51,16 @@ export class ObjectImage {
     return desiredValue;
   }
 
+  public readWord(offset: number): number {
+    // read existing word from image
+    let desiredValue: number = 0;
+    if (offset >= 0 && offset <= this._objOffset - 2) {
+      desiredValue = this._objImage[offset];
+      desiredValue |= this._objImage[offset + 1] << 8;
+    }
+    return desiredValue;
+  }
+
   public write(uint8: number, offset: number) {
     // replace existing value within image
     if (offset >= 0 && offset <= this._objOffset - 1) {

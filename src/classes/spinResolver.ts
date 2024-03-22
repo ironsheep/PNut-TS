@@ -2561,7 +2561,7 @@ export class SpinResolver {
     // reset case count
     caseCount = 0; // ready to count again
 
-    // XYZZY  WE ARE HERE !!
+    // XYZZY  WE ARE HERE !!  ALL BELOW NEED VERIFICATION !!
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -2582,27 +2582,62 @@ export class SpinResolver {
       this.scopeColumn = this.lineColumn;
       if (matchIsOtherCase) {
         this.getElement();
-        this.getElement();
-        // skip 'other' declaration
-        this.skipBlock();
       } else {
         // here is @@notother2:
-        // here is @@skiprange:
-        // skip comma delimited MATCH declarations
+        // here is @@nextrange2:
+        // fill in cases for comma delimited MATCH declarations
         do {
-          this.skipRange();
+          const [firstValue, lastValue] = this.getRange();
+          let casesUsed: number = firstValue - lastValue + 1;
+          const minValue: number = this.read_bstack(eCaseFast.CF_MinValue);
+          const offsetForTable: number = firstValue - minValue;
+          const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
+          let startWordOffset: number = tablePtr + (offsetForTable << 1);
+          // now write the table
+          do {
+            // here is @@filltable:
+            // fill in all offsets for a given MATCH
+            const indexValue: number = this.objImage.readWord(startWordOffset);
+            if (indexValue != otherCaseIndex) {
+              // [error_cfiinu]
+              throw new Error('CASE_FAST index is not unique');
+            }
+            this.objImage.writeWord(caseCount, startWordOffset);
+            startWordOffset += 2;
+          } while (--casesUsed);
         } while (this.checkComma());
-
-        this.getElement();
-        this.write_bstack_ptr(++caseCount);
-        this.compileBlock();
-        this.objWrByte(eByteCode.bc_case_done);
       }
-      // here is @@skipped
+      // here is @@getcolon2
+      this.getColon();
+      this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // current
+      this.compileBlock();
+      caseCount++;
+      this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // possible other
+      const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
+      const currObjOffset: number = this.objImage.offset;
+      if (currObjOffset - tablePtr > 0xffff) {
+        // [error_cfbex]
+        throw new Error('CASE_FAST block exceeds 64KB');
+      }
+      this.objWrByte(eByteCode.bc_case_fast_done);
       this.scopeColumn = savedScopeColumn;
     }
     // here is @@done2
-    this.write_bstack_ptr(0);
+    this.write_bstack_ptr(eCaseFast.CF_FinalAddr);
+    let jumpTableOffset: number = this.read_bstack(eCaseFast.CF_TablePtr);
+    let loopCount: number = this.objImage.readWord(jumpTableOffset - 2) + 1;
+    do {
+      // here is @@replace:
+      // get case index from jump table
+      const caseIndex: number = this.objImage.readWord(jumpTableOffset);
+      // use case index to look up case block offset
+      const value: number = this.read_bstack(eCaseFast.CF_TableAddr + caseIndex);
+      const blockOffset = value - jumpTableOffset;
+      // write case block offset into jump table
+      this.objImage.writeWord(blockOffset, jumpTableOffset);
+      jumpTableOffset += 2;
+      // loop until all cases + 'other' handled
+    } while (--loopCount);
   }
 
   private getRange(): [number, number] {
