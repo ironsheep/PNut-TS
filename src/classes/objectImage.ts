@@ -68,7 +68,7 @@ export class ObjectImage {
     }
   }
 
-  public writeWord(uint16: number, offset: number) {
+  public replaceWord(uint16: number, offset: number) {
     // replace existing value within image
     if (offset >= 0 && offset <= this._objOffset - 2) {
       this._objImage[offset] = uint16 & 0xff;
@@ -76,11 +76,11 @@ export class ObjectImage {
     }
   }
 
-  public writeLong(uint32: number, offset: number) {
+  public replaceLong(uint32: number, offset: number) {
     // replace existing value within image
     if (offset >= 0 && offset <= this._objOffset - 4) {
-      this.writeWord(uint32, offset);
-      this.writeWord(uint32 >> 16, offset + 2);
+      this.replaceWord(uint32, offset);
+      this.replaceWord(uint32 >> 16, offset + 2);
     }
   }
 

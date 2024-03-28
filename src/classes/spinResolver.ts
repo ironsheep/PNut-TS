@@ -40,13 +40,19 @@ interface iVariableReturn {
   assignmentBytecode: eByteCode; // used iff VO_ASSIGN
 }
 
-enum eCaseFast {
+enum eCaseFast { // enum for bc_casefast() and blockCasefast() methods
   CF_FinalAddr,
   CF_TablePtr,
   CF_SourcePtr,
   CF_MinValue,
   CF_MaxValue,
   CF_TableAddr
+}
+
+enum eRepeat { // enum for cb_repeat() and blockRepeat*() methods
+  RP_NextAddress,
+  RP_QuitAddress,
+  RP_LoopAddress
 }
 
 enum eOptimizerMethod {
@@ -2484,7 +2490,7 @@ export class SpinResolver {
     this.objWrByte(eByteCode.bc_case_fast_init);
     this.objWrLong(0); // enter spacer for rflong (-6)
     this.objWrWord(0); // enter spacer for rfword (-2)
-    this.write_bstack(eCaseFast.CF_TablePtr, this.objImage.offset);
+    this.write_bstack_ptr(eCaseFast.CF_TablePtr);
     this.write_bstack(eCaseFast.CF_SourcePtr, this.elementIndex - 1);
     this.write_bstack(eCaseFast.CF_MinValue, 0x7fffffff);
     this.write_bstack(eCaseFast.CF_MaxValue, -0x80000000);
@@ -2496,6 +2502,7 @@ export class SpinResolver {
     while (true) {
       // here is @@nextcase1
       this.getElement(); // this sets this.lineColumn
+      // remember this elements' type
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
@@ -2544,9 +2551,9 @@ export class SpinResolver {
     const minValue: number = this.read_bstack(eCaseFast.CF_MinValue);
     const maxValue: number = this.read_bstack(eCaseFast.CF_MaxValue);
     // image offset -6 refers to our 6 values at front
-    this.objImage.writeLong(minValue, tablePtr - 6);
-    const casesUsed: number = maxValue - minValue + 1;
-    this.objImage.writeWord(casesUsed, tablePtr - 2);
+    this.objImage.replaceLong(minValue, tablePtr - 6);
+    const caseSpan: number = maxValue - minValue + 1;
+    this.objImage.replaceWord(caseSpan, tablePtr - 2);
 
     // init jump table with other case index
     const otherCaseIndex: number = caseCount;
@@ -2554,14 +2561,13 @@ export class SpinResolver {
     do {
       // here is @@inittable:
       this.objWrWord(otherCaseIndex);
-    } while (++caseIndex <= casesUsed);
+    } while (++caseIndex <= caseSpan);
+
     // point back to source after 'case_fast' line
     this.elementIndex = this.read_bstack(eCaseFast.CF_SourcePtr);
 
     // reset case count
     caseCount = 0; // ready to count again
-
-    // XYZZY  WE ARE HERE !!  ALL BELOW NEED VERIFICATION !!
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -2581,16 +2587,18 @@ export class SpinResolver {
       const savedScopeColumn: number = this.scopeColumn;
       this.scopeColumn = this.lineColumn;
       if (matchIsOtherCase) {
+        // this is the other (default) case
         this.getElement();
       } else {
+        // this is a non-other case (real case)
         // here is @@notother2:
         // here is @@nextrange2:
         // fill in cases for comma delimited MATCH declarations
         do {
           const [firstValue, lastValue] = this.getRange();
-          let casesUsed: number = firstValue - lastValue + 1;
+          let rangeCaseCount: number = lastValue - firstValue + 1;
           const minValue: number = this.read_bstack(eCaseFast.CF_MinValue);
-          const offsetForTable: number = firstValue - minValue;
+          const offsetForTable: number = firstValue - minValue; // offset in words
           const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
           let startWordOffset: number = tablePtr + (offsetForTable << 1);
           // now write the table
@@ -2602,17 +2610,17 @@ export class SpinResolver {
               // [error_cfiinu]
               throw new Error('CASE_FAST index is not unique');
             }
-            this.objImage.writeWord(caseCount, startWordOffset);
-            startWordOffset += 2;
-          } while (--casesUsed);
+            this.objImage.replaceWord(caseCount, startWordOffset);
+            startWordOffset += 2; // incr by words (2 bytes)
+          } while (--rangeCaseCount);
         } while (this.checkComma());
       }
       // here is @@getcolon2
       this.getColon();
-      this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // current
+      this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // current case
       this.compileBlock();
       caseCount++;
-      this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // possible other
+      this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // possible other (default case)
       const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
       const currObjOffset: number = this.objImage.offset;
       if (currObjOffset - tablePtr > 0xffff) {
@@ -2624,18 +2632,22 @@ export class SpinResolver {
     }
     // here is @@done2
     this.write_bstack_ptr(eCaseFast.CF_FinalAddr);
-    let jumpTableOffset: number = this.read_bstack(eCaseFast.CF_TablePtr);
-    let loopCount: number = this.objImage.readWord(jumpTableOffset - 2) + 1;
+    // get base address of table
+    const jumpTableBase: number = this.read_bstack(eCaseFast.CF_TablePtr);
+    let entryOffset: number = jumpTableBase;
+    // read number of cases and add 1 for other
+    let loopCount: number = this.objImage.readWord(jumpTableBase - 2) + 1;
     do {
       // here is @@replace:
       // get case index from jump table
-      const caseIndex: number = this.objImage.readWord(jumpTableOffset);
+      const caseIndex: number = this.objImage.readWord(entryOffset);
       // use case index to look up case block offset
-      const value: number = this.read_bstack(eCaseFast.CF_TableAddr + caseIndex);
-      const blockOffset = value - jumpTableOffset;
+      const absoluteOffset: number = this.read_bstack(eCaseFast.CF_TableAddr + caseIndex);
+      // convert to relative address into table
+      const relativeOffset = absoluteOffset - jumpTableBase;
       // write case block offset into jump table
-      this.objImage.writeWord(blockOffset, jumpTableOffset);
-      jumpTableOffset += 2;
+      this.objImage.replaceWord(relativeOffset, entryOffset);
+      entryOffset += 2; // incr by words (2 bytes)
       // loop until all cases + 'other' handled
     } while (--loopCount);
   }
@@ -2685,7 +2697,93 @@ export class SpinResolver {
     //   bstack[0] = 'next' address
     //   bstack[1] = 'quit' address
     //   bstack[2] = loop address
-    //XYZZY need code cb_repeat:
+    this.scopeColumn = this.lineColumn;
+    this.new_bnest(eElementType.type_repeat, 3);
+    this.getElement();
+    if (this.currElement.type == eElementType.type_end) {
+      this.optimizeBlock(eOptimizerMethod.OM_Repeat);
+    } else if (this.currElement.type == eElementType.type_while) {
+      this.optimizeBlock(eOptimizerMethod.OM_RepeatPreWhileUntil, eByteCode.bc_jz);
+    } else if (this.currElement.type == eElementType.type_until) {
+      this.optimizeBlock(eOptimizerMethod.OM_RepeatPreWhileUntil, eByteCode.bc_jnz);
+    } else {
+      this.backElement();
+      const savedElementIndex = this.elementIndex - 1;
+      this.skipExpression();
+      this.currElement = this.getElement();
+      this.elementIndex = savedElementIndex;
+      if (this.currElement.type == eElementType.type_end) {
+        // @@count
+        this.redo_bnest(eElementType.type_repeat_count);
+        this.optimizeBlock(eOptimizerMethod.OM_RepeatCount);
+      } else if (this.currElement.type == eElementType.type_with) {
+        // @@countvar
+        this.redo_bnest(eElementType.type_repeat_count_var);
+        this.optimizeBlock(eOptimizerMethod.OM_RepeatCountVar);
+      } else {
+        this.redo_bnest(eElementType.type_repeat_var);
+        this.optimizeBlock(eOptimizerMethod.OM_RepeatVar);
+      }
+    }
+  }
+
+  private blockRepeat(type: number): number {
+    // PNut cb_repeat: @@plaincomp
+    // code for eOptimizerMethod.OM_Repeat
+    // XYZZY blockRepeat
+    return 0;
+  }
+
+  private blockRepeatCount() {
+    // PNut cb_repeat: @@countcomp
+    // code for eOptimizerMethod.OM_RepeatCount
+    // XYZZY blockRepeatCount
+  }
+
+  private blockRepeatCountVar() {
+    // PNut cb_repeat: @@countcompvar
+    // code for eOptimizerMethod.OM_RepeatCountVar
+    // XYZZY blockRepeatCountVar
+  }
+
+  private blockRepeatPreWhileUntil(byteCode: eByteCode) {
+    // PNut cb_repeat: @@prewucomp
+    // code for eOptimizerMethod.OM_RepeatPreWhileUntil
+    // XYZZY blockRepeatPreWhileUntil
+  }
+
+  private blockRepeatVar() {
+    // PNut cb_repeat: @@varcomp
+    // code for eOptimizerMethod.OM_RepeatVar
+    this.compile_bstack_address(eRepeat.RP_LoopAddress);
+    const variableReturn: iVariableReturn = this.getVariable();
+    this.getFrom();
+    // remember the FROM expression start
+    const savedElementIndex = this.elementIndex - 1;
+    this.skipExpression();
+    this.getTo();
+    this.compileExpression(); // compile TO expression
+    let byteCode: eByteCode = eByteCode.bc_repeat_var_init_1;
+    if (this.getStepOrEndOfLine()) {
+      // we found 'STEP'
+      byteCode = eByteCode.bc_repeat_var_init;
+      this.compileExpression(); // compile STEP expression
+      this.getEndOfLine();
+    }
+    // here is @@varcompstep1:
+    // compile FROM expression
+    this.compileOutOfSequenceExpression(savedElementIndex);
+    this.compileVariableAssign(variableReturn, byteCode);
+    // set 'loop' address
+    this.write_bstack_ptr(eRepeat.RP_LoopAddress);
+    // compile repeat block
+    this.compileBlock();
+    // set 'next' address
+    this.write_bstack_ptr(eRepeat.RP_NextAddress);
+    // compile setup + repeat_var_loop
+    this.compileVariableAssign(variableReturn, eByteCode.bc_repeat_var_loop);
+    // set 'quit' address
+    this.write_bstack_ptr(eRepeat.RP_QuitAddress);
   }
 
   private compileDatRfvars(value: bigint) {
@@ -3417,7 +3515,7 @@ export class SpinResolver {
       // [error_isie]
       throw new Error('Inline section is empty');
     }
-    this.objImage.writeWord(lengthInLongs, patchLocation - 2); // replace the placeholder with length
+    this.objImage.replaceWord(lengthInLongs, patchLocation - 2); // replace the placeholder with length
   }
 
   private ci_next_quit() {
@@ -4117,6 +4215,7 @@ export class SpinResolver {
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
     let notDone: boolean = true;
+    let repeatType: number = 0; // used in blockRepeat()
     do {
       // restore for next pass
       this.elementIndex = savedElementIndex;
@@ -4139,7 +4238,7 @@ export class SpinResolver {
           this.blockCaseFast();
           break;
         case eOptimizerMethod.OM_Repeat:
-          this.blockRepeat();
+          repeatType = this.blockRepeat(repeatType);
           break;
         case eOptimizerMethod.OM_RepeatCount:
           this.blockRepeatCount();
@@ -4148,7 +4247,7 @@ export class SpinResolver {
           this.blockRepeatCountVar();
           break;
         case eOptimizerMethod.OM_RepeatPreWhileUntil:
-          this.blockRepeatPreWhileUntil();
+          this.blockRepeatPreWhileUntil(subType);
           break;
         case eOptimizerMethod.OM_RepeatVar:
           this.blockRepeatVar();
@@ -4160,31 +4259,6 @@ export class SpinResolver {
       notDone = lastOffset != this.objImage.offset;
       lastOffset = this.objImage.offset;
     } while (notDone);
-  }
-
-  private blockRepeat() {
-    // PNut
-    // XYZZY blockRepeat
-  }
-
-  private blockRepeatCount() {
-    // PNut
-    // XYZZY blockRepeatCount
-  }
-
-  private blockRepeatCountVar() {
-    // PNut
-    // XYZZY blockRepeatCountVar
-  }
-
-  private blockRepeatPreWhileUntil() {
-    // PNut
-    // XYZZY blockRepeatPreWhileUntil
-  }
-
-  private blockRepeatVar() {
-    // PNut
-    // XYZZY blockRepeatVar
   }
 
   private ct_cogspin(byteCode: eByteCode) {
@@ -5330,6 +5404,18 @@ export class SpinResolver {
       throw new Error('Expected "," or end of line');
     }
     return foundCommaStatus;
+  }
+
+  private getStepOrEndOfLine(): boolean {
+    let foundStepStatus: boolean = false;
+    this.getElement();
+    if (this.currElement.type == eElementType.type_step) {
+      foundStepStatus = true;
+    } else if (this.currElement.type != eElementType.type_end) {
+      // [error_esoeol]
+      throw new Error('Expected STEP or end of line');
+    }
+    return foundStepStatus;
   }
 
   private getEndOfLine() {
