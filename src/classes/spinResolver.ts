@@ -2725,36 +2725,130 @@ export class SpinResolver {
         this.optimizeBlock(eOptimizerMethod.OM_RepeatVar);
       }
     }
+    this.end_bnest();
   }
 
-  private blockRepeat(type: number): number {
+  private blockRepeat(isPostWhileUntil: boolean): boolean {
     // PNut cb_repeat: @@plaincomp
     // code for eOptimizerMethod.OM_Repeat
-    // XYZZY blockRepeat
-    return 0;
+
+    // set 'loop' address
+    this.write_bstack_ptr(eRepeat.RP_LoopAddress);
+    // if post-while/until flag is NOT set...
+    if (isPostWhileUntil == false) {
+      // set 'next' address
+      this.write_bstack_ptr(eRepeat.RP_NextAddress);
+    }
+    // here is @@plainwu
+    this.compileBlock(); // compile repeat block
+    this.getElement();
+    if (this.currElement.type == eElementType.type_end_file) {
+      // here is @@plainloop
+      this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jmp);
+      // set 'quit' address
+      this.write_bstack_ptr(eRepeat.RP_QuitAddress);
+    } else if (this.lineColumn < this.scopeColumn) {
+      // here is @@plainbackup
+      this.backElement();
+      this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jmp);
+      // set 'quit' address
+      this.write_bstack_ptr(eRepeat.RP_QuitAddress);
+    } else if (this.currElement.type == eElementType.type_while) {
+      // here is @@plainpost
+      isPostWhileUntil = true; // set post-while/until flag
+      // set 'next' address
+      this.write_bstack_ptr(eRepeat.RP_NextAddress);
+      this.compileExpression(); // compile post-while/until expression
+      this.getEndOfLine();
+      // here is @@plainpost2 carrying in bc_jnz
+      this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jnz);
+      // set 'quit' address
+      this.write_bstack_ptr(eRepeat.RP_QuitAddress);
+    } else if (this.currElement.type == eElementType.type_until) {
+      isPostWhileUntil = true; // set post-while/until flag
+      // here is @@plainpost2 carrying in bc_jz
+      this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jz);
+      // set 'quit' address
+      this.write_bstack_ptr(eRepeat.RP_QuitAddress);
+    } else {
+      // here is @@plainbackup
+      this.backElement();
+      this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jmp);
+      // set 'quit' address
+      this.write_bstack_ptr(eRepeat.RP_QuitAddress);
+    }
+    return isPostWhileUntil;
   }
 
   private blockRepeatCount() {
     // PNut cb_repeat: @@countcomp
     // code for eOptimizerMethod.OM_RepeatCount
-    // XYZZY blockRepeatCount
+
+    // compile count expression, check for constant
+    const valueReturn: iValueReturn = this.compileExpressionCheckCon();
+    this.getEndOfLine();
+    if (valueReturn.isResolved && valueReturn.value == 0n) {
+      // if 0, skip block (compile nothing)
+      this.skipBlock();
+    } else {
+      if (valueReturn.isResolved) {
+        this.compileConstant(valueReturn.value);
+      } else {
+        // here is @@countnc
+        //  if runtime value is zero just jump to quit!
+        this.compile_bstack_branch(eRepeat.RP_QuitAddress, eByteCode.bc_tjz);
+      }
+      // here is @@countnz
+      this.write_bstack_ptr(eRepeat.RP_LoopAddress);
+      this.compileBlock(); // compile repeat block
+      this.write_bstack_ptr(eRepeat.RP_NextAddress);
+      this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_djnz);
+      this.write_bstack_ptr(eRepeat.RP_QuitAddress);
+    }
   }
 
   private blockRepeatCountVar() {
-    // PNut cb_repeat: @@countcompvar
+    // PNut cb_repeat: @@countvarcomp
     // code for eOptimizerMethod.OM_RepeatCountVar
-    // XYZZY blockRepeatCountVar
+
+    // compile loop address
+    this.compile_bstack_address(eRepeat.RP_LoopAddress);
+    this.compileExpression(); // compile count expression
+    this.getWith(); // skip 'WITH'
+    const variableReturn: iVariableReturn = this.getVariable();
+    this.getEndOfLine();
+    this.compileVariableAssign(variableReturn, eByteCode.bc_repeat_var_init_n);
+    // set 'loop' address
+    this.write_bstack_ptr(eRepeat.RP_LoopAddress);
+    this.compileBlock(); // compile repeat block
+    // set 'next' address
+    this.write_bstack_ptr(eRepeat.RP_NextAddress);
+    this.compileVariableAssign(variableReturn, eByteCode.bc_repeat_var_loop);
+    // set 'quit' address
+    this.write_bstack_ptr(eRepeat.RP_QuitAddress);
   }
 
   private blockRepeatPreWhileUntil(byteCode: eByteCode) {
     // PNut cb_repeat: @@prewucomp
     // code for eOptimizerMethod.OM_RepeatPreWhileUntil
-    // XYZZY blockRepeatPreWhileUntil
+
+    // set 'next' address
+    this.write_bstack_ptr(eRepeat.RP_NextAddress);
+    this.compileExpression(); // compile pre-while/until expression
+    this.getEndOfLine();
+    // compile forward branch ('quit')
+    this.compile_bstack_branch(eRepeat.RP_QuitAddress, byteCode);
+    this.compileBlock(); // compile repeat block
+    // compile backward branch ('next')
+    this.compile_bstack_branch(eRepeat.RP_NextAddress, eByteCode.bc_jmp);
+    // set 'quit' address
+    this.write_bstack_ptr(eRepeat.RP_QuitAddress);
   }
 
   private blockRepeatVar() {
     // PNut cb_repeat: @@varcomp
     // code for eOptimizerMethod.OM_RepeatVar
+
     this.compile_bstack_address(eRepeat.RP_LoopAddress);
     const variableReturn: iVariableReturn = this.getVariable();
     this.getFrom();
@@ -3604,7 +3698,53 @@ export class SpinResolver {
   private ci_send() {
     // Compile instruction - SEND()
     // PNut ci_send:
-    // XYZZY ci_send()
+    this.getLeftParen();
+    if (this.checkRightParen()) {
+      // [error_esendd]
+      throw new Error('Expected SEND data');
+    }
+    // check for string of bytes
+    do {
+      // here is @@trynext
+      let byteCount: number = 0;
+      // remember start of constants
+      const savedElementIndex = this.elementIndex - 1;
+      // count the number of constant-bytes in sequence
+      do {
+        // here is @@trybytes
+        this.getElement();
+        if (this.currElement.type != eElementType.type_con) {
+          break;
+        }
+        if (this.currElement.bigintValue > 255n) {
+          break;
+        }
+        byteCount++;
+      } while (this.checkComma());
+
+      // return to start of constants
+      this.elementIndex = savedElementIndex;
+      // if we have more than two constants...
+      if (byteCount >= 2) {
+        // we should declare this as string
+        this.objWrByte(eByteCode.bc_call_send_bytes);
+        this.compileRfvar(BigInt(byteCount));
+        do {
+          this.getElement();
+          this.objWrByte(Number(this.currElement.value));
+          if (byteCount > 1) {
+            this.getComma();
+          }
+        } while (--byteCount);
+      } else {
+        // less than two bytes or larger constant
+        // here is @@tryother:
+        const valueIsOnStack: boolean = this.compileParameterSend();
+        if (valueIsOnStack) {
+          this.objWrByte(eByteCode.bc_call_send);
+        }
+      }
+    } while (this.getCommaOrRightParen());
   }
 
   private ci_unary() {
@@ -4215,7 +4355,7 @@ export class SpinResolver {
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
     let notDone: boolean = true;
-    let repeatType: number = 0; // used in blockRepeat()
+    let isPostWhileUntil: boolean = false; // used in blockRepeat()
     do {
       // restore for next pass
       this.elementIndex = savedElementIndex;
@@ -4238,7 +4378,7 @@ export class SpinResolver {
           this.blockCaseFast();
           break;
         case eOptimizerMethod.OM_Repeat:
-          repeatType = this.blockRepeat(repeatType);
+          isPostWhileUntil = this.blockRepeat(isPostWhileUntil);
           break;
         case eOptimizerMethod.OM_RepeatCount:
           this.blockRepeatCount();
