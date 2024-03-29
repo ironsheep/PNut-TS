@@ -12,7 +12,7 @@ import { eByteCode, eElementType, eOperationType, eValueType, getElementTypeStri
 export class SpinElement {
   private _sourceLineIndex: number = 0;
   private _sourceCharacterOffset: number = 0;
-  private _expandedColumn: number = 1; // expanded using tabstop=8, 1 based counting: column=[1,n]
+  private _expandedColumn: number = 0; // expanded using tabstop=8, 1 based counting: column=[1,n], 0=NOT SET
   private _fileId: number;
   private _value: bigint | string = '';
   private _type: eElementType = eElementType.type_undefined;
@@ -40,7 +40,7 @@ export class SpinElement {
       this._value = value;
       this._sourceLineIndex = lineIndex;
       this._sourceCharacterOffset = charIndex;
-      this._expandedColumn = 0; // we need to pass this in
+      this._expandedColumn = 0; // we need to pass this in or set late
     }
   }
 
@@ -62,6 +62,10 @@ export class SpinElement {
   //  while sourceSymbolWasUndefined() tests this condition
   public setSourceElementWasUndefined() {
     this._sourceSymbolWasUndefined = true;
+  }
+
+  public setSourceColumnOffset(countLeftWhiteColumns: number) {
+    this._expandedColumn = countLeftWhiteColumns;
   }
 
   get sourceElementWasUndefined(): boolean {

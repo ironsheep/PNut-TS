@@ -42,6 +42,7 @@ export class SpinElementizer {
   private at_eol: boolean = false;
   private symbol_tables: SpinSymbolTables;
   private lastEmittedIsLineEnd: boolean = true;
+  private leftEdgeWhiteColumnCount: number = 0;
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
@@ -103,6 +104,7 @@ export class SpinElementizer {
     if (this.currCharacterIndex == 0) {
       const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
       this.logMessage(`  --- NEW ---   Ln#${lineNbrString}  line=[${this.unprocessedLine}]`);
+      this.leftEdgeWhiteColumnCount = this.countColumnsOfLeftEdgeWhite(this.unprocessedLine);
     }
 
     // skip initial white space on opening line
@@ -263,6 +265,9 @@ export class SpinElementizer {
       this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${valueToDisplay})`);
       this.logMessage(''); // blank line
       const singleElement = new SpinElement(this.srcFile.fileId, typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
+      if (this.lastEmittedIsLineEnd && !singleElement.isLineEnd) {
+        singleElement.setSourceColumnOffset(this.leftEdgeWhiteColumnCount);
+      }
       if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
         singleElement.setSymbolLength(symbolLengthFound); // if this refers to a symbol, record the length of the symbol too
         elementsFound.push(singleElement);
@@ -292,6 +297,26 @@ export class SpinElementizer {
     if (whiteSkipCount > 0) {
       this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
     }
+  }
+
+  private countColumnsOfLeftEdgeWhite(line: string): number {
+    // count columns of white space expanding tabs as we count
+    let whiteColumnsCount: number = 0;
+    const tabStops: number = 8;
+    if (line !== undefined && line.length > 0) {
+      for (let index = 0; index < line.length; index++) {
+        const currChar = line.charAt(index);
+        if (currChar == ' ') {
+          whiteColumnsCount++;
+        } else if (currChar == '\t') {
+          const spaceOverCount = tabStops - (whiteColumnsCount % tabStops);
+          whiteColumnsCount += spaceOverCount == tabStops ? 1 : spaceOverCount;
+        } else {
+          break; // non white char, we are done, outta here!
+        }
+      }
+    }
+    return whiteColumnsCount;
   }
 
   private skipToLineWithDocCommentClose(): number {
