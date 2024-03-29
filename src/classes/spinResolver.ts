@@ -18,6 +18,7 @@ import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
 import { throws } from 'assert';
+import { runInThisContext } from 'vm';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -188,6 +189,9 @@ export class SpinResolver {
   private readonly if_limit: number = 256; // max if-chain length
   private readonly case_limit: number = 256; // max cases
   private readonly case_fast_limit: number = 256; // max cases
+  private readonly subs_limit: number = 1024; // max PUB/PRI count
+  private readonly objs_limit: number = 1024; // max object count
+  private readonly distiller_limit: number = 0x4000; // max distiller limit
 
   // VAR processing support data
   private varPtr: number = 4;
@@ -253,6 +257,8 @@ export class SpinResolver {
     this.pasmMode = this.determinePasmMode();
     this.compile_con_blocks_1st();
     if (this.context.passOptions.afterConBlock == false) {
+      //this.compile_obj_blocks_id()
+      this.compile_sub_blocks_id();
       this.compile_dat_blocks_fn();
     }
   }
@@ -266,6 +272,13 @@ export class SpinResolver {
         this.compile_var_blocks();
       }
       this.compile_dat_blocks();
+      this.compile_sub_blocks();
+      //this.compile_obj_blocks();
+      //this.distill_obj_blocks();
+      //this.point_to_con();
+      //this.collapse_debug_data();
+      //this.compile_final();
+      //this.compile_done();
     }
   }
 
@@ -2205,10 +2218,242 @@ export class SpinResolver {
     }
   }
 
-  private compileSubBlocks() {
+  private compile_sub_blocks_id() {
+    // Compile sub blocks - id only
+    // PNut compile_sub_blocks_id:
+    if (this.pasmMode == false) {
+      const subStartIndex: number = this.objImage.offset >> 2;
+      // compile PUB blocks
+      const pubsFound = this.compilePubPriBlockId(eValueType.block_pub, subStartIndex);
+      // if we didn't find any PUB blocks
+      if (pubsFound == false) {
+        // [error_npmf]
+        throw new Error('No PUB method or DAT block found');
+      }
+      // compile PRI blocks
+      this.compilePubPriBlockId(eValueType.block_pri, subStartIndex);
+      this.objWrLong(0); // enter 0 (future size) into index
+    }
+  }
+
+  private compilePubPriBlockId(blockType: eValueType, subStartIndex: number): boolean {
+    // here is compile_sub_blocks_id: @@compile
+    // this locates PUB and PRI blocks, validates and emits symbols and obj public interface
+    let foundBlocksStatus: boolean = false;
+    let parameterCount: number = 0;
+    let resultCount: number = 0;
+
+    this.elementIndex = 0; // reset element list
+    while (this.nextBlock(blockType)) {
+      // here is @@nextblock:
+      this.getElement();
+      if (this.currElement.type != eElementType.type_undefined) {
+        // [error_eaumn]
+        throw new Error('Expected a unique method name');
+      }
+      // here is @@newsub:
+      const symbolName: string = this.currElement.stringValue;
+      parameterCount = 0;
+      resultCount = 0;
+      this.getLeftParen();
+      if (this.checkRightParen() == false) {
+        // have parameters
+        // here is @@param:
+        do {
+          this.getElement();
+          if (this.currElement.type == eElementType.type_undefined) {
+            // [error_eaupn]
+            throw new Error('Expected a unique parameter name');
+          }
+          parameterCount++;
+          if (parameterCount > this.params_limit) {
+            // [error_loxpe]
+            throw new Error(`Limit of ${this.params_limit} parameters exceeded`);
+          }
+        } while (this.getCommaOrRightParen());
+      }
+      // no parameters
+      // here is @@noparams:
+      if (this.checkColon()) {
+        // here is @@result:
+        do {
+          this.getElement();
+          if (this.currElement.type == eElementType.type_undefined) {
+            // [error_eaurn]
+            throw new Error('Expected a unique result name');
+          }
+          resultCount++;
+          if (resultCount > this.results_limit) {
+            // [error_loxre]
+            throw new Error(`Limit of ${this.results_limit} results exceeded`);
+          }
+        } while (this.checkComma());
+      }
+      // here is @@noresults
+      // do we have any local variables...
+      if (this.getPipeOrEnd()) {
+        // have locals
+        do {
+          // here is @@local:
+          this.currElement = this.getElement(); // assignment gets past lint warning
+          const [foundAlign, alignMask] = this.checkAlign(); // alignw, alignl?
+          if (foundAlign) {
+            this.getElement(); // skip alignw/alignl
+          }
+          // here is @@noalign:
+          if (this.currElement.type == eElementType.type_size) {
+            this.getElement(); // skip BYTE/WORD/LONG
+          }
+          if (this.currElement.type == eElementType.type_undefined) {
+            // [error_eauvnsa]
+            throw new Error('Expected a unique variable name, BYTE, WORD, LONG, ALIGNW, or ALIGNL');
+          }
+          // if array index, skip it
+          if (this.checkLeftBracket()) {
+            this.scanToRightBracket();
+          }
+        } while (this.getCommaOrEndOfLine());
+      }
+      // here is @@nolocals:
+      const subIndex: number = this.objImage.offset >> 2;
+      if (subIndex - subStartIndex > this.subs_limit) {
+        // [error_loxppme]
+        throw new Error(`Limit of ${this.subs_limit} PUB/PRI methods exceeded`);
+      }
+      const symMethodDetails: number = (parameterCount << 24) | (resultCount << 20) | subIndex;
+      const newSymbol: iSymbol = { name: symbolName, type: eElementType.type_method, value: BigInt(symMethodDetails) };
+      //this.logMessage(`* compilePubPriBlockId() calling record symbol [${newSymbol}]`);
+      this.recordSymbol(newSymbol); // PUB/PRI symbol name
+      const objMethodDetails: number = 0x80000000 | (parameterCount << 24) | (resultCount << 20);
+      this.objWrLong(objMethodDetails);
+      // if we have a PUB method...
+      if (blockType == eValueType.block_pub) {
+        // record Objects' PUB method details: symbol, number results, number parameters
+        this.objWrPubSymbol(symbolName, resultCount, parameterCount);
+      }
+      // here is @@notpub:
+      foundBlocksStatus = true;
+    }
+
+    return foundBlocksStatus;
+  }
+
+  private compile_sub_blocks() {
     // Compile sub blocks
     // PNut compile_sub_blocks:
-    //XYZZY need code compile_sub_blocks:
+    if (this.pasmMode == false) {
+      // compile PUB blocks
+      this.compilePubPriBlock(eValueType.block_pub);
+      // compile PRI blocks
+      const lastSymbolValue = this.compilePubPriBlock(eValueType.block_pri);
+      // here is @@enteroffset
+      /// record the final object image offset into the last symbol entry
+      this.objImage.replaceLong(this.objImage.offset, (lastSymbolValue & 0xfffff) << 2);
+    }
+  }
+
+  private compilePubPriBlock(blockType: eValueType): number {
+    // here is compile_sub_blocks: @@compile
+    // XYZZY need code here compilePubPriBlock()
+    // XYZZY we are here...
+    let lastSymbolValueSeen: number = 0;
+    let parameterCount: number = 0;
+    let resultCount: number = 0;
+
+    // fake to fix compile - remove this
+    const subStartIndex: number = 0;
+
+    this.elementIndex = 0; // reset element list
+    while (this.nextBlock(blockType)) {
+      // here is @@nextblock:
+      this.getElement();
+      if (this.currElement.type != eElementType.type_undefined) {
+        // [error_eaumn]
+        throw new Error('Expected a unique method name');
+      }
+      // here is @@newsub:
+      const symbolName: string = this.currElement.stringValue;
+      parameterCount = 0;
+      resultCount = 0;
+      this.getLeftParen();
+      if (this.checkRightParen() == false) {
+        // have parameters
+        // here is @@param:
+        do {
+          this.getElement();
+          if (this.currElement.type == eElementType.type_undefined) {
+            // [error_eaupn]
+            throw new Error('Expected a unique parameter name');
+          }
+          parameterCount++;
+          if (parameterCount > this.params_limit) {
+            // [error_loxpe]
+            throw new Error(`Limit of ${this.params_limit} parameters exceeded`);
+          }
+        } while (this.getCommaOrRightParen());
+      }
+      // no parameters
+      // here is @@noparams:
+      if (this.checkColon()) {
+        // here is @@result:
+        do {
+          this.getElement();
+          if (this.currElement.type == eElementType.type_undefined) {
+            // [error_eaurn]
+            throw new Error('Expected a unique result name');
+          }
+          resultCount++;
+          if (resultCount > this.results_limit) {
+            // [error_loxre]
+            throw new Error(`Limit of ${this.results_limit} results exceeded`);
+          }
+        } while (this.checkComma());
+      }
+      // here is @@noresults
+      // do we have any local variables...
+      if (this.getPipeOrEnd()) {
+        // have locals
+        do {
+          // here is @@local:
+          this.currElement = this.getElement(); // assignment gets past lint warning
+          const [foundAlign, alignMask] = this.checkAlign(); // alignw, alignl?
+          if (foundAlign) {
+            this.getElement(); // skip alignw/alignl
+          }
+          // here is @@noalign:
+          if (this.currElement.type == eElementType.type_size) {
+            this.getElement(); // skip BYTE/WORD/LONG
+          }
+          if (this.currElement.type == eElementType.type_undefined) {
+            // [error_eauvnsa]
+            throw new Error('Expected a unique variable name, BYTE, WORD, LONG, ALIGNW, or ALIGNL');
+          }
+          // if array index, skip it
+          if (this.checkLeftBracket()) {
+            this.scanToRightBracket();
+          }
+        } while (this.getCommaOrEndOfLine());
+      }
+      // here is @@nolocals:
+      const subIndex: number = this.objImage.offset >> 2;
+      if (subIndex - subStartIndex > this.subs_limit) {
+        // [error_loxppme]
+        throw new Error(`Limit of ${this.subs_limit} PUB/PRI methods exceeded`);
+      }
+      const symMethodDetails: number = (parameterCount << 24) | (resultCount << 20) | subIndex;
+      const newSymbol: iSymbol = { name: symbolName, type: eElementType.type_method, value: BigInt(symMethodDetails) };
+      //this.logMessage(`* compilePubPriBlockId() calling record symbol [${newSymbol}]`);
+      this.recordSymbol(newSymbol); // PUB/PRI symbol name
+      const objMethodDetails: number = 0x80000000 | (parameterCount << 24) | (resultCount << 20);
+      this.objWrLong(objMethodDetails);
+      // if we have a PUB method...
+      if (blockType == eValueType.block_pub) {
+        // record Objects' PUB method details: symbol, number results, number parameters
+        this.objWrPubSymbol(symbolName, resultCount, parameterCount);
+      }
+      // here is @@notpub:
+    }
+    return lastSymbolValueSeen;
   }
 
   // ---------------------------------------------------------------
@@ -3236,7 +3481,7 @@ export class SpinResolver {
     const symbolType: eElementType = symbolValue.isFloat ? eElementType.type_con_float : eElementType.type_con;
     // write info to object pub/con list
     const interfaceType: number = symbolValue.isFloat ? 17 : 16;
-    this.recordObjectConstant(symbolName, interfaceType, symbolValue.value);
+    this.objWrConstant(symbolName, interfaceType, symbolValue.value);
     // record our symbol
     this.mainSymbols.add(symbolName, symbolType, symbolValue.value);
     const symbolNumber = this.mainSymbols.length;
@@ -3248,16 +3493,6 @@ export class SpinResolver {
   private checkImportedParam() {
     //  checkParam - is parameter? substitute value
     // XYZZY checkImportedParam()
-  }
-
-  private recordObjectConstant(name: string, type: number, value: bigint) {
-    // add to this objects' public interface
-    // XYZZY recordObjectConstant()
-  }
-
-  private recordPub(name: string, resultCount: number, parameterCount: number) {
-    // add to this objects' public interface
-    // XYZZY recordPub()
   }
 
   private verify(value: iValueReturn) {
@@ -5005,6 +5240,16 @@ export class SpinResolver {
     this.objImage.append(byteValue & 0xff);
   }
 
+  private objWrPubSymbol(name: string, resultCount: number, paramterCount: number) {
+    // add to this objects' public interface
+    // XYZZY objWrPubSymbol()
+  }
+
+  private objWrConstant(name: string, type: number, value: bigint) {
+    // add to this objects' public interface
+    // XYZZY objWrConstant()
+  }
+
   private trySpin2ConExpression(): iValueReturn {
     // PNut try_spin2_con_exp:
     const valueResult: iValueReturn = { value: 0n, isResolved: false, isFloat: false };
@@ -5576,6 +5821,18 @@ export class SpinResolver {
       throw new Error('Expected "," or ")"');
     }
     return foundCommaStatus;
+  }
+
+  private getPipeOrEnd(): boolean {
+    let foundPipeStatus: boolean = false;
+    this.getElement();
+    if (this.currElement.operation == eOperationType.op_bitor) {
+      foundPipeStatus = true;
+    } else if (this.currElement.type != eElementType.type_end) {
+      // [error_epoeol]
+      throw new Error('Expected "|" or end of line');
+    }
+    return foundPipeStatus;
   }
 
   private compileVariable(variable: iVariableReturn) {
