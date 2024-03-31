@@ -17,8 +17,6 @@ import { SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
-import { throws } from 'assert';
-import { runInThisContext } from 'vm';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -184,14 +182,15 @@ export class SpinResolver {
   private readonly pasmRegs: number = 0x1d8; // address
   private readonly inlineLocalsStart: number = 0x1e0; // address
   private readonly clkfreqAddress: number = 0x44; // address
-  private readonly results_limit: number = 15; // max return values
-  private readonly params_limit: number = 127; // max parameter values
+  private readonly results_limit: number = 15; // max return value LONGs
+  private readonly params_limit: number = 127; // max parameter value LONGs
   private readonly if_limit: number = 256; // max if-chain length
   private readonly case_limit: number = 256; // max cases
   private readonly case_fast_limit: number = 256; // max cases
   private readonly subs_limit: number = 1024; // max PUB/PRI count
   private readonly objs_limit: number = 1024; // max object count
   private readonly distiller_limit: number = 0x4000; // max distiller limit
+  private readonly locals_limit: number = 0x10000 + this.params_limit * 4 + this.results_limit * 4;
 
   // VAR processing support data
   private varPtr: number = 4;
@@ -2224,19 +2223,19 @@ export class SpinResolver {
     if (this.pasmMode == false) {
       const subStartIndex: number = this.objImage.offset >> 2;
       // compile PUB blocks
-      const pubsFound = this.compilePubPriBlockId(eValueType.block_pub, subStartIndex);
+      const pubsFound = this.compilePubPriBlocksId(eValueType.block_pub, subStartIndex);
       // if we didn't find any PUB blocks
       if (pubsFound == false) {
         // [error_npmf]
         throw new Error('No PUB method or DAT block found');
       }
       // compile PRI blocks
-      this.compilePubPriBlockId(eValueType.block_pri, subStartIndex);
+      this.compilePubPriBlocksId(eValueType.block_pri, subStartIndex);
       this.objWrLong(0); // enter 0 (future size) into index
     }
   }
 
-  private compilePubPriBlockId(blockType: eValueType, subStartIndex: number): boolean {
+  private compilePubPriBlocksId(blockType: eValueType, subStartIndex: number): boolean {
     // here is compile_sub_blocks_id: @@compile
     // this locates PUB and PRI blocks, validates and emits symbols and obj public interface
     let foundBlocksStatus: boolean = false;
@@ -2261,7 +2260,7 @@ export class SpinResolver {
         // here is @@param:
         do {
           this.getElement();
-          if (this.currElement.type == eElementType.type_undefined) {
+          if (this.currElement.type != eElementType.type_undefined) {
             // [error_eaupn]
             throw new Error('Expected a unique parameter name');
           }
@@ -2278,7 +2277,7 @@ export class SpinResolver {
         // here is @@result:
         do {
           this.getElement();
-          if (this.currElement.type == eElementType.type_undefined) {
+          if (this.currElement.type != eElementType.type_undefined) {
             // [error_eaurn]
             throw new Error('Expected a unique result name');
           }
@@ -2304,7 +2303,7 @@ export class SpinResolver {
           if (this.currElement.type == eElementType.type_size) {
             this.getElement(); // skip BYTE/WORD/LONG
           }
-          if (this.currElement.type == eElementType.type_undefined) {
+          if (this.currElement.type != eElementType.type_undefined) {
             // [error_eauvnsa]
             throw new Error('Expected a unique variable name, BYTE, WORD, LONG, ALIGNW, or ALIGNL');
           }
@@ -2322,7 +2321,7 @@ export class SpinResolver {
       }
       const symMethodDetails: number = (parameterCount << 24) | (resultCount << 20) | subIndex;
       const newSymbol: iSymbol = { name: symbolName, type: eElementType.type_method, value: BigInt(symMethodDetails) };
-      //this.logMessage(`* compilePubPriBlockId() calling record symbol [${newSymbol}]`);
+      //this.logMessage(`* compilePubPriBlocksId() calling record symbol [${newSymbol}]`);
       this.recordSymbol(newSymbol); // PUB/PRI symbol name
       const objMethodDetails: number = 0x80000000 | (parameterCount << 24) | (resultCount << 20);
       this.objWrLong(objMethodDetails);
@@ -2343,53 +2342,47 @@ export class SpinResolver {
     // PNut compile_sub_blocks:
     if (this.pasmMode == false) {
       // compile PUB blocks
-      this.compilePubPriBlock(eValueType.block_pub);
+      const lastPubSymbolValue = this.compilePubPriBlocks(eValueType.block_pub);
       // compile PRI blocks
-      const lastSymbolValue = this.compilePubPriBlock(eValueType.block_pri);
+      const lastPriSymbolValue = this.compilePubPriBlocks(eValueType.block_pri);
       // here is @@enteroffset
+      const finalSymbolValue = lastPriSymbolValue == 0 ? lastPubSymbolValue : lastPriSymbolValue;
       /// record the final object image offset into the last symbol entry
-      this.objImage.replaceLong(this.objImage.offset, (lastSymbolValue & 0xfffff) << 2);
+      this.objImage.replaceLong(this.objImage.offset, ((finalSymbolValue + 1) & 0xfffff) << 2);
     }
   }
 
-  private compilePubPriBlock(blockType: eValueType): number {
+  private compilePubPriBlocks(blockType: eValueType): number {
     // here is compile_sub_blocks: @@compile
-    // XYZZY need code here compilePubPriBlock()
+    // XYZZY need code here compilePubPriBlocks()
     // XYZZY we are here...
-    let lastSymbolValueSeen: number = 0;
-    let parameterCount: number = 0;
-    let resultCount: number = 0;
-
-    // fake to fix compile - remove this
-    const subStartIndex: number = 0;
+    let localOffset: number = 0;
+    let localVariableOffset: number = 0;
+    let methodDetails: number = 0; // this is @@sub
 
     this.elementIndex = 0; // reset element list
     while (this.nextBlock(blockType)) {
       // here is @@nextblock:
+      this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
+
       this.getElement();
-      if (this.currElement.type != eElementType.type_undefined) {
-        // [error_eaumn]
-        throw new Error('Expected a unique method name');
-      }
-      // here is @@newsub:
-      const symbolName: string = this.currElement.stringValue;
-      parameterCount = 0;
-      resultCount = 0;
+      methodDetails = Number(this.currElement.bigintValue); // this is @@sub
+      localOffset = 0;
+
       this.getLeftParen();
       if (this.checkRightParen() == false) {
         // have parameters
-        // here is @@param:
+        // here is @@parameter:
         do {
           this.getElement();
-          if (this.currElement.type == eElementType.type_undefined) {
+          if (this.currElement.type != eElementType.type_undefined) {
             // [error_eaupn]
             throw new Error('Expected a unique parameter name');
           }
-          parameterCount++;
-          if (parameterCount > this.params_limit) {
-            // [error_loxpe]
-            throw new Error(`Limit of ${this.params_limit} parameters exceeded`);
-          }
+          const newParameterSymbol: iSymbol = { name: this.currElement.stringValue, type: eElementType.type_loc_long, value: BigInt(localOffset) };
+          //this.logMessage(`* compilePubPriBlocks() calling record symbol [${newSymbol}]`);
+          this.recordSymbol(newParameterSymbol); // parameter symbol name
+          localOffset += 4; // we wrote LONG
         } while (this.getCommaOrRightParen());
       }
       // no parameters
@@ -2398,62 +2391,76 @@ export class SpinResolver {
         // here is @@result:
         do {
           this.getElement();
-          if (this.currElement.type == eElementType.type_undefined) {
+          if (this.currElement.type != eElementType.type_undefined) {
             // [error_eaurn]
             throw new Error('Expected a unique result name');
           }
-          resultCount++;
-          if (resultCount > this.results_limit) {
-            // [error_loxre]
-            throw new Error(`Limit of ${this.results_limit} results exceeded`);
-          }
+          const newReturnSymbol: iSymbol = { name: this.currElement.stringValue, type: eElementType.type_loc_long, value: BigInt(localOffset) };
+          //this.logMessage(`* compilePubPriBlocks() calling record symbol [${newSymbol}]`);
+          this.recordSymbol(newReturnSymbol); // return symbol name
+          localOffset += 4; // we wrote LONG
         } while (this.checkComma());
       }
-      // here is @@noresults
+      // here is @@noresult
       // do we have any local variables...
+      localVariableOffset = localOffset;
       if (this.getPipeOrEnd()) {
         // have locals
         do {
-          // here is @@local:
+          // here is @@variable:
           this.currElement = this.getElement(); // assignment gets past lint warning
           const [foundAlign, alignMask] = this.checkAlign(); // alignw, alignl?
           if (foundAlign) {
+            if (localOffset & alignMask) {
+              localOffset = (localOffset | alignMask) + 1;
+            }
+            // here is @@aligned:
             this.getElement(); // skip alignw/alignl
           }
           // here is @@noalign:
+          let currSize: eWordSize = eWordSize.WS_Long;
           if (this.currElement.type == eElementType.type_size) {
+            currSize = Number(this.currElement.bigintValue);
             this.getElement(); // skip BYTE/WORD/LONG
           }
-          if (this.currElement.type == eElementType.type_undefined) {
+          const currType: eElementType = eElementType.type_loc_byte + currSize;
+          if (this.currElement.type != eElementType.type_undefined) {
             // [error_eauvnsa]
             throw new Error('Expected a unique variable name, BYTE, WORD, LONG, ALIGNW, or ALIGNL');
           }
+          const newLocalSymbol: iSymbol = { name: this.currElement.stringValue, type: currType, value: BigInt(localOffset) };
+          //this.logMessage(`* compilePubPriBlocks() calling record symbol [${newSymbol}]`);
+          this.recordSymbol(newLocalSymbol); // return symbol name
+          let currArraySize: number = 1;
           // if array index, skip it
           if (this.checkLeftBracket()) {
-            this.scanToRightBracket();
+            const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+            currArraySize = Number(valueReturn.value);
+            this.getRightBracket();
+          }
+          localOffset += (1 << currSize) * currArraySize;
+          if (localOffset > this.locals_limit) {
+            // [error_loxlve]
+            throw new Error('Limit of 64KB of local variables exceeded');
           }
         } while (this.getCommaOrEndOfLine());
       }
-      // here is @@nolocals:
-      const subIndex: number = this.objImage.offset >> 2;
-      if (subIndex - subStartIndex > this.subs_limit) {
-        // [error_loxppme]
-        throw new Error(`Limit of ${this.subs_limit} PUB/PRI methods exceeded`);
+      // here is @@novariables:
+      /// record the final object image offset into the last symbol entry
+      this.objImage.replaceLong(this.objImage.offset, (methodDetails & 0xfffff) << 2);
+      let localSize: number = localOffset - localVariableOffset;
+      if (localSize & 0b11) {
+        localSize += 4; // add a long (we'll round extra off later)
       }
-      const symMethodDetails: number = (parameterCount << 24) | (resultCount << 20) | subIndex;
-      const newSymbol: iSymbol = { name: symbolName, type: eElementType.type_method, value: BigInt(symMethodDetails) };
-      //this.logMessage(`* compilePubPriBlockId() calling record symbol [${newSymbol}]`);
-      this.recordSymbol(newSymbol); // PUB/PRI symbol name
-      const objMethodDetails: number = 0x80000000 | (parameterCount << 24) | (resultCount << 20);
-      this.objWrLong(objMethodDetails);
-      // if we have a PUB method...
-      if (blockType == eValueType.block_pub) {
-        // record Objects' PUB method details: symbol, number results, number parameters
-        this.objWrPubSymbol(symbolName, resultCount, parameterCount);
-      }
-      // here is @@notpub:
+      this.compileRfvar(BigInt(localSize >> 2));
+      const methodResultCount: number = (methodDetails >> 20) & 0x0f;
+      this.subResults = methodResultCount;
+      this.compileTopBlock(); // compile top instruction block
+      // TODO: this is where INFO data would be recorded FIXME: do we want to do this? add later
+      this.localSymbols.reset();
+      this.activeSymbolTable = eSymbolTableId.STI_MAIN;
     }
-    return lastSymbolValueSeen;
+    return methodDetails;
   }
 
   // ---------------------------------------------------------------
@@ -2463,6 +2470,7 @@ export class SpinResolver {
   private compileTopBlock() {
     // Compile instruction block
     // PNut compile_top_block:
+    this.logMessage(`* compileTopBlock()`);
     this.blockStack.reset();
     this.scopeColumn = 0; // effectively -1
     this.compileBlock();
@@ -2472,6 +2480,7 @@ export class SpinResolver {
   private compileBlock() {
     // PNut compile_block:
     const savedScopeColumn: number = this.scopeColumn;
+    this.logMessage(`* compileBlock() savedScopeColumn=(${savedScopeColumn})`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.getElement();
@@ -2942,6 +2951,7 @@ export class SpinResolver {
     //   bstack[0] = 'next' address
     //   bstack[1] = 'quit' address
     //   bstack[2] = loop address
+    this.logMessage(`* cb_repeat() ENTRY`);
     this.scopeColumn = this.lineColumn;
     this.new_bnest(eElementType.type_repeat, 3);
     this.getElement();
@@ -2952,25 +2962,29 @@ export class SpinResolver {
     } else if (this.currElement.type == eElementType.type_until) {
       this.optimizeBlock(eOptimizerMethod.OM_RepeatPreWhileUntil, eByteCode.bc_jnz);
     } else {
-      this.backElement();
-      const savedElementIndex = this.elementIndex - 1;
+      this.backElement(); // reposition to count?
+      const savedExpressionElementIndex = this.saveElementLocation();
       this.skipExpression();
       this.currElement = this.getElement();
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedExpressionElementIndex);
       if (this.currElement.type == eElementType.type_end) {
         // @@count
+        this.logMessage(`*  -- @@count`);
         this.redo_bnest(eElementType.type_repeat_count);
         this.optimizeBlock(eOptimizerMethod.OM_RepeatCount);
       } else if (this.currElement.type == eElementType.type_with) {
         // @@countvar
+        this.logMessage(`*  -- @@countvar`);
         this.redo_bnest(eElementType.type_repeat_count_var);
         this.optimizeBlock(eOptimizerMethod.OM_RepeatCountVar);
       } else {
+        this.logMessage(`*  -- @@var`);
         this.redo_bnest(eElementType.type_repeat_var);
         this.optimizeBlock(eOptimizerMethod.OM_RepeatVar);
       }
     }
     this.end_bnest();
+    this.logMessage(`* cb_repeat() EXIT`);
   }
 
   private blockRepeat(isPostWhileUntil: boolean): boolean {
@@ -4394,7 +4408,7 @@ export class SpinResolver {
       }
     } while (this.getCommaOrRightParen());
     this.objWrByte(0); // emit string terminator
-    this.objImage.write(stringLength, patchLocation);
+    this.objImage.replaceByte(stringLength, patchLocation);
   }
 
   private ct_conlstr() {
@@ -4418,8 +4432,8 @@ export class SpinResolver {
         throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
       }
     } while (this.getCommaOrRightParen());
-    this.objImage.write(stringLength, patchLocation);
-    this.objImage.write(stringLength - 1, patchLocation + 1);
+    this.objImage.replaceByte(stringLength, patchLocation);
+    this.objImage.replaceByte(stringLength - 1, patchLocation + 1);
   }
 
   private ct_condata(wordSize: eWordSize) {
@@ -4466,7 +4480,7 @@ export class SpinResolver {
         throw new Error('BYTE/WORD/LONG data cannot exceed 255 bytes');
       }
     } while (this.getCommaOrRightParen());
-    this.objImage.write(dataLength, patchLocation);
+    this.objImage.replaceByte(dataLength, patchLocation);
   }
 
   private ct_try(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
@@ -4586,6 +4600,7 @@ export class SpinResolver {
   private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
     // Optimizing block compiler
     // PNut optimize_block:
+    this.logMessage(`* optimizeBlock(${eOptimizerMethod[methodId]}, (${subType}))`);
     const savedElementIndex = this.elementIndex - 1;
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
@@ -4632,6 +4647,7 @@ export class SpinResolver {
           break;
       }
       notDone = lastOffset != this.objImage.offset;
+      this.logMessage(`* optimizeBlock() lastOffset=(${lastOffset}), this.objImage.offset=(${this.objImage.offset})`);
       lastOffset = this.objImage.offset;
     } while (notDone);
   }
@@ -4725,7 +4741,7 @@ export class SpinResolver {
         // eslint-disable-next-line no-constant-condition
       } while (true);
       this.objWrByte(0); // emit string terminator
-      this.objImage.write(stringLength, patchLocation); // replace the placeholder with length
+      this.objImage.replaceByte(stringLength, patchLocation); // replace the placeholder with length
     } else if (this.currElement.type == eElementType.type_obj) {
       // here is @@object:
       const objectIndex: number = Number(this.currElement.bigintValue);
@@ -5090,7 +5106,7 @@ export class SpinResolver {
       }
     } while (this.getCommaOrRightParen());
     // and place final data length just before data in object
-    this.objImage.write(dataCount, offSetToLength);
+    this.objImage.replaceByte(dataCount, offSetToLength);
   }
 
   private compileConString() {
@@ -5115,7 +5131,7 @@ export class SpinResolver {
     } while (this.getCommaOrRightParen());
     this.objWrByte(0); // place zero terminator
     // and place final string length just before string in object
-    this.objImage.write(charCount + 1, offSetToLength);
+    this.objImage.replaceByte(charCount + 1, offSetToLength);
   }
 
   private compileConLString() {
@@ -5140,9 +5156,9 @@ export class SpinResolver {
       }
     } while (this.getCommaOrRightParen());
     // and place interpreter string length just before length and string in object
-    this.objImage.write(charCount + 1, offSetToLength);
+    this.objImage.replaceByte(charCount + 1, offSetToLength);
     // and place final string length just before string in object
-    this.objImage.write(charCount, offSetToLength + 1);
+    this.objImage.replaceByte(charCount, offSetToLength + 1);
   }
 
   private enterExpOp(element: SpinElement) {
@@ -5260,6 +5276,7 @@ export class SpinResolver {
       this.resolveExp(eMode.BM_Spin2, eResolve.BR_Must, this.lowestPrecedence);
     } catch (error) {
       // code to handle the exception
+      this.logMessage(`!!! trySpin2ConExpression() caught INTERNAL error`);
       if (error instanceof Error) {
         if (error.message !== '[INTERNAL] Spin2 Constant failed to resolve') {
           // forward to actually cause our compiler stop
@@ -5282,7 +5299,7 @@ export class SpinResolver {
   private resolveExp(mode: eMode, resolve: eResolve, precedence: number) {
     // leaves answer on stack
     let currPrecedence: number = precedence;
-    //this.logMessage(`resolveExp(${precedence}) - ENTRY`);
+    this.logMessage(`resolveExp(${precedence}) - ENTRY`);
     if (--currPrecedence < 0) {
       // we need to resove the term!
 
@@ -5346,7 +5363,7 @@ export class SpinResolver {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         this.getElement();
-        this.logMessage(`* resolvExp() LOOP currElement=[${this.currElement.toString()}]`);
+        this.logMessage(`* resolvExp() LOOP currElement=[${this.currElement.toString()}] currPrec=${currPrecedence} prec=${precedence}`);
         const activeOperation: eOperationType = this.currElement.operation;
         const activePrecedence: number = this.currElement.precedence;
         const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
@@ -6653,6 +6670,18 @@ export class SpinResolver {
     return Number(element.value);
   }
 
+  private saveElementLocation(): number {
+    // return current index for later restore
+    const savedIndex: number = this.elementIndex + 1;
+    this.logMessage(`*** SAVEd Element Index (${savedIndex})`);
+    return savedIndex;
+  }
+
+  private restoreElementLocation(savedLocation: number) {
+    this.logMessage(`*** RESTOREd Element Index (${this.elementIndex}) -> (${savedLocation})`);
+    this.elementIndex = savedLocation;
+  }
+
   private getElement(): SpinElement {
     //this.logMessage(`* Element Index=(${this.elementIndex + 1})`);
     if (this.spinElements.length == 0) {
@@ -6705,7 +6734,7 @@ export class SpinResolver {
     if (this.currElement.sourceColumnOffset != 0) {
       this.lineColumn = this.currElement.sourceColumnOffset;
     }
-    this.logMessage(`* BACKele i#${this.elementIndex}, e=[${this.currElement.toString()}]`);
+    this.logMessage(`* BACKele i#${this.elementIndex - 1}, e=[${this.currElement.toString()}]`);
   }
 
   private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConBlock: boolean): bigint {

@@ -1,0 +1,4 @@
+pub go()
+
+  repeat 10
+    pintoggle(0)

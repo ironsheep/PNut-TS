@@ -34,6 +34,7 @@ export class ObjectImage {
 
   public append(uint8: number) {
     // append byte to end of image
+    this.logMessage(`* OBJ: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset - 1)})`);
     if (this._objOffset < ObjectImage.MAX_SIZE_IN_BYTES) {
       this._objImage[this._objOffset++] = uint8;
     } else {
@@ -61,18 +62,40 @@ export class ObjectImage {
     return desiredValue;
   }
 
-  public write(uint8: number, offset: number) {
+  private hexByte(uint8: number): string {
+    return `$${uint8.toString(16).padStart(2, '0')}`;
+  }
+
+  private hexWord(uint16: number): string {
+    return `$${uint16.toString(16).padStart(4, '0')}`;
+  }
+
+  private hexLong(uint32: number): string {
+    return `$${uint32.toString(16).padStart(8, '0')}`;
+  }
+
+  private hexOffset(uint32: number): string {
+    return `$${uint32.toString(16).padStart(5, '0')}`;
+  }
+
+  public replaceByte(uint8: number, offset: number) {
     // replace existing value within image
+    this.logMessage(`* OBJ: replaceByte(v=(${this.hexByte(uint8)}), addr(${this.hexOffset(offset)}))`);
     if (offset >= 0 && offset <= this._objOffset - 1) {
       this._objImage[offset] = uint8;
+    } else {
+      this.logMessage(`* OBJ: ERROR BAD address! replaceByte(v=(${this.hexByte(uint8)}), addr(${this.hexOffset(offset)}))`);
     }
   }
 
   public replaceWord(uint16: number, offset: number) {
     // replace existing value within image
+    this.logMessage(`* OBJ: replaceWord(v=(${this.hexWord(uint16)}), addr(${this.hexOffset(offset)}))`);
     if (offset >= 0 && offset <= this._objOffset - 2) {
       this._objImage[offset] = uint16 & 0xff;
       this._objImage[offset + 1] = (uint16 >> 8) & 0xff;
+    } else {
+      this.logMessage(`* OBJ: ERROR BAD address! replaceWord(v=(${this.hexWord(uint16)}), addr(${this.hexOffset(offset)}))`);
     }
   }
 
@@ -81,11 +104,19 @@ export class ObjectImage {
     if (offset >= 0 && offset <= this._objOffset - 4) {
       this.replaceWord(uint32, offset);
       this.replaceWord(uint32 >> 16, offset + 2);
+    } else {
+      this.logMessage(`* OBJ: ERROR BAD address! replacereplaceLongWord(v=(${this.hexLong(uint32)}), addr(${this.hexOffset(offset)}))`);
     }
   }
 
   public reset() {
     // effectively empty our image
     this._objOffset = 0;
+  }
+
+  private logMessage(message: string): void {
+    if (this.isLogging) {
+      this.context.logger.logMessage(message);
+    }
   }
 }

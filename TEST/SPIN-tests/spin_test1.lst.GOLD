@@ -1,0 +1,15 @@
+TYPE: METHOD            VALUE: 00000000          NAME: GO
+TYPE: CON               VALUE: 00000000          NAME: CLKMODE_
+TYPE: CON               VALUE: 01312D00          NAME: CLKFREQ_
+
+Spin2_v41
+
+CLKMODE:   $00000000
+CLKFREQ:  20_000_000
+XINFREQ:           0
+
+
+OBJ bytes:          16
+VAR bytes:           4
+
+00000- 08 00 00 80 0F 00 00 00 00 AB A1 38 16 7D 04 00   '...........8.}..'
