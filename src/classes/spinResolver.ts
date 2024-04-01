@@ -5548,7 +5548,9 @@ export class SpinResolver {
           resultStatus.value = numberToBigIntFloat32(floatValue);
         } else if (this.currElement.type == eElementType.type_trunc || this.currElement.type == eElementType.type_round) {
           // have TRUNC() or ROUND()
+          const origElementType: eElementType = this.currElement.type;
           // TODO: determine if we care about overflow checking... because we don't do any here
+          //this.logMessage(`* getCon() type=[${eElementType[this.currElement.type]}]`);
           this.checkIntMode();
           this.getLeftParen();
           this.mathMode = eMathMode.MM_FloatMode;
@@ -5560,14 +5562,16 @@ export class SpinResolver {
           const float32Value = this.numberStack.pop(); // get result
           // convert uint32 to float
           const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
-          if (this.currElement.type == eElementType.type_trunc) {
+          //this.logMessage(`* getCon() round/trunc float64Value=[0x${float64Value.toString(16).toUpperCase().padStart(8, '0')}]`);
+          if (origElementType == eElementType.type_trunc) {
             // truncate our float value
             const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
             // return the converted result
             resultStatus.value = BigInt(truncatedUInt32);
-          } else if (this.currElement.type == eElementType.type_round) {
+          } else if (origElementType == eElementType.type_round) {
             // truncate our float value
             const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
+            //this.logMessage(`* getCon() round/trunc roundedUInt32=[0x${roundedUInt32.toString(16).toUpperCase().padStart(8, '0')}]`);
             // return the converted result
             resultStatus.value = BigInt(roundedUInt32);
           }
