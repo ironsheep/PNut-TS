@@ -62,6 +62,16 @@ export class ObjectImage {
     return desiredValue;
   }
 
+  public readLong(offset: number): number {
+    // read existing word from image
+    let desiredValue: number = 0;
+    if (offset >= 0 && offset <= this._objOffset - 4) {
+      desiredValue = this.readWord(offset);
+      desiredValue |= this.readWord(offset + 2) << 16;
+    }
+    return desiredValue;
+  }
+
   private hexByte(uint8: number): string {
     return `$${uint8.toString(16).padStart(2, '0')}`;
   }

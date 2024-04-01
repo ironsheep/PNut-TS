@@ -29,7 +29,7 @@ interface iVariableReturn {
   isVariable: boolean;
   type: eElementType;
   address: number;
-  elementIndex: number;
+  nextElementIndex: number;
   wordSize: eWordSize;
   sizeOverrideFlag: boolean;
   indexFlag: boolean;
@@ -132,7 +132,7 @@ export class SpinResolver {
   private isLogging: boolean = false;
   // data from our elemtizer and navigation variables
   private spinElements: SpinElement[] = [];
-  private elementIndex: number = 0;
+  private nextElementIndex: number = 0;
   private currElement: SpinElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0); // dummy element
   // parser state
   private mathMode: eMathMode = eMathMode.MM_Unknown;
@@ -234,6 +234,10 @@ export class SpinResolver {
   get varBytes(): number {
     return this.varPtr;
   }
+
+  get objBytes(): number {
+    return this.objImage.offset;
+  }
   // for lister  ^^^
 
   public compile1() {
@@ -272,7 +276,7 @@ export class SpinResolver {
       }
       this.compile_dat_blocks();
       this.compile_sub_blocks();
-      //this.compile_obj_blocks();
+      this.compile_obj_blocks();
       //this.distill_obj_blocks();
       //this.point_to_con();
       //this.collapse_debug_data();
@@ -315,7 +319,7 @@ export class SpinResolver {
     // determine_mode:
     let pasmModeStatus: boolean = true;
     let element: SpinElement;
-    this.elementIndex = 0; // do block search from head of element list
+    this.nextElementIndex = 0; // do block search from head of element list
     do {
       element = this.getElement();
 
@@ -338,7 +342,7 @@ export class SpinResolver {
     // Compile var blocks
     this.logMessage('* compile_var_blocks()');
     this.varPtr = 4; // leave room for the long pointer to object
-    this.elementIndex = 0; // start from head of element list
+    this.nextElementIndex = 0; // start from head of element list
 
     // for each VAR block...
     while (this.nextBlock(eValueType.block_var)) {
@@ -657,7 +661,7 @@ export class SpinResolver {
     // remember where we are starting from in OBJ image, with local labelling and with
     const startingObjOffset: number = this.objImage.offset;
     const startingAsmLocal: number = this.asmLocal;
-    const startingElementIndex: number = this.elementIndex;
+    const startingElementIndex: number = this.nextElementIndex;
 
     let pass: number = 0;
     do {
@@ -666,7 +670,7 @@ export class SpinResolver {
       this.pasmResolveMode = pass == 0 ? eResolve.BR_Try : eResolve.BR_Must;
       this.objImage.setOffsetTo(startingObjOffset);
       this.asmLocal = startingAsmLocal;
-      this.elementIndex = startingElementIndex;
+      this.restoreElementLocation(startingElementIndex);
       this.hubOrg = 0x00000; // get constant(getValue) will use this
       this.hubOrgLimit = 0x100000; // get constant(getValue) will use this;
       this.wordSize = eWordSize.WS_Byte; // 0=byte, 1=word, 2=long
@@ -675,7 +679,7 @@ export class SpinResolver {
         this.hubMode = false;
         this.cogOrg = inLineCogOrg;
         this.cogOrgLimit = inLineCogOrgLimit;
-        this.elementIndex = startingElementIndex;
+        this.restoreElementLocation(startingElementIndex);
       } else {
         this.hubMode = true;
         this.cogOrg = 0x000 << 2;
@@ -684,7 +688,7 @@ export class SpinResolver {
         this.hubOrg = this.pasmMode ? this.objImage.offset : 0x00400;
         this.orghOffset = this.hubOrg - this.objImage.offset;
         this.hubOrgLimit = 0x100000;
-        this.elementIndex = 0; // reset to head of file
+        this.nextElementIndex = 0; // reset to head of file
       }
       do {
         // NEXT BLOCK Loop
@@ -2242,7 +2246,7 @@ export class SpinResolver {
     let parameterCount: number = 0;
     let resultCount: number = 0;
 
-    this.elementIndex = 0; // reset element list
+    this.nextElementIndex = 0; // reset element list
     while (this.nextBlock(blockType)) {
       // here is @@nextblock:
       this.getElement();
@@ -2348,7 +2352,9 @@ export class SpinResolver {
       // here is @@enteroffset
       const finalSymbolValue = lastPriSymbolValue == 0 ? lastPubSymbolValue : lastPriSymbolValue;
       /// record the final object image offset into the last symbol entry
-      this.objImage.replaceLong(this.objImage.offset, ((finalSymbolValue + 1) & 0xfffff) << 2);
+      const longAddress: number = ((finalSymbolValue + 1) & 0xfffff) << 2;
+      const currLongValue: number = this.objImage.readLong(longAddress);
+      this.objImage.replaceLong(currLongValue | this.objImage.offset, longAddress);
     }
   }
 
@@ -2360,7 +2366,7 @@ export class SpinResolver {
     let localVariableOffset: number = 0;
     let methodDetails: number = 0; // this is @@sub
 
-    this.elementIndex = 0; // reset element list
+    this.nextElementIndex = 0; // reset element list
     while (this.nextBlock(blockType)) {
       // here is @@nextblock:
       this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
@@ -2447,7 +2453,9 @@ export class SpinResolver {
       }
       // here is @@novariables:
       /// record the final object image offset into the last symbol entry
-      this.objImage.replaceLong(this.objImage.offset, (methodDetails & 0xfffff) << 2);
+      const longAddress: number = (methodDetails & 0xfffff) << 2;
+      const currLongValue: number = this.objImage.readLong(longAddress);
+      this.objImage.replaceLong(currLongValue | this.objImage.offset, longAddress);
       let localSize: number = localOffset - localVariableOffset;
       if (localSize & 0b11) {
         localSize += 4; // add a long (we'll round extra off later)
@@ -2470,7 +2478,7 @@ export class SpinResolver {
   private compileTopBlock() {
     // Compile instruction block
     // PNut compile_top_block:
-    this.logMessage(`* compileTopBlock()`);
+    this.logMessage(`*==* compileTopBlock()`);
     this.blockStack.reset();
     this.scopeColumn = 0; // effectively -1
     this.compileBlock();
@@ -2480,7 +2488,7 @@ export class SpinResolver {
   private compileBlock() {
     // PNut compile_block:
     const savedScopeColumn: number = this.scopeColumn;
-    this.logMessage(`* compileBlock() savedScopeColumn=(${savedScopeColumn})`);
+    this.logMessage(`*==* compileBlock() savedScopeColumn=(${savedScopeColumn})`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.getElement();
@@ -2600,7 +2608,7 @@ export class SpinResolver {
     this.compile_bstack_address(0); // compile final address
     this.compileExpression(); // compile case "target" value
     this.getEndOfLine();
-    const savedCaseStartElementIndex = this.elementIndex - 1; // rember location of 1st case statement
+    const savedCaseStartElementIndex = this.saveElementLocation(); // rember location of 1st case statement
     let caseCount: number = 0; // this is PNut ecx[30-0]
     let haveOtherCase: boolean = false; // this is PNut ecx[31] bit of register
     let otherCaseElementIndex: number = 0; // this is PNut edx register
@@ -2629,7 +2637,7 @@ export class SpinResolver {
         haveOtherCase = true;
         this.getElement();
         // save this index for 2nd loop
-        otherCaseElementIndex = this.elementIndex - 1;
+        otherCaseElementIndex = this.saveElementLocation();
       } else {
         // here is @@notother1:
         if (++caseCount > this.case_limit) {
@@ -2654,7 +2662,7 @@ export class SpinResolver {
       throw new Error('No cases encountered');
     }
     if (haveOtherCase) {
-      this.elementIndex = otherCaseElementIndex;
+      this.restoreElementLocation(otherCaseElementIndex);
       this.getElement();
       this.getElement();
       const savedScopeColumn: number = this.scopeColumn;
@@ -2665,7 +2673,7 @@ export class SpinResolver {
     // here is @@noother:
     this.objWrByte(eByteCode.bc_case_done);
     // move back to beginning of case statement (1st match)
-    this.elementIndex = savedCaseStartElementIndex;
+    this.restoreElementLocation(savedCaseStartElementIndex);
     caseCount = 0; // ready to count again
 
     // eslint-disable-next-line no-constant-condition
@@ -2745,7 +2753,7 @@ export class SpinResolver {
     this.objWrLong(0); // enter spacer for rflong (-6)
     this.objWrWord(0); // enter spacer for rfword (-2)
     this.write_bstack_ptr(eCaseFast.CF_TablePtr);
-    this.write_bstack(eCaseFast.CF_SourcePtr, this.elementIndex - 1);
+    this.write_bstack(eCaseFast.CF_SourcePtr, this.nextElementIndex - 1);
     this.write_bstack(eCaseFast.CF_MinValue, 0x7fffffff);
     this.write_bstack(eCaseFast.CF_MaxValue, -0x80000000);
 
@@ -2818,7 +2826,7 @@ export class SpinResolver {
     } while (++caseIndex <= caseSpan);
 
     // point back to source after 'case_fast' line
-    this.elementIndex = this.read_bstack(eCaseFast.CF_SourcePtr);
+    this.restoreElementLocation(this.read_bstack(eCaseFast.CF_SourcePtr));
 
     // reset case count
     caseCount = 0; // ready to count again
@@ -2951,7 +2959,7 @@ export class SpinResolver {
     //   bstack[0] = 'next' address
     //   bstack[1] = 'quit' address
     //   bstack[2] = loop address
-    this.logMessage(`* cb_repeat() ENTRY`);
+    this.logMessage(`*==* cb_repeat() ENTRY`);
     this.scopeColumn = this.lineColumn;
     this.new_bnest(eElementType.type_repeat, 3);
     this.getElement();
@@ -3040,9 +3048,9 @@ export class SpinResolver {
   }
 
   private blockRepeatCount() {
-    // PNut cb_repeat: @@countcomp
+    // PNut cb_repeat: @@countcomp:
     // code for eOptimizerMethod.OM_RepeatCount
-
+    this.logMessage(`*==* blockRepeatCount() - ENTRY`);
     // compile count expression, check for constant
     const valueReturn: iValueReturn = this.compileExpressionCheckCon();
     this.getEndOfLine();
@@ -3064,6 +3072,7 @@ export class SpinResolver {
       this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_djnz);
       this.write_bstack_ptr(eRepeat.RP_QuitAddress);
     }
+    this.logMessage(`* blockRepeatCount() - EXIT`);
   }
 
   private blockRepeatCountVar() {
@@ -3112,7 +3121,7 @@ export class SpinResolver {
     const variableReturn: iVariableReturn = this.getVariable();
     this.getFrom();
     // remember the FROM expression start
-    const savedElementIndex = this.elementIndex - 1;
+    const savedElementIndex = this.saveElementLocation();
     this.skipExpression();
     this.getTo();
     this.compileExpression(); // compile TO expression
@@ -3319,10 +3328,26 @@ export class SpinResolver {
     );
   }
 
+  private compile_obj_blocks() {
+    // Compile obj data
+    // PNut compile_obj_blocks:
+    if (this.pasmMode == false) {
+      // dummy for now....
+      this.pad_obj_long();
+    }
+  }
+
+  private pad_obj_long() {
+    // pad object to next long
+    while (this.objImage.offset & 0b11) {
+      this.objWrByte(0);
+    }
+  }
+
   // TODO: upcoming: try spin2 constant expression
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
     // compile all CON blocks in file
-    this.elementIndex = 0; // reset to head of file
+    this.nextElementIndex = 0; // reset to head of file
 
     // move past opening CON if we have one
     if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eValueType.block_con) {
@@ -3709,7 +3734,7 @@ export class SpinResolver {
         this.ci_unary();
       }
       // remember this element
-      const savedElementIndex: number = this.elementIndex - 1;
+      const savedElementIndex: number = this.saveElementLocation();
       if (this.currElement.type == eElementType.type_under) {
         // _,... := param(s),... ?
         this.getComma(); // this works since we are at the beginning of line!
@@ -3776,11 +3801,11 @@ export class SpinResolver {
     // Compile multi-variable assignment - var,... := param(s),...
     // PNut compile_var_multi:
     const elementIndexStack: number[] = [];
-    this.elementIndex = startElementIndex;
+    this.restoreElementLocation(startElementIndex);
     let parameterCount: number = 0;
     // eslint-disable-next-line no-constant-condition
     do {
-      elementIndexStack.push(this.elementIndex - 1);
+      elementIndexStack.push(this.nextElementIndex - 1);
       if (this.checkUnderscore() == false) {
         this.getVariable();
       }
@@ -3789,14 +3814,14 @@ export class SpinResolver {
     this.getAssign();
     this.compileParametersNoParens(parameterCount);
     // capture ending index
-    const endElementIndex = this.elementIndex - 1;
+    const endElementIndex = this.saveElementLocation();
     // set up for count down...
     let remainingParameterCount: number = parameterCount;
     do {
       const tmpIndex: number | undefined = elementIndexStack.pop();
       // ensure no underflow
       if (tmpIndex !== undefined) {
-        this.elementIndex = tmpIndex;
+        this.restoreElementLocation(tmpIndex);
       } else {
         throw new Error('ERROR: [CODE] compileVariableMultiple() underflowed internal stack');
       }
@@ -3807,7 +3832,7 @@ export class SpinResolver {
       }
     } while (--remainingParameterCount);
     // restore to end of current assignment statement
-    this.elementIndex = endElementIndex;
+    this.restoreElementLocation(endElementIndex);
   }
 
   private compileInline() {
@@ -3957,7 +3982,7 @@ export class SpinResolver {
       // here is @@trynext
       let byteCount: number = 0;
       // remember start of constants
-      const savedElementIndex = this.elementIndex - 1;
+      const savedElementIndex = this.saveElementLocation();
       // count the number of constant-bytes in sequence
       do {
         // here is @@trybytes
@@ -3972,7 +3997,7 @@ export class SpinResolver {
       } while (this.checkComma());
 
       // return to start of constants
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       // if we have more than two constants...
       if (byteCount >= 2) {
         // we should declare this as string
@@ -4089,7 +4114,7 @@ export class SpinResolver {
       // ??var ?
       this.compileVariablePre(eByteCode.bc_var_rnd_push);
     } else {
-      const startElementIndex = this.elementIndex - 1;
+      const startElementIndex = this.saveElementLocation();
       const variableResult: iVariableReturn = this.checkVariable(); // var ?
       if (variableResult.isVariable == false) {
         // [error_eaet]
@@ -4155,7 +4180,7 @@ export class SpinResolver {
     if (paramCount > 0) {
       if (isPinField) {
         // we have a pinfield
-        const savedElementIndex: number = this.elementIndex - 1;
+        const savedElementIndex: number = this.saveElementLocation();
         const savedObjectOffset: number = this.objImage.offset;
         let remainingParamCount = paramCount;
         let numberReturnValues: number = this.compileParameter();
@@ -4165,7 +4190,7 @@ export class SpinResolver {
           if (this.checkDotDot()) {
             // restore locations (element index and object offset)
             this.objImage.setOffsetTo(savedObjectOffset);
-            this.elementIndex = savedElementIndex;
+            this.restoreElementLocation(savedElementIndex);
 
             let failedToResolveValue: boolean = false;
             const firstValueReturn = this.skipExpressionCheckCon();
@@ -4201,7 +4226,7 @@ export class SpinResolver {
               // one or more failures to resolve
               // restore locations (element index and object offset)
               this.objImage.setOffsetTo(savedObjectOffset);
-              this.elementIndex = savedElementIndex;
+              this.restoreElementLocation(savedElementIndex);
               this.compileExpression();
               this.getDotDot();
               this.compileExpression();
@@ -4216,14 +4241,14 @@ export class SpinResolver {
             // no DOT DOT
             // restore locations (element index and object offset)
             this.objImage.setOffsetTo(savedObjectOffset);
-            this.elementIndex = savedElementIndex;
+            this.restoreElementLocation(savedElementIndex);
             this.compileParametersNoParens(paramCount);
           }
         } else {
           // more than 1 return value
           // restore locations (element index and object offset)
           this.objImage.setOffsetTo(savedObjectOffset);
-          this.elementIndex = savedElementIndex;
+          this.restoreElementLocation(savedElementIndex);
           this.compileParametersNoParens(paramCount);
         }
       } else {
@@ -4334,7 +4359,7 @@ export class SpinResolver {
     //
     // PNut compile_parameter:
     let compiledParameterCount: number = -1; // flag saying we need to compile expression
-    const savedElementIndex: number = this.elementIndex - 1;
+    const savedElementIndex: number = this.saveElementLocation();
     this.getElement();
     if (this.currElement.type == eElementType.type_i_flex) {
       const flexResultCount: number = this.currElement.flexResultCount;
@@ -4350,7 +4375,7 @@ export class SpinResolver {
       let [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
       if (objSymType == eElementType.type_objpub) {
         // remember ct_objpub()
-        this.elementIndex = savedElementIndex;
+        this.restoreElementLocation(savedElementIndex);
         const returnValueCount: number = (objSymValue >> 20) & 0x0f;
         // PNut @@checkmult2:
         if (returnValueCount >= 2) {
@@ -4380,7 +4405,7 @@ export class SpinResolver {
     // if no count found so far then treat it as 1 and compile the expression
     if (compiledParameterCount == -1) {
       // PNut @@single:
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       this.compileExpression();
       compiledParameterCount = 1;
     }
@@ -4494,7 +4519,7 @@ export class SpinResolver {
       // \method({param,...}) ?
       this.ct_method(resultsNeeded, byteCode);
     } else {
-      const savedElementIndex: number = this.elementIndex - 1;
+      const savedElementIndex: number = this.saveElementLocation();
       const variableResult: iVariableReturn = this.checkVariable();
       if (variableResult.isVariable) {
         // \var({param,...}){:results} ?
@@ -4601,14 +4626,14 @@ export class SpinResolver {
     // Optimizing block compiler
     // PNut optimize_block:
     this.logMessage(`* optimizeBlock(${eOptimizerMethod[methodId]}, (${subType}))`);
-    const savedElementIndex = this.elementIndex - 1;
+    const savedElementIndex = this.saveElementLocation();
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
     let notDone: boolean = true;
     let isPostWhileUntil: boolean = false; // used in blockRepeat()
     do {
       // restore for next pass
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       this.objImage.setOffsetTo(savedObjOffset);
       // call block compiler
       switch (methodId) {
@@ -4658,7 +4683,7 @@ export class SpinResolver {
     this.getLeftParen();
     this.compileExpression();
     this.getComma();
-    const startElementIndex = this.elementIndex - 1;
+    const startElementIndex = this.saveElementLocation();
     this.getElement(); // method/obj/var
     let parameterCount: number = 0;
     if (this.currElement.type == eElementType.type_obj) {
@@ -4673,19 +4698,19 @@ export class SpinResolver {
       // here is @@method:
       parameterCount = (objSymValue >> 24) & 0x7f;
       this.compileParameters(parameterCount);
-      // compile a method point without affecting elementIndex
-      const savedElementIndex = this.elementIndex - 1; // push
-      this.elementIndex = startElementIndex;
+      // compile a method point without affecting nextElementIndex
+      const savedElementIndex = this.saveElementLocation(); // push
+      this.restoreElementLocation(startElementIndex);
       this.ct_at();
-      this.elementIndex = savedElementIndex; // pop
+      this.restoreElementLocation(savedElementIndex); // pop
     } else if (this.currElement.type == eElementType.type_method) {
       parameterCount = this.currElement.methodParameterCount;
       this.compileParameters(parameterCount);
-      // compile a method point without affecting elementIndex
-      const savedElementIndex = this.elementIndex - 1; // push
-      this.elementIndex = startElementIndex;
+      // compile a method point without affecting nextElementIndex
+      const savedElementIndex = this.saveElementLocation(); // push
+      this.restoreElementLocation(startElementIndex);
       this.ct_at();
-      this.elementIndex = savedElementIndex; // pop
+      this.restoreElementLocation(savedElementIndex); // pop
     } else {
       // method_ptr
       const variableReturn: iVariableReturn = this.checkVariable();
@@ -4694,13 +4719,13 @@ export class SpinResolver {
         throw new Error('Expected a method, object, or method pointer');
       }
       /// here is @@method_ptr:
-      this.elementIndex = startElementIndex;
+      this.restoreElementLocation(startElementIndex);
       this.getMethodPointer();
       parameterCount = this.compileParametersMethodPtr();
-      const savedElementIndex = this.elementIndex - 1; // push
-      this.elementIndex = startElementIndex;
+      const savedElementIndex = this.saveElementLocation(); // push
+      this.restoreElementLocation(startElementIndex);
       this.compileVariableRead();
-      this.elementIndex = savedElementIndex; // pop
+      this.restoreElementLocation(savedElementIndex); // pop
     }
     // here is @@finish:
     this.getComma();
@@ -4787,12 +4812,12 @@ export class SpinResolver {
   private ct_objpubcon(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - obj{[]}.method({param,...}) or obj.con
     // PNut ct_objpubcon:
-    const savedElementIndex: number = this.elementIndex - 1;
+    const savedElementIndex: number = this.saveElementLocation();
     const savedElement: SpinElement = this.currElement; // our type_obj element on entry
-    const [foundIndex, elementIndex] = this.checkIndex();
+    const [foundIndex, nextElementIndex] = this.checkIndex();
     if (foundIndex) {
       // compile obj{[]}.method({param,...})
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       this.getElement();
       this.ct_objpub(resultsNeeded, byteCode);
     } else {
@@ -4801,7 +4826,7 @@ export class SpinResolver {
       const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
       if (objSymType == eElementType.type_objpub) {
         // compile obj.method({param,...})
-        this.elementIndex = savedElementIndex;
+        this.restoreElementLocation(savedElementIndex);
         this.getElement();
         this.ct_objpub(resultsNeeded, byteCode);
       } else {
@@ -4848,10 +4873,10 @@ export class SpinResolver {
     this.compileRfvar(BigInt(methodValue & 0xfffff));
   }
 
-  private ct_method_ptr(elementIndex: number, resultsNeeded: eResultRequirements, byteCode: eByteCode) {
+  private ct_method_ptr(nextElementIndex: number, resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - var({param,...}){:results} or RECV() or SEND(param{,...})
     // PNut ct_method_ptr:
-    this.elementIndex = elementIndex; // start from passed elementIndex
+    this.restoreElementLocation(nextElementIndex); // start from passed nextElementIndex
     const methodResult: iVariableReturn = this.getMethodPointer();
     if (methodResult.type == eElementType.type_register && methodResult.address == this.mrecvReg) {
       // have  RECV()
@@ -4885,10 +4910,10 @@ export class SpinResolver {
       // this is @@noresults:
       this.confirmResult(resultsNeeded, returnValueCount << 20);
       // this is @@varread:
-      const savedElementIndex: number = this.elementIndex - 1; // push
-      this.elementIndex = elementIndex; // restart from passed elementIndex
+      const savedElementIndex: number = this.saveElementLocation(); // push
+      this.restoreElementLocation(nextElementIndex); // restart from passed nextElementIndex
       this.compileVariableRead(); // get method pointer
-      this.elementIndex = savedElementIndex; // pop
+      this.restoreElementLocation(savedElementIndex); // pop
       this.objWrByte(eByteCode.bc_call_ptr); // invoke method
     }
   }
@@ -4933,7 +4958,7 @@ export class SpinResolver {
     do {
       // this is @@trynext:
       let byteCount: number = 0;
-      const savedElementIndex: number = this.elementIndex - 1;
+      const savedElementIndex: number = this.saveElementLocation();
       // eslint-disable-next-line no-constant-condition
       while (true) {
         // this is @@trybytes:
@@ -4947,7 +4972,7 @@ export class SpinResolver {
         }
       }
       // this is @@notbyte:
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       if (byteCount >= 2) {
         this.objWrByte(eByteCode.bc_call_send_bytes);
         this.compileRfvar(BigInt(byteCount));
@@ -4976,7 +5001,7 @@ export class SpinResolver {
     // Compile a parameter for SEND - accommodates methods with no return value
     // PNut compile_parameter_send:
     let valueOnStackStatus: boolean = false;
-    const savedElementIndex: number = this.elementIndex - 1;
+    const savedElementIndex: number = this.saveElementLocation();
     this.getElement();
     if (this.currElement.type == eElementType.type_obj) {
       //  obj{[]}.method({params,...})
@@ -4984,7 +5009,7 @@ export class SpinResolver {
       this.checkIndex();
       this.getDot();
       let [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       let returnValueCount: number = 0;
       if (objSymType == eElementType.type_objpub) {
         // remember ct_objpub()
@@ -5026,7 +5051,7 @@ export class SpinResolver {
     } else {
       //  var({params,...}){:1}
       const [isMethod, returnCount] = this.checkVariableMethod();
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       if (isMethod) {
         // this is @@checkmult2:
         if (returnCount > 1) {
@@ -5047,12 +5072,12 @@ export class SpinResolver {
     return valueOnStackStatus;
   }
 
-  private compileOutOfSequenceExpression(elementIndex: number) {
+  private compileOutOfSequenceExpression(nextElementIndex: number) {
     // PNut compile_oos_exp:
-    const savedElementIndex: number = this.elementIndex - 1;
-    this.elementIndex = elementIndex;
+    const savedElementIndex: number = this.saveElementLocation();
+    this.restoreElementLocation(nextElementIndex);
     this.compileExpression();
-    this.elementIndex = savedElementIndex;
+    this.restoreElementLocation(savedElementIndex);
   }
 
   private confirmResult(resultsNeeded: eResultRequirements, value: number) {
@@ -5270,7 +5295,7 @@ export class SpinResolver {
     // PNut try_spin2_con_exp:
     const valueResult: iValueReturn = { value: 0n, isResolved: false, isFloat: false };
     this.numberStack.reset(); // empty our stack
-    const savedElementIndex = this.elementIndex - 1;
+    const savedElementIndex = this.saveElementLocation();
     let didResolve: boolean = true;
     try {
       this.resolveExp(eMode.BM_Spin2, eResolve.BR_Must, this.lowestPrecedence);
@@ -5283,7 +5308,7 @@ export class SpinResolver {
           throw new Error(error.message);
         }
       }
-      this.elementIndex = savedElementIndex;
+      this.restoreElementLocation(savedElementIndex);
       this.getElement();
       didResolve = false;
     } finally {
@@ -5857,13 +5882,13 @@ export class SpinResolver {
   }
 
   private compileVariable(variable: iVariableReturn) {
-    const resumeIndex: number = this.elementIndex - 1;
+    const resumeIndex: number = this.saveElementLocation();
     let workIsComplete: boolean = false;
-    this.elementIndex = variable.elementIndex;
+    this.restoreElementLocation(variable.nextElementIndex);
 
     // runtime-resolved bitfield
     if (variable.bitfieldFlag && variable.bitfieldConstantFlag == false) {
-      const saveIndex: number = this.elementIndex - 1;
+      const saveIndex: number = this.saveElementLocation();
       if (variable.type == eElementType.type_size) {
         this.skipIndex();
       }
@@ -5884,7 +5909,7 @@ export class SpinResolver {
         this.objWrByte(eByteCode.bc_addbits); // add then result back on stack
       }
       this.getRightBracket();
-      this.elementIndex = saveIndex; // return to starting location
+      this.restoreElementLocation(saveIndex); // return to starting location
     }
 
     // field
@@ -6050,7 +6075,7 @@ export class SpinResolver {
       this.compileVariableReadWriteAssign(variable);
       // NOTE: possible post optimization did we wind up in one of our 16 vars
     }
-    this.elementIndex = resumeIndex; // return to location at entry
+    this.restoreElementLocation(resumeIndex); // return to location at entry
   }
 
   private compileVariableClearSetInst(variable: iVariableReturn, mode: eCompOp) {
@@ -6256,7 +6281,7 @@ export class SpinResolver {
       isVariable: true,
       type: eElementType.type_undefined,
       address: 0,
-      elementIndex: 0,
+      nextElementIndex: 0,
       wordSize: 0,
       sizeOverrideFlag: false,
       indexFlag: false,
@@ -6282,7 +6307,7 @@ export class SpinResolver {
     }
 
     resultVariable.address = variableAddress;
-    resultVariable.elementIndex = this.elementIndex; // next to be gotten
+    resultVariable.nextElementIndex = this.nextElementIndex; // next to be gotten
     resultVariable.address &= 0xfffff; // forecast for structure stuff
 
     switch (variableType) {
@@ -6338,7 +6363,7 @@ export class SpinResolver {
           this.getRightBracket();
           resultVariable.type = eElementType.type_register;
           resultVariable.address = registerAddress;
-          resultVariable.elementIndex = this.elementIndex; // after the right bracket
+          resultVariable.nextElementIndex = this.nextElementIndex; // after the right bracket
           this.checkVariableIndex(resultVariable);
           this.checkVariableBitfield(resultVariable);
         }
@@ -6358,7 +6383,7 @@ export class SpinResolver {
 
       case eElementType.type_size:
         {
-          const [foundIndex, elementIndex] = this.checkIndex();
+          const [foundIndex, nextElementIndex] = this.checkIndex();
           if (foundIndex == false) {
             resultVariable.isVariable = false;
           } else {
@@ -6428,7 +6453,7 @@ export class SpinResolver {
 
   private checkVariableIndex(resultSoFar: iVariableReturn) {
     // PNut (not in PNut):
-    let [foundIndex, elementIndex] = this.checkIndex();
+    let [foundIndex, nextElementIndex] = this.checkIndex();
     if (foundIndex) {
       resultSoFar.indexFlag = true;
     }
@@ -6465,14 +6490,14 @@ export class SpinResolver {
   private checkIndex(): [boolean, number] {
     // PNut: check_index:
     let indexPresentStatus: boolean = false;
-    let elementIndex: number = 0;
+    let nextElementIndex: number = 0;
     if (this.checkLeftBracket()) {
-      elementIndex = this.elementIndex - 1;
+      nextElementIndex = this.saveElementLocation();
       indexPresentStatus = true;
       this.skipExpression();
       this.getRightBracket();
     }
-    return [indexPresentStatus, elementIndex];
+    return [indexPresentStatus, nextElementIndex];
   }
 
   private skipIndex() {
@@ -6664,40 +6689,40 @@ export class SpinResolver {
   }
 
   private nextElementType(): eElementType {
-    const element = this.spinElements[this.elementIndex];
-    //this.logMessage(`* NEXTele i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
+    const element = this.spinElements[this.nextElementIndex];
+    //this.logMessage(`* NEXTele i#${this.nextElementIndex}, e=[${this.spinElements[this.nextElementIndex].toString()}]`);
     return element.type;
   }
 
   private nextElementValue(): eValueType {
-    const element = this.spinElements[this.elementIndex];
+    const element = this.spinElements[this.nextElementIndex];
     return Number(element.value);
   }
 
   private saveElementLocation(): number {
     // return current index for later restore
-    const savedIndex: number = this.elementIndex + 1;
-    this.logMessage(`*** SAVEd Element Index (${savedIndex})`);
-    return savedIndex;
+    const savedElementIndex: number = this.nextElementIndex;
+    this.logMessage(`*** SAVEd Element Index (${savedElementIndex})`);
+    return savedElementIndex;
   }
 
   private restoreElementLocation(savedLocation: number) {
-    this.logMessage(`*** RESTOREd Element Index (${this.elementIndex}) -> (${savedLocation})`);
-    this.elementIndex = savedLocation;
+    this.logMessage(`*** RESTOREd Element Index (${this.nextElementIndex}) -> (${savedLocation})`);
+    this.nextElementIndex = savedLocation;
   }
 
   private getElement(): SpinElement {
-    //this.logMessage(`* Element Index=(${this.elementIndex + 1})`);
+    //this.logMessage(`* Element Index=(${this.nextElementIndex + 1})`);
     if (this.spinElements.length == 0) {
       throw new Error(`NO Elements`);
     }
-    let element = this.spinElements[this.elementIndex];
+    let element = this.spinElements[this.nextElementIndex];
     // if we reach end, stay on this element forever
     if (element.type != eElementType.type_end_file) {
-      if (this.elementIndex > this.spinElements.length - 1) {
+      if (this.nextElementIndex > this.spinElements.length - 1) {
         throw new Error(`Off end of Element List`);
       }
-      this.elementIndex++;
+      this.nextElementIndex++;
     }
 
     // if the symbol exists, return it instead of undefined
@@ -6713,9 +6738,9 @@ export class SpinResolver {
       }
     }
     //*
-    this.logMessage(`* GETele GOT i#${this.elementIndex - 1}, e=[${this.spinElements[this.elementIndex - 1].toString()}]`);
+    this.logMessage(`* GETele GOT i#${this.nextElementIndex - 1}, e=[${this.spinElements[this.nextElementIndex - 1].toString()}]`);
     if (element.type != eElementType.type_end_file) {
-      this.logMessage(`*        NEXT i#${this.elementIndex}, e=[${this.spinElements[this.elementIndex].toString()}]`);
+      this.logMessage(`*        NEXT i#${this.nextElementIndex}, e=[${this.spinElements[this.nextElementIndex].toString()}]`);
     } else {
       this.logMessage(`*        NEXT -- at EOF --`);
     }
@@ -6732,13 +6757,13 @@ export class SpinResolver {
   }
 
   private backElement(): void {
-    this.elementIndex -= 2;
-    this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.elementIndex++]);
+    this.nextElementIndex -= 2;
+    this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.nextElementIndex++]);
     // and make sure our column offset into the line is set
     if (this.currElement.sourceColumnOffset != 0) {
       this.lineColumn = this.currElement.sourceColumnOffset;
     }
-    this.logMessage(`* BACKele i#${this.elementIndex - 1}, e=[${this.currElement.toString()}]`);
+    this.logMessage(`* BACKele i#${this.nextElementIndex - 1}, e=[${this.currElement.toString()}]`);
   }
 
   private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConBlock: boolean): bigint {

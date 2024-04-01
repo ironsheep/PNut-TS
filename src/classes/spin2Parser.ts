@@ -131,11 +131,15 @@ export class Spin2Parser {
               symbolType = 'VAR_LONG';
               break;
 
+            case eElementType.type_method:
+              symbolType = 'METHOD';
+              break;
+
             default:
               symbolType = `?? ${symbol.type} ??`;
               break;
           }
-          const symbolTypeFixed = `${symbolType.padEnd(15, ' ')}`;
+          const symbolTypeFixed = `${symbolType.padEnd(17, ' ')}`;
           const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
           stream.write(`TYPE: ${symbolTypeFixed} VALUE: ${hexValue}          NAME: ${symbol.name}\n`);
         }
@@ -173,13 +177,17 @@ export class Spin2Parser {
       }
       */
 
+      const objBytes: number = this.spinResolver.objBytes;
+      const objString: string = this.rightAlignedDecimalValue(objBytes, 11);
+      stream.write(`\n\nOBJ bytes: ${objString}\n`);
+
       const varBytes: number = this.spinResolver.varBytes;
       const varString: string = this.rightAlignedDecimalValue(varBytes, 11);
-      stream.write(`\n\nVAR bytes: ${varString}\n\n`);
+      stream.write(`VAR bytes: ${varString}\n\n`);
 
       // emit hub-bytes use
-      const lenString: string = this.rightAlignedDecimalValue(objImage.offset, 11);
-      stream.write(`\n\nHub bytes: ${lenString}\n\n`);
+      // const lenString: string = this.rightAlignedDecimalValue(objImage.offset, 11);
+      // stream.write(`\n\nHub bytes: ${lenString}\n\n`);
 
       // if we have object data, dump it
       if (objImage.offset > 0) {
@@ -222,7 +230,7 @@ export class Spin2Parser {
       }
       const symbolName = getSourceSymbol(this.context, element);
       const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
-      this.logMessage(` (${index + 1}) -- ${element.toString()}${symbolInterp}`);
+      this.logMessage(` [${index}] -- ${element.toString()}${symbolInterp}`);
     }
     this.logMessage('\\ ---------------------------------------');
     this.logMessage('');
