@@ -759,6 +759,15 @@ export class SpinResolver {
               if (this.currElement.type == eElementType.type_size) {
                 // HANDLE Size Override
                 currSize = Number(this.currElement.value);
+                let multiplier: number = 1;
+                const getForm: eMode = currSize == eWordSize.WS_Long ? eMode.BM_OperandIntOrFloat : eMode.BM_OperandIntOnly;
+                const valueResult = this.getValue(getForm, this.pasmResolveMode);
+                if (this.checkLeftBracket()) {
+                  const multiplierResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+                  multiplier = Number(multiplierResult.value);
+                  this.getRightBracket();
+                }
+                this.enterData(valueResult.value, currSize, multiplier, fitToSize);
               } else if (this.currElement.type == eElementType.type_fvar) {
                 // HANDLE FVar... [0,1] where 1 is signed fvar
                 const isSigned = this.currElement.value == 1n;
@@ -3684,6 +3693,7 @@ export class SpinResolver {
   private compileInstruction() {
     // Instruction Compiler
     // PNut compile_inst:
+    this.logMessage(`*==* compileInstruction()`);
     if (this.currElement.type == eElementType.type_back) {
       this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap);
     } else if (this.currElement.type == eElementType.type_obj) {
@@ -3972,6 +3982,7 @@ export class SpinResolver {
   private ci_send() {
     // Compile instruction - SEND()
     // PNut ci_send:
+    this.logMessage(`*==* ci_send()`);
     this.getLeftParen();
     if (this.checkRightParen()) {
       // [error_esendd]
@@ -3987,15 +3998,13 @@ export class SpinResolver {
       do {
         // here is @@trybytes
         this.getElement();
-        if (this.currElement.type != eElementType.type_con) {
-          break;
-        }
-        if (this.currElement.bigintValue > 255n) {
+        if (this.currElement.type != eElementType.type_con && this.currElement.bigintValue > 255n) {
           break;
         }
         byteCount++;
       } while (this.checkComma());
 
+      // this is @@notbyte:
       // return to start of constants
       this.restoreElementLocation(savedElementIndex);
       // if we have more than two constants...
@@ -4004,6 +4013,7 @@ export class SpinResolver {
         this.objWrByte(eByteCode.bc_call_send_bytes);
         this.compileRfvar(BigInt(byteCount));
         do {
+          // this is @@enterbytes:
           this.getElement();
           this.objWrByte(Number(this.currElement.value));
           if (byteCount > 1) {
@@ -4013,6 +4023,7 @@ export class SpinResolver {
       } else {
         // less than two bytes or larger constant
         // here is @@tryother:
+        // byteCount < 2
         const valueIsOnStack: boolean = this.compileParameterSend();
         if (valueIsOnStack) {
           this.objWrByte(eByteCode.bc_call_send);
@@ -4876,6 +4887,7 @@ export class SpinResolver {
   private ct_method_ptr(nextElementIndex: number, resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - var({param,...}){:results} or RECV() or SEND(param{,...})
     // PNut ct_method_ptr:
+    this.logMessage(`*==* ct_method_ptr(elemIdx=${nextElementIndex})`);
     this.restoreElementLocation(nextElementIndex); // start from passed nextElementIndex
     const methodResult: iVariableReturn = this.getMethodPointer();
     if (methodResult.type == eElementType.type_register && methodResult.address == this.mrecvReg) {
@@ -4893,7 +4905,7 @@ export class SpinResolver {
         // [error_sendcbu]
         throw new Error('SEND() can be used only as an instruction and \\SEND() is not allowed');
       }
-      this.compileInstructionSend();
+      this.ci_send();
     } else {
       // have var({param,...}){:results} (long is method-pointer)
       // this is @@notsend:
@@ -4947,9 +4959,11 @@ export class SpinResolver {
     return parameterCount;
   }
 
+  /*
   private compileInstructionSend() {
     // Compile instruction - SEND()
-    // PNut ci_send:
+    // PNut ci_sexnd DUPE:
+    this.logMessage(`*==* compileInstructionSend()`);
     this.getLeftParen();
     if (this.checkRightParen()) {
       // [error_esendd]
@@ -4996,6 +5010,7 @@ export class SpinResolver {
       // this is @@checkmore:
     } while (this.getCommaOrRightParen());
   }
+  */
 
   private compileParameterSend(): boolean {
     // Compile a parameter for SEND - accommodates methods with no return value
