@@ -13,7 +13,7 @@ import { NumberStack } from './numberStack';
 import { eByteCode, eElementType, eFlexcode, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, hexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
-import { SymbolTable, iSymbol } from './symbolTable';
+import { SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
@@ -150,6 +150,7 @@ export class SpinResolver {
   private mainSymbols: SymbolTable = new SymbolTable(); // var, dat, pub, pri, con, obj
   private parameterSymbols: SymbolTable = new SymbolTable(); // constants from parent object
   private localSymbols: SymbolTable = new SymbolTable(); // parameters, return variables and locals for PUB/PRI scope
+  private lifetimeLocalSymbols: SymbolTable = new SymbolTable(); // PRESERVED parameters, return variables and locals for PUB/PRI scope
   private inlineSymbols: SymbolTable = new SymbolTable(); // for inline code sections
   private activeSymbolTable: eSymbolTableId = eSymbolTableId.STI_MAIN;
 
@@ -219,8 +220,13 @@ export class SpinResolver {
   }
 
   // for lister  vvv
-  get userSymbolTable(): SymbolTable {
-    return this.mainSymbols;
+  get userSymbolTable(): SymbolEntry[] {
+    const allMain: SymbolEntry[] = this.mainSymbols.allSymbols;
+    const allLocal: SymbolEntry[] = this.lifetimeLocalSymbols.allSymbols;
+    const allInline: SymbolEntry[] = this.inlineSymbols.allSymbols;
+    const allSymbols: SymbolEntry[] = [...allMain, ...allLocal, ...allInline];
+    allSymbols.sort((a, b) => a.instanceNumber - b.instanceNumber);
+    return allSymbols;
   }
 
   get objectImage(): ObjectImage {
@@ -2646,7 +2652,8 @@ export class SpinResolver {
         haveOtherCase = true;
         this.getElement();
         // save this index for 2nd loop
-        otherCaseElementIndex = this.saveElementLocation();
+        // NOTE: get current element index, NOT next element index
+        otherCaseElementIndex = this.saveElementLocation() - 1; // [source_start]
       } else {
         // here is @@notother1:
         if (++caseCount > this.case_limit) {
@@ -3311,6 +3318,7 @@ export class SpinResolver {
   private recordSymbol(newSymbol: iSymbol) {
     let symbolNumber: number = 0;
     let tableName: string = '';
+    this.logMessage(`* recordSymbol name=[${newSymbol.name}] into [${eSymbolTableId[this.activeSymbolTable]}]`);
     switch (this.activeSymbolTable) {
       case eSymbolTableId.STI_MAIN:
         this.mainSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
@@ -3319,6 +3327,7 @@ export class SpinResolver {
         break;
       case eSymbolTableId.STI_LOCAL:
         this.localSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        this.lifetimeLocalSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
         symbolNumber = this.localSymbols.length;
         tableName = 'localSymbols';
         break;
@@ -3605,6 +3614,7 @@ export class SpinResolver {
   private compileExpression(): iValueReturn {
     //  Compile expression with sub-expressions
     // PNut compile_exp:
+    this.logMessage(`*==* compileExpression()`);
     const tryExpressionResult = this.trySpin2ConExpression();
     if (tryExpressionResult.isResolved) {
       this.compileConstant(tryExpressionResult.value);
@@ -3614,11 +3624,11 @@ export class SpinResolver {
     return tryExpressionResult;
   }
 
-  private compileSubExpression(precedence: number) {
+  private compileSubExpression(entryPrecedence: number) {
     // compile this expression - recursively
-    // PNut @@topexp:
-    let currPrecedence: number = precedence;
-    this.logMessage(`compileSubExpression(${precedence}) - ENTRY`);
+    // PNut compile_exp: @@topexp:
+    this.logMessage(`compileSubExpression(${entryPrecedence}) - ENTRY`);
+    let currPrecedence: number = entryPrecedence; // PNut [dl] register
     if (--currPrecedence < 0) {
       // we need to resolve the term!
 
@@ -3660,12 +3670,13 @@ export class SpinResolver {
       }
     } else {
       // precedence is 0 or greater
-      this.compileSubExpression(precedence);
+      this.compileSubExpression(currPrecedence);
       // eslint-disable-next-line no-constant-condition
       while (true) {
         this.getElement();
+        const savedElement: SpinElement = this.currElement;
         if (this.currElement.isTernary) {
-          if (precedence == this.ternaryPrecedence) {
+          if (currPrecedence == this.ternaryPrecedence) {
             // have ternary op and is time to resolve it... (prec. match)
             this.compileSubExpression(this.lowestPrecedence);
             this.getColon();
@@ -3677,17 +3688,17 @@ export class SpinResolver {
             this.backElement();
             break;
           }
-        } else if (this.currElement.isBinary == false || precedence != this.currElement.precedence) {
+        } else if (this.currElement.isBinary == false || currPrecedence != this.currElement.precedence) {
           this.backElement();
           break;
         } else {
           // have binary and time to resolve it (prec. match)
-          this.compileSubExpression(precedence);
-          this.enterExpOp(this.currElement);
+          this.compileSubExpression(currPrecedence);
+          this.enterExpOp(savedElement);
         }
       }
     }
-    //this.logMessage(`compileSubExpression(${precedence}) - EXIT`);
+    //this.logMessage(`compileSubExpression(${entryPrecedence}) - EXIT`);
   }
 
   private compileInstruction() {
@@ -3741,68 +3752,70 @@ export class SpinResolver {
       this.SubToNeg(); // Convert op_sub to op_neg
       this.FSubToFNeg(); // Convert op_fsub to op_fneg
       if (this.currElement.isUnary) {
-        this.ci_unary();
-      }
-      // remember this element
-      const savedElementIndex: number = this.saveElementLocation();
-      if (this.currElement.type == eElementType.type_under) {
-        // _,... := param(s),... ?
-        this.getComma(); // this works since we are at the beginning of line!
-        this.compileVariableMultiple(savedElementIndex); // this handles the rest of the line
-      }
-      // @@notunder:
-      const variableReturn: iVariableReturn = this.checkVariable(); // variable ?
-      if (variableReturn.isVariable == false) {
-        // [error_eaiov]
-        throw new Error('Expected an instruction or variable');
-      }
-      this.currElement = this.getElement(); // get element after variable
-      if (this.currElement.type == eElementType.type_comma) {
-        // var,... := param(s),... ?
-        this.compileVariableMultiple(savedElementIndex);
-      } else if (this.currElement.type == eElementType.type_left) {
-        // var({param,...}){:results} ?
-        this.ct_method_ptr(savedElementIndex, eResultRequirements.RR_None, eByteCode.bc_drop);
-      } else if (this.currElement.type == eElementType.type_inc) {
-        // var++ ?
-        this.compileVariableAssign(variableReturn, eByteCode.bc_var_inc);
-      } else if (this.currElement.type == eElementType.type_dec) {
-        // var-- ?
-        this.compileVariableAssign(variableReturn, eByteCode.bc_var_dec);
-      } else if (this.currElement.isLogNot) {
-        // var!! ?
-        this.compileVariableAssign(variableReturn, eByteCode.bc_var_lognot);
-      } else if (this.currElement.isBitNot) {
-        // var! ?
-        this.compileVariableAssign(variableReturn, eByteCode.bc_var_bitnot);
-      } else if (this.currElement.type == eElementType.type_til) {
-        // var~ ?
-        this.compileVariableClearSetInst(variableReturn, eCompOp.CO_Clear);
-      } else if (this.currElement.type == eElementType.type_tiltil) {
-        // var~~ ?
-        this.compileVariableClearSetInst(variableReturn, eCompOp.CO_Set);
-      } else if (this.currElement.type == eElementType.type_assign) {
-        // var := ?
-        this.compileExpression();
-        variableReturn.operation = eVariableOperation.VO_WRITE;
-        this.compileVariable(variableReturn);
-      } else if (this.currElement.isBinary && this.nextElementType() == eElementType.type_equal) {
-        // var binary op assign (w/push)?
-        if (this.currElement.isAssignable == false) {
-          // [error_tocbufa]
-          throw new Error('This operator cannot be used for assignment');
-        }
-        const baseByteCode: eByteCode = this.currElement.byteCode;
-        this.compileExpression();
-        variableReturn.operation = eVariableOperation.VO_ASSIGN;
-        variableReturn.assignmentBytecode = baseByteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write);
-        this.compileVariable(variableReturn);
-        this.getEqual();
+        this.ci_unary(); // NOTE: this can be inlined!
       } else {
-        // here is @@notbin:
-        this.backElement(); // backup to variable
-        // [error_vnao]
-        throw new Error('Variable needs an operator');
+        // remember this element
+        // NOTE: get current element index, NOT next element index
+        const savedNextElementIndex: number = this.saveElementLocation() - 1; // [source_start]
+        if (this.currElement.type == eElementType.type_under) {
+          // _,... := param(s),... ?
+          this.getComma(); // this works since we are at the beginning of line!
+          this.compileVariableMultiple(savedNextElementIndex); // this handles the rest of the line
+        }
+        // @@notunder:
+        const variableReturn: iVariableReturn = this.checkVariable(); // variable ?
+        if (variableReturn.isVariable == false) {
+          // [error_eaiov]
+          throw new Error('Expected an instruction or variable');
+        }
+        this.currElement = this.getElement(); // get element after variable
+        if (this.currElement.type == eElementType.type_comma) {
+          // var,... := param(s),... ?
+          this.compileVariableMultiple(savedNextElementIndex);
+        } else if (this.currElement.type == eElementType.type_left) {
+          // var({param,...}){:results} ?
+          this.ct_method_ptr(savedNextElementIndex, eResultRequirements.RR_None, eByteCode.bc_drop);
+        } else if (this.currElement.type == eElementType.type_inc) {
+          // var++ ?
+          this.compileVariableAssign(variableReturn, eByteCode.bc_var_inc);
+        } else if (this.currElement.type == eElementType.type_dec) {
+          // var-- ?
+          this.compileVariableAssign(variableReturn, eByteCode.bc_var_dec);
+        } else if (this.currElement.isLogNot) {
+          // var!! ?
+          this.compileVariableAssign(variableReturn, eByteCode.bc_var_lognot);
+        } else if (this.currElement.isBitNot) {
+          // var! ?
+          this.compileVariableAssign(variableReturn, eByteCode.bc_var_bitnot);
+        } else if (this.currElement.type == eElementType.type_til) {
+          // var~ ?
+          this.compileVariableClearSetInst(variableReturn, eCompOp.CO_Clear);
+        } else if (this.currElement.type == eElementType.type_tiltil) {
+          // var~~ ?
+          this.compileVariableClearSetInst(variableReturn, eCompOp.CO_Set);
+        } else if (this.currElement.type == eElementType.type_assign) {
+          // var := ?
+          this.compileExpression();
+          variableReturn.operation = eVariableOperation.VO_WRITE;
+          this.compileVariable(variableReturn);
+        } else if (this.currElement.isBinary && this.nextElementType() == eElementType.type_equal) {
+          // var binary op assign (w/push)?
+          if (this.currElement.isAssignable == false) {
+            // [error_tocbufa]
+            throw new Error('This operator cannot be used for assignment');
+          }
+          const baseByteCode: eByteCode = this.currElement.byteCode;
+          this.compileExpression();
+          variableReturn.operation = eVariableOperation.VO_ASSIGN;
+          variableReturn.assignmentBytecode = baseByteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write);
+          this.compileVariable(variableReturn);
+          this.getEqual();
+        } else {
+          // here is @@notbin:
+          this.backElement(); // backup to variable
+          // [error_vnao]
+          throw new Error('Variable needs an operator');
+        }
       }
     }
   }
@@ -4060,6 +4073,7 @@ export class SpinResolver {
   private compileTerm() {
     // PNut compile_term:
     const elementType: eElementType = this.currElement.type;
+    this.logMessage(`*--* compileTerm(${eElementType[elementType]})`);
     const elementValue: number = Number(this.currElement.bigintValue);
     if (this.currElement.isConstantInt || this.currElement.isConstantFloat) {
       // constant integer? or constant float?
@@ -4125,7 +4139,8 @@ export class SpinResolver {
       // ??var ?
       this.compileVariablePre(eByteCode.bc_var_rnd_push);
     } else {
-      const startElementIndex = this.saveElementLocation();
+      // NOTE: get current element index, NOT next element index
+      const startElementIndex = this.saveElementLocation() - 1; // [source_start]
       const variableResult: iVariableReturn = this.checkVariable(); // var ?
       if (variableResult.isVariable == false) {
         // [error_eaet]
@@ -4530,7 +4545,8 @@ export class SpinResolver {
       // \method({param,...}) ?
       this.ct_method(resultsNeeded, byteCode);
     } else {
-      const savedElementIndex: number = this.saveElementLocation();
+      // NOTE: get current element index, NOT next element index
+      const savedElementIndex: number = this.saveElementLocation() - 1; // [source_start]
       const variableResult: iVariableReturn = this.checkVariable();
       if (variableResult.isVariable) {
         // \var({param,...}){:results} ?
@@ -4694,8 +4710,9 @@ export class SpinResolver {
     this.getLeftParen();
     this.compileExpression();
     this.getComma();
-    const startElementIndex = this.saveElementLocation();
     this.getElement(); // method/obj/var
+    // NOTE: get current element index, NOT next element index
+    const startElementIndex = this.saveElementLocation() - 1; // [source_start]
     let parameterCount: number = 0;
     if (this.currElement.type == eElementType.type_obj) {
       const objectIndex: number = Number(this.currElement.bigintValue);
@@ -4823,7 +4840,8 @@ export class SpinResolver {
   private ct_objpubcon(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - obj{[]}.method({param,...}) or obj.con
     // PNut ct_objpubcon:
-    const savedElementIndex: number = this.saveElementLocation();
+    // NOTE: get current element index, NOT next element index
+    const savedElementIndex: number = this.saveElementLocation() - 1; // [source_start]
     const savedElement: SpinElement = this.currElement; // our type_obj element on entry
     const [foundIndex, nextElementIndex] = this.checkIndex();
     if (foundIndex) {
@@ -4875,6 +4893,7 @@ export class SpinResolver {
     // Compile term - method({param,...})
     // PNut ct_method:
     // fields 7-bit parameterCount, 4-bit resultCount, 20-bit Address
+    this.logMessage(`* ct_method(${eResultRequirements[resultsNeeded]}, ...)`);
     const methodValue: number = Number(this.currElement.bigintValue);
     this.confirmResult(resultsNeeded, methodValue);
     this.objWrByte(byteCode);
@@ -4933,6 +4952,7 @@ export class SpinResolver {
   private ct_upat() {
     // Compile term - ^@var
     // PNut ct_upat:
+    this.logMessage(`*==* ct_upat()`);
     this.getElement();
     const variableReturn: iVariableReturn = this.checkVariable();
     if (variableReturn.isVariable == false) {
@@ -5098,6 +5118,7 @@ export class SpinResolver {
   private confirmResult(resultsNeeded: eResultRequirements, value: number) {
     // PNut confirm_result:
     // NOTE: value is methodValue: 7-bit parameterCount, 4-bit resultCount, 20-bit Address
+    this.logMessage(`* confirmResult(${eResultRequirements[resultsNeeded]}, 0x${value.toString(16).toUpperCase().padStart(8, '0')})`);
     if (resultsNeeded != eResultRequirements.RR_None) {
       const numberResults: number = (value >> 20) & 0x0f;
       if (numberResults == 0) {
@@ -5204,6 +5225,7 @@ export class SpinResolver {
   private enterExpOp(element: SpinElement) {
     // PNut @@enterop:
     // is f* instruction?
+    this.logMessage(`* enterExpOp(Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset})${eElementType[element.type]})`);
     if (element.isHubcode) {
       this.objWrByte(eByteCode.bc_hub_bytecode);
     }
@@ -5308,6 +5330,7 @@ export class SpinResolver {
 
   private trySpin2ConExpression(): iValueReturn {
     // PNut try_spin2_con_exp:
+    this.logMessage(`*==* trySpin2ConExpression()`);
     const valueResult: iValueReturn = { value: 0n, isResolved: false, isFloat: false };
     this.numberStack.reset(); // empty our stack
     const savedElementIndex = this.saveElementLocation();
@@ -5324,7 +5347,7 @@ export class SpinResolver {
         }
       }
       this.restoreElementLocation(savedElementIndex);
-      this.getElement();
+      //this.getElement();
       didResolve = false;
     } finally {
       if (didResolve) {
@@ -5333,6 +5356,7 @@ export class SpinResolver {
         valueResult.isResolved = true;
       }
     }
+    this.logMessage(`*==* trySpin2ConExpression() - EXIT`);
     return valueResult;
   }
 
@@ -5897,6 +5921,7 @@ export class SpinResolver {
   }
 
   private compileVariable(variable: iVariableReturn) {
+    this.logMessage(`*==* compileVariable()`);
     const resumeIndex: number = this.saveElementLocation();
     let workIsComplete: boolean = false;
     this.restoreElementLocation(variable.nextElementIndex);
@@ -6150,6 +6175,7 @@ export class SpinResolver {
 
   private getVariable(): iVariableReturn {
     // PNut: get_variable:
+    this.logMessage(`*==* getVariable()`);
     this.getElement();
     const variableResult: iVariableReturn = this.checkVariable();
     if (variableResult.isVariable == false) {
@@ -6742,7 +6768,7 @@ export class SpinResolver {
 
     // if the symbol exists, return it instead of undefined
     if (element.type === eElementType.type_undefined) {
-      const foundSymbol = this.mainSymbols.get(element.stringValue);
+      const foundSymbol = this.lookupSymbol(element.stringValue);
       if (foundSymbol !== undefined) {
         const symbolLength = element.getSymbolLength();
         this.logMessage(`* getElement() replacing element=[${element.toString()}]`);
@@ -6769,6 +6795,17 @@ export class SpinResolver {
     }
 
     return this.currElement; // NOTE: (WARNING!) this is a reference into our active element list
+  }
+
+  private lookupSymbol(symbolName: string): iSymbol | undefined {
+    let desiredSymbol: iSymbol | undefined = this.mainSymbols.get(symbolName);
+    if (desiredSymbol === undefined) {
+      desiredSymbol = this.localSymbols.get(symbolName);
+    }
+    if (desiredSymbol === undefined) {
+      desiredSymbol = this.inlineSymbols.get(symbolName);
+    }
+    return desiredSymbol;
   }
 
   private backElement(): void {

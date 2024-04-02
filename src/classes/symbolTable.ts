@@ -18,6 +18,34 @@ export interface iSymbol {
   type: eElementType;
   value: bigint | string;
 }
+
+export class SymbolEntry {
+  private static nextInstanceNumber = 0;
+  private _name: string;
+  private _type: eElementType;
+  private _value: bigint | string;
+  private _instanceNumber: number;
+
+  constructor(symbolName: string, symbolType: eElementType, symbolValue: bigint | string) {
+    this._instanceNumber = ++SymbolEntry.nextInstanceNumber;
+    this._name = symbolName;
+    this._type = symbolType;
+    this._value = symbolValue;
+  }
+
+  get name(): string {
+    return this._name;
+  }
+  get type(): eElementType {
+    return this._type;
+  }
+  get value(): bigint | string {
+    return this._value;
+  }
+  get instanceNumber(): number {
+    return this._instanceNumber;
+  }
+}
 /**
  * The Pnut_ts symbol table class.
  *   Found in src/classes/symbolTable.ts
@@ -26,7 +54,7 @@ export interface iSymbol {
  * @class SymbolTable
  */
 export class SymbolTable {
-  private symbols = new Map<string, iSymbol>();
+  private symbols = new Map<string, SymbolEntry>();
 
   /**
    *  Record a new symbol in this symbol table
@@ -39,8 +67,9 @@ export class SymbolTable {
   public add(symbolName: string, symbolType: eElementType, symbolValue: bigint | string) {
     const nameKey: string = symbolName.toUpperCase();
     if (!this.exists(nameKey)) {
-      const newSymbol: iSymbol = { name: nameKey, type: symbolType, value: symbolValue };
-      this.symbols.set(nameKey, newSymbol);
+      const newEntry: SymbolEntry = new SymbolEntry(symbolName, symbolType, symbolValue);
+      //const newSymbol: iSymbol = { name: nameKey, type: symbolType, value: symbolValue };
+      this.symbols.set(nameKey, newEntry);
     }
   }
 
@@ -74,11 +103,20 @@ export class SymbolTable {
    */
   public get(symbolName: string): iSymbol | undefined {
     const nameKey: string = symbolName.toUpperCase();
-    return this.symbols.get(nameKey);
+    let desiredSymbol: iSymbol | undefined = undefined;
+    const symbolEntry: SymbolEntry | undefined = this.symbols.get(nameKey);
+    if (symbolEntry !== undefined) {
+      desiredSymbol = { name: symbolEntry.name, type: symbolEntry.type, value: symbolEntry.value };
+    }
+    return desiredSymbol;
   }
 
   get length(): number {
     return this.symbols.size;
+  }
+
+  get allSymbols(): SymbolEntry[] {
+    return Array.from(this.symbols.values());
   }
 
   /**

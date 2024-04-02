@@ -13,7 +13,7 @@ import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { SpinResolver } from './spinResolver';
-import { iSymbol } from './symbolTable';
+import { SymbolEntry, iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
@@ -88,13 +88,20 @@ export class Spin2Parser {
       this.logMessage(`* writing report to ${outFilename}`);
       const stream = fs.createWriteStream(outFilename);
 
-      const mainSymbols = this.spinResolver.userSymbolTable;
-
+      const userSymbols = this.spinResolver.userSymbolTable;
+      /*
+      stream.write(`\n\n* ----------------------\n`);
+      for (let index = 0; index < userSymbols.length; index++) {
+        const userSymbol = userSymbols[index];
+        stream.write(`userSymbol: NAME:[${userSymbol.name}] TYPE:[${eElementType[userSymbol.type]}]\n`);
+      }
+      stream.write(`* ----------------------\n\n`);
+*/
       // emit: symbol list,  if we have symbols place them at top of report
-      if (mainSymbols.length > 0) {
+      if (userSymbols.length > 0) {
         // EX: TYPE: CON             VALUE: 13F7B1C0          NAME: CLK_FREQ
-        for (const [key, value] of mainSymbols) {
-          const symbol: iSymbol = value;
+        for (let index = 0; index < userSymbols.length; index++) {
+          const symbol: SymbolEntry = userSymbols[index];
           let symbolType: string;
           switch (symbol.type) {
             case eElementType.type_con:
@@ -134,6 +141,17 @@ export class Spin2Parser {
             case eElementType.type_method:
               symbolType = 'METHOD';
               break;
+            case eElementType.type_loc_byte:
+              symbolType = 'LOC_BYTE';
+              break;
+
+            case eElementType.type_loc_word:
+              symbolType = 'LOC_WORD';
+              break;
+
+            case eElementType.type_loc_long:
+              symbolType = 'LOC_LONG';
+              break;
 
             default:
               symbolType = `?? ${symbol.type} ??`;
@@ -147,14 +165,14 @@ export class Spin2Parser {
       // emit spin version
       stream.write(`\nSpin2_v${this.srcFile.versionNumber}\n\n`);
       // emit: CLKMODE, CLKFREQ, XINFREQ if present
-      let symbol = mainSymbols.get('CLKMODE_');
+      let symbol = userSymbols.find((currSymbol) => currSymbol.name.toLocaleUpperCase() === 'CLKMODE_');
       if (symbol !== undefined) {
         const clkMode: number = Number(symbol.value);
         const valueString: string = this.rightAlignedHexValue(clkMode, 11);
         stream.write(`CLKMODE: ${valueString}\n`);
       }
 
-      symbol = mainSymbols.get('CLKFREQ_');
+      symbol = userSymbols.find((currSymbol) => currSymbol.name.toLocaleUpperCase() === 'CLKFREQ_');
       if (symbol !== undefined) {
         const clkFreq: number = Number(symbol.value);
         const valueString: string = this.rightAlignedDecimalValue(clkFreq, 11);
