@@ -13,7 +13,7 @@ import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { SpinResolver } from './spinResolver';
-import { SymbolEntry, iSymbol } from './symbolTable';
+import { ID_SEPARATOR_STRING, SymbolEntry, iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
@@ -157,9 +157,11 @@ export class Spin2Parser {
               symbolType = `?? ${symbol.type} ??`;
               break;
           }
-          const symbolTypeFixed = `${symbolType.padEnd(17, ' ')}`;
+          const symbolTypeFixed = `${symbolType.padEnd(15, ' ')}`;
           const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
-          stream.write(`TYPE: ${symbolTypeFixed} VALUE: ${hexValue}          NAME: ${symbol.name}\n`);
+          const symNameParts: string[] = symbol.name.split(ID_SEPARATOR_STRING);
+          const nonUniqueName: string = symNameParts[0];
+          stream.write(`TYPE: ${symbolTypeFixed} VALUE: ${hexValue}          NAME: ${nonUniqueName}\n`);
         }
       }
       // emit spin version

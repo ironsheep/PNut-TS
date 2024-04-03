@@ -27,14 +27,20 @@ export class ObjectImage {
     return this._objOffset;
   }
 
+  get offsetHex(): string {
+    // return current offset
+    return this.hexOffset(this._objOffset);
+  }
+
   public setOffsetTo(offset: number) {
     // ?? no guard for this for now...
+    this.logMessage(`* OBJ: setOffsetTo() (${this.hexOffset(this._objOffset)}) -> (${this.hexOffset(offset)}) diff(${this._objOffset - offset})`);
     this._objOffset = offset;
   }
 
   public append(uint8: number) {
     // append byte to end of image
-    this.logMessage(`* OBJ: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset - 1)})`);
+    this.logMessage(`* OBJ: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset)})`);
     if (this._objOffset < ObjectImage.MAX_SIZE_IN_BYTES) {
       this._objImage[this._objOffset++] = uint8;
     } else {
@@ -73,19 +79,19 @@ export class ObjectImage {
   }
 
   private hexByte(uint8: number): string {
-    return `$${uint8.toString(16).padStart(2, '0')}`;
+    return `$${uint8.toString(16).toUpperCase().padStart(2, '0')}`;
   }
 
   private hexWord(uint16: number): string {
-    return `$${uint16.toString(16).padStart(4, '0')}`;
+    return `$${uint16.toString(16).toUpperCase().padStart(4, '0')}`;
   }
 
   private hexLong(uint32: number): string {
-    return `$${uint32.toString(16).padStart(8, '0')}`;
+    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
   }
 
   private hexOffset(uint32: number): string {
-    return `$${uint32.toString(16).padStart(5, '0')}`;
+    return `$${uint32.toString(16).toUpperCase().padStart(5, '0')}`;
   }
 
   public replaceByte(uint8: number, offset: number) {

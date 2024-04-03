@@ -2498,6 +2498,7 @@ export class SpinResolver {
     this.scopeColumn = 0; // effectively -1
     this.compileBlock();
     this.objWrByte(eByteCode.bc_return_results);
+    this.logMessage(`* compileTopBlock() endBlock at offset=(${this.objImage.offsetHex})`);
   }
 
   private compileBlock() {
@@ -3327,7 +3328,7 @@ export class SpinResolver {
         break;
       case eSymbolTableId.STI_LOCAL:
         this.localSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
-        this.lifetimeLocalSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
+        this.lifetimeLocalSymbols.addAllowDupe(newSymbol.name, newSymbol.type, newSymbol.value);
         symbolNumber = this.localSymbols.length;
         tableName = 'localSymbols';
         break;
@@ -3804,12 +3805,13 @@ export class SpinResolver {
             // [error_tocbufa]
             throw new Error('This operator cannot be used for assignment');
           }
+          this.logMessage(`* compileInstruction() type_equal`);
           const baseByteCode: eByteCode = this.currElement.byteCode;
+          this.getEqual(); // skip our equal sign
           this.compileExpression();
           variableReturn.operation = eVariableOperation.VO_ASSIGN;
           variableReturn.assignmentBytecode = baseByteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write);
           this.compileVariable(variableReturn);
-          this.getEqual();
         } else {
           // here is @@notbin:
           this.backElement(); // backup to variable
@@ -5035,6 +5037,7 @@ export class SpinResolver {
   private compileParameterSend(): boolean {
     // Compile a parameter for SEND - accommodates methods with no return value
     // PNut compile_parameter_send:
+    this.logMessage(`*==* compileParameterSend()`);
     let valueOnStackStatus: boolean = false;
     const savedElementIndex: number = this.saveElementLocation();
     this.getElement();
@@ -5076,10 +5079,13 @@ export class SpinResolver {
         throw new Error('SEND parameter methods cannot return multiple values');
       } else if (returnValueCount == 1) {
         // this is @@exp:
+        this.logMessage(`* compileParameterSend() type_method, retValCt==1`);
+        this.restoreElementLocation(savedElementIndex);
         this.compileExpression();
         valueOnStackStatus = true;
       } else {
         //no return value (returnValueCount == 0)
+        this.restoreElementLocation(savedElementIndex);
         this.getElement();
         this.ct_method(eResultRequirements.RR_None, eByteCode.bc_drop);
       }
@@ -6086,6 +6092,7 @@ export class SpinResolver {
     // handle leftover cases of variable access (DAT, VAR, PUB/PRI(loc))
     if (workIsComplete == false) {
       let accessBytecode: number = eByteCode.bc_setup_byte_pbase + variable.wordSize * 6;
+      this.logMessage(`* compileVariable() variable.type=[${eElementType[variable.type]}], accessBytecode=(${accessBytecode})`);
       switch (variable.type) {
         case eElementType.type_dat_byte: // pbase - program base
           accessBytecode += 0;
@@ -6097,6 +6104,7 @@ export class SpinResolver {
           accessBytecode += 2;
           break;
       }
+      this.logMessage(`* compileVariable() variable.indexFlag=(${variable.indexFlag}), accessBytecode=(${accessBytecode})`);
       if (variable.indexFlag == true) {
         accessBytecode += 3;
         const indexReturn: iValueReturn = this.compileIndexCheckCon();

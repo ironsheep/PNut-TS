@@ -6,6 +6,7 @@
 
 import { eElementType } from './types';
 
+export const ID_SEPARATOR_STRING = '_$_';
 // src/classes/spinDocument.ts
 /**
  * A symbol consists of name, type and value
@@ -68,6 +69,15 @@ export class SymbolTable {
     const nameKey: string = symbolName.toUpperCase();
     if (!this.exists(nameKey)) {
       const newEntry: SymbolEntry = new SymbolEntry(symbolName, symbolType, symbolValue);
+      //const newSymbol: iSymbol = { name: nameKey, type: symbolType, value: symbolValue };
+      this.symbols.set(nameKey, newEntry);
+    }
+  }
+
+  public addAllowDupe(symbolName: string, symbolType: eElementType, symbolValue: bigint | string) {
+    const newEntry: SymbolEntry = new SymbolEntry(symbolName, symbolType, symbolValue);
+    const nameKey: string = `${symbolName.toUpperCase()}${ID_SEPARATOR_STRING}${newEntry.instanceNumber}`;
+    if (!this.exists(nameKey)) {
       //const newSymbol: iSymbol = { name: nameKey, type: symbolType, value: symbolValue };
       this.symbols.set(nameKey, newEntry);
     }
