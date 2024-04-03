@@ -42,7 +42,7 @@ export class SpinElementizer {
   private at_eol: boolean = false;
   private symbol_tables: SpinSymbolTables;
   private lastEmittedIsLineEnd: boolean = true;
-  private leftEdgeWhiteColumnCount: number = 0;
+  private firstCharColumn: number = 0;
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
@@ -104,7 +104,7 @@ export class SpinElementizer {
     if (this.currCharacterIndex == 0) {
       const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
       this.logMessage(`  --- NEW ---   Ln#${lineNbrString}  line=[${this.unprocessedLine}]`);
-      this.leftEdgeWhiteColumnCount = this.countColumnsOfLeftEdgeWhite(this.unprocessedLine);
+      this.firstCharColumn = this.countColumnsOfLeftEdgeWhite(this.unprocessedLine) + 1;
     }
 
     // skip initial white space on opening line
@@ -266,7 +266,7 @@ export class SpinElementizer {
       this.logMessage(''); // blank line
       const singleElement = new SpinElement(this.srcFile.fileId, typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
       if (this.lastEmittedIsLineEnd && !singleElement.isLineEnd) {
-        singleElement.setSourceColumnOffset(this.leftEdgeWhiteColumnCount);
+        singleElement.setSourceColumnOffset(this.firstCharColumn);
       }
       if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
         singleElement.setSymbolLength(symbolLengthFound); // if this refers to a symbol, record the length of the symbol too

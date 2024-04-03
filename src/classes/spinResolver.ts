@@ -2495,7 +2495,7 @@ export class SpinResolver {
     // PNut compile_top_block:
     this.logMessage(`*==* compileTopBlock()`);
     this.blockStack.reset();
-    this.scopeColumn = 0; // effectively -1
+    this.setScopeColumn(0); // effectively -1
     this.compileBlock();
     this.objWrByte(eByteCode.bc_return_results);
     this.logMessage(`* compileTopBlock() endBlock at offset=(${this.objImage.offsetHex})`);
@@ -2540,7 +2540,7 @@ export class SpinResolver {
       }
     }
     // restore column we had at entry
-    this.scopeColumn = savedScopeColumn;
+    this.setScopeColumn(savedScopeColumn);
   }
 
   private cb_if() {
@@ -2548,7 +2548,7 @@ export class SpinResolver {
     // PNut cb_if:
     let optimizerMethod: eOptimizerMethod;
     optimizerMethod = this.currElement.type == eElementType.type_if ? eOptimizerMethod.OM_If : eOptimizerMethod.OM_IfNot;
-    this.scopeColumn = this.lineColumn;
+    this.setScopeColumn(this.lineColumn);
     this.new_bnest(eElementType.type_if, this.if_limit + 1);
     this.optimizeBlock(optimizerMethod);
     this.end_bnest();
@@ -2612,7 +2612,7 @@ export class SpinResolver {
   private cb_case() {
     // Compile block - 'case'
     // PNut cb_case:
-    this.scopeColumn = this.lineColumn;
+    this.setScopeColumn(this.lineColumn);
     this.new_bnest(eElementType.type_case, this.case_limit + 1);
     this.optimizeBlock(eOptimizerMethod.OM_Case);
     this.end_bnest();
@@ -2648,7 +2648,7 @@ export class SpinResolver {
         throw new Error('OTHER must be last case');
       }
       const savedScopeColumn: number = this.scopeColumn;
-      this.scopeColumn = this.lineColumn;
+      this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         haveOtherCase = true;
         this.getElement();
@@ -2671,7 +2671,7 @@ export class SpinResolver {
       // here is @@getcolon1
       this.getColon();
       this.skipBlock();
-      this.scopeColumn = savedScopeColumn;
+      this.setScopeColumn(savedScopeColumn);
     }
 
     if (caseCount < 1) {
@@ -2683,9 +2683,9 @@ export class SpinResolver {
       this.getElement();
       this.getElement();
       const savedScopeColumn: number = this.scopeColumn;
-      this.scopeColumn = this.lineColumn;
+      this.setScopeColumn(this.lineColumn);
       this.compileBlock();
-      this.scopeColumn = savedScopeColumn;
+      this.setScopeColumn(savedScopeColumn);
     }
     // here is @@noother:
     this.objWrByte(eByteCode.bc_case_done);
@@ -2709,7 +2709,7 @@ export class SpinResolver {
       }
 
       const savedScopeColumn: number = this.scopeColumn;
-      this.scopeColumn = this.lineColumn;
+      this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         this.getElement();
         this.getElement();
@@ -2729,7 +2729,7 @@ export class SpinResolver {
         this.objWrByte(eByteCode.bc_case_done);
       }
       // here is @@skipped
-      this.scopeColumn = savedScopeColumn;
+      this.setScopeColumn(savedScopeColumn);
     }
     // here is @@done2
     this.write_bstack_ptr(0);
@@ -2754,7 +2754,7 @@ export class SpinResolver {
   private cb_case_fast() {
     // Compile block - 'case_fast'
     // PNut cb_case_fast:
-    this.scopeColumn = this.lineColumn;
+    this.setScopeColumn(this.lineColumn);
     this.new_bnest(eElementType.type_case_fast, this.case_fast_limit + 6 + 1); // 6 enum value
     this.optimizeBlock(eOptimizerMethod.OM_CaseFast);
     this.end_bnest();
@@ -2798,7 +2798,7 @@ export class SpinResolver {
         throw new Error('OTHER must be last case');
       }
       const savedScopeColumn: number = this.scopeColumn;
-      this.scopeColumn = this.lineColumn;
+      this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         haveOtherCase = true;
         this.getElement();
@@ -2819,7 +2819,7 @@ export class SpinResolver {
       // here is @@getcolon1
       this.getColon();
       this.skipBlock();
-      this.scopeColumn = savedScopeColumn;
+      this.setScopeColumn(savedScopeColumn);
     }
     // here is @@done1:
     if (caseCount < 1) {
@@ -2864,7 +2864,7 @@ export class SpinResolver {
       }
 
       const savedScopeColumn: number = this.scopeColumn;
-      this.scopeColumn = this.lineColumn;
+      this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         // this is the other (default) case
         this.getElement();
@@ -2907,7 +2907,7 @@ export class SpinResolver {
         throw new Error('CASE_FAST block exceeds 64KB');
       }
       this.objWrByte(eByteCode.bc_case_fast_done);
-      this.scopeColumn = savedScopeColumn;
+      this.setScopeColumn(savedScopeColumn);
     }
     // here is @@done2
     this.write_bstack_ptr(eCaseFast.CF_FinalAddr);
@@ -2977,7 +2977,7 @@ export class SpinResolver {
     //   bstack[1] = 'quit' address
     //   bstack[2] = loop address
     this.logMessage(`*==* cb_repeat() ENTRY`);
-    this.scopeColumn = this.lineColumn;
+    this.setScopeColumn(this.lineColumn);
     this.new_bnest(eElementType.type_repeat, 3);
     this.getElement();
     if (this.currElement.type == eElementType.type_end) {
@@ -6760,6 +6760,13 @@ export class SpinResolver {
     this.nextElementIndex = savedLocation;
   }
 
+  private saveScopeColumn() {}
+
+  private setScopeColumn(newScopeColumn: number) {
+    this.logMessage(`* LINE_SCOPE scopeColumn SET (${this.scopeColumn}) -> (${newScopeColumn})`);
+    this.scopeColumn = newScopeColumn;
+  }
+
   private getElement(): SpinElement {
     //this.logMessage(`* Element Index=(${this.nextElementIndex + 1})`);
     if (this.spinElements.length == 0) {
@@ -6800,6 +6807,7 @@ export class SpinResolver {
     // and make sure our column offset into the line is set
     if (this.currElement.sourceColumnOffset != 0) {
       this.lineColumn = this.currElement.sourceColumnOffset;
+      this.logMessage(`* LINE_SCOPE getElement() lineColumn -> (${this.lineColumn})`);
     }
 
     return this.currElement; // NOTE: (WARNING!) this is a reference into our active element list
@@ -6822,6 +6830,7 @@ export class SpinResolver {
     // and make sure our column offset into the line is set
     if (this.currElement.sourceColumnOffset != 0) {
       this.lineColumn = this.currElement.sourceColumnOffset;
+      this.logMessage(`* LINE_SCOPE backElement() lineColumn -> (${this.lineColumn})`);
     }
     this.logMessage(`* BACKele i#${this.nextElementIndex - 1}, e=[${this.currElement.toString()}]`);
   }
