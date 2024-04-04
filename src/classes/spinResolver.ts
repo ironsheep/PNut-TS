@@ -79,10 +79,10 @@ enum eCompOp {
 }
 
 enum eVariableOperation {
-  VO_Unknown,
   VO_READ,
   VO_WRITE,
-  VO_ASSIGN
+  VO_ASSIGN,
+  VO_Unknown
 }
 
 interface iConstantReturn {
@@ -2496,17 +2496,20 @@ export class SpinResolver {
     this.logMessage(`*==* compileTopBlock()`);
     this.blockStack.reset();
     this.setScopeColumn(0); // effectively -1
-    this.compileBlock();
+    this.compileBlock(this.scopeColumn); // effectively -1
     this.objWrByte(eByteCode.bc_return_results);
     this.logMessage(`* compileTopBlock() endBlock at offset=(${this.objImage.offsetHex})`);
   }
 
-  private compileBlock() {
+  private compileBlock(startingColumn: number) {
     // PNut compile_block:
-    const savedScopeColumn: number = this.scopeColumn;
-    this.logMessage(`*==* compileBlock() savedScopeColumn=(${savedScopeColumn})`);
+    const savedScopeColumn: number = startingColumn;
+    this.setScopeColumn(startingColumn); // effectively -1
+
+    this.logMessage(`*==* compileBlock() start=(${this.scopeColumn})`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      // here is cb_loop:
       this.getElement();
       if (this.currElement.type == eElementType.type_end_file) {
         break;
@@ -2514,7 +2517,8 @@ export class SpinResolver {
         this.backElement();
         break;
       }
-      if (this.lineColumn <= this.scopeColumn) {
+      if (this.lineColumn <= savedScopeColumn) {
+        this.logMessage(`* cb_loop: ln=(${this.lineColumn}) < srt=(${savedScopeColumn}) BREAK OUT!???`);
         this.backElement();
         break;
       }
@@ -2566,7 +2570,7 @@ export class SpinResolver {
       this.getEndOfLine();
       this.compile_bstack_branch(blockStackIndex, branchByteCode);
       // here is @@block:
-      this.compileBlock();
+      this.compileBlock(this.scopeColumn);
       this.getElement();
       if (this.currElement.type == eElementType.type_end_file) {
         break;
@@ -2594,7 +2598,7 @@ export class SpinResolver {
           }
         } else {
           this.getEndOfLine();
-          this.compileBlock();
+          this.compileBlock(this.scopeColumn);
           break;
         }
       } else {
@@ -2613,7 +2617,7 @@ export class SpinResolver {
     // Compile block - 'case'
     // PNut cb_case:
     this.setScopeColumn(this.lineColumn);
-    this.new_bnest(eElementType.type_case, this.case_limit + 1);
+    this.new_bnest(eElementType.type_case, this.case_limit + 1); // max case + other
     this.optimizeBlock(eOptimizerMethod.OM_Case);
     this.end_bnest();
   }
@@ -2636,6 +2640,9 @@ export class SpinResolver {
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
+      const savedScopeColumn: number = this.scopeColumn;
+      this.setScopeColumn(this.lineColumn); // set to begining of line
+
       this.backElement(); // undo "Match" get
 
       // if line is out-dented or same level we are done with case
@@ -2647,8 +2654,6 @@ export class SpinResolver {
         // [error_omblc]
         throw new Error('OTHER must be last case');
       }
-      const savedScopeColumn: number = this.scopeColumn;
-      this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         haveOtherCase = true;
         this.getElement();
@@ -2683,8 +2688,8 @@ export class SpinResolver {
       this.getElement();
       this.getElement();
       const savedScopeColumn: number = this.scopeColumn;
-      this.setScopeColumn(this.lineColumn);
-      this.compileBlock();
+      this.setScopeColumn(this.lineColumn); // set to begining of line
+      this.compileBlock(this.scopeColumn);
       this.setScopeColumn(savedScopeColumn);
     }
     // here is @@noother:
@@ -2709,7 +2714,7 @@ export class SpinResolver {
       }
 
       const savedScopeColumn: number = this.scopeColumn;
-      this.setScopeColumn(this.lineColumn);
+      this.setScopeColumn(this.lineColumn); // set to begining of line
       if (matchIsOtherCase) {
         this.getElement();
         this.getElement();
@@ -2725,7 +2730,7 @@ export class SpinResolver {
 
         this.getElement();
         this.write_bstack_ptr(++caseCount);
-        this.compileBlock();
+        this.compileBlock(this.scopeColumn);
         this.objWrByte(eByteCode.bc_case_done);
       }
       // here is @@skipped
@@ -2739,7 +2744,7 @@ export class SpinResolver {
     // Skip block
     // PNut skip_block:
     const savedObjectOffset = this.objImage.offset;
-    this.compileBlock();
+    this.compileBlock(this.scopeColumn);
     this.objImage.setOffsetTo(savedObjectOffset);
   }
 
@@ -2897,7 +2902,7 @@ export class SpinResolver {
       // here is @@getcolon2
       this.getColon();
       this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // current case
-      this.compileBlock();
+      this.compileBlock(this.scopeColumn);
       caseCount++;
       this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // possible other (default case)
       const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
@@ -3013,8 +3018,9 @@ export class SpinResolver {
   }
 
   private blockRepeat(isPostWhileUntil: boolean): boolean {
-    // PNut cb_repeat: @@plaincomp
+    // PNut cb_repeat: @@plaincomp:
     // code for eOptimizerMethod.OM_Repeat
+    this.logMessage(`* blockRepeat(isPostWhileUntil=(${isPostWhileUntil})) scopeColumn=(${this.scopeColumn})`);
 
     // set 'loop' address
     this.write_bstack_ptr(eRepeat.RP_LoopAddress);
@@ -3024,7 +3030,7 @@ export class SpinResolver {
       this.write_bstack_ptr(eRepeat.RP_NextAddress);
     }
     // here is @@plainwu
-    this.compileBlock(); // compile repeat block
+    this.compileBlock(this.scopeColumn); // compile repeat block
     this.getElement();
     if (this.currElement.type == eElementType.type_end_file) {
       // here is @@plainloop
@@ -3050,6 +3056,10 @@ export class SpinResolver {
       this.write_bstack_ptr(eRepeat.RP_QuitAddress);
     } else if (this.currElement.type == eElementType.type_until) {
       isPostWhileUntil = true; // set post-while/until flag
+      // set 'next' address
+      this.write_bstack_ptr(eRepeat.RP_NextAddress);
+      this.compileExpression(); // compile post-while/until expression
+      this.getEndOfLine();
       // here is @@plainpost2 carrying in bc_jz
       this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jz);
       // set 'quit' address
@@ -3084,7 +3094,7 @@ export class SpinResolver {
       }
       // here is @@countnz
       this.write_bstack_ptr(eRepeat.RP_LoopAddress);
-      this.compileBlock(); // compile repeat block
+      this.compileBlock(this.scopeColumn); // compile repeat block
       this.write_bstack_ptr(eRepeat.RP_NextAddress);
       this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_djnz);
       this.write_bstack_ptr(eRepeat.RP_QuitAddress);
@@ -3105,7 +3115,7 @@ export class SpinResolver {
     this.compileVariableAssign(variableReturn, eByteCode.bc_repeat_var_init_n);
     // set 'loop' address
     this.write_bstack_ptr(eRepeat.RP_LoopAddress);
-    this.compileBlock(); // compile repeat block
+    this.compileBlock(this.scopeColumn); // compile repeat block
     // set 'next' address
     this.write_bstack_ptr(eRepeat.RP_NextAddress);
     this.compileVariableAssign(variableReturn, eByteCode.bc_repeat_var_loop);
@@ -3123,7 +3133,7 @@ export class SpinResolver {
     this.getEndOfLine();
     // compile forward branch ('quit')
     this.compile_bstack_branch(eRepeat.RP_QuitAddress, byteCode);
-    this.compileBlock(); // compile repeat block
+    this.compileBlock(this.scopeColumn); // compile repeat block
     // compile backward branch ('next')
     this.compile_bstack_branch(eRepeat.RP_NextAddress, eByteCode.bc_jmp);
     // set 'quit' address
@@ -3156,7 +3166,7 @@ export class SpinResolver {
     // set 'loop' address
     this.write_bstack_ptr(eRepeat.RP_LoopAddress);
     // compile repeat block
-    this.compileBlock();
+    this.compileBlock(this.scopeColumn);
     // set 'next' address
     this.write_bstack_ptr(eRepeat.RP_NextAddress);
     // compile setup + repeat_var_loop
@@ -4102,10 +4112,10 @@ export class SpinResolver {
       // \obj{[]}.method({param,...}), \method({param,...}), \var({param,...}){:results} ?
       this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap_push);
     } else if (this.currElement.type == eElementType.type_obj) {
-      // obj{[]}.method({param,...}) or obj.con ?
+      // obj{[]}.method({param,...}) : ? or obj.con ?
       this.ct_objpubcon(eResultRequirements.RR_One, eByteCode.bc_drop_push);
     } else if (this.currElement.type == eElementType.type_method) {
-      // method({param,...}) ?
+      // method({param,...}) : ?
       this.ct_method(eResultRequirements.RR_One, eByteCode.bc_drop_push);
     } else if (this.currElement.type == eElementType.type_i_look) {
       // instruction LOOKUP/LOOKDOWN ?
@@ -5927,6 +5937,7 @@ export class SpinResolver {
   }
 
   private compileVariable(variable: iVariableReturn) {
+    // PNut compile_var:
     this.logMessage(`*==* compileVariable()`);
     const resumeIndex: number = this.saveElementLocation();
     let workIsComplete: boolean = false;
@@ -5938,13 +5949,16 @@ export class SpinResolver {
       if (variable.type == eElementType.type_size) {
         this.skipIndex();
       }
+      // here is @@bfnotsize:
       if (variable.sizeOverrideFlag == true) {
         this.getDot();
         this.getSize();
       }
+      // here is @@bfnsor:
       if (variable.indexFlag == true) {
         this.skipIndex();
       }
+      // here is @@bfnoindex:
       this.getDot();
       this.getLeftBracket();
       this.compileExpression(); // standalone or lower end of range
@@ -6050,11 +6064,12 @@ export class SpinResolver {
       variable.address < 16 * 4 &&
       variable.indexFlag == false
     ) {
-      if (variable.bitfieldFlag == true && variable.operation === eVariableOperation.VO_ASSIGN) {
+      this.logMessage(`* compileVariable() op=[${eVariableOperation[variable.operation]}] bitfield=(${variable.bitfieldFlag})`);
+      if (variable.bitfieldFlag == true || variable.operation == eVariableOperation.VO_ASSIGN) {
         this.objWrByte(eByteCode.bc_setup_local_0_15 + (variable.address >> 2)); // one of our first 16
         this.compileVariableBitfield(variable);
         this.compileVariableReadWriteAssign(variable);
-      } else if (variable.operation === eVariableOperation.VO_WRITE) {
+      } else if (variable.operation == eVariableOperation.VO_WRITE) {
         this.objWrByte(eByteCode.bc_write_local_0_15 + (variable.address >> 2)); // one of our first 16
       } else {
         this.objWrByte(eByteCode.bc_read_local_0_15 + (variable.address >> 2)); // one of our first 16

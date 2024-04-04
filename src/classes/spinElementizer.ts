@@ -301,7 +301,7 @@ export class SpinElementizer {
 
   private countColumnsOfLeftEdgeWhite(line: string): number {
     // count columns of white space expanding tabs as we count
-    let whiteColumnsCount: number = 0;
+    let whiteColumnsCount: number = 0; // zero-based...
     const tabStops: number = 8;
     if (line !== undefined && line.length > 0) {
       for (let index = 0; index < line.length; index++) {
@@ -309,8 +309,9 @@ export class SpinElementizer {
         if (currChar == ' ') {
           whiteColumnsCount++;
         } else if (currChar == '\t') {
-          const spaceOverCount = tabStops - (whiteColumnsCount % tabStops);
-          whiteColumnsCount += spaceOverCount == tabStops ? 1 : spaceOverCount;
+          // zero-based, inverted [0-7] becomes [8-1]...
+          const movementCount = tabStops - (whiteColumnsCount % tabStops);
+          whiteColumnsCount += movementCount;
         } else {
           break; // non white char, we are done, outta here!
         }
