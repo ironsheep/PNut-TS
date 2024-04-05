@@ -263,11 +263,10 @@ export class SpinElementizer {
     if (returningSingleEntry) {
       const lineNbrString: string = this.lineNumberString(this.symbolLineNumber, this.symbolCharacterOffset);
       this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${valueToDisplay})`);
-      this.logMessage(''); // blank line
+      this.logMessage(''); // blank line  countColumnsOfLeftEdgeWhite
       const singleElement = new SpinElement(this.srcFile.fileId, typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
-      if (this.lastEmittedIsLineEnd && !singleElement.isLineEnd) {
-        singleElement.setSourceColumnOffset(this.firstCharColumn);
-      }
+      const symbolColumn: number = this.calculateColumnToOffset(this.symbolCharacterOffset, this.currentTextLine.text);
+      singleElement.setSourceColumnOffset(symbolColumn);
       if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
         singleElement.setSymbolLength(symbolLengthFound); // if this refers to a symbol, record the length of the symbol too
         elementsFound.push(singleElement);
@@ -277,6 +276,7 @@ export class SpinElementizer {
     } else {
       // dump our list of values
       this.logMessage(`- displaying ${elementsFound.length} elements`); // blank line
+      // NOTE: we DON'T put 'symbolColumn' into these 'x','x',... lists of symbols
       for (let index = 0; index < elementsFound.length; index++) {
         const element = elementsFound[index];
         const elemTypeStr: string = getElementTypeString(element.type);
@@ -297,6 +297,28 @@ export class SpinElementizer {
     if (whiteSkipCount > 0) {
       this.unprocessedLine = this.skipAhead(whiteSkipCount, this.unprocessedLine);
     }
+  }
+
+  private calculateColumnToOffset(endCharOffset: number, line: string): number {
+    // count columns of white space expanding tabs as we count
+    let columnsCount: number = 0; // zero-based...
+    const tabStops: number = 8;
+    if (line !== undefined && line.length > 0) {
+      for (let index = 0; index < endCharOffset; index++) {
+        const currChar = line.charAt(index);
+        if (currChar == '\t') {
+          // zero-based, inverted [0-7] becomes [8-1]...
+          const movementCount = tabStops - (columnsCount % tabStops);
+          columnsCount += movementCount;
+        } else {
+          columnsCount++;
+        }
+      }
+    }
+    if (line.includes('enter_element')) {
+      this.logMessage(`* calculateColumnToOffset() line-[${line.substring(0, endCharOffset + 1)}], ofs=(${endCharOffset}) -> (${columnsCount})`);
+    }
+    return columnsCount + 1; // now make it a column number
   }
 
   private countColumnsOfLeftEdgeWhite(line: string): number {
@@ -422,6 +444,8 @@ export class SpinElementizer {
 
   private buildElement(type: eElementType, value: bigint | string, charOffset: number): SpinElement {
     const newElement: SpinElement = new SpinElement(this.srcFile.fileId, type, value, this.currentTextLine.sourceLineNumber - 1, charOffset);
+    const symbolColumn: number = this.calculateColumnToOffset(charOffset, this.currentTextLine.text);
+    newElement.setSourceColumnOffset(symbolColumn);
     return newElement;
   }
 

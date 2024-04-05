@@ -709,7 +709,7 @@ export class SpinResolver {
         do {
           this.logMessage(`LOOP: next line TOP`);
           //
-          this.getElement(); // create copy of in our clo
+          this.getElement(); // create copy of element in our global
           this.logMessage(`* DAT NEXTLINE LOOP currElement=[${this.currElement.toString()}]`);
           if (this.currElement.type == eElementType.type_end_file) {
             if (inLineMode) {
@@ -2506,17 +2506,21 @@ export class SpinResolver {
     const savedScopeColumn: number = startingColumn;
     this.setScopeColumn(startingColumn); // effectively -1
 
-    this.logMessage(`*==* compileBlock() start=(${this.scopeColumn})`);
+    const nextElement: SpinElement = this.peekNextElement();
+    this.logMessage(`*==* compileBlock() start=(${this.scopeColumn}) elem=[${nextElement.toString()}] - ENTRY`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is cb_loop:
       this.getElement();
       if (this.currElement.type == eElementType.type_end_file) {
         break;
+      } else if (this.currElement.type == eElementType.type_end) {
+        continue;
       } else if (this.currElement.type == eElementType.type_block) {
         this.backElement();
         break;
       }
+      this.getColumn(); // set this.lineColumn from currentElement
       if (this.lineColumn <= savedScopeColumn) {
         this.logMessage(`* cb_loop: ln=(${this.lineColumn}) <= srt=(${savedScopeColumn}) BREAK OUT!???`);
         this.backElement();
@@ -2545,6 +2549,7 @@ export class SpinResolver {
     }
     // restore column we had at entry
     this.setScopeColumn(savedScopeColumn);
+    this.logMessage(`*==* compileBlock() - EXIT`);
   }
 
   private cb_if() {
@@ -2575,7 +2580,7 @@ export class SpinResolver {
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
-      // NOTE: getElement sets this.lineColumn
+      this.getColumn(); // set this.lineColumn from currentElement
       if (this.lineColumn < this.scopeColumn) {
         this.backElement();
         break;
@@ -2637,12 +2642,13 @@ export class SpinResolver {
     while (true) {
       // here is @@nextcase1
       this.logMessage(`* cb_case:@@comp: (pass1) caseCount=(${caseCount}), haveOtherCase=(${haveOtherCase})`);
-      this.getElement(); // NOTE: this sets this.lineColumn
+      this.getElement();
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
 
+      this.getColumn(); // set this.lineColumn from currentElement
       this.backElement(); // undo "Match" get
 
       // if this line is out-dented or at same level we are done with case statement!
@@ -2680,8 +2686,6 @@ export class SpinResolver {
       }
       // here is @@getcolon1
       this.getColon();
-      this.lineColumn++; // get off of the first element so the following code doesn't exit early
-      this.logMessage(`* LINE_SCOPE (pass1) cb_case()-blockCase() case #${caseCount} lineColumn -> (${this.lineColumn})`);
       this.skipBlock();
       this.setScopeColumn(savedCaseColumn); // PNut POP [ebp]
     }
@@ -2693,11 +2697,10 @@ export class SpinResolver {
     if (haveOtherCase) {
       this.restoreElementLocation(otherCaseElementIndex);
       this.getElement(); // skip 'other'
+      this.getColumn(); // set this.lineColumn from currentElement
       this.getElement(); // skip colon
       const savedCaseColumn: number = this.scopeColumn;
       this.setScopeColumn(this.lineColumn); // set to begining of line at 'other'
-      this.lineColumn++; // get off of the first element so the following code doesn't exit early
-      this.logMessage(`* LINE_SCOPE (in-between) cb_case()-blockCase() case OTHER lineColumn -> (${this.lineColumn})`);
       this.compileBlock(this.scopeColumn);
       this.setScopeColumn(savedCaseColumn);
     }
@@ -2711,11 +2714,13 @@ export class SpinResolver {
     while (true) {
       // here is @@nextcase2
       this.logMessage(`* cb_case:@@comp: (pass2) caseCount=(${caseCount}), haveOtherCase=(${haveOtherCase})`);
-      this.getElement(); // this sets this.lineColumn
+      this.getElement();
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
+
+      this.getColumn(); // set this.lineColumn from currentElement
       this.backElement(); // undo "Match" get
 
       // if line is out-dented or same level we are done with case
@@ -2728,8 +2733,6 @@ export class SpinResolver {
       if (matchIsOtherCase) {
         this.getElement(); // skip 'other'
         this.getElement(); // skip colon
-        this.lineColumn++; // get off of the first element so the following code doesn't exit early
-        this.logMessage(`* LINE_SCOPE (pass2) cb_case()-blockCase() case OTHER lineColumn -> (${this.lineColumn})`);
         // skip 'other' block
         this.skipBlock();
       } else {
@@ -2741,8 +2744,6 @@ export class SpinResolver {
         } while (this.checkComma());
 
         this.getElement(); // skip colon
-        this.lineColumn++; // get off of the first element so the following code doesn't exit early
-        this.logMessage(`* LINE_SCOPE (pass2) cb_case()-blockCase() case #${caseCount} lineColumn -> (${this.lineColumn})`);
         this.write_bstack_ptr(++caseCount);
         this.compileBlock(this.scopeColumn);
         this.objWrByte(eByteCode.bc_case_done);
@@ -2801,12 +2802,14 @@ export class SpinResolver {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@nextcase1
-      this.getElement(); // this sets this.lineColumn
+      this.getElement();
       // remember this elements' type
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
+
+      this.getColumn(); // set this.lineColumn from currentElement
       this.backElement(); // undo "Match" get
 
       // if line is out-dented or same level we are done with case
@@ -2839,10 +2842,6 @@ export class SpinResolver {
       }
       // here is @@getcolon1
       this.getColon();
-      this.lineColumn++; // get off of the first element so the following code doesn't exit early
-      this.logMessage(
-        `* LINE_SCOPE (pass1) cb_case_fast()-blockCase() case #${caseCount} isMatch=(${matchIsOtherCase}) lineColumn -> (${this.lineColumn})`
-      );
       this.skipBlock();
       this.setScopeColumn(savedCaseColumn);
     }
@@ -2876,11 +2875,13 @@ export class SpinResolver {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@nextcase2
-      this.getElement(); // this sets this.lineColumn
+      this.getElement();
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
+
+      this.getColumn(); // set this.lineColumn from currentElement
       this.backElement(); // undo "Match" get
 
       // if line is out-dented or same level we are done with case
@@ -2922,10 +2923,6 @@ export class SpinResolver {
       // here is @@getcolon2
       this.getColon();
       this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // current case
-      this.lineColumn++; // get off of the first element so the following code doesn't exit early
-      this.logMessage(
-        `* LINE_SCOPE (pass2) cb_case_fast()-blockCase() case #${caseCount} isMatch=(${matchIsOtherCase}) lineColumn -> (${this.lineColumn})`
-      );
       this.compileBlock(this.scopeColumn);
       caseCount++;
       this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // possible other (default case)
@@ -3044,7 +3041,8 @@ export class SpinResolver {
   private blockRepeat(isPostWhileUntil: boolean): boolean {
     // PNut cb_repeat: @@plaincomp:
     // code for eOptimizerMethod.OM_Repeat
-    this.logMessage(`* blockRepeat(isPostWhileUntil=(${isPostWhileUntil})) scopeColumn=(${this.scopeColumn})`);
+    const nextElement: SpinElement = this.peekNextElement();
+    this.logMessage(`* blockRepeat(isPostWhileUntil=(${isPostWhileUntil})) scopeColumn=(${this.scopeColumn}) elem=[${nextElement.toString()}]`);
 
     // set 'loop' address
     this.write_bstack_ptr(eRepeat.RP_LoopAddress);
@@ -3056,6 +3054,7 @@ export class SpinResolver {
     // here is @@plainwu
     this.compileBlock(this.scopeColumn); // compile repeat block
     this.getElement();
+    this.getColumn(); // set this.lineColumn from currentElement
     if (this.currElement.type == eElementType.type_end_file) {
       // here is @@plainloop
       this.compile_bstack_branch(eRepeat.RP_LoopAddress, eByteCode.bc_jmp);
@@ -3101,7 +3100,8 @@ export class SpinResolver {
   private blockRepeatCount() {
     // PNut cb_repeat: @@countcomp:
     // code for eOptimizerMethod.OM_RepeatCount
-    this.logMessage(`*==* blockRepeatCount() - ENTRY`);
+    const nextElement: SpinElement = this.peekNextElement();
+    this.logMessage(`*==* blockRepeatCount() elem=[${nextElement.toString()}] - ENTRY`);
     // compile count expression, check for constant
     const valueReturn: iValueReturn = this.compileExpressionCheckCon();
     this.getEndOfLine();
@@ -3611,7 +3611,8 @@ export class SpinResolver {
       }
     }
     if (foundStatus == true) {
-      if (this.currElement.sourceCharacterOffset != 0) {
+      this.getColumn(); // set this.lineColumn from currentElement
+      if (this.lineColumn != 1) {
         // [error_bdmbifc]
         throw new Error('Block designator must be in first column');
       }
@@ -3649,20 +3650,22 @@ export class SpinResolver {
   private compileExpression(): iValueReturn {
     //  Compile expression with sub-expressions
     // PNut compile_exp:
-    this.logMessage(`*==* compileExpression()`);
+    const nextElement: SpinElement = this.peekNextElement();
+    this.logMessage(`*==* compileExpression() elem=[${nextElement.toString()}] - ENTRY`);
     const tryExpressionResult = this.trySpin2ConExpression();
     if (tryExpressionResult.isResolved) {
       this.compileConstant(tryExpressionResult.value);
     } else {
       this.compileSubExpression(this.lowestPrecedence);
     }
+    this.logMessage(`*==* compileExpression() - EXIT`);
     return tryExpressionResult;
   }
 
   private compileSubExpression(entryPrecedence: number) {
     // compile this expression - recursively
     // PNut compile_exp: @@topexp:
-    this.logMessage(`compileSubExpression(${entryPrecedence}) - ENTRY`);
+    this.logMessage(`compileSubExpression(${entryPrecedence}) elem=[${this.currElement.toString()}] - ENTRY`);
     let currPrecedence: number = entryPrecedence; // PNut [dl] register
     if (--currPrecedence < 0) {
       // we need to resolve the term!
@@ -3733,13 +3736,13 @@ export class SpinResolver {
         }
       }
     }
-    //this.logMessage(`compileSubExpression(${entryPrecedence}) - EXIT`);
+    this.logMessage(`compileSubExpression(${entryPrecedence}) - EXIT`);
   }
 
   private compileInstruction() {
     // Instruction Compiler
     // PNut compile_inst:
-    this.logMessage(`*==* compileInstruction()`);
+    this.logMessage(`*==* compileInstruction() at elem=[${this.currElement.toString()}]`);
     if (this.currElement.type == eElementType.type_back) {
       this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap);
     } else if (this.currElement.type == eElementType.type_obj) {
@@ -4701,7 +4704,7 @@ export class SpinResolver {
   private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
     // Optimizing block compiler
     // PNut optimize_block:
-    this.logMessage(`* optimizeBlock(${eOptimizerMethod[methodId]}, (${subType}))`);
+    this.logMessage(`* optimizeBlock(${eOptimizerMethod[methodId]}, (${subType})) elem=[${this.currElement.toString()}]`);
     const savedElementIndex = this.saveElementLocation();
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
@@ -6839,7 +6842,9 @@ export class SpinResolver {
       if (foundSymbol !== undefined) {
         const symbolLength = element.getSymbolLength();
         this.logMessage(`* getElement() replacing element=[${element.toString()}]`);
-        element = new SpinElement(element.fileId, foundSymbol.type, foundSymbol.value, element.sourceLineIndex, element.sourceCharacterOffset);
+        element = new SpinElement(-1, eElementType.type_undefined, '', -1, -1, element);
+        element.setType(foundSymbol.type);
+        element.setValue(foundSymbol.value);
         element.setSymbolLength(symbolLength);
         this.logMessage(`*       with element=[${element.toString()}]`);
         element.setSourceElementWasUndefined(); // mark this NEW symbol as replacing an undefined symbol
@@ -6856,12 +6861,6 @@ export class SpinResolver {
 
     // save a copy of the element into our global
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, element);
-    // and make sure our column offset into the line is set
-    if (this.currElement.sourceColumnOffset != 0) {
-      this.lineColumn = this.currElement.sourceColumnOffset;
-      this.logMessage(`* LINE_SCOPE getElement() lineColumn -> (${this.lineColumn})`);
-    }
-
     return this.currElement; // NOTE: (WARNING!) this is a reference into our active element list
   }
 
@@ -6876,15 +6875,26 @@ export class SpinResolver {
     return desiredSymbol;
   }
 
+  private peekNextElement(): SpinElement {
+    // for logging use ONLY
+    const nextElement: SpinElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.nextElementIndex]);
+    return nextElement;
+  }
+
   private backElement(): void {
     this.nextElementIndex -= 2;
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.nextElementIndex++]);
     // and make sure our column offset into the line is set
-    if (this.currElement.sourceColumnOffset != 0) {
-      this.lineColumn = this.currElement.sourceColumnOffset;
-      this.logMessage(`* LINE_SCOPE backElement() lineColumn -> (${this.lineColumn})`);
-    }
     this.logMessage(`* BACKele i#${this.nextElementIndex - 1}, e=[${this.currElement.toString()}]`);
+  }
+
+  private getColumn() {
+    if (this.currElement.sourceColumnOffset != 0) {
+      this.logMessage(`* LINE_SCOPE getColumn() lineColumn (${this.lineColumn}) -> (${this.currElement.sourceColumnOffset})`);
+      this.lineColumn = this.currElement.sourceColumnOffset;
+    } else {
+      this.logMessage(`WARNING: getColumn() sourceColumnOffset in SpinElement NOT SET!`);
+    }
   }
 
   private resolveOperation(parmA: bigint, parmB: bigint, operation: eOperationType, isFloatInConBlock: boolean): bigint {
