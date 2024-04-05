@@ -2518,7 +2518,7 @@ export class SpinResolver {
         break;
       }
       if (this.lineColumn <= savedScopeColumn) {
-        this.logMessage(`* cb_loop: ln=(${this.lineColumn}) < srt=(${savedScopeColumn}) BREAK OUT!???`);
+        this.logMessage(`* cb_loop: ln=(${this.lineColumn}) <= srt=(${savedScopeColumn}) BREAK OUT!???`);
         this.backElement();
         break;
       }
@@ -2616,7 +2616,8 @@ export class SpinResolver {
   private cb_case() {
     // Compile block - 'case'
     // PNut cb_case:
-    this.setScopeColumn(this.lineColumn);
+    this.setScopeColumn(this.lineColumn); // column offset to 'case' PNut [ebp]
+    // reserve room for max cases and the other case
     this.new_bnest(eElementType.type_case, this.case_limit + 1); // max case + other
     this.optimizeBlock(eOptimizerMethod.OM_Case);
     this.end_bnest();
@@ -2626,7 +2627,7 @@ export class SpinResolver {
     // PNut cb_case: @@comp:
     // code for eOptimizerMethod.OM_Case
     this.compile_bstack_address(0); // compile final address
-    this.compileExpression(); // compile case "target" value
+    this.compileExpression(); // compile case "target" value (switch variable/constant)
     this.getEndOfLine();
     const savedCaseStartElementIndex = this.saveElementLocation(); // rember location of 1st case statement
     let caseCount: number = 0; // this is PNut ecx[30-0]
@@ -2635,20 +2636,24 @@ export class SpinResolver {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@nextcase1
-      this.getElement(); // this sets this.lineColumn
+      this.logMessage(`* cb_case:@@comp: (pass1) caseCount=(${caseCount}), haveOtherCase=(${haveOtherCase})`);
+      this.getElement(); // NOTE: this sets this.lineColumn
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
         break;
       }
-      const savedScopeColumn: number = this.scopeColumn;
-      this.setScopeColumn(this.lineColumn); // set to begining of line
 
       this.backElement(); // undo "Match" get
 
-      // if line is out-dented or same level we are done with case
+      // if this line is out-dented or at same level we are done with case statement!
       if (this.lineColumn <= this.scopeColumn) {
         break;
       }
+
+      // set scope to match column
+      const savedCaseColumn: number = this.scopeColumn; // PNut PUSH [ebp]
+      this.setScopeColumn(this.lineColumn); // set to begining of line
+
       // if any match after 'other', error
       if (haveOtherCase) {
         // [error_omblc]
@@ -2656,7 +2661,7 @@ export class SpinResolver {
       }
       if (matchIsOtherCase) {
         haveOtherCase = true;
-        this.getElement();
+        this.getElement(); // skip 'other'
         // save this index for 2nd loop
         // NOTE: get current element index, NOT next element index
         otherCaseElementIndex = this.saveElementLocation() - 1; // [source_start]
@@ -2675,8 +2680,10 @@ export class SpinResolver {
       }
       // here is @@getcolon1
       this.getColon();
+      this.lineColumn++; // get off of the first element so the following code doesn't exit early
+      this.logMessage(`* LINE_SCOPE (pass1) cb_case()-blockCase() case #${caseCount} lineColumn -> (${this.lineColumn})`);
       this.skipBlock();
-      this.setScopeColumn(savedScopeColumn);
+      this.setScopeColumn(savedCaseColumn); // PNut POP [ebp]
     }
 
     if (caseCount < 1) {
@@ -2685,12 +2692,14 @@ export class SpinResolver {
     }
     if (haveOtherCase) {
       this.restoreElementLocation(otherCaseElementIndex);
-      this.getElement();
-      this.getElement();
-      const savedScopeColumn: number = this.scopeColumn;
-      this.setScopeColumn(this.lineColumn); // set to begining of line
+      this.getElement(); // skip 'other'
+      this.getElement(); // skip colon
+      const savedCaseColumn: number = this.scopeColumn;
+      this.setScopeColumn(this.lineColumn); // set to begining of line at 'other'
+      this.lineColumn++; // get off of the first element so the following code doesn't exit early
+      this.logMessage(`* LINE_SCOPE (in-between) cb_case()-blockCase() case OTHER lineColumn -> (${this.lineColumn})`);
       this.compileBlock(this.scopeColumn);
-      this.setScopeColumn(savedScopeColumn);
+      this.setScopeColumn(savedCaseColumn);
     }
     // here is @@noother:
     this.objWrByte(eByteCode.bc_case_done);
@@ -2701,6 +2710,7 @@ export class SpinResolver {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@nextcase2
+      this.logMessage(`* cb_case:@@comp: (pass2) caseCount=(${caseCount}), haveOtherCase=(${haveOtherCase})`);
       this.getElement(); // this sets this.lineColumn
       const matchIsOtherCase: boolean = this.currElement.type == eElementType.type_other;
       if (this.currElement.type == eElementType.type_end_file) {
@@ -2713,28 +2723,32 @@ export class SpinResolver {
         break;
       }
 
-      const savedScopeColumn: number = this.scopeColumn;
+      const savedCaseColumn: number = this.scopeColumn;
       this.setScopeColumn(this.lineColumn); // set to begining of line
       if (matchIsOtherCase) {
-        this.getElement();
-        this.getElement();
-        // skip 'other' declaration
+        this.getElement(); // skip 'other'
+        this.getElement(); // skip colon
+        this.lineColumn++; // get off of the first element so the following code doesn't exit early
+        this.logMessage(`* LINE_SCOPE (pass2) cb_case()-blockCase() case OTHER lineColumn -> (${this.lineColumn})`);
+        // skip 'other' block
         this.skipBlock();
       } else {
         // here is @@notother2:
         // here is @@skiprange:
         // skip comma delimited MATCH declarations
         do {
-          this.skipRange();
+          this.skipRange(); // skip range/value (already compiled)
         } while (this.checkComma());
 
-        this.getElement();
+        this.getElement(); // skip colon
+        this.lineColumn++; // get off of the first element so the following code doesn't exit early
+        this.logMessage(`* LINE_SCOPE (pass2) cb_case()-blockCase() case #${caseCount} lineColumn -> (${this.lineColumn})`);
         this.write_bstack_ptr(++caseCount);
         this.compileBlock(this.scopeColumn);
         this.objWrByte(eByteCode.bc_case_done);
       }
       // here is @@skipped
-      this.setScopeColumn(savedScopeColumn);
+      this.setScopeColumn(savedCaseColumn);
     }
     // here is @@done2
     this.write_bstack_ptr(0);
@@ -2743,9 +2757,11 @@ export class SpinResolver {
   private skipBlock() {
     // Skip block
     // PNut skip_block:
+    this.logMessage(`* skipBlock() ENTRY`);
     const savedObjectOffset = this.objImage.offset;
     this.compileBlock(this.scopeColumn);
     this.objImage.setOffsetTo(savedObjectOffset);
+    this.logMessage(`* skipBlock() EXIT`);
   }
 
   private skipRange() {
@@ -2802,11 +2818,11 @@ export class SpinResolver {
         // [error_omblc]
         throw new Error('OTHER must be last case');
       }
-      const savedScopeColumn: number = this.scopeColumn;
+      const savedCaseColumn: number = this.scopeColumn;
       this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         haveOtherCase = true;
-        this.getElement();
+        this.getElement(); // skip other
       } else {
         // here is @@notother1:
         if (++caseCount > this.case_fast_limit) {
@@ -2823,8 +2839,12 @@ export class SpinResolver {
       }
       // here is @@getcolon1
       this.getColon();
+      this.lineColumn++; // get off of the first element so the following code doesn't exit early
+      this.logMessage(
+        `* LINE_SCOPE (pass1) cb_case_fast()-blockCase() case #${caseCount} isMatch=(${matchIsOtherCase}) lineColumn -> (${this.lineColumn})`
+      );
       this.skipBlock();
-      this.setScopeColumn(savedScopeColumn);
+      this.setScopeColumn(savedCaseColumn);
     }
     // here is @@done1:
     if (caseCount < 1) {
@@ -2868,11 +2888,11 @@ export class SpinResolver {
         break;
       }
 
-      const savedScopeColumn: number = this.scopeColumn;
+      const savedCaseColumn: number = this.scopeColumn;
       this.setScopeColumn(this.lineColumn);
       if (matchIsOtherCase) {
         // this is the other (default) case
-        this.getElement();
+        this.getElement(); // skip 'other'
       } else {
         // this is a non-other case (real case)
         // here is @@notother2:
@@ -2902,6 +2922,10 @@ export class SpinResolver {
       // here is @@getcolon2
       this.getColon();
       this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // current case
+      this.lineColumn++; // get off of the first element so the following code doesn't exit early
+      this.logMessage(
+        `* LINE_SCOPE (pass2) cb_case_fast()-blockCase() case #${caseCount} isMatch=(${matchIsOtherCase}) lineColumn -> (${this.lineColumn})`
+      );
       this.compileBlock(this.scopeColumn);
       caseCount++;
       this.write_bstack_ptr(eCaseFast.CF_TableAddr + caseCount); // possible other (default case)
@@ -2912,7 +2936,7 @@ export class SpinResolver {
         throw new Error('CASE_FAST block exceeds 64KB');
       }
       this.objWrByte(eByteCode.bc_case_fast_done);
-      this.setScopeColumn(savedScopeColumn);
+      this.setScopeColumn(savedCaseColumn);
     }
     // here is @@done2
     this.write_bstack_ptr(eCaseFast.CF_FinalAddr);
@@ -3924,13 +3948,16 @@ export class SpinResolver {
   private ci_next_quit() {
     // Compile instruction - 'next'/'quit'
     // PNut ci_next_quit:
-    const isQuit: boolean = this.currElement.bigintValue != 0n ? true : false; // T/F where T means quit vs. next
+    const isQuit: boolean = this.currElement.bigintValue == 1n ? true : false; // T/F where T means quit=1 vs. next=0
     const isNext: boolean = isQuit == false;
-    let popCount: number = 0;
-    let nestLevel: number = this.blockStack.topIndex; // this is ecx
+    let nestLevel: number = this.blockStack.topIndex; // this is PNut [ecx]
+    let popCount: number = 0; // this is PNut [edx]
     let byteCode: eByteCode;
+    const topItem: string = nestLevel != -1 ? eElementType[this.blockStack.typeAtLevel(nestLevel)] : '-emptyStack-';
+    this.logMessage(`* ci_next_quit() nestLevel=(${nestLevel}), topItemType=[${topItem}]`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      // if topIndex was -1..  if we have empty blockStack
       if (nestLevel < 0) {
         // [error_tioawarb]
         throw new Error('This instruction is only allowed within a REPEAT block');
@@ -4613,12 +4640,22 @@ export class SpinResolver {
 
   private new_bnest(type: eElementType, size: number) {
     this.blockStack.add(type, size);
+    const nestLevel: number = this.blockStack.topIndex; // this is PNut [ecx]
+    const topItem: string = nestLevel != -1 ? eElementType[this.blockStack.typeAtLevel(nestLevel)] : '-emptyStack-';
+    this.logMessage(`* new_bnest() nestLevel=(${nestLevel}), topItemType=[${topItem}]`);
   }
+
   private redo_bnest(type: eElementType) {
     this.blockStack.overrideType(type);
+    const nestLevel: number = this.blockStack.topIndex; // this is PNut [ecx]
+    const topItem: string = nestLevel != -1 ? eElementType[this.blockStack.typeAtLevel(nestLevel)] : '-emptyStack-';
+    this.logMessage(`* redo_bnest() nestLevel=(${nestLevel}), topItemType=[${topItem}]`);
   }
 
   private end_bnest() {
+    const nestLevel: number = this.blockStack.topIndex; // this is PNut [ecx]
+    const topItem: string = nestLevel != -1 ? eElementType[this.blockStack.typeAtLevel(nestLevel)] : '-emptyStack-';
+    this.logMessage(`* end_bnest() nestLevel=(${nestLevel}), topItemType=[${topItem}]`);
     this.blockStack.remove();
   }
 

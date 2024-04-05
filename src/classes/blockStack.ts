@@ -66,6 +66,7 @@ export class BlockStack {
   }
 
   public reset() {
+    this.logMessage(`++ BSTACK cleared!`);
     this._stack = [];
   }
 
@@ -86,6 +87,7 @@ export class BlockStack {
     // allocate our new top-level entry
     const nextLevel: BlockNestLevel = new BlockNestLevel(this.context, type, size);
     this._stack.push(nextLevel);
+    this.logMessage(`++ BSTACK add() depth now (${this._stack.length})!`);
   }
 
   public remove() {
@@ -93,6 +95,7 @@ export class BlockStack {
     if (this._stack.length > 0) {
       this._stack.pop();
     }
+    this.logMessage(`++ BSTACK remove() depth now (${this._stack.length})!`);
   }
 
   public overrideType(type: eElementType) {
