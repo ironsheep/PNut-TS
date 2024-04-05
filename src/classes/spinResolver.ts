@@ -2792,7 +2792,7 @@ export class SpinResolver {
     this.objWrLong(0); // enter spacer for rflong (-6)
     this.objWrWord(0); // enter spacer for rfword (-2)
     this.write_bstack_ptr(eCaseFast.CF_TablePtr);
-    this.write_bstack(eCaseFast.CF_SourcePtr, this.nextElementIndex - 1);
+    this.write_bstack(eCaseFast.CF_SourcePtr, this.saveElementLocation());
     this.write_bstack(eCaseFast.CF_MinValue, 0x7fffffff);
     this.write_bstack(eCaseFast.CF_MaxValue, -0x80000000);
 
@@ -3206,12 +3206,17 @@ export class SpinResolver {
       { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
       { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
     ];
+    let needLastCompile: boolean = true;
     for (let i = 0; i < masks.length; i++) {
       if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
-        return this.compileDatRfvar(value & masks[i].bits);
+        this.compileDatRfvar(value & masks[i].bits);
+        needLastCompile = false;
+        break;
       }
     }
-    return this.compileDatRfvar(value & BigInt(0x1fffffff)); // 29 bits
+    if (needLastCompile) {
+      this.compileDatRfvar(value & BigInt(0x1fffffff)); // 29 bits
+    }
   }
 
   private compileDatRfvar(value: bigint) {
@@ -3598,9 +3603,12 @@ export class SpinResolver {
   private nextBlock(blockType: eValueType): boolean {
     let foundStatus: boolean = false;
     let element: SpinElement;
+    this.logMessage(`* nextBlock huntFor=[${eValueType[blockType]}] stop log at elem=[${this.currElement.toString()}]`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      const savedLogState: boolean = this.isLogging;
       this.getElement();
+      this.isLogging = savedLogState;
       if (this.currElement.type == eElementType.type_block && Number(this.currElement.value) == blockType) {
         this.logMessage(`nextBlock() found element=[${this.currElement.toString()}]`);
         foundStatus = true;
@@ -3610,6 +3618,7 @@ export class SpinResolver {
         break;
       }
     }
+    this.logMessage(`* nextBlock resume log at elem=[${this.currElement.toString()}] foundStatus=(${foundStatus})`);
     if (foundStatus == true) {
       this.getColumn(); // set this.lineColumn from currentElement
       if (this.lineColumn != 1) {
@@ -3867,7 +3876,8 @@ export class SpinResolver {
     let parameterCount: number = 0;
     // eslint-disable-next-line no-constant-condition
     do {
-      elementIndexStack.push(this.nextElementIndex - 1);
+      this.logMessage(`* pushed element index... have ${elementIndexStack.length} now...`);
+      elementIndexStack.push(this.saveElementLocation());
       if (this.checkUnderscore() == false) {
         this.getVariable();
       }
@@ -4443,10 +4453,11 @@ export class SpinResolver {
       let [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
       if (objSymType == eElementType.type_objpub) {
         // remember ct_objpub()
-        this.restoreElementLocation(savedElementIndex);
+        // here is @@checkmult:
         const returnValueCount: number = (objSymValue >> 20) & 0x0f;
         // PNut @@checkmult2:
         if (returnValueCount >= 2) {
+          this.restoreElementLocation(savedElementIndex);
           this.getElement();
           this.ct_objpub(eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
           compiledParameterCount = returnValueCount;
@@ -4454,9 +4465,11 @@ export class SpinResolver {
       }
     } else if (this.currElement.type == eElementType.type_method) {
       // remember ct_method()
+      // here is @@checkmult: (just coded differently)
       const returnValueCount: number = this.currElement.methodResultCount;
       // PNut @@checkmult2:
       if (returnValueCount >= 2) {
+        this.restoreElementLocation(savedElementIndex);
         this.getElement();
         this.ct_method(eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
         compiledParameterCount = returnValueCount;
@@ -4465,6 +4478,7 @@ export class SpinResolver {
       // remember ct_method_ptr()
       const [isMethod, returnCount] = this.checkVariableMethod();
       if (isMethod && returnCount >= 2) {
+        this.restoreElementLocation(savedElementIndex);
         this.getElement();
         this.ct_method_ptr(savedElementIndex, eResultRequirements.RR_OneOrMore, eByteCode.bc_drop_push);
         compiledParameterCount = returnCount;
@@ -4579,6 +4593,7 @@ export class SpinResolver {
   private ct_try(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
     // Compile term - \obj{[]}.method({param,...}), \method({param,...}), \var({param,...}){:results}
     // PNut ct_try:
+    this.logMessage(`* ct_try([${eResultRequirements[resultsNeeded]}], bc=(${byteCode}))`);
     this.getElement();
     if (this.currElement.type == eElementType.type_obj) {
       // \obj{[]}.method({param,...}) ?
@@ -4945,7 +4960,7 @@ export class SpinResolver {
     // Compile term - method({param,...})
     // PNut ct_method:
     // fields 7-bit parameterCount, 4-bit resultCount, 20-bit Address
-    this.logMessage(`* ct_method(${eResultRequirements[resultsNeeded]}, ...)`);
+    this.logMessage(`* ct_method(${eResultRequirements[resultsNeeded]}, elem=[${this.currElement.toString()}] ...)`);
     const methodValue: number = Number(this.currElement.bigintValue);
     this.confirmResult(resultsNeeded, methodValue);
     this.objWrByte(byteCode);
@@ -6309,19 +6324,53 @@ export class SpinResolver {
     }
   }
 
-  private compileRfvars(value: bigint) {
+  private compileRfvarsOLD(value: bigint) {
     // generates 1-4 bytes (signed)
     const masks = [
       { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
       { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
       { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
     ];
+    let needLastCompile: boolean = true;
     for (let i = 0; i < masks.length; i++) {
       if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
-        return this.compileRfvar(value & masks[i].bits);
+        this.compileRfvar(value & masks[i].bits);
+        needLastCompile = false;
+        break;
       }
     }
-    return this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+    if (needLastCompile) {
+      this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
+    }
+  }
+
+  private compileRfvars(value: bigint) {
+    // coded per PNut compile_rfvars:
+    let workingValue: bigint = value & BigInt(0xffffffff);
+    if (value & BigInt(0x10000000)) {
+      workingValue |= BigInt(0xf0000000);
+    } else {
+      workingValue &= BigInt(0x0fffffff);
+    }
+    if (workingValue >= BigInt(0xffffffc0) || workingValue <= BigInt(0x0000003f)) {
+      // 1 BYTE value
+      this.objWrByte(Number(workingValue & BigInt(0x7f)));
+    } else if (workingValue >= BigInt(0xffffe000) || workingValue <= BigInt(0x00001fff)) {
+      // 2 BYTE value
+      this.objWrByte(Number(workingValue | BigInt(0x80)));
+      this.objWrByte(Number((workingValue >> 7n) & BigInt(0x7f)));
+    } else if (workingValue >= BigInt(0xfff00000) || workingValue <= BigInt(0x000fffff)) {
+      // 3 BYTE value
+      this.objWrByte(Number(workingValue | BigInt(0x80)));
+      this.objWrByte(Number((workingValue >> 7n) | BigInt(0x80)));
+      this.objWrByte(Number((workingValue >> 14n) & BigInt(0x7f)));
+    } else {
+      // 4 BYTE value
+      this.objWrByte(Number(workingValue | BigInt(0x80)));
+      this.objWrByte(Number((workingValue >> 7n) | BigInt(0x80)));
+      this.objWrByte(Number((workingValue >> 14n) | BigInt(0x80)));
+      this.objWrByte(Number(workingValue >> 21n));
+    }
   }
 
   private compileRfvar(value: bigint) {
@@ -6394,6 +6443,8 @@ export class SpinResolver {
       operation: eVariableOperation.VO_Unknown,
       assignmentBytecode: 0
     };
+
+    this.logMessage(`* checkVariable() elem=[${this.currElement.toString()}]`);
 
     // preserve initial values (PNut al,ebx)
     let variableType: eElementType = this.currElement.type;
@@ -6841,7 +6892,7 @@ export class SpinResolver {
       const foundSymbol = this.lookupSymbol(element.stringValue);
       if (foundSymbol !== undefined) {
         const symbolLength = element.getSymbolLength();
-        this.logMessage(`* getElement() replacing element=[${element.toString()}]`);
+        this.logMessage(`* GETele REPLACING element=[${element.toString()}]`);
         element = new SpinElement(-1, eElementType.type_undefined, '', -1, -1, element);
         element.setType(foundSymbol.type);
         element.setValue(foundSymbol.value);
@@ -6851,9 +6902,9 @@ export class SpinResolver {
       }
     }
     //*
-    this.logMessage(`* GETele GOT i#${this.nextElementIndex - 1}, e=[${this.spinElements[this.nextElementIndex - 1].toString()}]`);
+    this.logMessage(`* GETele GOT i#${this.nextElementIndex - 1}, e=[${element.toString()}]`);
     if (element.type != eElementType.type_end_file) {
-      this.logMessage(`*        NEXT i#${this.nextElementIndex}, e=[${this.spinElements[this.nextElementIndex].toString()}]`);
+      //this.logMessage(`*        NEXT i#${this.nextElementIndex}, e=[${this.spinElements[this.nextElementIndex].toString()}]`);
     } else {
       this.logMessage(`*        NEXT -- at EOF --`);
     }

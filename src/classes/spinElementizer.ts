@@ -43,6 +43,7 @@ export class SpinElementizer {
   private symbol_tables: SpinSymbolTables;
   private lastEmittedIsLineEnd: boolean = true;
   private firstCharColumn: number = 0;
+  private lastSymboblEndOffset: number = 0;
 
   constructor(ctx: Context, spinCode: SpinDocument) {
     this.context = ctx;
@@ -265,10 +266,14 @@ export class SpinElementizer {
       this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${valueToDisplay})`);
       this.logMessage(''); // blank line  countColumnsOfLeftEdgeWhite
       const singleElement = new SpinElement(this.srcFile.fileId, typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
-      const symbolColumn: number = this.calculateColumnToOffset(this.symbolCharacterOffset, this.currentTextLine.text);
+      let symbolColumn: number = this.lastSymboblEndOffset + 1;
+      if (typeFound != eElementType.type_end) {
+        symbolColumn = this.calculateColumnToOffset(this.symbolCharacterOffset, this.currentTextLine.text);
+      }
       singleElement.setSourceColumnOffset(symbolColumn);
       if (!singleElement.isLineEnd || (singleElement.isLineEnd && !this.lastEmittedIsLineEnd)) {
         singleElement.setSymbolLength(symbolLengthFound); // if this refers to a symbol, record the length of the symbol too
+        this.lastSymboblEndOffset = singleElement.sourceColumnOffset + symbolLengthFound;
         elementsFound.push(singleElement);
         this.lastEmittedIsLineEnd = singleElement.isLineEnd ? true : false;
         //this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd}) type=[${singleElement.typeString()}]`); // blank line
@@ -446,6 +451,7 @@ export class SpinElementizer {
     const newElement: SpinElement = new SpinElement(this.srcFile.fileId, type, value, this.currentTextLine.sourceLineNumber - 1, charOffset);
     const symbolColumn: number = this.calculateColumnToOffset(charOffset, this.currentTextLine.text);
     newElement.setSourceColumnOffset(symbolColumn);
+    this.lastSymboblEndOffset = symbolColumn + 1;
     return newElement;
   }
 
