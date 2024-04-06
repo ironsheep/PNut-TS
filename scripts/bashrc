@@ -6,6 +6,8 @@
 # umask 022
 set -o vi
 
+export NODE_OPTIONS="--max-old-space-size=8192" # 8G vs built-in 2G
+
 # You may uncomment the following lines if you want `ls' to be colorized:
 export LS_OPTIONS='--color=auto'
 eval "$(dircolors)"

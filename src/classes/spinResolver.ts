@@ -17,6 +17,8 @@ import { SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
+import { SpinFiles } from './spinFiles';
+import { locateDataFile } from '../utils/files';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -202,6 +204,9 @@ export class SpinResolver {
   private lineColumn: number = 1; // PNut [column] [1,n]
   private scopeColumn: number = 1; // PNut x86 'ebp' register
 
+  // DATA and OBJ file support
+  private spinFiles: SpinFiles;
+
   constructor(ctx: Context) {
     this.context = ctx;
     this.numberStack = new NumberStack(ctx);
@@ -209,10 +214,12 @@ export class SpinResolver {
     this.isLogging = this.context.logOptions.logResolver;
     this.spinSymbolTables = new SpinSymbolTables(ctx);
     this.objImage = new ObjectImage(ctx);
+    this.spinFiles = new SpinFiles(ctx);
     this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
     this.ternaryPrecedence = this.spinSymbolTables.ternaryPrecedence;
     this.numberStack.enableLogging(this.isLogging);
     this.blockStack.enableLogging(this.isLogging);
+    this.spinFiles.enableLogging(this.isLogging);
   }
 
   public setElements(updatedElementList: SpinElement[]) {
@@ -266,7 +273,7 @@ export class SpinResolver {
     this.pasmMode = this.determinePasmMode();
     this.compile_con_blocks_1st();
     if (this.context.passOptions.afterConBlock == false) {
-      //this.compile_obj_blocks_id()
+      this.compile_obj_blocks_id();
       this.compile_sub_blocks_id();
       this.compile_dat_blocks_fn();
     }
@@ -447,7 +454,62 @@ export class SpinResolver {
   }
 
   private compile_dat_blocks_fn() {
+    // PNut compile_dat_blocks_fn:
     this.logMessage('* COMPILE_dat_blocks_fn()');
+
+    this.spinFiles.clearDataFiles();
+    this.restoreElementLocation(0); // start at first element
+    // for all dat block locate FILE statements and record the filename we find and the index
+    while (this.nextBlock(eValueType.block_dat)) {
+      this.getElement();
+      if (this.currElement.isEndOfFile) {
+        break;
+      }
+      if (this.currElement.type == eElementType.type_file) {
+        const fileElementIndex = this.saveElementLocation();
+        const fileName = this.getFilename();
+        if (this.spinFiles.dataFileExists(fileName) == false) {
+          // have new file, register it
+          this.spinFiles.addDataFile(fileName, fileElementIndex);
+          const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName);
+          if (fileSpec === undefined) {
+            // [error_INTERNAL]
+            this.restoreElementLocation(fileElementIndex);
+            throw new Error(`DAT file not found [${fileName}] (preload)`);
+          }
+        }
+      }
+    }
+  }
+
+  private getFilename(): string {
+    let filename: string = '';
+    do {
+      this.getElement();
+      if (this.currElement.type != eElementType.type_con) {
+        // [error_ifufiq]
+        throw new Error('Invalid filename, use "FilenameInQuotes"');
+      }
+      if (this.badFilenameCharacter(Number(this.currElement.bigintValue))) {
+        // [error_ifc]
+        throw new Error('Invalid filename character');
+      }
+      filename += String.fromCharCode(Number(this.currElement.bigintValue));
+      if (filename.length > 253) {
+        // [error_ftl]
+        throw new Error('Filename too long');
+      }
+    } while (this.checkComma());
+    return filename;
+  }
+
+  private badFilenameCharacter(currCharacter: number): boolean {
+    let badCharStatus: boolean = true;
+    if (currCharacter >= 0x20 && currCharacter <= 0x7e) {
+      const badCharacters = '/:*?"<>|';
+      badCharStatus = badCharacters.includes(String.fromCharCode(currCharacter));
+    }
+    return badCharStatus;
   }
 
   private determine_clock() {
@@ -985,7 +1047,27 @@ export class SpinResolver {
           } else if (this.currElement.type == eElementType.type_file) {
             //
             // HANDLE FILE
-            // FIXME: TODO: we need code here
+            // PNut @@file:
+            const fileElementIndex = this.saveElementLocation();
+
+            this.wordSize = eWordSize.WS_Byte;
+            this.enterDatSymbol(); // have name for our file
+            const filename = this.getFilename();
+            const fileHandle = this.spinFiles.loadDataFile(filename);
+            if (fileHandle === undefined) {
+              this.restoreElementLocation(fileElementIndex);
+              // [error_INTERNAL]
+              throw new Error(`DAT file not found [${filename}]`);
+            }
+            if (fileHandle.failedToLoad) {
+              this.restoreElementLocation(fileElementIndex);
+              // [error_INTERNAL]
+              throw new Error(`failed to load DAT file content [${filename}]`);
+            }
+            for (let byte of fileHandle.iterator()) {
+              this.enterDataByte(BigInt(byte));
+            }
+            this.getEndOfLine();
           } else if (this.currElement.type != eElementType.type_block) {
             //
             // HANDLE block - we MUST have one...
@@ -2375,8 +2457,6 @@ export class SpinResolver {
 
   private compilePubPriBlocks(blockType: eValueType): number {
     // here is compile_sub_blocks: @@compile
-    // XYZZY need code here compilePubPriBlocks()
-    // XYZZY we are here...
     let localOffset: number = 0;
     let localVariableOffset: number = 0;
     let methodDetails: number = 0; // this is @@sub
@@ -3386,9 +3466,15 @@ export class SpinResolver {
     );
   }
 
+  private compile_obj_blocks_id() {
+    // PNut compile_obj_blocks_id:
+    // XYZZY need code compile_obj_blocks_id()
+  }
+
   private compile_obj_blocks() {
     // Compile obj data
     // PNut compile_obj_blocks:
+    // XYZZY need code compile_obj_blocks()
     if (this.pasmMode == false) {
       // dummy for now....
       this.pad_obj_long();

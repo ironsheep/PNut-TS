@@ -308,6 +308,8 @@ export class PNutInTypeScript {
       if (!this.spinDocument || !this.spinDocument.validFile) {
         this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file`);
         this.shouldAbort = true;
+      } else {
+        this.context.currentFolder = this.spinDocument?.dirName;
       }
 
       this.context.logger.logMessage('');

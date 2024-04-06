@@ -7,6 +7,7 @@
 'use strict';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Context } from './context';
 
 export function libraryDir(): string {
   return './lib';
@@ -128,6 +129,33 @@ export function locateSpin2File(filename: string): string | undefined {
   return locatedFSpec;
 }
 
+/**
+ * locate named .spin2 file which can be in current directory
+ * NOTE: The current directory is searched first then the built-in library path is searched
+ *
+ * @export
+ * @param {string} filename
+ * @return {*}  {(string | undefined)}
+ */
+export function locateDataFile(workingDir: string, filename: string, ctx?: Context): string | undefined {
+  let locatedFSpec: string | undefined = undefined;
+  // is it in our current directory?
+  let fileSpec: string = path.join(workingDir, filename);
+  if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() checking [${fileSpec}]`);
+  if (fileExists(fileSpec)) {
+    locatedFSpec = fileSpec;
+  } else {
+    // no, is it in our LIB directory?
+    fileSpec = path.join(libraryDir(), filename);
+    if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() checking [${fileSpec}]`);
+    if (fileExists(fileSpec)) {
+      locatedFSpec = fileSpec;
+    }
+  }
+  if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() -> [${locatedFSpec}]`);
+  return locatedFSpec;
+}
+
 export function dirExists(pathSpec: string): boolean {
   let existsStatus: boolean = false;
   if (fs.existsSync(pathSpec)) {
@@ -158,4 +186,29 @@ export function loadFileAsString(fspec: string): string {
     // ctx.logger.log(`TRC: loadFileAsString() fspec=[${fspec}] NOT FOUND!`);
   }
   return fileContent;
+}
+
+export function loadFileAsUint8Array(fspec: string): Uint8Array {
+  let fileContent: Uint8Array = new Uint8Array();
+  if (fs.existsSync(fspec)) {
+    try {
+      const buffer = fs.readFileSync(fspec);
+      fileContent = new Uint8Array(buffer);
+    } catch (err) {
+      //ctx.logger.log(`TRC: loadFileAsString() fspec=[${fspec}] NOT FOUND!`);
+      const encoder = new TextEncoder();
+      fileContent = new Uint8Array(encoder.encode('XY$$ZZY'));
+    }
+  }
+  return fileContent;
+}
+
+export function loadUint8ArrayFailed(content: Uint8Array): boolean {
+  // Convert Uint8Array back to string
+  const decoder = new TextDecoder();
+  const checkContent = content.length > 7 ? content.slice(0, 7) : content;
+  const decodedString = decoder.decode(checkContent);
+  // Test if decoded string is 'XY$$ZZY'
+  const emptyStatus = decodedString === 'XY$$ZZY';
+  return emptyStatus;
 }
