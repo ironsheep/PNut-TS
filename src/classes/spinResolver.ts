@@ -17,7 +17,7 @@ import { SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
-import { SpinFiles } from './spinFiles';
+import { ObjFile, SpinFiles } from './spinFiles';
 import { locateDataFile } from '../utils/files';
 
 // Internal types used for passing complex values
@@ -206,6 +206,7 @@ export class SpinResolver {
 
   // DATA and OBJ file support
   private spinFiles: SpinFiles;
+  private objectInstanceInMemoryCount: number = 0; // PNut [obj_count]
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -280,8 +281,10 @@ export class SpinResolver {
   }
 
   public compile2() {
+    this.compile_obj_symbols();
     this.determine_clock();
     this.compile_con_blocks_2nd();
+    //this.determine_bauds_pins()
     if (this.context.passOptions.afterConBlock == false) {
       this.logMessage('* COMPILE_dat_blocks()');
       if (this.pasmMode == false) {
@@ -290,7 +293,7 @@ export class SpinResolver {
       this.compile_dat_blocks();
       this.compile_sub_blocks();
       this.compile_obj_blocks();
-      //this.distill_obj_blocks();
+      this.distill_obj_blocks();
       //this.point_to_con();
       //this.collapse_debug_data();
       //this.compile_final();
@@ -332,7 +335,7 @@ export class SpinResolver {
     // determine_mode:
     let pasmModeStatus: boolean = true;
     let element: SpinElement;
-    this.nextElementIndex = 0; // do block search from head of element list
+    this.restoreElementLocation(0); // start from first in list
     do {
       element = this.getElement();
 
@@ -355,7 +358,7 @@ export class SpinResolver {
     // Compile var blocks
     this.logMessage('* compile_var_blocks()');
     this.varPtr = 4; // leave room for the long pointer to object
-    this.nextElementIndex = 0; // start from head of element list
+    this.restoreElementLocation(0); // start from first in list
 
     // for each VAR block...
     while (this.nextBlock(eValueType.block_var)) {
@@ -756,7 +759,7 @@ export class SpinResolver {
         this.hubOrg = this.pasmMode ? this.objImage.offset : 0x00400;
         this.orghOffset = this.hubOrg - this.objImage.offset;
         this.hubOrgLimit = 0x100000;
-        this.nextElementIndex = 0; // reset to head of file
+        this.restoreElementLocation(0); // start from first in list
       }
       do {
         // NEXT BLOCK Loop
@@ -2343,7 +2346,7 @@ export class SpinResolver {
     let parameterCount: number = 0;
     let resultCount: number = 0;
 
-    this.nextElementIndex = 0; // reset element list
+    this.restoreElementLocation(0); // start from first in list
     while (this.nextBlock(blockType)) {
       // here is @@nextblock:
       this.getElement();
@@ -2461,7 +2464,7 @@ export class SpinResolver {
     let localVariableOffset: number = 0;
     let methodDetails: number = 0; // this is @@sub
 
-    this.nextElementIndex = 0; // reset element list
+    this.restoreElementLocation(0); // start from first in list
     while (this.nextBlock(blockType)) {
       // here is @@nextblock:
       this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
@@ -3436,6 +3439,7 @@ export class SpinResolver {
   }
 
   private recordSymbol(newSymbol: iSymbol) {
+    // PNut enter_symbol2: (which is called from enter_symbol2_print:)
     let symbolNumber: number = 0;
     let tableName: string = '';
     this.logMessage(`* recordSymbol name=[${newSymbol.name}] into [${eSymbolTableId[this.activeSymbolTable]}]`);
@@ -3468,7 +3472,85 @@ export class SpinResolver {
 
   private compile_obj_blocks_id() {
     // PNut compile_obj_blocks_id:
-    // XYZZY need code compile_obj_blocks_id()
+    this.logMessage('* compile_obj_blocks_id()');
+    this.objImage.setOffsetTo(0);
+    this.spinFiles.clearObjFiles();
+    this.objectInstanceInMemoryCount = 0;
+    this.restoreElementLocation(0); // start from first element in list
+
+    // for each OBJ block...
+    // here is @@nextblock:
+    while (this.nextBlock(eValueType.block_obj)) {
+      // here is @@nextline:
+      this.getElement();
+      if (this.currElement.isTypeUndefined) {
+        // here is @@newobj:
+        // backup symbol
+        const symbolName: string = this.currElement.stringValue;
+        // handle instance [index]
+        let instanceCount: number = 1;
+        if (this.checkLeftBracket()) {
+          const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+          if (valueReturn.value < 1n || valueReturn.value > 255n) {
+            // [error_ocmbf1tx]
+            throw new Error('Object count must be from 1 to 255');
+          }
+          instanceCount = Number(valueReturn.value);
+          this.getRightBracket();
+        }
+        this.getColon();
+        const objFilename: string = this.getFilename();
+        // the following counts object files and checks file count limit (PNut file_limit)
+        const objFileRecord: ObjFile = this.spinFiles.addObjFile(objFilename);
+        // PNut  obj symbol | [obj_count]
+        const objSymbolValue: number = (this.spinFiles.objFileCount << 24) | this.objectInstanceInMemoryCount;
+        // PNUT enter_symbol2_print: -> enter_symbol2:
+        const newObjSymbol: iSymbol = { name: symbolName, type: eElementType.type_obj, value: BigInt(objSymbolValue) };
+        this.recordSymbol(newObjSymbol);
+        // now let's process constant overrides
+        const objUniqueIndex: number = objFileRecord.occurrenceIndex;
+        objFileRecord.setObjectInstanceCount(objUniqueIndex, instanceCount);
+        // here is @@index;
+        for (let index = 0; index < instanceCount; index++) {
+          if (this.objectInstanceInMemoryCount > this.objs_limit) {
+            // [error_loxoie]
+            throw new Error(`Limit of ${this.objs_limit} OBJ instances exceeded`);
+          }
+          // stage these values to objImage... they will be replaced in compile_obj_blocks
+          this.objWrLong(this.spinFiles.objFileCount);
+          this.objWrLong(0); // write placeholder VAR offset for this object
+          this.objectInstanceInMemoryCount++;
+        }
+        if (this.getPipeOrEnd()) {
+          // have '|' ... we have CONSTANT overrides for this object
+          do {
+            // here is @@param:
+            // get parameter name
+            this.getElement();
+            if (!this.currElement.isTypeUndefined) {
+              // [error_eas]
+              throw new Error('Expected a symbol');
+            }
+            const overrideName: string = this.currElement.stringValue;
+            this.getEqual();
+            const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOrFloat, eResolve.BR_Must);
+            const valueType: eElementType = valueReturn.isFloat ? eElementType.type_con_float : eElementType.type_con;
+            objFileRecord.recordOverride(objUniqueIndex, overrideName, valueType, valueReturn.value);
+          } while (this.getCommaOrEndOfLine());
+        }
+      } else if (this.currElement.type != eElementType.type_block) {
+        // [error_eauon]
+        throw new Error('Expected a unique object name');
+      } else {
+        this.backElement();
+      }
+    }
+  }
+
+  private compile_obj_symbols() {
+    // Compile obj pub/con symbols, also validates obj files
+    // PNut compile_obj_symbols:
+    // XYZZY need code compile_obj_symbols()
   }
 
   private compile_obj_blocks() {
@@ -3481,6 +3563,12 @@ export class SpinResolver {
     }
   }
 
+  private distill_obj_blocks() {
+    // Distill obj blocks
+    // PNut distill_obj_blocks:
+    // XYZZY need code distill_obj_blocks()
+  }
+
   private pad_obj_long() {
     // pad object to next long
     while (this.objImage.offset & 0b11) {
@@ -3491,7 +3579,7 @@ export class SpinResolver {
   // TODO: upcoming: try spin2 constant expression
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
     // compile all CON blocks in file
-    this.nextElementIndex = 0; // reset to head of file
+    this.restoreElementLocation(0); // start from first in list
 
     // move past opening CON if we have one
     if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eValueType.block_con) {
@@ -5926,13 +6014,13 @@ export class SpinResolver {
   private checkUndefined(resolve: eResolve, haveLocalType: boolean = false, localType: eElementType = eElementType.type_undefined): boolean {
     // for obj.con references ... and ...
     let undefinedStatus: boolean = false;
-    if (this.currElement.type == eElementType.type_undefined || (haveLocalType && localType == eElementType.type_undefined)) {
+    if (this.currElement.isTypeUndefined || (haveLocalType && localType == eElementType.type_undefined)) {
       this.numberStack.setUnresolved();
       // do we have a '.' preceeding a user name?
       if (this.checkDot()) {
         // is the next element a user undefined symbol?
         this.getElement(); // position to bad element! so "throw" line-number is correct -OR- caller doesn't see this again
-        if (!(this.currElement.type == eElementType.type_undefined || this.currElement.sourceElementWasUndefined)) {
+        if (!(this.currElement.isTypeUndefined || this.currElement.sourceElementWasUndefined)) {
           // [error_eacn]
           throw new Error('Expected a constant name');
         }
@@ -6974,7 +7062,7 @@ export class SpinResolver {
     }
 
     // if the symbol exists, return it instead of undefined
-    if (element.type === eElementType.type_undefined) {
+    if (element.isTypeUndefined) {
       const foundSymbol = this.lookupSymbol(element.stringValue);
       if (foundSymbol !== undefined) {
         const symbolLength = element.getSymbolLength();

@@ -158,6 +158,11 @@ export class SpinElement {
     return this._type == eElementType.type_undefined;
   }
 
+  get isSymbol(): boolean {
+    // PNut uses a [symbol_flag] set to zero or one and DOES NOT distinguish between built-in or not
+    return this._isSymbol;
+  }
+
   get isConstantFloat(): boolean {
     return this._type == eElementType.type_con_float;
   }

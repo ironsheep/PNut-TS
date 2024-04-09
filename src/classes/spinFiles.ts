@@ -7,7 +7,15 @@
 import path from 'path';
 import { Context } from '../utils/context';
 import { loadFileAsUint8Array, loadUint8ArrayFailed, locateDataFile } from '../utils/files';
+import { SymbolTable } from './symbolTable';
+import { eElementType } from './types';
 
+const FILE_LIMIT: number = 32; // DAT and OBJ limit is same
+const PARAM_LIMIT: number = 16; // OBJ override limit
+
+interface iPossibleSymbolTable {
+  overrides: SymbolTable | undefined;
+}
 export class ObjFile {
   // details about a given OBJ file
   private static nextInstanceNumber = 0;
@@ -17,12 +25,18 @@ export class ObjFile {
   private _fileName: string;
   private _parameters: number = 0;
   private _instanceNumber: number;
+  private _elementIndex: number; // index of assoc 'file' element in spin code
+  private _maxParameterSets: number = 0; // how many times this object is placed in memory PNut [obj_instances[].length]
+  private _parameterSet: iPossibleSymbolTable[] = []; // this is indexed by instance number  Map<string:number>
+  private _numberInstances: number[] = []; // object line Ex: instanceName[index] : "filename" - where _numberInstances[] is index value for this line
 
-  constructor(ctx: Context, fileSpec: string) {
+  constructor(ctx: Context, fileSpec: string, elementIndex: number) {
     this.context = ctx;
     this._instanceNumber = ++ObjFile.nextInstanceNumber;
     this._fileSpec = fileSpec;
     this._fileName = path.basename(fileSpec);
+    this._elementIndex = elementIndex;
+    this.incrementInstanceCount();
   }
 
   public enableLogging(enable: boolean = true) {
@@ -32,6 +46,56 @@ export class ObjFile {
 
   get fileName(): string {
     return this._fileName;
+  }
+
+  public recordOverride(setIndex: number, constantName: string, type: eElementType, value: bigint | string) {
+    if (setIndex >= 0 && setIndex < this._parameterSet.length) {
+      let addedSymbolTable: boolean = false;
+      const possibleSymbolTable = this._parameterSet[setIndex];
+      if (possibleSymbolTable.overrides === undefined) {
+        possibleSymbolTable.overrides = new SymbolTable();
+        addedSymbolTable = true;
+      } else {
+        // have existing symbol table, make sure we don't overflow
+        if (possibleSymbolTable.overrides.length >= PARAM_LIMIT) {
+          // [error_tmop]
+          throw new Error(`Too many object parameters, exceeded limit of ${PARAM_LIMIT}`);
+        }
+      }
+      this.logMessage(`* recordOverride() ADD symbol [${constantName}]`);
+      possibleSymbolTable.overrides.add(constantName, type, value);
+      if (addedSymbolTable) {
+        this._parameterSet[setIndex] = possibleSymbolTable;
+      }
+    } else {
+      // [error_INTERNAL]
+      throw new Error(`ERROR[INTERNAL] attempt to record OVERRIDES for paramterSet (${setIndex}) out of range [0-${this._parameterSet.length}]`);
+    }
+  }
+
+  public setObjectInstanceCount(uniqueCount: number, instanceCount: number) {
+    // have instanceName[index]: record index value for this obj line
+    if (uniqueCount >= 0 && uniqueCount < this._numberInstances.length) {
+      this._numberInstances[uniqueCount] = instanceCount;
+    } else {
+      // [error_INTERNAL]
+      throw new Error(
+        `ERROR[INTERNAL] attempt to record instance count for object (${uniqueCount}) out of range [0-${this._numberInstances.length}]`
+      );
+    }
+  }
+
+  public incrementInstanceCount() {
+    this._maxParameterSets++;
+    // for each level we start with empty symbol table (but we use undefined instead of allocating a symbol table)
+    //  we only allocate one if we have symbols
+    const emptySymbolTable: iPossibleSymbolTable = { overrides: undefined };
+    this._parameterSet.push(emptySymbolTable);
+    this._numberInstances.push(0); // default to 0 instances in all cases setObjectInstanceCount() will override this value
+  }
+
+  get occurrenceIndex(): number {
+    return this._maxParameterSets;
   }
 
   /*
@@ -144,11 +208,50 @@ export class SpinFiles {
     this._objFiles = [];
   }
 
+  get objFileCount(): number {
+    // this is PNut [obj_files]
+    return this._objFiles.length;
+  }
+
   public addDataFile(filespec: string, elementIndex: number): number {
     const newData: DatFile = new DatFile(this.context, filespec, elementIndex);
     newData.enableLogging(this.isLogging);
     this._datFiles.push(newData);
     return this._datFiles.length - 1;
+  }
+
+  public addObjFile(fileName: string, elementIndex: number = 0): ObjFile {
+    let desiredFile: ObjFile | undefined = undefined;
+    if (this._objFiles.length >= FILE_LIMIT) {
+      // [error_loxuoe]
+      throw new Error(`Limit of ${FILE_LIMIT} unique objects exceeded`);
+    }
+    if (this.objFileExists(fileName)) {
+      this.logMessage(`* addObjFile([${fileName}]) - found...`);
+      for (let index = 0; index < this._datFiles.length; index++) {
+        const possibleFile = this._objFiles[index];
+        if (possibleFile.fileName.toLowerCase() === fileName.toLowerCase()) {
+          desiredFile = possibleFile;
+          desiredFile.incrementInstanceCount();
+          break;
+        }
+      }
+    } else {
+      this.logMessage(`* addObjFile([${fileName}]) - new file...`);
+      const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName, this.context);
+      if (fileSpec !== undefined) {
+        desiredFile = new ObjFile(this.context, fileSpec, elementIndex);
+        desiredFile.enableLogging(this.isLogging);
+        this._objFiles.push(desiredFile);
+      } else {
+        this.logMessage(`* addObjFile([${fileName}]) - addObjFile() FAILED`);
+      }
+    }
+    if (desiredFile === undefined) {
+      // [error_INTERNAL]
+      throw new Error(`ERROR[INTERNAL] - failed to locate/allocate object file record ${fileName}`);
+    }
+    return desiredFile;
   }
 
   public loadDataFile(fileName: string): DatFile | undefined {
@@ -181,6 +284,11 @@ export class SpinFiles {
 
   public dataFileExists(filespec: string): boolean {
     const exists: boolean = this._datFiles.some((datFile) => datFile.fileName.toLowerCase() === filespec.toLowerCase());
+    return exists;
+  }
+
+  public objFileExists(filespec: string): boolean {
+    const exists: boolean = this._objFiles.some((objFile) => objFile.fileName.toLowerCase() === filespec.toLowerCase());
     return exists;
   }
 
