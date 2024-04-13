@@ -4,7 +4,7 @@
 import { float32ToHexString } from '../utils/float32';
 // src/classes/parseUtils.ts
 
-import { eByteCode, eElementType, eOperationType, eValueType, getElementTypeString } from './types';
+import { eBlockType, eByteCode, eElementType, eOperationType, eValueType, getElementTypeString } from './types';
 //import { float32ToString } from '../utils/float32';
 
 // a collection of generally useful functions for parsing spin
@@ -122,6 +122,16 @@ export class SpinElement {
       returnedValue = this._value;
     } else if (typeof this._value === 'string' && this._value.length == 1) {
       returnedValue = BigInt(this._value.charCodeAt(0));
+    }
+    return returnedValue;
+  }
+
+  get numberValue(): number {
+    let returnedValue: number = 0;
+    if (typeof this._value === 'bigint') {
+      returnedValue = Number(this._value);
+    } else if (typeof this._value === 'string' && this._value.length == 1) {
+      returnedValue = this._value.charCodeAt(0);
     }
     return returnedValue;
   }
@@ -449,6 +459,11 @@ export class SpinElement {
     let valueInterp: string = `${this.value}`;
     if (this.isEndOfLine) {
       valueInterp = '';
+    } else if (this._type == eElementType.type_method) {
+      const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
+      valueInterp = `(${this.hexLong(valueBigInt)})`;
+    } else if (this._type == eElementType.type_block) {
+      valueInterp = `${eBlockType[this.numberValue]}`;
     } else if (this.isConstantFloat) {
       const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
       valueInterp = `(${float32ToHexString(valueBigInt)})`;
@@ -478,5 +493,9 @@ export class SpinElement {
     const opInterp: string = this.isOperation ? ` ${this.operationString()}` : '';
     const offsetInterp: string = this._expandedColumn != 0 ? ` COL(${this._expandedColumn})` : '';
     return `Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}${offsetInterp}`;
+  }
+
+  private hexLong(uint32: bigint): string {
+    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
   }
 }

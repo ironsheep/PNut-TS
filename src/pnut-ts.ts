@@ -5,7 +5,7 @@
 // src/pnut-ts.ts
 'use strict';
 import { Command, Option, CommanderError, type OptionValues } from 'commander';
-import { Context, createContext } from './utils/context';
+import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
 
@@ -24,8 +24,7 @@ export class PNutInTypeScript {
   private options: OptionValues = this.program.opts();
   private version: string = '0.0.0';
   private argsArray: string[] = [];
-  private context: Context = createContext();
-  private compiler: Compiler = new Compiler(this.context);
+  private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
   private shouldAbort: boolean = false;
   private requiresFilename: boolean = false;
@@ -47,6 +46,7 @@ export class PNutInTypeScript {
     process.stderr.on('close', () => {
       console.log('PNut-TS: stderr was closed');
     });
+    this.context = Context.instance();
   }
 
   public setArgs(args: string[]): void {
@@ -81,7 +81,7 @@ export class PNutInTypeScript {
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
-      .addOption(new Option('--log <object...>', 'object').choices(['all', 'elements', 'parser', 'resolver', 'preproc']))
+      .addOption(new Option('--log <object...>', 'object').choices(['all', 'compile', 'elements', 'parser', 'preproc', 'resolver']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
       .option('-v, --verbose', 'Output verbose messages');
@@ -135,7 +135,7 @@ export class PNutInTypeScript {
     }
 
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
-    this.runTestCode(); // for quick live testing...
+    //this.runTestCode(); // for quick live testing...
 
     this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
     this.context.logger.verboseMsg(`* args[${this.program.args}]`);
@@ -144,7 +144,7 @@ export class PNutInTypeScript {
       // forward our REGRESSION TEST Options
       this.requiresFilename = true;
       const choices: string[] = this.options.regression;
-      this.context.logger.verboseMsg('MODE: Regression Testing- Gen Reports');
+      this.context.logger.verboseMsg('MODE: Regression Testing- Gen Reports:');
       if (choices.includes('element')) {
         this.context.reportOptions.writeElementsReport = true;
         this.context.logger.verboseMsg('  Element Report');
@@ -167,7 +167,7 @@ export class PNutInTypeScript {
       // forward our LOG Options
       this.requiresFilename = true;
       const choices: string[] = this.options.log;
-      this.context.logger.verboseMsg('MODE: Logging');
+      this.context.logger.verboseMsg('MODE: Logging:');
       //this.context.logger.verboseMsg(`* log: [${choices}]`);
       const wantsAll: boolean = choices.includes('all');
       if (choices.includes('elements') || wantsAll) {
@@ -177,6 +177,10 @@ export class PNutInTypeScript {
       if (choices.includes('parser') || wantsAll) {
         this.context.logOptions.logParser = true;
         this.context.logger.verboseMsg('  Parser');
+      }
+      if (choices.includes('compile') || wantsAll) {
+        this.context.logOptions.logCompile = true;
+        this.context.logger.verboseMsg('  Compile');
       }
       if (choices.includes('resolver') || wantsAll) {
         this.context.logOptions.logResolver = true;
@@ -192,7 +196,7 @@ export class PNutInTypeScript {
       // forward our PASS Options (stop after pass)
       this.requiresFilename = true;
       const choices: string[] = this.options.pass;
-      this.context.logger.verboseMsg('MODE: End after');
+      this.context.logger.verboseMsg('MODE: End after:');
       if (choices.includes('preprocess')) {
         this.context.passOptions.afterPreprocess = true;
         this.context.logger.verboseMsg('  PreProcessing');
@@ -303,6 +307,8 @@ export class PNutInTypeScript {
       }
     }
 
+    const theCompiler = new Compiler(this.context);
+
     if (this.options.compile) {
       this.context.compileOptions.compile = true;
       if (!this.spinDocument || !this.spinDocument.validFile) {
@@ -313,15 +319,15 @@ export class PNutInTypeScript {
       }
 
       this.context.logger.logMessage('');
-      this.context.logger.logMessage(`lib dir [${this.context.libraryFolder}]`);
-      this.context.logger.logMessage(`wkg dir [${this.context.currentFolder}]`);
+      this.context.logger.infoMsg(`lib dir [${this.context.libraryFolder}]`);
+      this.context.logger.infoMsg(`wkg dir [${this.context.currentFolder}]`);
       this.context.logger.logMessage('');
     }
     if (!this.shouldAbort && this.spinDocument && this.options.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       this.spinDocument.preProcess();
       if (!this.context.reportOptions.writePreprocessReport) {
-        this.compiler.Compile(this.spinDocument);
+        theCompiler.Compile();
       }
     }
     // const optionsString: string = 'options: ' + String(this.options);

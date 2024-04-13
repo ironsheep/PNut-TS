@@ -12,14 +12,16 @@ import { Context } from '../utils/context';
 export class ObjectImage {
   private context: Context;
   private isLogging: boolean = false;
+  private _id: string;
 
   static readonly MAX_SIZE_IN_BYTES: number = 0x100000;
   private _objImage = new Uint8Array(ObjectImage.MAX_SIZE_IN_BYTES); // total memory size
   private _objOffset: number = 0; // current index into OBJ image
 
-  constructor(ctx: Context) {
+  constructor(ctx: Context, idString: string) {
     this.context = ctx;
-    this.isLogging = this.context.logOptions.logResolver;
+    this._id = idString;
+    this.isLogging = this.context.logOptions.logCompile;
   }
 
   get offset(): number {
@@ -36,6 +38,12 @@ export class ObjectImage {
     // ?? no guard for this for now...
     this.logMessage(`* OBJ: setOffsetTo() (${this.hexOffset(this._objOffset)}) -> (${this.hexOffset(offset)}) diff(${this._objOffset - offset})`);
     this._objOffset = offset;
+  }
+
+  public readNext(): number {
+    let desiredValue: number = 0;
+    desiredValue = this._objImage[this._objOffset++];
+    return desiredValue;
   }
 
   public append(uint8: number) {

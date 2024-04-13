@@ -4,3 +4,7 @@
 (set -x;npm run compile)
 find dist -type f -name '*.js' -exec wc -l {} \; | egrep -v tests | awk '{sum+=$1} END {print " Total lines (Java script): " sum}'
 find src -type f -name '*.ts' -exec wc -l {} \; | egrep -v tests | awk '{sum+=$1} END {print " Total lines (TypeScript): " sum}'
+
+
+find dist -type f -name '*.js' -exec wc -c {} \; | egrep -v tests | awk '{sum+=$1} END {print " Total byte (Java script): " sum}'
+find src -type f -name '*.ts' -exec wc -c {} \; | egrep -v tests | awk '{sum+=$1} END {print " Total byte (TypeScript): " sum}'

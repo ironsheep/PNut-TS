@@ -17,6 +17,7 @@ export class BlockNestLevel {
 
   constructor(ctx: Context, type: eElementType, size: number) {
     this.context = ctx;
+    //this.isLogging = ctx.logOptions.logResolver;
     this._type = type;
     this._size = size;
     this._addressStack = Array(size).fill(0x7ffff);

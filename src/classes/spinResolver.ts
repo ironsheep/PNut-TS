@@ -10,7 +10,7 @@
 import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
-import { eByteCode, eElementType, eFlexcode, eOperationType, eValueType } from './types';
+import { eBlockType, eByteCode, eElementType, eFlexcode, eOperationType, eValueType } from './types';
 import { bigIntFloat32ToNumber, float32ToHexString, hexString, numberToBigIntFloat32 } from '../utils/float32';
 import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
@@ -18,7 +18,7 @@ import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
 import { ObjFile, SpinFiles } from './spinFiles';
-import { locateDataFile } from '../utils/files';
+import { ChildObjectsImage } from './childObjectsImage';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -206,21 +206,26 @@ export class SpinResolver {
 
   // DATA and OBJ file support
   private spinFiles: SpinFiles;
+  private datFileData: ChildObjectsImage; // pascal P2.DatData
   private objectInstanceInMemoryCount: number = 0; // PNut [obj_count]
+  private overrideSymbolTable: SymbolTable | undefined;
 
   constructor(ctx: Context) {
     this.context = ctx;
+    this.isLogging = this.context.logOptions.logResolver;
+    // get refereces to the single global data
+    this.objImage = ctx.compileData.objImage;
+    this.datFileData = ctx.compileData.datFileData;
+    this.spinFiles = ctx.compileData.spinFiles;
+    this.spinFiles.enableLogging(this.isLogging);
+    // allocate our local data
     this.numberStack = new NumberStack(ctx);
     this.blockStack = new BlockStack(ctx);
-    this.isLogging = this.context.logOptions.logResolver;
     this.spinSymbolTables = new SpinSymbolTables(ctx);
-    this.objImage = new ObjectImage(ctx);
-    this.spinFiles = new SpinFiles(ctx);
     this.lowestPrecedence = this.spinSymbolTables.lowestPrecedence;
     this.ternaryPrecedence = this.spinSymbolTables.ternaryPrecedence;
     this.numberStack.enableLogging(this.isLogging);
     this.blockStack.enableLogging(this.isLogging);
-    this.spinFiles.enableLogging(this.isLogging);
   }
 
   public setElements(updatedElementList: SpinElement[]) {
@@ -254,7 +259,7 @@ export class SpinResolver {
   }
   // for lister  ^^^
 
-  public compile1() {
+  public compile1(overrideSymbolTable: SymbolTable | undefined) {
     // reset symbol tables
     /*
       call  enter_symbols_level ;enter level symbols after determining spin2 level
@@ -265,6 +270,8 @@ export class SpinResolver {
       mov [doc_mode],0    ;reset doc mode
       mov [info_count],0    ;reset info count
     */
+    this.overrideSymbolTable = overrideSymbolTable;
+    // XYZZY add use of overrideSymbolTable to CON process
     this.mainSymbols.reset();
     this.localSymbols.reset();
     this.inlineSymbols.reset();
@@ -272,6 +279,7 @@ export class SpinResolver {
     this.asmLocal = 0;
     this.objImage.reset();
     this.pasmMode = this.determinePasmMode();
+    this.spinFiles.setPasmMode(this.pasmMode); // publish to top level
     this.compile_con_blocks_1st();
     if (this.context.passOptions.afterConBlock == false) {
       this.compile_obj_blocks_id();
@@ -464,21 +472,28 @@ export class SpinResolver {
     this.restoreElementLocation(0); // start at first element
     // for all dat block locate FILE statements and record the filename we find and the index
     while (this.nextBlock(eValueType.block_dat)) {
-      this.getElement();
-      if (this.currElement.isEndOfFile) {
-        break;
-      }
-      if (this.currElement.type == eElementType.type_file) {
-        const fileElementIndex = this.saveElementLocation();
-        const fileName = this.getFilename();
-        if (this.spinFiles.dataFileExists(fileName) == false) {
-          // have new file, register it
-          this.spinFiles.addDataFile(fileName, fileElementIndex);
-          const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName);
-          if (fileSpec === undefined) {
-            // [error_INTERNAL]
-            this.restoreElementLocation(fileElementIndex);
-            throw new Error(`DAT file not found [${fileName}] (preload)`);
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        this.getElement();
+        if (this.currElement.isEndOfFile) {
+          break;
+        }
+        if (this.currElement.type == eElementType.type_block) {
+          this.backElement();
+          break;
+        }
+        if (this.currElement.type == eElementType.type_file) {
+          const fileElementIndex = this.saveElementLocation();
+          const fileName = this.getFilename();
+          this.logMessage(`* cdb_fn() have type_file filename=(${fileName})`);
+          if (this.spinFiles.dataFileExists(fileName) == false) {
+            // have new file, register it
+            const fileExists = this.spinFiles.addDataFile(fileName, fileElementIndex);
+            if (fileExists == false) {
+              // [error_INTERNAL]
+              this.restoreElementLocation(fileElementIndex);
+              throw new Error(`DAT file not found [${fileName}] (preload)`);
+            }
           }
         }
       }
@@ -487,8 +502,12 @@ export class SpinResolver {
 
   private getFilename(): string {
     let filename: string = '';
+    const savedLogState: boolean = this.isLogging;
+    this.logMessage(`* getFilename() - ENTRY`);
     do {
+      this.isLogging = false;
       this.getElement();
+      this.isLogging = savedLogState; // so exceptions have logging in good state...
       if (this.currElement.type != eElementType.type_con) {
         // [error_ifufiq]
         throw new Error('Invalid filename, use "FilenameInQuotes"');
@@ -502,7 +521,10 @@ export class SpinResolver {
         // [error_ftl]
         throw new Error('Filename too long');
       }
+      this.isLogging = false; // disable again for checkComma()
     } while (this.checkComma());
+    this.isLogging = savedLogState;
+    this.logMessage(`* getFilename() - EXIT`);
     return filename;
   }
 
@@ -1054,7 +1076,7 @@ export class SpinResolver {
             const fileElementIndex = this.saveElementLocation();
 
             this.wordSize = eWordSize.WS_Byte;
-            this.enterDatSymbol(); // have name for our file
+            this.enterDatSymbol(); // have name of our file
             const filename = this.getFilename();
             const fileHandle = this.spinFiles.loadDataFile(filename);
             if (fileHandle === undefined) {
@@ -1062,13 +1084,19 @@ export class SpinResolver {
               // [error_INTERNAL]
               throw new Error(`DAT file not found [${filename}]`);
             }
-            if (fileHandle.failedToLoad) {
+            const [foundFile, fileIndex] = this.spinFiles.getIndexForDat(filename);
+            if (foundFile) {
+              const [offset, dataLength] = this.datFileData.getOtherLengthForFile(fileIndex);
+              if (dataLength > 0) {
+                this.datFileData.setOffset(offset);
+                for (let byteCount = 0; byteCount < dataLength; byteCount++) {
+                  this.enterDataByte(BigInt(this.datFileData.read()));
+                }
+              }
+            } else {
               this.restoreElementLocation(fileElementIndex);
               // [error_INTERNAL]
-              throw new Error(`failed to load DAT file content [${filename}]`);
-            }
-            for (let byte of fileHandle.iterator()) {
-              this.enterDataByte(BigInt(byte));
+              throw new Error(`ERROR[INTERNAL] file [${filename}] missing from mid-pass list of data files`);
             }
             this.getEndOfLine();
           } else if (this.currElement.type != eElementType.type_block) {
@@ -3499,9 +3527,15 @@ export class SpinResolver {
           this.getRightBracket();
         }
         this.getColon();
+        const filenameElementIndex = this.saveElementLocation();
         const objFilename: string = this.getFilename();
+        const savedElementIndex = this.saveElementLocation();
         // the following counts object files and checks file count limit (PNut file_limit)
-        const objFileRecord: ObjFile = this.spinFiles.addObjFile(objFilename);
+        // restore so Error if generated by addObjFile() is correct
+        this.restoreElementLocation(filenameElementIndex);
+        const objFileRecord: ObjFile = this.spinFiles.addObjFile(objFilename, filenameElementIndex);
+        // and restore to where we were - after getting filename
+        this.restoreElementLocation(savedElementIndex);
         // PNut  obj symbol | [obj_count]
         const objSymbolValue: number = (this.spinFiles.objFileCount << 24) | this.objectInstanceInMemoryCount;
         // PNUT enter_symbol2_print: -> enter_symbol2:
@@ -3551,6 +3585,11 @@ export class SpinResolver {
     // Compile obj pub/con symbols, also validates obj files
     // PNut compile_obj_symbols:
     // XYZZY need code compile_obj_symbols()
+    const objFileRecords = this.spinFiles.objFiles;
+    for (let index = 0; index < objFileRecords.length; index++) {
+      const objFileRecord = objFileRecords[index];
+      // here is @@getfile:
+    }
   }
 
   private compile_obj_blocks() {
@@ -3777,14 +3816,15 @@ export class SpinResolver {
   private nextBlock(blockType: eValueType): boolean {
     let foundStatus: boolean = false;
     let element: SpinElement;
-    this.logMessage(`* nextBlock huntFor=[${eValueType[blockType]}] stop log at elem=[${this.currElement.toString()}]`);
+    this.logMessage(`* nextBlock huntFor=[${eBlockType[blockType]}] stop log at elem=[${this.currElement.toString()}]`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const savedLogState: boolean = this.isLogging;
+      this.isLogging = false;
       this.getElement();
       this.isLogging = savedLogState;
       if (this.currElement.type == eElementType.type_block && Number(this.currElement.value) == blockType) {
-        this.logMessage(`nextBlock() found element=[${this.currElement.toString()}]`);
+        this.logMessage(`  -- nextBlock() found element=[${this.currElement.toString()}]`);
         foundStatus = true;
         break;
       }
@@ -3792,7 +3832,7 @@ export class SpinResolver {
         break;
       }
     }
-    this.logMessage(`* nextBlock resume log at elem=[${this.currElement.toString()}] foundStatus=(${foundStatus})`);
+    this.logMessage(`  -- nextBlock resume log at elem=[${this.currElement.toString()}] foundStatus=(${foundStatus})`);
     if (foundStatus == true) {
       this.getColumn(); // set this.lineColumn from currentElement
       if (this.lineColumn != 1) {

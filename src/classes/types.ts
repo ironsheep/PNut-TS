@@ -199,6 +199,18 @@ export enum eOperationType {
   op_ternary = 63 // 0x3f ? (:)		ternary		14	-
 }
 
+export enum eBlockType {
+  //
+  // Blocks
+  //
+  block_con = 0, // 0x00
+  block_obj = 1, // 0x01
+  block_var = 2, // 0x02
+  block_pub = 3, // 0x03
+  block_pri = 4, // 0x04
+  block_dat = 5 // 0x05
+}
+
 export enum eValueType {
   value_undefined = 0, // no value determined
   //

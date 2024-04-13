@@ -13,7 +13,7 @@ import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
 import { SpinSymbolTables, eOpcode } from './parseUtils';
 import { SpinResolver } from './spinResolver';
-import { ID_SEPARATOR_STRING, SymbolEntry, iSymbol } from './symbolTable';
+import { ID_SEPARATOR_STRING, SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
@@ -24,7 +24,7 @@ import { ObjectImage } from './objectImage';
 export class Spin2Parser {
   private context: Context;
   private isLogging: boolean = false;
-  private srcFile: SpinDocument;
+  private srcFile: SpinDocument | undefined;
   private elementizer: SpinElementizer;
   private spinSymbolTables: SpinSymbolTables;
   private spinElements: SpinElement[] = [];
@@ -40,12 +40,11 @@ export class Spin2Parser {
 
   private spinResolver: SpinResolver;
 
-  constructor(ctx: Context, spinCode: SpinDocument) {
+  constructor(ctx: Context) {
     this.context = ctx;
-    this.srcFile = spinCode;
-    this.elementizer = new SpinElementizer(ctx, spinCode);
-    this.spinSymbolTables = new SpinSymbolTables(ctx);
     this.isLogging = this.context.logOptions.logParser;
+    this.elementizer = new SpinElementizer(ctx);
+    this.spinSymbolTables = new SpinSymbolTables(ctx);
     this.logMessage(`* Parser is logging`);
     this.spinResolver = new SpinResolver(this.context);
   }
@@ -54,8 +53,14 @@ export class Spin2Parser {
     return this.elementizer.sourceLineNumber;
   }
 
+  public setSourceFile(spinCode: SpinDocument) {
+    this.srcFile = spinCode;
+    this.elementizer.setSourceFile(spinCode);
+  }
+
   public P2Elementize() {
     this.logMessage('* P2Elementize() - ENTRY');
+    //logContextState(this.context, 'Spin2Parser');
     // store the value(s) in list
     // publish for next steps to use
     this.spinElements = this.elementizer.getFileElements();
@@ -66,13 +71,15 @@ export class Spin2Parser {
     // if regression reporting enabled then generate the report
     if (this.context.reportOptions.writeElementsReport) {
       const reporter: RegressionReporter = new RegressionReporter(this.context);
-      reporter.writeElementReport(this.srcFile.dirName, this.srcFile.fileName, this.spinElements);
+      if (this.srcFile) {
+        reporter.writeElementReport(this.srcFile.dirName, this.srcFile.fileName, this.spinElements);
+      }
     }
   }
 
-  public P2Compile1() {
+  public P2Compile1(overrideSymbol: SymbolTable | undefined) {
     this.logMessage('* P2Compile1() - ENTRY');
-    this.spinResolver.compile1();
+    this.spinResolver.compile1(overrideSymbol);
   }
 
   public P2Compile2() {
@@ -81,11 +88,11 @@ export class Spin2Parser {
   }
 
   public P2List() {
-    this.logMessage('* P2List() - ENTRY');
+    this.logMessage('* P2List() - write list file');
     if (this.context.compileOptions.writeListing) {
       const outFilename = this.context.compileOptions.listFilename;
       // Create a write stream
-      this.logMessage(`* writing report to ${outFilename}`);
+      this.logMessage(`  -- writing report to ${outFilename}`);
       const stream = fs.createWriteStream(outFilename);
 
       const userSymbols = this.spinResolver.userSymbolTable;
@@ -165,7 +172,7 @@ export class Spin2Parser {
         }
       }
       // emit spin version
-      stream.write(`\nSpin2_v${this.srcFile.versionNumber}\n\n`);
+      stream.write(`\nSpin2_v${this.srcFile?.versionNumber}\n\n`);
       // emit: CLKMODE, CLKFREQ, XINFREQ if present
       let symbol = userSymbols.find((currSymbol) => currSymbol.name.toLocaleUpperCase() === 'CLKMODE_');
       if (symbol !== undefined) {
@@ -185,7 +192,7 @@ export class Spin2Parser {
       const valueString: string = this.rightAlignedDecimalValue(xinFrequency, 11);
       stream.write(`XINFREQ: ${valueString}\n`);
 
-      const objImage: ObjectImage = this.spinResolver.objectImage;
+      const objImage: ObjectImage = this.context.compileData.objImage;
 
       // test code!!!
       /*
@@ -244,7 +251,7 @@ export class Spin2Parser {
     for (let index = 0; index < this.spinElements.length; index++) {
       const element = this.spinElements[index];
       if (element.sourceLineIndex != currSourceLine) {
-        const sourceLine: string = this.srcFile.lineAt(element.sourceLineIndex).text;
+        const sourceLine: string = this.srcFile !== undefined ? this.srcFile.lineAt(element.sourceLineIndex).text : '??noSource??';
         this.logMessage(`  -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) [${sourceLine}]`);
         currSourceLine = element.sourceLineIndex;
       }

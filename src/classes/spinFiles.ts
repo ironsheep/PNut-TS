@@ -6,12 +6,13 @@
 
 import path from 'path';
 import { Context } from '../utils/context';
-import { loadFileAsUint8Array, loadUint8ArrayFailed, locateDataFile } from '../utils/files';
+import { locateDataFile, locateSpin2File } from '../utils/files';
 import { SymbolTable } from './symbolTable';
 import { eElementType } from './types';
 
 const FILE_LIMIT: number = 32; // DAT and OBJ limit is same
 const PARAM_LIMIT: number = 16; // OBJ override limit
+const ALLOW_LIBRARY_SEARCH: boolean = true;
 
 interface iPossibleSymbolTable {
   overrides: SymbolTable | undefined;
@@ -23,6 +24,7 @@ export class ObjFile {
   private isLogging: boolean = false;
   private _fileSpec: string;
   private _fileName: string;
+  private _spinFileId: number = 0; // index into Context:SourceFiles
   private _parameters: number = 0;
   private _instanceNumber: number;
   private _elementIndex: number; // index of assoc 'file' element in spin code
@@ -44,8 +46,22 @@ export class ObjFile {
     this.isLogging = enable;
   }
 
+  get parameterSymbolTable(): SymbolTable | undefined {
+    const possibleTable = this._parameterSet[this._maxParameterSets];
+    return possibleTable.overrides;
+  }
+
+  public setSpinSourceFileId(fileId: number) {
+    // can pass false to disable
+    this._spinFileId = fileId;
+  }
+
   get fileName(): string {
     return this._fileName;
+  }
+
+  get fileSpec(): string {
+    return this._fileSpec;
   }
 
   public recordOverride(setIndex: number, constantName: string, type: eElementType, value: bigint | string) {
@@ -129,18 +145,30 @@ export class DatFile {
   private isLogging: boolean = false;
   private _fileSpec: string;
   private _fileName: string;
+  private _fileExists: boolean;
   private _datImage = new Uint8Array(0); // empty file
   private _instanceNumber: number;
   private _elementIndex: number; // index of assoc 'file' element in spin code
   private _failedToLoad: boolean = false;
 
-  constructor(ctx: Context, fileSpec: string, elementIndex: number) {
+  constructor(ctx: Context, fileName: string, enableLogging: boolean, elementIndex: number) {
     this.context = ctx;
     this._instanceNumber = ++DatFile.nextInstanceNumber;
-    this._fileSpec = fileSpec;
-    this._fileName = path.basename(fileSpec);
+    this.isLogging = enableLogging;
+    this._fileName = path.basename(fileName);
     this._elementIndex = elementIndex;
     // we call load file into memory
+    const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName, this.context);
+    this._fileExists = fileSpec === undefined ? false : true;
+    this._fileSpec = this._fileExists && fileSpec ? fileSpec : '';
+  }
+
+  get fileSpec(): string {
+    return this._fileSpec;
+  }
+
+  get fileExists(): boolean {
+    return this._fileExists;
   }
 
   public enableLogging(enable: boolean = true) {
@@ -148,9 +176,13 @@ export class DatFile {
     this.isLogging = enable;
   }
 
-  public loadDataFromFile() {
-    this._datImage = loadFileAsUint8Array(this._fileSpec);
-    this._failedToLoad = loadUint8ArrayFailed(this._datImage) ? true : false;
+  //public loadDataFromFile() {
+  //  this._datImage = loadFileAsUint8Array(this._fileSpec);
+  //  this._failedToLoad = loadUint8ArrayFailed(this._datImage) ? true : false;
+  //}
+
+  get dataLength(): number {
+    return this._datImage.length;
   }
 
   *iterator() {
@@ -190,9 +222,18 @@ export class SpinFiles {
   private isLogging: boolean = false;
   private _objFiles: ObjFile[] = [];
   private _datFiles: DatFile[] = [];
+  private _pasmMode: boolean = false;
 
   constructor(ctx: Context) {
     this.context = ctx;
+  }
+
+  get pasmMode(): boolean {
+    return this._pasmMode;
+  }
+
+  public setPasmMode(newMode: boolean) {
+    this._pasmMode = newMode;
   }
 
   public enableLogging(enable: boolean = true) {
@@ -208,44 +249,77 @@ export class SpinFiles {
     this._objFiles = [];
   }
 
+  public clear() {
+    // clear out all prior knowledge
+    this.clearDataFiles();
+    this.clearObjFiles();
+    this.setPasmMode(false);
+  }
+
   get objFileCount(): number {
     // this is PNut [obj_files]
     return this._objFiles.length;
   }
 
-  public addDataFile(filespec: string, elementIndex: number): number {
-    const newData: DatFile = new DatFile(this.context, filespec, elementIndex);
-    newData.enableLogging(this.isLogging);
+  get datFileCount(): number {
+    // this is PNut [dat_files]
+    return this._datFiles.length;
+  }
+
+  get objFiles(): ObjFile[] {
+    return this._objFiles;
+  }
+
+  get datFiles(): DatFile[] {
+    return this._datFiles;
+  }
+
+  public getIndexForDat(filename: string): [boolean, number] {
+    let desiredIndex: number = -1;
+    let foundStatus: boolean = false;
+    for (let index = 0; index < this._datFiles.length; index++) {
+      const datFile: DatFile = this._datFiles[index];
+      if (filename.toLowerCase() === datFile.fileName.toLocaleLowerCase()) {
+        foundStatus = true;
+        desiredIndex = index;
+      }
+    }
+    return [foundStatus, desiredIndex];
+  }
+
+  public addDataFile(fileName: string, elementIndex: number): boolean {
+    const newData: DatFile = new DatFile(this.context, fileName, this.isLogging, elementIndex);
     this._datFiles.push(newData);
-    return this._datFiles.length - 1;
+    return newData.fileExists;
   }
 
   public addObjFile(fileName: string, elementIndex: number = 0): ObjFile {
     let desiredFile: ObjFile | undefined = undefined;
+    const spin2fileName: string = fileName.toLowerCase().endsWith('.spin2') ? fileName : `${fileName}.spin2`;
     if (this._objFiles.length >= FILE_LIMIT) {
       // [error_loxuoe]
       throw new Error(`Limit of ${FILE_LIMIT} unique objects exceeded`);
     }
-    if (this.objFileExists(fileName)) {
-      this.logMessage(`* addObjFile([${fileName}]) - found...`);
-      for (let index = 0; index < this._datFiles.length; index++) {
+    let fileSpec: string | undefined = undefined;
+    if (this.objFileExists(spin2fileName)) {
+      this.logMessage(`* addObjFile([${spin2fileName}]) - found...`);
+      for (let index = 0; index < this._objFiles.length; index++) {
         const possibleFile = this._objFiles[index];
         if (possibleFile.fileName.toLowerCase() === fileName.toLowerCase()) {
-          desiredFile = possibleFile;
-          desiredFile.incrementInstanceCount();
+          fileSpec = possibleFile.fileSpec;
           break;
         }
       }
     } else {
-      this.logMessage(`* addObjFile([${fileName}]) - new file...`);
-      const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName, this.context);
-      if (fileSpec !== undefined) {
-        desiredFile = new ObjFile(this.context, fileSpec, elementIndex);
-        desiredFile.enableLogging(this.isLogging);
-        this._objFiles.push(desiredFile);
-      } else {
-        this.logMessage(`* addObjFile([${fileName}]) - addObjFile() FAILED`);
-      }
+      fileSpec = locateSpin2File(spin2fileName, ALLOW_LIBRARY_SEARCH, this.context);
+    }
+    this.logMessage(`* addObjFile([${spin2fileName}]) - new file...`);
+    if (fileSpec !== undefined) {
+      desiredFile = new ObjFile(this.context, fileSpec, elementIndex);
+      desiredFile.enableLogging(this.isLogging);
+      this._objFiles.push(desiredFile);
+    } else {
+      throw new Error(`Cannot find ${spin2fileName}`);
     }
     if (desiredFile === undefined) {
       // [error_INTERNAL]
@@ -257,38 +331,35 @@ export class SpinFiles {
   public loadDataFile(fileName: string): DatFile | undefined {
     let desiredFile: DatFile | undefined = undefined;
     if (this.dataFileExists(fileName)) {
-      this.logMessage(`* loadDataFile([${fileName}]) - found...`);
       for (let index = 0; index < this._datFiles.length; index++) {
         const possibleFile = this._datFiles[index];
         if (possibleFile.fileName.toLowerCase() === fileName.toLowerCase()) {
           desiredFile = possibleFile;
+          this.logMessage(`* loadDataFile([${fileName}]) - found... at Index=(${index})`);
           break;
         }
       }
     } else {
-      this.logMessage(`* loadDataFile([${fileName}]) - new file...`);
-      const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName, this.context);
-      if (fileSpec !== undefined) {
-        desiredFile = new DatFile(this.context, fileSpec, 0);
-        desiredFile.enableLogging(this.isLogging);
-        this._datFiles.push(desiredFile);
-      } else {
+      desiredFile = new DatFile(this.context, fileName, this.isLogging, 0);
+      this._datFiles.push(desiredFile);
+      this.logMessage(`* loadDataFile([${fileName}]) - new file...at Index=(${this._datFiles.length - 1}), found=(${desiredFile.fileExists})`);
+      if (desiredFile.fileExists == false) {
         this.logMessage(`* loadDataFile([${fileName}]) - locateDataFile() FAILED`);
+        desiredFile = undefined; // signal we failed to load/locate file
       }
-    }
-    if (desiredFile !== undefined) {
-      desiredFile.loadDataFromFile();
     }
     return desiredFile;
   }
 
   public dataFileExists(filespec: string): boolean {
     const exists: boolean = this._datFiles.some((datFile) => datFile.fileName.toLowerCase() === filespec.toLowerCase());
+    this.logMessage(`* dataFileExists(${filespec}) -> (${exists})`);
     return exists;
   }
 
   public objFileExists(filespec: string): boolean {
     const exists: boolean = this._objFiles.some((objFile) => objFile.fileName.toLowerCase() === filespec.toLowerCase());
+    this.logMessage(`* objFileExists(${filespec}) -> (${exists})`);
     return exists;
   }
 

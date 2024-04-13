@@ -45,17 +45,22 @@ export class SpinElementizer {
   private firstCharColumn: number = 0;
   private lastSymboblEndOffset: number = 0;
 
-  constructor(ctx: Context, spinCode: SpinDocument) {
+  constructor(ctx: Context) {
     this.context = ctx;
-    this.srcFile = spinCode;
-    this.symbol_tables = new SpinSymbolTables(ctx);
     this.isLogging = this.context.logOptions.logElementizer;
+    this.srcFile = new SpinDocument(ctx, '');
+    this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
+    this.symbol_tables = new SpinSymbolTables(ctx);
     if (this.isLogging) {
       this.symbol_tables.enableLogging();
     }
+  }
+
+  public setSourceFile(spinCode: SpinDocument) {
+    this.srcFile = spinCode;
     // dummy load of next line (replaced by loadNextLine())
-    this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     // now load the line and set conditions after incrementing line index
+    this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     this.currLineIndex = -1;
     this.loadNextLine();
   }
@@ -64,7 +69,7 @@ export class SpinElementizer {
     // return last access line number
     //  ultimately this will be line with error on it
     //this.logMessage(`* sourceLineNumber() currentTextLine=[${this.currentTextLine.text}]`);
-    return this.currentTextLine.sourceLineNumber;
+    return this.currentTextLine !== undefined ? this.currentTextLine.sourceLineNumber : -1;
   }
 
   public getFileElements(): SpinElement[] {

@@ -111,20 +111,25 @@ export function locateIncludeFile(includePaths: string[], currPath: string, file
  * @param {string} filename
  * @return {*}  {(string | undefined)}
  */
-export function locateSpin2File(filename: string): string | undefined {
+export function locateSpin2File(filename: string, canSearchLibray: boolean = false, ctx?: Context): string | undefined {
   let locatedFSpec: string | undefined = undefined;
   if (isSpin2File(filename)) {
     // is it in our current directory?
     let fileSpec: string = path.join(workingDir(), filename);
+    //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
     if (fileExists(fileSpec)) {
       locatedFSpec = fileSpec;
-    } else {
+    } else if (canSearchLibray) {
       // no, is it in our LIB directory?
       fileSpec = path.join(libraryDir(), filename);
+      //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
       if (fileExists(fileSpec)) {
         locatedFSpec = fileSpec;
       }
     }
+    if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() -> [${locatedFSpec}]`);
+  } else {
+    if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File(${path.basename(filename)}) NOT a .spin2 file!`);
   }
   return locatedFSpec;
 }
@@ -141,13 +146,13 @@ export function locateDataFile(workingDir: string, filename: string, ctx?: Conte
   let locatedFSpec: string | undefined = undefined;
   // is it in our current directory?
   let fileSpec: string = path.join(workingDir, filename);
-  if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() checking [${fileSpec}]`);
+  //if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() checking [${fileSpec}]`);
   if (fileExists(fileSpec)) {
     locatedFSpec = fileSpec;
   } else {
     // no, is it in our LIB directory?
     fileSpec = path.join(libraryDir(), filename);
-    if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() checking [${fileSpec}]`);
+    //if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() checking [${fileSpec}]`);
     if (fileExists(fileSpec)) {
       locatedFSpec = fileSpec;
     }
@@ -188,12 +193,13 @@ export function loadFileAsString(fspec: string): string {
   return fileContent;
 }
 
-export function loadFileAsUint8Array(fspec: string): Uint8Array {
+export function loadFileAsUint8Array(fspec: string, ctx: Context | undefined = undefined): Uint8Array {
   let fileContent: Uint8Array = new Uint8Array();
   if (fs.existsSync(fspec)) {
     try {
       const buffer = fs.readFileSync(fspec);
       fileContent = new Uint8Array(buffer);
+      if (ctx) ctx.logger.logMessage(`loaded (${fileContent.length}) bytes from [${path.basename(fspec)}]`);
     } catch (err) {
       //ctx.logger.log(`TRC: loadFileAsString() fspec=[${fspec}] NOT FOUND!`);
       const encoder = new TextEncoder();
