@@ -137,7 +137,7 @@ export class Compiler {
             for (let childIdx = 0; childIdx < this.spinFiles.objFileCount; childIdx++) {
               const fileIdx = objectCountsPerChild[childIdx]; // pascal j
               // pascal inline       s
-              const [objOffset, objLength] = this.childImages.getOtherLengthForFile(fileIdx);
+              const [objOffset, objLength] = this.childImages.getOffsetAndLengthForFile(fileIdx);
               this.childImages.setOffset(objOffset); // set read start
               this.objectData.setOffset(objDataOffset); // set write start
               for (let byteCount = 0; byteCount < objLength; byteCount++) {

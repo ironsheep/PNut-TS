@@ -60,6 +60,10 @@ export class ObjFile {
     return this._fileName;
   }
 
+  get objLineElementIndex(): number {
+    return this._elementIndex;
+  }
+
   get fileSpec(): string {
     return this._fileSpec;
   }
@@ -146,7 +150,6 @@ export class DatFile {
   private _fileSpec: string;
   private _fileName: string;
   private _fileExists: boolean;
-  private _datImage = new Uint8Array(0); // empty file
   private _instanceNumber: number;
   private _elementIndex: number; // index of assoc 'file' element in spin code
   private _failedToLoad: boolean = false;
@@ -174,21 +177,6 @@ export class DatFile {
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
     this.isLogging = enable;
-  }
-
-  //public loadDataFromFile() {
-  //  this._datImage = loadFileAsUint8Array(this._fileSpec);
-  //  this._failedToLoad = loadUint8ArrayFailed(this._datImage) ? true : false;
-  //}
-
-  get dataLength(): number {
-    return this._datImage.length;
-  }
-
-  *iterator() {
-    for (let i = 0; i < this._datImage.length; i++) {
-      yield this._datImage[i];
-    }
   }
 
   get failedToLoad(): boolean {
