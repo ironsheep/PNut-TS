@@ -81,7 +81,7 @@ export class PNutInTypeScript {
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
-      .addOption(new Option('--log <object...>', 'object').choices(['all', 'compile', 'elements', 'parser', 'preproc', 'resolver']))
+      .addOption(new Option('--log <object...>', 'object').choices(['all', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
       .option('-v, --verbose', 'Output verbose messages');
@@ -170,7 +170,7 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg('MODE: Logging:');
       //this.context.logger.verboseMsg(`* log: [${choices}]`);
       const wantsAll: boolean = choices.includes('all');
-      if (choices.includes('elements') || wantsAll) {
+      if (choices.includes('elementizer') || wantsAll) {
         this.context.logOptions.logElementizer = true;
         this.context.logger.verboseMsg('  Elementizer');
       }
@@ -178,7 +178,7 @@ export class PNutInTypeScript {
         this.context.logOptions.logParser = true;
         this.context.logger.verboseMsg('  Parser');
       }
-      if (choices.includes('compile') || wantsAll) {
+      if (choices.includes('compiler') || wantsAll) {
         this.context.logOptions.logCompile = true;
         this.context.logger.verboseMsg('  Compile');
       }

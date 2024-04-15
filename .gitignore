@@ -200,3 +200,6 @@ TEST/SHORT/tablesTESTs/dumpTables.resolv.GOLD.txt
 TEST/SHORT/tablesTESTs/dumpTables.resolv.txt
 REF/asmodeConversion.js
 TEST/DAT-PASM-tests/blink_pasm.lst0.GOLD
+REF/struct-examples.spin2
+scripts/doitNoConsole
+scripts/run-PUBPRI-002nc
