@@ -34,6 +34,18 @@ export class ObjectImage {
     return this.hexOffset(this._objOffset);
   }
 
+  get length(): number {
+    return this._objOffset;
+  }
+
+  public calculateChecksum(fromOffset: number, toOffset: number): number {
+    let sumValue: number = 0;
+    for (let index = fromOffset; index <= toOffset; index++) {
+      sumValue -= this._objImage[index];
+    }
+    return sumValue & 0xff;
+  }
+
   public setOffsetTo(offset: number) {
     // ?? no guard for this for now...
     this.logMessage(`* OBJ: setOffsetTo() (${this.hexOffset(this._objOffset)}) -> (${this.hexOffset(offset)}) diff(${this._objOffset - offset})`);

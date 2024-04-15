@@ -20,6 +20,7 @@ import { BlockStack } from './blockStack';
 import { ObjFile, SpinFiles } from './spinFiles';
 import { ChildObjectsImage, iFileDetails } from './childObjectsImage';
 import { ObjectSymbols } from './objectSymbols';
+import { passThroughOptions } from 'commander';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -212,6 +213,10 @@ export class SpinResolver {
   private objectInstanceInMemoryCount: number = 0; // PNut [obj_count]
   private overrideSymbolTable: SymbolTable | undefined;
   private pubConList: ObjectSymbols;
+  private sizeObj: number = 0; // PNut size_obj
+  private sizeVar: number = 0; // PNut size_var
+  private sizeFlashLoader: number = 0; // PNut size_flash_loader
+  private sizeInterpreter: number = 0; // PNut size_interpreter
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -259,9 +264,10 @@ export class SpinResolver {
     return this.varPtr;
   }
 
-  get objBytes(): number {
-    return this.objImage.offset;
+  get isPasmMode(): boolean {
+    return this.pasmMode;
   }
+
   // for lister  ^^^
 
   public compile1(overrideSymbolTable: SymbolTable | undefined) {
@@ -3957,11 +3963,45 @@ export class SpinResolver {
 
   private compile_final() {
     // PNut compile_final:
-    // XYZZY need code for compile_final
-    // XYZZY WE ARE HERE <-----------
-    // XYZZY we need to see who writes the two longs preceeding the OBJ data
-    // XYZZY we need to write code that places the checksum in the OBJ data
-    // XYZZY who records the symbols into the objImage
+    this.logMessage(`*==* compile_final()`);
+    // TODO: place code for flash_loader file size and interpreter file size
+    this.sizeFlashLoader = 0; // for now
+    this.sizeInterpreter = 0;
+    this.sizeObj = this.objImage.offset;
+    this.sizeVar = 0;
+    if (this.pasmMode == false) {
+      this.sizeInterpreter = 0; // FIXME: for now,  but move  in actual length when we get it
+      const checksumOffset: number = this.objImage.offset; // PNut [edx]
+      this.objWrByte(0); // our checksum placeholder
+      // copy the entire symbol set
+      //for (const byte of this.pubConList) {
+      //  this.objWrByte(byte); // copy the symbol array
+      //}
+      this.pubConList.setOffset(0);
+      this.logMessage(`  -- pubCon list has (${this.pubConList.length}) bytes`);
+      for (let index = 0; index < this.pubConList.length; index++) {
+        const byte = this.pubConList.readNext();
+        this.objWrByte(byte);
+      }
+      // We need to inject two longs at head of image...
+      this.objWrLong(0); // open space for move of data
+      this.objWrLong(0); // open space for move of data
+      // move the data up, leaving room for our two longs at front of image
+      //   here is the behavior of PNut move_obj_up
+      for (let writeOffset = this.objImage.offset - 1; writeOffset >= 8; writeOffset--) {
+        this.objImage.replaceByte(this.objImage.read(writeOffset - 8), writeOffset);
+      }
+      // now write our two longs at front of image
+      //  vsize is...
+      this.objImage.replaceLong(this.varPtr, 0);
+      this.sizeVar = this.varPtr;
+      //  psize is...
+      this.objImage.replaceLong(checksumOffset, 4); // core binary length of the object
+      this.sizeObj = checksumOffset;
+      // now place our checksum into image before our symbols
+      const checkSum = this.objImage.calculateChecksum(0, this.objImage.offset - 1);
+      this.objImage.replaceByte(checkSum, checksumOffset + 8);
+    }
   }
 
   private verifySameValue(currentValue: SpinElement, expectedValue: iValueReturn) {

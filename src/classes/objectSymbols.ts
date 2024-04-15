@@ -15,8 +15,9 @@ export class ObjectSymbols {
   private _id: string;
 
   static readonly MAX_SIZE_IN_BYTES: number = 0x10000;
-  private _objImage = new Uint8Array(); // grows from empty
+  private _objImage = new Uint8Array(ObjectSymbols.MAX_SIZE_IN_BYTES); // pre allocated
   private _objOffset: number = 0; // current index into OBJ image
+  private _objReadOffset: number = 0; // read index into OBJ image
 
   constructor(ctx: Context, idString: string) {
     this.context = ctx;
@@ -24,9 +25,22 @@ export class ObjectSymbols {
     this.isLogging = this.context.logOptions.logCompile;
   }
 
+  [Symbol.iterator]() {
+    return this._objImage.values();
+  }
+
+  get length(): number {
+    return this._objOffset;
+  }
+
+  public setOffset(offset: number) {
+    this._objReadOffset = offset;
+  }
+
   public readNext(): number {
     let desiredValue: number = 0;
-    desiredValue = this._objImage[this._objOffset++];
+    desiredValue = this._objImage[this._objReadOffset++];
+    this.logMessage(`* OBJSYM: readnext(${this.hexOffset(this._objReadOffset - 1)}) -> v=(${this.hexByte(desiredValue)})`);
     return desiredValue;
   }
 
@@ -86,7 +100,8 @@ export class ObjectSymbols {
   public reset() {
     // effectively empty our image
     this._objOffset = 0; // call method, so logs
-    this._objImage = new Uint8Array();
+    this._objReadOffset = 0;
+    this.logMessage(`* OBJSYM: reset() symbols`);
   }
 
   private logMessage(message: string): void {

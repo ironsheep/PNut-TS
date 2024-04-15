@@ -13,10 +13,6 @@ export function libraryDir(): string {
   return './lib';
 }
 
-export function workingDir(): string {
-  return '.';
-}
-
 /**
  * filters interferring characters from URI form of fileSpec returning just a fileSpec
  * @export
@@ -111,18 +107,18 @@ export function locateIncludeFile(includePaths: string[], currPath: string, file
  * @param {string} filename
  * @return {*}  {(string | undefined)}
  */
-export function locateSpin2File(filename: string, canSearchLibray: boolean = false, ctx?: Context): string | undefined {
+export function locateSpin2File(filename: string, canSearchLibray: boolean = false, ctx: Context): string | undefined {
   let locatedFSpec: string | undefined = undefined;
   if (isSpin2File(filename)) {
     // is it in our current directory?
-    let fileSpec: string = path.join(workingDir(), filename);
-    //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
+    let fileSpec: string = path.join(ctx.currentFolder, filename);
+    if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
     if (fileExists(fileSpec)) {
       locatedFSpec = fileSpec;
     } else if (canSearchLibray) {
       // no, is it in our LIB directory?
       fileSpec = path.join(libraryDir(), filename);
-      //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
+      if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
       if (fileExists(fileSpec)) {
         locatedFSpec = fileSpec;
       }
