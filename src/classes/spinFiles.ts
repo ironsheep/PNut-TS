@@ -48,7 +48,10 @@ export class ObjFile {
 
   get parameterSymbolTable(): SymbolTable | undefined {
     const possibleTable = this._parameterSet[this._maxParameterSets];
-    return possibleTable.overrides;
+    if (possibleTable === undefined) {
+      this.logMessage(`EEEE: ObjFile: [${this._fileName}] didn't find paramter set at [${this._maxParameterSets}]`);
+    }
+    return possibleTable?.overrides;
   }
 
   public setSpinSourceFileId(fileId: number) {
@@ -99,9 +102,12 @@ export class ObjFile {
       this._numberInstances[uniqueCount] = instanceCount;
     } else {
       // [error_INTERNAL]
-      throw new Error(
-        `ERROR[INTERNAL] attempt to record instance count for object (${uniqueCount}) out of range [0-${this._numberInstances.length}]`
+      this.logMessage(
+        `EEEE: spinFiles setObjectInstanceCount(${uniqueCount}, ${instanceCount}) ERROR as range is [0-${this._numberInstances.length}]`
       );
+      //throw new Error(
+      //  `ERROR[INTERNAL] attempt to record instance count for object (${uniqueCount}) out of range [0-${this._numberInstances.length}]`
+      //);
     }
   }
 

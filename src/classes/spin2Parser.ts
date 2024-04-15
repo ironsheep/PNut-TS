@@ -43,10 +43,10 @@ export class Spin2Parser {
   constructor(ctx: Context) {
     this.context = ctx;
     this.isLogging = this.context.logOptions.logParser;
-    this.elementizer = new SpinElementizer(ctx);
-    this.spinSymbolTables = new SpinSymbolTables(ctx);
-    this.logMessage(`* Parser is logging`);
+    this.elementizer = new SpinElementizer(this.context);
+    this.spinSymbolTables = new SpinSymbolTables(this.context);
     this.spinResolver = new SpinResolver(this.context);
+    this.logMessage(`* Parser is logging`);
   }
 
   get sourceLineNumber(): number {
@@ -55,14 +55,17 @@ export class Spin2Parser {
 
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
-    this.elementizer.setSourceFile(spinCode);
+    this.logMessage(`* Parser.setSourceFile([${this.srcFile.fileName}])`);
   }
 
   public P2Elementize() {
-    this.logMessage('* P2Elementize() - ENTRY');
+    this.logMessage(`* P2Elementize() - ENTRY file=[${this.srcFile?.fileName}]`);
     //logContextState(this.context, 'Spin2Parser');
     // store the value(s) in list
     // publish for next steps to use
+    if (this.srcFile) {
+      this.elementizer.setSourceFile(this.srcFile);
+    }
     this.spinElements = this.elementizer.getFileElements();
     this.spinResolver.setElements(this.spinElements);
 
@@ -192,7 +195,11 @@ export class Spin2Parser {
       const valueString: string = this.rightAlignedDecimalValue(xinFrequency, 11);
       stream.write(`XINFREQ: ${valueString}\n`);
 
+      const isPasmMode: boolean = this.spinResolver.isPasmMode;
       const objImage: ObjectImage = this.context.compileData.objImage;
+
+      const objectLength = isPasmMode ? objImage.length : objImage.readLong(4);
+      const objectOffset: number = isPasmMode ? 0 : 8;
 
       // test code!!!
       /*
@@ -204,8 +211,7 @@ export class Spin2Parser {
       }
       */
 
-      const objBytes: number = this.spinResolver.objBytes;
-      const objString: string = this.rightAlignedDecimalValue(objBytes, 11);
+      const objString: string = this.rightAlignedDecimalValue(objectLength, 11);
       stream.write(`\n\nOBJ bytes: ${objString}\n`);
 
       const varBytes: number = this.spinResolver.varBytes;
@@ -217,23 +223,25 @@ export class Spin2Parser {
       // stream.write(`\n\nHub bytes: ${lenString}\n\n`);
 
       // if we have object data, dump it
-      if (objImage.offset > 0) {
+      if (objectLength > 0) {
         /// dump hex and ascii data
-        let currOffset = 0;
-        while (currOffset < objImage.offset) {
+        let displayOffset: number = 0;
+        let currOffset = objectOffset;
+        while (displayOffset < objectLength) {
           let hexPart = '';
           let asciiPart = '';
-          const remainingBytes = objImage.offset - currOffset;
+          const remainingBytes = objectLength - displayOffset;
           const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
           for (let i = 0; i < lineLength; i++) {
             const byteValue = objImage.read(currOffset + i);
             hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
             asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
           }
-          const offsetPart = currOffset.toString(16).padStart(5, '0').toUpperCase();
+          const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
 
           stream.write(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
           currOffset += lineLength;
+          displayOffset += lineLength;
         }
       }
 

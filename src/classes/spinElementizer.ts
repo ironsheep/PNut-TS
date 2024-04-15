@@ -10,6 +10,7 @@ import { eElementType, getElementTypeString } from './types';
 import { TextLine } from './textLine';
 import { SpinSymbolTables, iSpinSymbol } from './parseUtils';
 import { SpinElement } from './spinElement';
+import { timeStamp } from 'console';
 
 // interfaces for internal methods
 interface iKnownOperator {
@@ -32,7 +33,7 @@ export class SpinElementizer {
   private context: Context;
   private isLogging: boolean = false;
   private srcFile: SpinDocument;
-  private currLineIndex: number = 0;
+  private currLineIndex: number = -1;
   private currCharacterIndex: number = 0;
   private symbolLineNumber: number = 0;
   private symbolCharacterOffset: number = 0;
@@ -56,12 +57,26 @@ export class SpinElementizer {
     }
   }
 
+  private resetForNewFile() {
+    this.logMessage(`* Elementizer.resetForNewFile()`);
+    this.currLineIndex = -1;
+    this.currCharacterIndex = 0;
+    this.symbolLineNumber = 0;
+    this.symbolCharacterOffset = 0;
+    this.at_eol = false;
+    this.at_eof = false;
+    this.lastEmittedIsLineEnd = true;
+    this.firstCharColumn = 0;
+    this.lastSymboblEndOffset = 0;
+  }
+
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
     // dummy load of next line (replaced by loadNextLine())
     // now load the line and set conditions after incrementing line index
+    this.logMessage(`* Elementizer.setSourceFile([${spinCode.fileName}])`);
+    this.resetForNewFile();
     this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
-    this.currLineIndex = -1;
     this.loadNextLine();
   }
 
@@ -74,11 +89,12 @@ export class SpinElementizer {
 
   public getFileElements(): SpinElement[] {
     //let numberCalls: number = 30;
+    this.logMessage(`* Elementizer.getFileElements() file=[${this.srcFile.fileName}]`);
     const element_list: SpinElement[] = [];
     // store the value(s) in list
     let atEndOfFile: boolean = false;
     let elements: SpinElement[] = this.get_element_entries();
-    //this.logMessage(`- get EARLY elements(${elements.length})=[${elements}]`);
+    this.logMessage(`- get EARLY elements(${elements.length})=[${elements}]`);
     do {
       for (let index = 0; index < elements.length; index++) {
         const element = elements[index];
@@ -91,7 +107,7 @@ export class SpinElementizer {
         break;
       }
       elements = this.get_element_entries();
-      //this.logMessage(`- get IN-LOOP elements(${elements.length})=[${elements}]`);
+      this.logMessage(`- get IN-LOOP elements(${elements.length})=[${elements}]`);
     } while (!atEndOfFile);
     return element_list;
   }
