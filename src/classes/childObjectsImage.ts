@@ -1,19 +1,24 @@
 /** @format */
 
 // this is our common logging mechanism
-//  TODO: make it context/runtime option aware
 
 'use strict';
 
 import { Context } from '../utils/context';
 
-// src/classes/objectImage.ts
-const SYMBOL_LIMIT: number = 30;
+// src/classes/childObjectImage.ts
+
+//const SYMBOL_LIMIT: number = 30;
+
+export interface iFileDetails {
+  offset: number;
+  length: number;
+}
 
 export class ChildObjectsImage {
   private context: Context;
   private isLogging: boolean = false;
-  private _fileDetails: Map<number, [number, number]> = new Map<number, [number, number]>();
+  private _fileDetails: iFileDetails[] = [];
   private _offset: number = 0;
   private _id: string;
 
@@ -27,16 +32,15 @@ export class ChildObjectsImage {
   }
 
   public clear() {
-    this._fileDetails.clear(); // empty tracking table
+    this._fileDetails = []; // empty tracking table
   }
 
   get objectFileCount(): number {
-    return this._fileDetails.size;
+    return this._fileDetails.length;
   }
 
-  get objectFileIDs(): number[] {
-    const keys = Array.from(this._fileDetails.keys());
-    return keys;
+  get objectFileRanges(): iFileDetails[] {
+    return this._fileDetails;
   }
 
   public checksum(offset: number, length: number): number {
@@ -48,30 +52,29 @@ export class ChildObjectsImage {
     return desiredSum;
   }
 
-  public recordLengthOffsetForFile(fileIndex: number, offset: number, length: number) {
+  public recordLengthOffsetForFile(expectedFileIndex: number, newOffset: number, newLength: number) {
     // set object file region info [offset, length] for fileIndex
-    this.logMessage(`* [${this._id}] recordLengthOffsetForFile([${fileIndex}] ofs(${offset}), len(${length}))`);
+    this.logMessage(`* [${this._id}] recordLengthOffsetForFile([${expectedFileIndex}] ofs(${newOffset}), len(${newLength}))`);
+    const details: iFileDetails = { offset: newOffset, length: newLength };
+    this._fileDetails.push(details);
     // flying monkeys throw exception on dupe entry
-    if (!this._fileDetails.has(fileIndex)) {
-      this._fileDetails.set(fileIndex, [offset, length]);
-    } else {
-      this.logMessage(`recordLengthOffsetForFile(${fileIndex}) ERROR: duplicate entry: index already exists`);
+    const latestIndex: number = this._fileDetails.length - 1;
+    if (expectedFileIndex != latestIndex) {
+      this.logMessage(`  -- recordLengthOffsetForFile() ?? File (${expectedFileIndex}) landed at (${latestIndex})!!!`);
     }
   }
 
   public getOffsetAndLengthForFile(fileIndex: number): [number, number] {
     // get object file region info for fileIndex
-    let offset: number = -1;
-    let length: number = -1;
-    const fileDetails = this._fileDetails.get(fileIndex);
-    // TODO: flying monkeys throw exception on entry not found
-    if (fileDetails !== undefined) {
-      [offset, length] = fileDetails;
-      this.logMessage(`* [${this._id}] getOffsetAndLengthForFile([${fileIndex}] -> ofs(${offset}), len(${length}))`);
+    let details: iFileDetails = { offset: -1, length: -1 };
+    if (fileIndex >= 0 && fileIndex < this._fileDetails.length) {
+      details = this._fileDetails[fileIndex];
+      this.logMessage(`* [${this._id}] getOffsetAndLengthForFile([${fileIndex}] -> ofs(${details.offset}), len(${details.length}))`);
     } else {
+      // TODO: flying monkeys throw exception on entry not found
       this.logMessage(`getOffsetAndLengthForFile(${fileIndex}) ERROR: no such index on file`);
     }
-    return [offset, length];
+    return [details.offset, details.length];
   }
 
   public setOffset(offset: number) {

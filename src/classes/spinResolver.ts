@@ -18,7 +18,7 @@ import { ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
 import { ObjFile, SpinFiles } from './spinFiles';
-import { ChildObjectsImage } from './childObjectsImage';
+import { ChildObjectsImage, iFileDetails } from './childObjectsImage';
 import { ObjectSymbols } from './objectSymbols';
 
 // Internal types used for passing complex values
@@ -3734,12 +3734,12 @@ export class SpinResolver {
       let objPtr: number[] = [];
       let objVar: number[] = [];
       // here is @@file:
-      const fileIDs: number[] = this.objectData.objectFileIDs;
-      for (let index = 0; index < fileIDs.length; index++) {
-        const objFileIndex = fileIDs[index];
-        // this length is + 8 (two longs) more than the length of the obj data we move
-        const [offset, dataLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
-        this.objectData.setOffset(offset); // set read ptr within P2.ObjData
+      const objFileRanges: iFileDetails[] = this.objectData.objectFileRanges;
+      for (let objFileIndex = 0; objFileIndex < objFileRanges.length; objFileIndex++) {
+        // this fileRange is offset,length
+        //   length is + 8 (two longs) more than the length of the obj data we move
+        const fileRange = objFileRanges[objFileIndex];
+        this.objectData.setOffset(fileRange.offset); // set read ptr within P2.ObjData
         const fileStartObjOffset: number = this.objImage.offset;
         // save offset to where this objects' data will be written in objImage
         objPtr.push(fileStartObjOffset);
