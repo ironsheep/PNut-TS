@@ -12,6 +12,7 @@
         "nataliemclaren.typescript-docs",
         "loiane.ts-extension-pack",
         "gruntfuggly.todo-tree",
-        "johnnywong.vscode-ts-whitespace-converter"
+        "johnnywong.vscode-ts-whitespace-converter",
+        "sj0000e.hexdiff"
     ]
 }

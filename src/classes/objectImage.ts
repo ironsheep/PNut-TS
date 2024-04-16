@@ -24,6 +24,10 @@ export class ObjectImage {
     this.isLogging = this.context.logOptions.logCompile;
   }
 
+  get rawUint8Array(): Uint8Array {
+    return this._objImage;
+  }
+
   get offset(): number {
     // return current offset
     return this._objOffset;

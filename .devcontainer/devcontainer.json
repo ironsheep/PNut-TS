@@ -17,7 +17,8 @@
     "auchenberg.vscode-browser-preview",
     "davidanson.vscode-markdownlint",
     "redhat.vscode-yaml",
-    "johnnywong.vscode-ts-whitespace-converter"
+    "johnnywong.vscode-ts-whitespace-converter",
+    "sj0000e.hexdiff"
   ],
   "settings": {
     "files.eol": "\n",

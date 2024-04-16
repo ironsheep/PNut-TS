@@ -217,6 +217,11 @@ export class Spin2Parser {
       const objectLength = isPasmMode ? objImage.length : objImage.readLong(4);
       const objectOffset: number = isPasmMode ? 0 : 8;
 
+      if (this.context.compileOptions.writeObj) {
+        //this.writeObjectFile(objImage, objectOffset, objectLength, outFilename); // partial
+        this.writeObjectFile(objImage, 0, objImage.length, outFilename); // full
+      }
+
       // test code!!!
       /*
       const hexLoad = '59 F0 64 FD 4E F0 64 FD 1F 08 60 FD F4 FF 9F FD 00 36 6E 01';
@@ -305,6 +310,18 @@ export class Spin2Parser {
     this.spinResolver.testResolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
     // now process list of elements, writing to our symbol tables
     // the dump symbol tables to listing file
+  }
+
+  private writeObjectFile(objImage: ObjectImage, offset: number, byteCount: number, lstFilename: string) {
+    const objFilename = lstFilename.replace('.lst', '.obj');
+    this.logMessage(`  -- writing OBJ file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
+    const stream = fs.createWriteStream(objFilename);
+
+    const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
+    stream.write(buffer);
+
+    // Close the stream
+    stream.end();
   }
 
   public P2InsertInterpreter() {

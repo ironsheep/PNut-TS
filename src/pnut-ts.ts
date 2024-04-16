@@ -76,7 +76,9 @@ export class PNutInTypeScript {
       .option('-f, --flash', 'Download to FLASH and run')
       .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
-      .option('-o, --output <name>', 'Specify output filename')
+      .option('-O, --obj', 'Generate object files (.obj) from compilation')
+      .option('-B, --bin', 'Generate binrnary files (.bin) suitable for download')
+      .option('-o, --output <name>', 'Specify output file basename')
       .option('-i, --interface', 'Generate interface document files (.txt) during compilation')
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
@@ -132,6 +134,14 @@ export class PNutInTypeScript {
 
     if (this.options.list) {
       this.context.compileOptions.writeListing = true;
+    }
+
+    if (this.options.bin) {
+      this.context.compileOptions.writeBin = true;
+    }
+
+    if (this.options.obj) {
+      this.context.compileOptions.writeObj = true;
     }
 
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
