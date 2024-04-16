@@ -3814,7 +3814,6 @@ export class SpinResolver {
     }
   }
 
-  // TODO: upcoming: try spin2 constant expression
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
     // compile all CON blocks in file
     this.restoreElementLocation(0); // start from first in list
@@ -4029,22 +4028,37 @@ export class SpinResolver {
 
   private recordCONSymbolValue(symbolName: string, symbolValue: iValueReturn) {
     // do assign process
-    this.checkImportedParam(); //  checkParam - is parameter? substitute value
     const symbolType: eElementType = symbolValue.isFloat ? eElementType.type_con_float : eElementType.type_con;
+    let adjustedCONSymbol: iSymbol = { name: symbolName, type: symbolType, value: symbolValue.value };
+
+    const foundSymbol: iSymbol | undefined = this.checkImportedParam(symbolName); //  checkParam - is parameter? substitute value
+    if (foundSymbol !== undefined) {
+      adjustedCONSymbol.type = foundSymbol.type;
+      adjustedCONSymbol.value = foundSymbol.value;
+    }
+
     // write info to object pub/con list
     const interfaceType: number = symbolValue.isFloat ? 17 : 16;
     this.objWrConstant(symbolName, interfaceType, symbolValue.value);
-    // record our symbol
+
+    // record our symbol in MAIN symbol table
     this.mainSymbols.add(symbolName, symbolType, symbolValue.value);
     const symbolNumber = this.mainSymbols.length;
+
     this.logMessage(
       `* recordCONSymbolValue() mainSymbols[${symbolNumber}] name=[${symbolName}], type=[${eElementType[symbolType]}], value=($${Number(BigInt(symbolValue.value) & BigInt(0xffffffff)).toString(16)})`
     );
   }
 
-  private checkImportedParam() {
+  private checkImportedParam(symbolName: string): iSymbol | undefined {
     //  checkParam - is parameter? substitute value
+    // PNut compile_con_blocks: @@checkparam:
     // XYZZY checkImportedParam()
+    let overrideConSymbol: iSymbol | undefined = undefined;
+    if (this.overrideSymbolTable !== undefined && this.overrideSymbolTable.exists(symbolName)) {
+      overrideConSymbol = this.overrideSymbolTable.get(symbolName);
+    }
+    return overrideConSymbol;
   }
 
   private verify(value: iValueReturn) {

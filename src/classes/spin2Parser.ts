@@ -233,11 +233,14 @@ export class Spin2Parser {
       */
 
       const objString: string = this.rightAlignedDecimalValue(objectLength, 11);
-      stream.write(`\n\nOBJ bytes: ${objString}\n`);
-
       const varBytes: number = this.spinResolver.varBytes;
       const varString: string = this.rightAlignedDecimalValue(varBytes, 11);
-      stream.write(`VAR bytes: ${varString}\n\n`);
+      if (isPasmMode) {
+        stream.write(`\n\nHub bytes: ${objString}\n\n`);
+      } else {
+        stream.write(`\n\nOBJ bytes: ${objString}\n`);
+        stream.write(`VAR bytes: ${varString}\n\n`);
+      }
 
       // emit hub-bytes use
       // const lenString: string = this.rightAlignedDecimalValue(objImage.offset, 11);

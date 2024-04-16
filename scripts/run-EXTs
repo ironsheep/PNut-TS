@@ -1,0 +1,6 @@
+#!/bin/bash
+#  the following should abort if the compile fails
+(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v -l -O -B  --log compiler resolver parser --regression element -v TEST/EXT-tests/clock_setter.spin2)
+(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v -l -O -B  --log compiler resolver parser --regression element -v TEST/EXT-tests/flash_loader.spin2)
+(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v -l -O -B  --log compiler resolver parser --regression element -v TEST/EXT-tests/Spin2_debugger.spin2)
+(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v -l -O -B  --log compiler resolver parser --regression element -v TEST/EXT-tests/Spin2_interpreter.spin2)
