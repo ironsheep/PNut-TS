@@ -1,1 +1,19 @@
-TYPE: OBJ             VALUE: 00000000          NAME: XOBJTYPE: METHOD          VALUE: 00000002          NAME: GOTYPE: OBJPUB          VALUE: 00000000          NAME: DOITTYPE: CON             VALUE: 00000000          NAME: CLKMODE_TYPE: CON             VALUE: 01312D00          NAME: CLKFREQ_Spin2_v41CLKMODE:   $00000000CLKFREQ:  20,000,000XINFREQ:           0OBJ bytes:          36VAR bytes:           800000- 18 00 00 00 04 00 00 00 10 00 00 80 16 00 00 00   '................'00010- 00 00 08 00 00 04 00 00 08 00 00 80 0C 00 00 00   '................'00020- 00 A1 38 04                                       '..8.'
+TYPE: OBJ             VALUE: 00000000          NAME: XOBJ
+TYPE: METHOD          VALUE: 00000002          NAME: GO
+TYPE: OBJPUB          VALUE: 00000000          NAME: DOIT
+TYPE: CON             VALUE: 00000000          NAME: CLKMODE_
+TYPE: CON             VALUE: 01312D00          NAME: CLKFREQ_
+
+Spin2_v41
+
+CLKMODE:   $00000000
+CLKFREQ:  20,000,000
+XINFREQ:           0
+
+
+OBJ bytes:          36
+VAR bytes:           8
+
+00000- 18 00 00 00 04 00 00 00 10 00 00 80 16 00 00 00   '................'
+00010- 00 00 08 00 00 04 00 00 08 00 00 80 0C 00 00 00   '................'
+00020- 00 A1 38 04                                       '..8.'

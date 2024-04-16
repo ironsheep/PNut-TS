@@ -67,8 +67,8 @@ export class Compiler {
     if (this.srcFile.validFile) {
       // here we make calls to the P2* methods (e.g., this.spin2Parser.P2Compile1(), , etc.)
       try {
-        this.objectFileCount = 0;
-        this.objectFileOffset = 0; // pscal ObjFilePtr
+        this.objectFileCount = 0; // pascal ObjFileCount
+        this.objectFileOffset = 0; // pascal ObjFilePtr
         // thinking: pass context:fileIndex instead of fileName??
         this.compileRecursively(0, this.srcFile);
         this.spin2Parser.P2List();
@@ -96,25 +96,32 @@ export class Compiler {
       if (depth > OBJ_STACK_LIMIT) {
         throw new Error(`Object nesting exceeds ${OBJ_STACK_LIMIT} levels - illegal circular reference may exist`);
       }
-      // load source file and perform first pass of compilation
-      //this.spin2Parser.fakeGetElementLoop();
-      //this.spin2Parser.fakeResolver();
+
+      // local variables
+      let objectFiles: number = 0; // pascal ObjFiles
+      let dataFiles: number = 0; // pascal DatFiles
       const objectCountsPerChild: number[] = [];
+
+      // load source file and perform first pass of compilation
       this.spin2Parser.setSourceFile(srcFile);
 
-      // NOTE we need to request collapse_debug_data from compile2 if depth = 2
+      // NOTE TODO: we need to request collapse_debug_data from compile2 if depth = 2
       if (this.context.passOptions.afterPreprocess == false) {
-        this.spin2Parser.P2Elementize();
-
         if (this.context.passOptions.afterElementize == false) {
           this.logMessage(`  -- compRecur(${depth}) - compile1 - pass 1 ----------------------------------------`);
           this.spin2Parser.P2Compile1(overrideParameters);
+
+          const objFileList: ObjFile[] = [...this.spinFiles.objFiles];
+          const datFileList: DatFile[] = [...this.spinFiles.datFiles];
+          objectFiles = objFileList.length;
+          dataFiles = datFileList.length;
+
           if (this.spinFiles.pasmMode && depth > 0) {
             throw new Error(`${srcFile.fileName} is a PASM file and cannot be used as a Spin2 object`);
           }
-          if (this.spinFiles.objFileCount > 0) {
-            // compile1 each child for this object
-            const objFileList: ObjFile[] = this.spinFiles.objFiles;
+          if (objectFiles > 0) {
+            // do compile1 pass each child for this object
+            //const objFileList: ObjFile[] = this.spinFiles.objFiles;
             for (let index = 0; index < objFileList.length; index++) {
               const objFile = objFileList[index];
               const fileSpec: string = objFile.fileSpec;
@@ -123,21 +130,26 @@ export class Compiler {
               objFile.setSpinSourceFileId(childObjSourceFile.fileId);
               const overrideSymbolTable: SymbolTable | undefined = objFile.parameterSymbolTable;
               this.compileRecursively(depth + 1, childObjSourceFile, overrideSymbolTable);
+              // get sub-object's obj file index
               objectCountsPerChild.push(this.objectFileCount - 1);
             }
           }
 
           this.logMessage(`  -- compRecur(${depth}) - compile1 - pass 2 ----------------------------------------`);
+          this.spin2Parser.setSourceFile(srcFile);
           this.spin2Parser.P2Compile1(overrideParameters);
           //
           // load sub-objects' .obj files
-          this.logMessage(`* compRecur() processing ${this.spinFiles.objFileCount} OBJ file(s)`);
-          if (this.spinFiles.objFileCount > 0) {
+          this.logMessage(`* compRecur(${depth}) processing ${objectFiles} OBJ file(s)`);
+          if (objectFiles > 0) {
             let objDataOffset: number = 0; // pascal p
-            for (let childIdx = 0; childIdx < this.spinFiles.objFileCount; childIdx++) {
+            for (let childIdx = 0; childIdx < objectFiles; childIdx++) {
               const fileIdx = objectCountsPerChild[childIdx]; // pascal j
               // pascal inline       s
               const [objOffset, objLength] = this.childImages.getOffsetAndLengthForFile(fileIdx);
+              this.logMessage(
+                `  -- compRecur(${depth}) obj loop childIdx=(${childIdx}), fileIdx=(${fileIdx}), objOffset=(${objOffset}), objLength=(${objLength})`
+              );
               this.childImages.setOffset(objOffset); // set read start
               this.objectData.setOffset(objDataOffset); // set write start
               for (let byteCount = 0; byteCount < objLength; byteCount++) {
@@ -149,16 +161,17 @@ export class Compiler {
           }
           //
           // load any data files
-          this.logMessage(`* compRecur() processing ${this.spinFiles.datFileCount} DAT file(s)`);
-          if (this.spinFiles.datFileCount > 0) {
+          this.logMessage(`* compRecur(${depth}) processing ${dataFiles} DAT file(s)`);
+          if (dataFiles > 0) {
             let fileDataOffset: number = 0; // pascal p
-            const datFileList: DatFile[] = this.spinFiles.datFiles;
+            //const datFileList: DatFile[] = this.spinFiles.datFiles;
             for (let datFileIdx = 0; datFileIdx < datFileList.length; datFileIdx++) {
               this.datFileData.setOffset(fileDataOffset); // set write start
               const datFile: DatFile = datFileList[datFileIdx];
               const datImage: Uint8Array = loadFileAsUint8Array(datFile.fileSpec, this.context);
               const failedToLoad: boolean = loadUint8ArrayFailed(datImage) ? true : false;
               if (failedToLoad == false) {
+                this.logMessage(`  -- DatFile idx=(${datFileIdx}) len=(${datImage.length}) `);
                 for (let byteIndex = 0; byteIndex < datImage.length; byteIndex++) {
                   this.datFileData.write(datImage[byteIndex]);
                 }

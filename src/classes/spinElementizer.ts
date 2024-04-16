@@ -10,7 +10,6 @@ import { eElementType, getElementTypeString } from './types';
 import { TextLine } from './textLine';
 import { SpinSymbolTables, iSpinSymbol } from './parseUtils';
 import { SpinElement } from './spinElement';
-import { timeStamp } from 'console';
 
 // interfaces for internal methods
 interface iKnownOperator {
@@ -76,7 +75,7 @@ export class SpinElementizer {
     // now load the line and set conditions after incrementing line index
     this.logMessage(`* Elementizer.setSourceFile([${spinCode.fileName}])`);
     this.resetForNewFile();
-    this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
+    //this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     this.loadNextLine();
   }
 
@@ -763,6 +762,7 @@ export class SpinElementizer {
   private loadNextLine(): void {
     //this.logMessage(`- loadNextLine() - ENTRY   currLineIndex=(${this.currLineIndex}), lineCt=(${this.srcFile.lineCount})`);
     if (!this.at_eof) {
+      this.logMessage(`Elementizer.loadNextLine() currLineIndex=(${this.currLineIndex}), lineCount=(${this.srcFile.lineCount})`);
       if (this.currLineIndex < this.srcFile.lineCount - 1) {
         this.currLineIndex += 1;
         this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);

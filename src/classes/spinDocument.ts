@@ -114,6 +114,10 @@ export class SpinDocument {
         this.defineSymbol(newSymbolName, 1);
       }
     }
+
+    if (this.rawLines.length > 0) {
+      this.preProcess();
+    }
   }
 
   get fileId(): number {
@@ -497,7 +501,7 @@ export class SpinDocument {
   }
 
   get lineCount(): number {
-    return this.rawLines.length;
+    return this.preprocessedLines.length;
   }
 
   get EndOfLine(): eEOLType {

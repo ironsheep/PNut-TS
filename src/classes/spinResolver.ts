@@ -3551,7 +3551,8 @@ export class SpinResolver {
           // and restore to where we were - after getting filename
           this.restoreElementLocation(savedElementIndex);
           // PNut  obj symbol | [obj_count]
-          const objSymbolValue: number = (this.spinFiles.objFileCount << 24) | this.objectInstanceInMemoryCount;
+          const objSymbolValue: number = ((this.spinFiles.objFileCount - 1) << 24) | this.objectInstanceInMemoryCount;
+          this.logMessage(`  -- compObjBlksId() objectId=(${this.spinFiles.objFileCount - 1}), instanceCount=(${this.objectInstanceInMemoryCount})`);
           // PNUT enter_symbol2_print: -> enter_symbol2:
           const newObjSymbol: iSymbol = { name: symbolName, type: eElementType.type_obj, value: BigInt(objSymbolValue) };
           this.recordSymbol(newObjSymbol);
@@ -3565,7 +3566,7 @@ export class SpinResolver {
               throw new Error(`Limit of ${this.objs_limit} OBJ instances exceeded`);
             }
             // stage these values to objImage... they will be replaced in compile_obj_blocks
-            this.objWrLong(this.spinFiles.objFileCount);
+            this.objWrLong(this.spinFiles.objFileCount - 1);
             this.objWrLong(0); // write placeholder VAR offset for this object
             this.objectInstanceInMemoryCount++;
           }
@@ -3656,6 +3657,7 @@ export class SpinResolver {
     for (let objFileIndex = 0; objFileIndex < objFileRecords.length; objFileIndex++) {
       // here is @@getfile:
       const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
+      this.logMessage(`  -- compObjSyms() objFileIndex=(${objFileIndex}), objOffset=(${objOffset}), objLength=(${objLength})`);
       this.objectData.setOffset(objOffset); // PNut is using [esi]
       // here is @@checksum:
       if ((this.objectData.checksum(objOffset, objLength) & 0xff) != 0) {
@@ -3744,7 +3746,8 @@ export class SpinResolver {
       for (let objFileIndex = 0; objFileIndex < objFileRanges.length; objFileIndex++) {
         // this fileRange is offset,length
         //   length is + 8 (two longs) more than the length of the obj data we move
-        const fileRange = objFileRanges[objFileIndex];
+        const fileRange: iFileDetails = objFileRanges[objFileIndex];
+        this.logMessage(`  -- compObjBlks() objFileIndex=(${objFileIndex}), objOffset=(${fileRange.offset}), objLength=(${fileRange.length})`);
         this.objectData.setOffset(fileRange.offset); // set read ptr within P2.ObjData
         const fileStartObjOffset: number = this.objImage.offset;
         // save offset to where this objects' data will be written in objImage
@@ -3757,14 +3760,24 @@ export class SpinResolver {
         // here is @@insert:
         for (let byteCount = 0; byteCount < remainingObjLength; byteCount++) {
           const uint8byte: number = this.objectData.read();
+          //this.logMessage(`  -- compObjBlks() uint8byte=(${uint8byte})`);
           this.objWrByte(uint8byte);
         }
       }
 
       // 2nd pass
       // here is @@filesdone:
+      this.logMessage(`  -- compObjBlks() 2nd pass objectInstanceInMemoryCount=(${this.objectInstanceInMemoryCount})`);
 
       // TODO: add documentation describing first LONGs
+      for (let index = 0; index < objPtr.length; index++) {
+        const objPtrVal = objPtr[index];
+        this.logMessage(`  -- objPtr[${index}] = (${objPtrVal})`);
+      }
+      for (let index = 0; index < objVar.length; index++) {
+        const objVarVal = objVar[index];
+        this.logMessage(`  -- objVar[${index}] = (${objVarVal})`);
+      }
 
       // get number of objects in index
       for (let objectsInMemory = 0; objectsInMemory < this.objectInstanceInMemoryCount; objectsInMemory++) {
@@ -3773,6 +3786,7 @@ export class SpinResolver {
         // get file number from index
         const fileNumber: number = this.objImage.readLong(objOffset + 0);
         // write obj offset to index
+        this.logMessage(`  -- [${objectsInMemory}] fileNumber=(${fileNumber}), objPtr=(${objPtr[fileNumber]})`);
         this.objImage.replaceLong(objPtr[fileNumber], objOffset + 0);
         // write var offset to index
         this.objImage.replaceLong(this.varPtr, objOffset + 4);
@@ -3783,6 +3797,7 @@ export class SpinResolver {
           throw new Error('Too much variable space is declared');
         }
       }
+      this.logMessage(`  -- compObjBlks() end of 2nd pass`);
     }
   }
 
@@ -4891,11 +4906,11 @@ export class SpinResolver {
       const savedElement: SpinElement = this.currElement;
       this.checkIndex();
       this.getDot();
-      let [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+      let [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
       if (objSymType == eElementType.type_objpub) {
         // remember ct_objpub()
         // here is @@checkmult:
-        const returnValueCount: number = (objSymValue >> 20) & 0x0f;
+        const returnValueCount: number = (Number(objSymValue) >> 20) & 0x0f;
         // PNut @@checkmult2:
         if (returnValueCount >= 2) {
           this.restoreElementLocation(savedElementIndex);
@@ -5223,16 +5238,16 @@ export class SpinResolver {
     const startElementIndex = this.saveElementLocation() - 1; // [source_start]
     let parameterCount: number = 0;
     if (this.currElement.type == eElementType.type_obj) {
-      const objectIndex: number = Number(this.currElement.bigintValue);
+      const savedElement: SpinElement = this.currElement;
       this.checkIndex();
       this.getDot();
-      let [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+      let [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
       if (objSymType != eElementType.type_objpub) {
         // [error_eamn]
         throw new Error('Expected a method name');
       }
       // here is @@method:
-      parameterCount = (objSymValue >> 24) & 0x7f;
+      parameterCount = (Number(objSymValue) >> 24) & 0x7f;
       this.compileParameters(parameterCount);
       // compile a method point without affecting nextElementIndex
       const savedElementIndex = this.saveElementLocation(); // push
@@ -5305,10 +5320,10 @@ export class SpinResolver {
       this.objImage.replaceByte(stringLength, patchLocation); // replace the placeholder with length
     } else if (this.currElement.type == eElementType.type_obj) {
       // here is @@object:
-      const objectIndex: number = Number(this.currElement.bigintValue);
+      const savedElement: SpinElement = this.currElement;
       const [indexFound, objectElementIndex] = this.checkIndex();
       this.getDot();
-      const [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+      const [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
       if (objSymType != eElementType.type_objpub) {
         // [error_eamn]
         throw new Error('Expected a method name');
@@ -5317,8 +5332,8 @@ export class SpinResolver {
         this.compileOutOfSequenceExpression(objectElementIndex);
       }
       this.objWrByte(indexFound ? eByteCode.bc_mptr_obji_sub : eByteCode.bc_mptr_obj_sub);
-      this.compileRfvar(BigInt(objectIndex & 0xffffff));
-      this.compileRfvar(BigInt(objSymValue & 0xfffff));
+      this.compileRfvar(BigInt(savedElement.numberValue & 0xffffff));
+      this.compileRfvar(BigInt(Number(objSymValue) & 0xfffff));
     } else if (this.currElement.type == eElementType.type_method) {
       // here is @@method:
       // get index to PUB/PRI then write it
@@ -5360,7 +5375,7 @@ export class SpinResolver {
     } else {
       // could be object constant OR object method
       this.getDot();
-      const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+      const [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
       if (objSymType == eElementType.type_objpub) {
         // compile obj.method({param,...})
         this.restoreElementLocation(savedElementIndex);
@@ -5377,24 +5392,25 @@ export class SpinResolver {
     // Compile term - obj{[]}.method({param,...})
     // PNut ct_objpub:
     this.objWrByte(byteCode);
-    const objectIndex: number = Number(this.currElement.bigintValue); // contains method addr
+    const savedElement: SpinElement = this.currElement;
     const [foundIndex, elementIndexOfIndex] = this.checkIndex();
     this.getDot();
     // if type_objpub: then objSymValue is methodValue: 7-bit parameterCount, 4-bit resultCount, 20-bit Address
-    const [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+    const [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
     if (objSymType != eElementType.type_objpub) {
       // [error_eamn]
       throw new Error('Expected a method name');
     }
-    this.confirmResult(resultsNeeded, objSymValue);
-    const parameterCount: number = (objSymValue >> 24) & 0x7f;
+    const symValueAsNumber: number = Number(objSymValue);
+    this.confirmResult(resultsNeeded, symValueAsNumber);
+    const parameterCount: number = (symValueAsNumber >> 24) & 0x7f;
     this.compileParameters(parameterCount);
     if (foundIndex) {
       this.compileOutOfSequenceExpression(elementIndexOfIndex);
     }
     this.objWrByte(foundIndex ? eByteCode.bc_call_obji_sub : eByteCode.bc_call_obj_sub);
-    this.compileRfvar(BigInt(objectIndex & 0xffffff));
-    this.compileRfvar(BigInt(objSymValue & 0xfffff));
+    this.compileRfvar(BigInt(savedElement.numberValue & 0xffffff));
+    this.compileRfvar(BigInt(symValueAsNumber & 0xfffff));
   }
 
   private ct_method(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
@@ -5549,16 +5565,16 @@ export class SpinResolver {
     this.getElement();
     if (this.currElement.type == eElementType.type_obj) {
       //  obj{[]}.method({params,...})
-      const objectIndex: number = Number(this.currElement.bigintValue);
+      const savedElement: SpinElement = this.currElement;
       this.checkIndex();
       this.getDot();
-      let [objSymType, objSymValue] = this.getObjSymbol(objectIndex);
+      let [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
       this.restoreElementLocation(savedElementIndex);
       let returnValueCount: number = 0;
       if (objSymType == eElementType.type_objpub) {
         // remember ct_objpub()
         // @@checkmult:
-        returnValueCount = (objSymValue >> 20) & 0x0f;
+        returnValueCount = (Number(objSymValue) >> 20) & 0x0f;
         // PNut @@checkmult2:
         if (returnValueCount > 1) {
           // [error_spmcrmv]
@@ -6068,7 +6084,7 @@ export class SpinResolver {
           // [error_NEW for Pnut-ts] (BEING CAPTURED)
           throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
         }
-        const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+        const [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
         if (objSymType == eElementType.type_objpub) {
           // [error_NEW for Pnut-ts] (BEING CAPTURED)
           throw new Error('[INTERNAL] Spin2 Constant failed to resolve');
@@ -6210,7 +6226,7 @@ export class SpinResolver {
               // HANDLE object.constant reference
               const savedElement: SpinElement = this.currElement;
               this.getDot();
-              const [objSymType, objSymValue] = this.getObjSymbol(Number(savedElement.bigintValue));
+              const [objSymType, objSymValue] = this.getObjSymbol(savedElement.numberValue);
               if (objSymType == eElementType.type_objpub) {
                 // [error_eacn]
                 throw new Error('Expected a constant name');
@@ -6277,9 +6293,27 @@ export class SpinResolver {
     return dataStatus;
   }
 
-  private getObjSymbol(value: number): [eElementType, number] {
+  private getObjSymbol(elementValue: number): [eElementType, bigint | string] {
     // PNut get_obj_symbol:
-    return [eElementType.type_undefined, 0];
+    let desiredType: eElementType = eElementType.type_undefined;
+    let desiredValue: bigint | string = 0n;
+    this.getElement(); // get element after dot...
+    const objectId: number = elementValue >> 24;
+    const symbolName: string = this.currElement.stringValue + String.fromCharCode(objectId + 1);
+    this.logMessage(`  -- getObjSymbol() looking up [${symbolName}] objectId=(${objectId}) elem=${this.currElement.toString()}`);
+    const foundSymbol: iSymbol = this.findSymbol(symbolName);
+    desiredValue = foundSymbol.value;
+    if (foundSymbol.type == eElementType.type_objpub) {
+      desiredType = foundSymbol.type;
+    } else if (foundSymbol.type == eElementType.type_objcon) {
+      desiredType = eElementType.type_con;
+    } else if (foundSymbol.type == eElementType.type_objcon_float) {
+      desiredType = eElementType.type_con_float;
+    } else {
+      // [error_eaocom]
+      throw new Error('Expected an object constant or method');
+    }
+    return [desiredType, desiredValue];
   }
 
   private checkUndefined(resolve: eResolve, haveLocalType: boolean = false, localType: eElementType = eElementType.type_undefined): boolean {

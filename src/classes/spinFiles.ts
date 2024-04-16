@@ -49,7 +49,7 @@ export class ObjFile {
   get parameterSymbolTable(): SymbolTable | undefined {
     const possibleTable = this._parameterSet[this._maxParameterSets];
     if (possibleTable === undefined) {
-      this.logMessage(`EEEE: ObjFile: [${this._fileName}] didn't find paramter set at [${this._maxParameterSets}]`);
+      this.logMessage(`EEEE: ObjFile: [${this._fileName}] didn't find parameter set at [${this._maxParameterSets}]`);
     }
     return possibleTable?.overrides;
   }

@@ -56,6 +56,7 @@ export class Spin2Parser {
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
     this.logMessage(`* Parser.setSourceFile([${this.srcFile.fileName}])`);
+    this.P2Elementize();
   }
 
   public P2Elementize() {
@@ -120,47 +121,62 @@ export class Spin2Parser {
             case eElementType.type_con_float:
               symbolType = 'CON_FLOAT';
               break;
-            case eElementType.type_dat_long:
-              symbolType = 'DAT_LONG';
-              break;
-
-            case eElementType.type_dat_long_res:
-              symbolType = 'DAT_LONG_RES';
-              break;
-
-            case eElementType.type_dat_word:
-              symbolType = 'DAT_WORD';
-              break;
-
-            case eElementType.type_dat_byte:
-              symbolType = 'DAT_BYTE';
-              break;
-
-            case eElementType.type_var_byte:
-              symbolType = 'VAR_BYTE';
-              break;
-
-            case eElementType.type_var_word:
-              symbolType = 'VAR_WORD';
-              break;
-
-            case eElementType.type_var_long:
-              symbolType = 'VAR_LONG';
-              break;
-
-            case eElementType.type_method:
-              symbolType = 'METHOD';
+            case eElementType.type_register:
+              symbolType = 'REG';
               break;
             case eElementType.type_loc_byte:
               symbolType = 'LOC_BYTE';
               break;
-
             case eElementType.type_loc_word:
               symbolType = 'LOC_WORD';
               break;
-
             case eElementType.type_loc_long:
               symbolType = 'LOC_LONG';
+              break;
+            case eElementType.type_var_byte:
+              symbolType = 'VAR_BYTE';
+              break;
+            case eElementType.type_var_word:
+              symbolType = 'VAR_WORD';
+              break;
+            case eElementType.type_var_long:
+              symbolType = 'VAR_LONG';
+              break;
+            case eElementType.type_dat_byte:
+              symbolType = 'DAT_BYTE';
+              break;
+            case eElementType.type_dat_word:
+              symbolType = 'DAT_WORD';
+              break;
+            case eElementType.type_dat_long:
+              symbolType = 'DAT_LONG';
+              break;
+            case eElementType.type_dat_long_res:
+              symbolType = 'DAT_LONG_RES';
+              break;
+            case eElementType.type_hub_byte:
+              symbolType = 'HUB_BYTE';
+              break;
+            case eElementType.type_hub_word:
+              symbolType = 'HUB_WORD';
+              break;
+            case eElementType.type_hub_long:
+              symbolType = 'HUB_LONG';
+              break;
+            case eElementType.type_obj:
+              symbolType = 'OBJ';
+              break;
+            case eElementType.type_objpub:
+              symbolType = 'OBJPUB';
+              break;
+            case eElementType.type_objcon:
+              symbolType = 'OBJCON';
+              break;
+            case eElementType.type_objcon_float:
+              symbolType = 'OBJCON_FLOAT';
+              break;
+            case eElementType.type_method:
+              symbolType = 'METHOD';
               break;
 
             default:

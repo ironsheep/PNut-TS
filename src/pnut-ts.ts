@@ -325,7 +325,6 @@ export class PNutInTypeScript {
     }
     if (!this.shouldAbort && this.spinDocument && this.options.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
-      this.spinDocument.preProcess();
       if (!this.context.reportOptions.writePreprocessReport) {
         theCompiler.Compile();
       }

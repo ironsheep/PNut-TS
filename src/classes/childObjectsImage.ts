@@ -17,7 +17,7 @@ export interface iFileDetails {
 
 export class ChildObjectsImage {
   private context: Context;
-  private isLogging: boolean = false;
+  private isLogging: boolean = true; // REMOVE BEFORE FLIGHT
   private _fileDetails: iFileDetails[] = [];
   private _offset: number = 0;
   private _id: string;
@@ -28,7 +28,7 @@ export class ChildObjectsImage {
   constructor(ctx: Context, idString: string) {
     this.context = ctx;
     this._id = idString;
-    this.isLogging = this.context.logOptions.logCompile;
+    //this.isLogging = this.context.logOptions.logCompile;
   }
 
   public clear() {

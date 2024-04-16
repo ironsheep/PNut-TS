@@ -1,3 +1,3 @@
 #!/bin/bash
 #  the following should abort if the compile fails
-(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v -l   --log elementizer compiler resolver parser --regression element -v TEST/OBJ-tests/spin_test10.spin2)
+(set -x;npm run compile && ./scripts/doit ./dist/pnut-ts.js -c -v -l   --log compiler resolver parser --regression element -v TEST/OBJ-tests/spin_test10.spin2)
