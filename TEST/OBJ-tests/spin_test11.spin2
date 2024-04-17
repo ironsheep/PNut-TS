@@ -1,0 +1,6 @@
+OBJ xobj : "spin_test11_child" | x=4_000_000, y=-2
+
+PUB go()
+
+  xobj.doit()
+

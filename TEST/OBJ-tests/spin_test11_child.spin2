@@ -1,0 +1,5 @@
+con x=100, y=1000
+
+PUB doit()
+
+  pintoggle(x)

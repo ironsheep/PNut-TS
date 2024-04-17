@@ -1,7 +1,5 @@
 /** @format */
 
-// this is our common logging mechanism
-
 'use strict';
 
 import { Context } from '../utils/context';

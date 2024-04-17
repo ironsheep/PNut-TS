@@ -328,7 +328,19 @@ export class Spin2Parser {
   }
 
   public P2InsertInterpreter() {
-    // TODO: we need code here
+    // XYZZY we need code here P2InsertInterpreter()
+  }
+
+  public P2InsertDebugger() {
+    // XYZZY we need code here P2InsertDebugger()
+  }
+
+  public P2InsertFlashLoader() {
+    // XYZZY we need code here P2InsertFlashLoader()
+  }
+
+  public P2InsertClockSetter() {
+    // XYZZY we need code here P2InsertClockSetter()
   }
 
   private logMessage(message: string): void {

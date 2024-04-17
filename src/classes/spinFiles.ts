@@ -30,7 +30,7 @@ export class ObjFile {
   private _elementIndex: number; // index of assoc 'file' element in spin code
   private _maxParameterSets: number = 0; // how many times this object is placed in memory PNut [obj_instances[].length]
   private _parameterSet: iPossibleSymbolTable[] = []; // this is indexed by instance number  Map<string:number>
-  private _numberInstances: number[] = []; // object line Ex: instanceName[index] : "filename" - where _numberInstances[] is index value for this line
+  private _numberInstances: number = 0; // object line Ex: instanceName[index] : "filename" - where _numberInstances is index value for this line
 
   constructor(ctx: Context, fileSpec: string, elementIndex: number) {
     this.context = ctx;
@@ -46,8 +46,12 @@ export class ObjFile {
     this.isLogging = enable;
   }
 
+  get fileIndex(): number {
+    return this._instanceNumber - 1; // index is zero relative
+  }
+
   get parameterSymbolTable(): SymbolTable | undefined {
-    const possibleTable = this._parameterSet[this._maxParameterSets];
+    const possibleTable = this._parameterSet[this._maxParameterSets - 1];
     if (possibleTable === undefined) {
       this.logMessage(`EEEE: ObjFile: [${this._fileName}] didn't find parameter set at [${this._maxParameterSets}]`);
     }
@@ -71,44 +75,29 @@ export class ObjFile {
     return this._fileSpec;
   }
 
-  public recordOverride(setIndex: number, constantName: string, type: eElementType, value: bigint | string) {
-    if (setIndex >= 0 && setIndex < this._parameterSet.length) {
-      let addedSymbolTable: boolean = false;
-      const possibleSymbolTable = this._parameterSet[setIndex];
-      if (possibleSymbolTable.overrides === undefined) {
-        possibleSymbolTable.overrides = new SymbolTable();
-        addedSymbolTable = true;
-      } else {
-        // have existing symbol table, make sure we don't overflow
-        if (possibleSymbolTable.overrides.length >= PARAM_LIMIT) {
-          // [error_tmop]
-          throw new Error(`Too many object parameters, exceeded limit of ${PARAM_LIMIT}`);
-        }
-      }
-      this.logMessage(`* recordOverride() ADD symbol [${constantName}]`);
-      possibleSymbolTable.overrides.add(constantName, type, value);
-      if (addedSymbolTable) {
-        this._parameterSet[setIndex] = possibleSymbolTable;
-      }
+  public recordOverride(constantName: string, type: eElementType, value: bigint | string) {
+    let addedSymbolTable: boolean = false;
+    const possibleSymbolTable = this._parameterSet[0];
+    if (possibleSymbolTable.overrides === undefined) {
+      possibleSymbolTable.overrides = new SymbolTable();
+      addedSymbolTable = true;
     } else {
-      // [error_INTERNAL]
-      throw new Error(`ERROR[INTERNAL] attempt to record OVERRIDES for paramterSet (${setIndex}) out of range [0-${this._parameterSet.length}]`);
+      // have existing symbol table, make sure we don't overflow
+      if (possibleSymbolTable.overrides.length >= PARAM_LIMIT) {
+        // [error_tmop]
+        throw new Error(`Too many object parameters, exceeded limit of ${PARAM_LIMIT}`);
+      }
+    }
+    this.logMessage(`* recordOverride() ADD symbol [${constantName}]`);
+    possibleSymbolTable.overrides.add(constantName, type, value);
+    if (addedSymbolTable) {
+      this._parameterSet[0] = possibleSymbolTable;
     }
   }
 
-  public setObjectInstanceCount(uniqueCount: number, instanceCount: number) {
+  public setObjectInstanceCount(instanceCount: number) {
     // have instanceName[index]: record index value for this obj line
-    if (uniqueCount >= 0 && uniqueCount < this._numberInstances.length) {
-      this._numberInstances[uniqueCount] = instanceCount;
-    } else {
-      // [error_INTERNAL]
-      this.logMessage(
-        `EEEE: spinFiles setObjectInstanceCount(${uniqueCount}, ${instanceCount}) ERROR as range is [0-${this._numberInstances.length}]`
-      );
-      //throw new Error(
-      //  `ERROR[INTERNAL] attempt to record instance count for object (${uniqueCount}) out of range [0-${this._numberInstances.length}]`
-      //);
-    }
+    this._numberInstances = instanceCount;
   }
 
   public incrementInstanceCount() {
@@ -117,7 +106,7 @@ export class ObjFile {
     //  we only allocate one if we have symbols
     const emptySymbolTable: iPossibleSymbolTable = { overrides: undefined };
     this._parameterSet.push(emptySymbolTable);
-    this._numberInstances.push(0); // default to 0 instances in all cases setObjectInstanceCount() will override this value
+    this._numberInstances = 0; // default to 0 instances in all cases setObjectInstanceCount() will override this value
   }
 
   get occurrenceIndex(): number {

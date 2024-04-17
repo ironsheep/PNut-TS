@@ -102,6 +102,7 @@ export function logContextState(ctx: Context, callerId: string) {
 export class Context {
   private static _singeInstance: Context | undefined = undefined;
   public libraryFolder: string;
+  public extensionFolder: string;
   public currentFolder: string;
   public logger: Logger;
   public sourceFiles: SourceFiles;
@@ -134,7 +135,8 @@ export class Context {
       objImage: new ObjectImage(this, 'Obj'), // pascal P2.Obj
       spinFiles: new SpinFiles(this) // our list of OBJ and DAT files
     };
-    this.libraryFolder = path.join(__dirname, '../ext');
+    this.libraryFolder = path.join(__dirname, '../lib');
+    this.extensionFolder = path.join(__dirname, '../ext');
     this.currentFolder = process.cwd();
     this.logger = new Logger();
     this.sourceFiles = new SourceFiles();
