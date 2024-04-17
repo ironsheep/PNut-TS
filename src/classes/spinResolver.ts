@@ -217,6 +217,12 @@ export class SpinResolver {
   private sizeFlashLoader: number = 0; // PNut size_flash_loader
   private sizeInterpreter: number = 0; // PNut size_interpreter
   private replacedName: string = ''; // side effect set by getElement when replacing name with value for type undefined
+  private distilledBytes: number = 0; // PNut distilled_bytes end result of distill process
+
+  // debug mode support
+  private debugPinRx: number = 63; // default maybe overridden by code
+  private debugPinTx: number = 62; //
+  private debugBaud: number = 2000000; //
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -256,8 +262,28 @@ export class SpinResolver {
     return this.objImage;
   }
 
+  get executableSize(): number {
+    return this.sizeObj;
+  }
+
+  get variableSize(): number {
+    return this.sizeVar;
+  }
+
+  get clockMode(): number {
+    return this.clkMode;
+  }
+
+  get clockFrequency(): number {
+    return this.clkFreq;
+  }
+
   get xinFrequency(): number {
     return this.xinFreq;
+  }
+
+  get debugPinReceive(): number {
+    return this.debugPinRx;
   }
 
   get varBytes(): number {
@@ -287,7 +313,6 @@ export class SpinResolver {
     } else {
       this.logMessage(`* Using ${this.overrideSymbolTable?.length} CON Overrides`);
     }
-    // XYZZY add use of overrideSymbolTable to CON process
     this.mainSymbols.reset();
     this.localSymbols.reset();
     this.inlineSymbols.reset();
@@ -3808,7 +3833,46 @@ export class SpinResolver {
   private distill_obj_blocks() {
     // Distill obj blocks
     // PNut distill_obj_blocks:
-    // XYZZY need code distill_obj_blocks()
+    if (this.pasmMode == false) {
+      // here is distill_objects:
+      const startingOffset: number = this.objImage.offset;
+      this.distill_build();
+      this.distill_scrub();
+      this.distill_eliminate();
+      this.distill_rebuild();
+      this.distill_reconnect();
+      this.distilledBytes = startingOffset - this.objImage.offset;
+    }
+  }
+
+  private distill_build() {
+    // Build initial object list
+    // PNut distill_build:
+    // XYZZY need code for distill_build()
+  }
+
+  private distill_scrub() {
+    // Scrub sub-object offsets within objects to enable comparison of redundant objects
+    // PNut distill_scrub:
+    // XYZZY need code for distill_scrub()
+  }
+
+  private distill_eliminate() {
+    // Eliminate redundant objects
+    // PNut distill_eliminate:
+    // XYZZY need code for distill_eliminate()
+  }
+
+  private distill_rebuild() {
+    // Rebuild distilled object with sub-objects
+    // PNut distill_rebuild:
+    // XYZZY need code for distill_rebuild()
+  }
+
+  private distill_reconnect() {
+    // Reconnect any sub-objects
+    // PNut distill_reconnect:
+    // XYZZY need code for distill_reconnect()
   }
 
   private pad_obj_long() {
@@ -4034,8 +4098,7 @@ export class SpinResolver {
     const expectedType: eElementType = expectedValue.isFloat ? eElementType.type_con_float : eElementType.type_con;
     let adjustedExpected: iSymbol = { name: symbolName, type: expectedType, value: expectedValue.value };
 
-    // theory 1 - we replace current value with found symbol  -->  NOPE (curr value seems to be correct)
-    // theory 2 - we replave expected value with found symbol -->  do this! since curr has the override value!
+    // We replace expected value with found symbol
 
     const foundSymbol: iSymbol | undefined = this.checkImportedParam(symbolName); //  checkParam - is parameter? substitute value
     if (foundSymbol !== undefined) {
@@ -4082,7 +4145,6 @@ export class SpinResolver {
   private checkImportedParam(symbolName: string): iSymbol | undefined {
     //  checkParam - is parameter? substitute value
     // PNut compile_con_blocks: @@checkparam:
-    // XYZZY checkImportedParam()
     let overrideConSymbol: iSymbol | undefined = undefined;
     if (this.overrideSymbolTable !== undefined && this.overrideSymbolTable.exists(symbolName)) {
       overrideConSymbol = this.overrideSymbolTable.get(symbolName);

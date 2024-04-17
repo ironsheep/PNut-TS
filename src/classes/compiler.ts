@@ -72,6 +72,9 @@ export class Compiler {
         // thinking: pass context:fileIndex instead of fileName??
         this.compileRecursively(0, this.srcFile);
         this.spin2Parser.P2List();
+        const needFLash: boolean = this.context.compileOptions.writeFlash;
+        const ramDownload: boolean = this.context.compileOptions.writeRAM;
+        this.spin2Parser.ComposeRam(needFLash, ramDownload);
       } catch (error: unknown) {
         if (error instanceof Error) {
           this.context.logger.logMessage(`EEEE: About to report: ${error.message}`);

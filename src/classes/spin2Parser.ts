@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// this is our common logging mechanism
-//  TODO: make it context/runtime option aware
 
 'use strict';
 
@@ -18,6 +16,7 @@ import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { ObjectImage } from './objectImage';
+import { ExternalFiles } from './externalFiles';
 
 // src/classes/spin2Parser.ts
 
@@ -28,17 +27,10 @@ export class Spin2Parser {
   private elementizer: SpinElementizer;
   private spinSymbolTables: SpinSymbolTables;
   private spinElements: SpinElement[] = [];
-
-  // private symbols_debug_hash_auto: SymbolTable = new SymbolTable();
-  // private symbols_debug_hash_name: SymbolTable = new SymbolTable();
-  // private symbols_hash_auto: SymbolTable = new SymbolTable();
-  // private symbols_hash_level: SymbolTable = new SymbolTable();
-  // private symbols_hash_param: SymbolTable = new SymbolTable();
-  // private symbols_hash_main: SymbolTable = new SymbolTable();
-  // private symbols_hash_local: SymbolTable = new SymbolTable();
-  // private symbols_hash_inline: SymbolTable = new SymbolTable();
-
   private spinResolver: SpinResolver;
+  private externalFiles: ExternalFiles;
+  private objImage: ObjectImage;
+  private readonly HubLimit: number = 0x80000;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -46,6 +38,8 @@ export class Spin2Parser {
     this.elementizer = new SpinElementizer(this.context);
     this.spinSymbolTables = new SpinSymbolTables(this.context);
     this.spinResolver = new SpinResolver(this.context);
+    this.externalFiles = new ExternalFiles(this.context);
+    this.objImage = this.context.compileData.objImage;
     this.logMessage(`* Parser is logging`);
   }
 
@@ -212,14 +206,15 @@ export class Spin2Parser {
       stream.write(`XINFREQ: ${valueString}\n`);
 
       const isPasmMode: boolean = this.spinResolver.isPasmMode;
-      const objImage: ObjectImage = this.context.compileData.objImage;
+      const saveObjImageOffset: number = this.objImage.offset;
 
-      const objectLength = isPasmMode ? objImage.length : objImage.readLong(4);
+      const objectLength = isPasmMode ? this.objImage.length : this.objImage.readLong(4);
       const objectOffset: number = isPasmMode ? 0 : 8;
 
       if (this.context.compileOptions.writeObj) {
         //this.writeObjectFile(objImage, objectOffset, objectLength, outFilename); // partial
-        this.writeObjectFile(objImage, 0, objImage.length, outFilename); // full
+        this.writeObjectFile(this.objImage, 0, this.objImage.length, outFilename); // full
+        this.objImage.setOffsetTo(saveObjImageOffset);
       }
 
       // test code!!!
@@ -257,7 +252,7 @@ export class Spin2Parser {
           const remainingBytes = objectLength - displayOffset;
           const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
           for (let i = 0; i < lineLength; i++) {
-            const byteValue = objImage.read(currOffset + i);
+            const byteValue = this.objImage.read(currOffset + i);
             hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
             asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
           }
@@ -319,6 +314,78 @@ export class Spin2Parser {
     const objFilename = lstFilename.replace('.lst', '.obj');
     this.logMessage(`  -- writing OBJ file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     const stream = fs.createWriteStream(objFilename);
+    let firstLong: number = objImage.readLong(0);
+    let secondLong: number = objImage.readLong(4);
+    this.logMessage(`* longs BEFORE OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
+    firstLong = objImage.readLong(0);
+    secondLong = objImage.readLong(4);
+    this.logMessage(`* longs AFTER OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    stream.write(buffer);
+
+    // Close the stream
+    stream.end();
+  }
+  private hexLong(uint32: number): string {
+    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
+  }
+
+  public ComposeRam(programFlash: boolean, ramDownload: boolean) {
+    // here is pascal ComposeRAM()
+    const isPasmMode: boolean = this.spinResolver.isPasmMode;
+    const isDebugMode: boolean = this.context.compileOptions.enableDebug;
+    const firstLong: number = this.objImage.readLong(0);
+    const secondLong: number = this.objImage.readLong(4);
+    this.logMessage(`* ComposeRam() first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    // insert interpreter?
+    if (isPasmMode == false) {
+      this.P2InsertInterpreter();
+    }
+    // check to make sure program fits into hub
+    let objSize: number = this.spinResolver.executableSize; // pascal s
+    if (isDebugMode) {
+      objSize += 0x4000; // account for debugger
+    }
+    if (isPasmMode == false) {
+      // s := s + P2.SizeInterpreter + P2.SizeVar + $400; // $400 is for stack space?
+      objSize += this.externalFiles.spinInterpreterLength + this.spinResolver.variableSize + 0x400;
+    }
+    if (objSize > this.HubLimit) {
+      // [error_]
+      throw new Error(`Program requirement exceeds ${this.HubLimit / 1024}KB hub RAM by ${objSize - this.HubLimit} bytes`);
+    }
+    // insert debugger?
+    if (isDebugMode) {
+      this.P2InsertDebugger();
+    }
+    // insert clock setter?
+    if (isDebugMode == false && isPasmMode && this.spinResolver.clockMode != 0) {
+      this.P2InsertClockSetter();
+    }
+    // insert flash loader?
+    if (programFlash) {
+      const codeAndLoaderSize: number = objSize + this.externalFiles.flashLoaderLength;
+      if (codeAndLoaderSize > this.HubLimit) {
+        // [error_]
+        throw new Error(`Need to reduce program by ${codeAndLoaderSize - this.HubLimit} bytes, in order to fit flash loader into hub RAM download`);
+      }
+      this.P2InsertFlashLoader();
+    }
+    // save binary file?
+    if (this.context.compileOptions.writeBin) {
+      //const objImage: ObjectImage = this.context.compileData.objImage;
+      this.writeBinaryFile(this.objImage, 0, this.objImage.length); // full
+    }
+    if (ramDownload) {
+      this.LoadHardware();
+    }
+  }
+
+  private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number) {
+    const lstFilename = this.context.compileOptions.listFilename;
+    const objFilename = lstFilename.replace('.lst', '.bin');
+    this.logMessage(`  -- writing BIN file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
+    const stream = fs.createWriteStream(objFilename);
 
     const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
     stream.write(buffer);
@@ -328,7 +395,115 @@ export class Spin2Parser {
   }
 
   public P2InsertInterpreter() {
+    // PNut insert_interpreter:
     // XYZZY we need code here P2InsertInterpreter()
+    this.logMessage(`* P2InsertInterpreter()`);
+    const firstLong: number = this.objImage.readLong(0);
+    const secondLong: number = this.objImage.readLong(4);
+    this.logMessage(`* P2InsertInterpreter() first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+
+    const pbase_init = 0x30;
+    const vbase_init = 0x34;
+    const dbase_init = 0x38;
+    const var_longs = 0x3c;
+    const clkmode_hub = 0x40;
+    const clkfreq_hub = 0x44;
+    const _debugnop1_ = 0xe54;
+    const _debugnop2_ = 0xe58;
+    const _debugnop3_ = 0xe5c;
+
+    //const objImage: ObjectImage = this.context.compileData.objImage;
+    //objImage.setOffsetTo(this.spinResolver.executableSize + 8); // move this...
+
+    // determine initial pub index
+    this.logMessage(`  -- scan pubs`);
+    this.objImage.setLogging(true);
+    this.objImage.setOffsetTo(8);
+
+    let pubIndex: number = 0;
+    let tableEntry: number = 0;
+    // eslint-disable-next-line no-constant-condition
+    let zerosMaxCount: number = 15;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@findpub:
+      tableEntry = this.objImage.readLongNext();
+      if (tableEntry == 0 && --zerosMaxCount <= 0) {
+        throw new Error('LOOP EXCEEDED EMPTY BUFFER');
+      }
+      if ((tableEntry & 0x80000000) != 0) {
+        break;
+      } else {
+        tableEntry = this.objImage.readLongNext();
+        pubIndex += 2;
+      }
+    }
+    this.objImage.setLogging(false);
+    this.logMessage(`  -- have pibIndex=(${pubIndex})`);
+    // here is @@gotpub
+    const interpreterLength = this.externalFiles.spinInterpreterLength;
+    // move object upwards to accommodate interpreter
+    this.logMessage(`  -- move object up - interpreterLength=(${interpreterLength}) bytes`);
+    this.moveObjectUp(this.objImage, interpreterLength, 8, this.spinResolver.executableSize);
+    // install interpreter
+    this.logMessage(`  -- load interpreter`);
+    this.objImage.rawUint8Array.set(this.externalFiles.spinInterpreter, 0);
+    this.logMessage(`  -- set new sizes`);
+    // set pbase_init
+    let computedSize: number = interpreterLength;
+    this.objImage.replaceLong(computedSize, pbase_init);
+    // set vbase_init
+    const firstPubIndex: number = pubIndex << 20;
+    computedSize += this.spinResolver.executableSize;
+    this.objImage.replaceLong(firstPubIndex | computedSize, vbase_init); // index of first pub in vbase_init[31:20]
+    // set dbase_init
+    computedSize += this.spinResolver.variableSize;
+    this.objImage.replaceLong(computedSize, dbase_init);
+    // add stackSize
+    computedSize += 0x400; // ensure dbase has $100 longs of stack headroom
+    const isDebugMode: boolean = this.context.compileOptions.enableDebug;
+    if (isDebugMode) {
+      computedSize += 0x4000; // account for debugger
+    }
+    if (computedSize > ObjectImage.MAX_SIZE_IN_BYTES) {
+      // [error_pex]
+      throw new Error('Program exceeds 1024KB');
+    }
+    this.logMessage(`  -- patch interpreter`);
+    // set var_longs
+    const newVarLongs: number = ((this.spinResolver.variableSize + 0x400) >> 2) - 1;
+    this.objImage.replaceLong(newVarLongs, var_longs);
+    // set clkmode_hub
+    this.objImage.replaceLong(this.spinResolver.clockMode, clkmode_hub);
+    // set clkfreq_hub
+    this.objImage.replaceLong(this.spinResolver.clockFrequency, clkfreq_hub);
+    if (isDebugMode == false) {
+      // if not debug mode, force NOP instructions
+      this.objImage.replaceLong(0, _debugnop1_);
+      this.objImage.replaceLong(0, _debugnop2_);
+      this.objImage.replaceLong(0, _debugnop3_);
+    } else {
+      // debug mode, install debug_pin_rx into instructions
+      const debugPinRx = this.spinResolver.debugPinReceive;
+      let newLongValue = this.objImage.readLong(_debugnop1_);
+      newLongValue |= debugPinRx << 9;
+      this.objImage.replaceLong(newLongValue, _debugnop1_);
+      newLongValue = this.objImage.readLong(_debugnop2_);
+      newLongValue |= debugPinRx;
+      this.objImage.replaceLong(newLongValue, _debugnop2_);
+      newLongValue = this.objImage.readLong(_debugnop3_);
+      newLongValue |= debugPinRx << 9;
+      this.objImage.replaceLong(newLongValue, _debugnop3_);
+    }
+    // mark the new end of this image
+    this.objImage.setOffsetTo(interpreterLength + this.spinResolver.executableSize); // address of byte after our image
+  }
+
+  private moveObjectUp(objImage: ObjectImage, destOffset: number, sourceOffset: number, nbrBytes: number) {
+    for (let index = 0; index < nbrBytes; index++) {
+      const invertedIndex = nbrBytes - index - 1;
+      objImage.replaceByte(objImage.read(sourceOffset + invertedIndex), destOffset + invertedIndex);
+    }
   }
 
   public P2InsertDebugger() {
@@ -341,6 +516,10 @@ export class Spin2Parser {
 
   public P2InsertClockSetter() {
     // XYZZY we need code here P2InsertClockSetter()
+  }
+
+  public LoadHardware() {
+    // XYZZY we need code here LoadHardware()
   }
 
   private logMessage(message: string): void {

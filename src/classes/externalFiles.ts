@@ -6,10 +6,11 @@ import path from 'path';
 import { Context } from '../utils/context';
 import { fileExists, loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
 
-// src/classes/childObjectImage.ts
+// src/classes/externalFiles.ts
 
-export class ChildObjectsImage {
+export class ExternalFiles {
   private context: Context;
+  private isLogging: boolean = true; // REMOVE BEFORE FLIGHT (change to false before release)
   private _clockSetterImage: Uint8Array = new Uint8Array(0);
   private _flashLoaderImage: Uint8Array = new Uint8Array(0);
   private _spinDebuggerImage: Uint8Array = new Uint8Array(0);
@@ -67,22 +68,26 @@ export class ChildObjectsImage {
     let tmpFSpec = path.join(this.context.extensionFolder, 'clock_setter.obj');
     let tmpImage = this.loadImage(tmpFSpec);
     if (tmpImage) {
+      this.logMessage(`clock_setter is ${tmpImage.length} bytes long`);
       this._clockSetterImage = tmpImage;
     }
     tmpFSpec = path.join(this.context.extensionFolder, 'flash_loader.obj');
     tmpImage = this.loadImage(tmpFSpec);
     if (tmpImage) {
+      this.logMessage(`flash_loader is ${tmpImage.length} bytes long`);
       this._flashLoaderImage = tmpImage;
     }
     tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger.obj');
     tmpImage = this.loadImage(tmpFSpec);
     if (tmpImage) {
+      this.logMessage(`Spin2_debugger is ${tmpImage.length} bytes long`);
       this._spinDebuggerImage = tmpImage;
     }
     tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_interpreter.obj');
     tmpImage = this.loadImage(tmpFSpec);
     if (tmpImage) {
-      this._spinDebuggerImage = tmpImage;
+      this.logMessage(`Spin2_interpreter is ${tmpImage.length} bytes long`);
+      this._spinInterpreterImage = tmpImage;
     }
   }
 
@@ -95,5 +100,11 @@ export class ChildObjectsImage {
       }
     }
     return desiredImage;
+  }
+
+  private logMessage(message: string): void {
+    if (this.isLogging) {
+      this.context.logger.logMessage(message);
+    }
   }
 }
