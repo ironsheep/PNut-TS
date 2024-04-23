@@ -1,0 +1,1 @@
+TYPE: CON             VALUE: 00989680          NAME: _CLKFREQTYPE: CON             VALUE: 0100099B          NAME: CLKMODE_TYPE: CON             VALUE: 00989680          NAME: CLKFREQ_Spin2_v41CLKMODE:   $0100099BCLKFREQ:  10,000,000XINFREQ:  20,000,000Hub bytes:           800000- 00 02 DC FC 5F 00 64 FD                           '...._.d.'

@@ -286,6 +286,10 @@ export class SpinResolver {
     return this.debugPinRx;
   }
 
+  get debugPinTransmit(): number {
+    return this.debugPinTx;
+  }
+
   get varBytes(): number {
     return this.varPtr;
   }

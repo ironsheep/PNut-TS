@@ -5,7 +5,6 @@
 import fs from 'fs';
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
-//import { SymbolTable } from './symbolTable';
 import { SpinElementizer } from './spinElementizer';
 import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
@@ -208,11 +207,9 @@ export class Spin2Parser {
       const isPasmMode: boolean = this.spinResolver.isPasmMode;
       const saveObjImageOffset: number = this.objImage.offset;
 
-      const objectLength = isPasmMode ? this.objImage.length : this.objImage.readLong(4);
       const objectOffset: number = isPasmMode ? 0 : 8;
 
       if (this.context.compileOptions.writeObj) {
-        //this.writeObjectFile(objImage, objectOffset, objectLength, outFilename); // partial
         this.writeObjectFile(this.objImage, 0, this.objImage.length, outFilename); // full
         this.objImage.setOffsetTo(saveObjImageOffset);
       }
@@ -227,6 +224,7 @@ export class Spin2Parser {
       }
       */
 
+      const objectLength = isPasmMode ? this.objImage.length : this.objImage.readLong(4);
       const objString: string = this.rightAlignedDecimalValue(objectLength, 11);
       const varBytes: number = this.spinResolver.varBytes;
       const varString: string = this.rightAlignedDecimalValue(varBytes, 11);
@@ -314,13 +312,20 @@ export class Spin2Parser {
     const objFilename = lstFilename.replace('.lst', '.obj');
     this.logMessage(`  -- writing OBJ file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     const stream = fs.createWriteStream(objFilename);
-    let firstLong: number = objImage.readLong(0);
-    let secondLong: number = objImage.readLong(4);
-    this.logMessage(`* longs BEFORE OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
-    const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
-    firstLong = objImage.readLong(0);
-    secondLong = objImage.readLong(4);
-    this.logMessage(`* longs AFTER OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    if (offset == 8) {
+      const firstLong: number = objImage.readLong(0);
+      const secondLong: number = objImage.readLong(4);
+      this.logMessage(`* longs BEFORE OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    }
+    // copy our full buffer becuse it will be over written before the file write completes!
+    const buffer = new Uint8Array(byteCount);
+    buffer.set(objImage.rawUint8Array.subarray(offset, offset + byteCount));
+    //const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
+    if (offset == 8) {
+      const firstLong: number = objImage.readLong(0);
+      const secondLong: number = objImage.readLong(4);
+      this.logMessage(`* longs AFTER OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    }
     stream.write(buffer);
 
     // Close the stream
@@ -334,9 +339,11 @@ export class Spin2Parser {
     // here is pascal ComposeRAM()
     const isPasmMode: boolean = this.spinResolver.isPasmMode;
     const isDebugMode: boolean = this.context.compileOptions.enableDebug;
-    const firstLong: number = this.objImage.readLong(0);
-    const secondLong: number = this.objImage.readLong(4);
-    this.logMessage(`* ComposeRam() first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    if (isPasmMode == false) {
+      const firstLong: number = this.objImage.readLong(0);
+      const secondLong: number = this.objImage.readLong(4);
+      this.logMessage(`* ComposeRam() first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    }
     // insert interpreter?
     if (isPasmMode == false) {
       this.P2InsertInterpreter();
@@ -396,7 +403,6 @@ export class Spin2Parser {
 
   public P2InsertInterpreter() {
     // PNut insert_interpreter:
-    // XYZZY we need code here P2InsertInterpreter()
     this.logMessage(`* P2InsertInterpreter()`);
     const firstLong: number = this.objImage.readLong(0);
     const secondLong: number = this.objImage.readLong(4);
@@ -500,10 +506,18 @@ export class Spin2Parser {
   }
 
   private moveObjectUp(objImage: ObjectImage, destOffset: number, sourceOffset: number, nbrBytes: number) {
+    const currOffset = objImage.offset;
+    this.logMessage(`* moveObjUp() from=(${sourceOffset}), to=(${destOffset}), length=(${nbrBytes})`);
+    if (currOffset + nbrBytes > ObjectImage.MAX_SIZE_IN_BYTES) {
+      // [error_pex]
+      throw new Error('Program exceeds 1024KB');
+    }
     for (let index = 0; index < nbrBytes; index++) {
       const invertedIndex = nbrBytes - index - 1;
       objImage.replaceByte(objImage.read(sourceOffset + invertedIndex), destOffset + invertedIndex);
     }
+    this.logMessage(`* moveObjUp()offset (${currOffset}) -> (${currOffset + destOffset}) `);
+    objImage.setOffsetTo(currOffset + destOffset);
   }
 
   public P2InsertDebugger() {
@@ -511,11 +525,75 @@ export class Spin2Parser {
   }
 
   public P2InsertFlashLoader() {
-    // XYZZY we need code here P2InsertFlashLoader()
+    // PNut insert_flash_loader:
+    // pad object to next long
+    while (this.objImage.offset & 0b11) {
+      this.objImage.append(0);
+    }
+    const _checksum_ = 0x04;
+    const _debugnop_ = 0x08;
+    const _NOP_INSTRU_ = 0;
+    const flashLoaderLength = this.externalFiles.flashLoaderLength;
+    // move object upwards to accommodate flash loader
+    this.logMessage(`  -- move object up - flashLoaderLength=(${flashLoaderLength}) bytes`);
+    this.moveObjectUp(this.objImage, flashLoaderLength, 0, this.objImage.offset);
+    // install flash loader
+    this.logMessage(`  -- load flash loader`);
+    this.objImage.rawUint8Array.set(this.externalFiles.flashLoader, 0);
+    const isDebugMode: boolean = this.context.compileOptions.enableDebug;
+    if (isDebugMode) {
+      // debug is on
+      const debugInstru = this.objImage.readLong(_debugnop_);
+      this.objImage.replaceLong(debugInstru | this.spinResolver.debugPinTransmit, _debugnop_);
+    } else {
+      // debug is off
+      this.objImage.replaceLong(_NOP_INSTRU_, _debugnop_);
+    }
+    // compute negative sum of all data
+    let checkSum: number = 0;
+    for (let offset = 0; offset < this.objImage.offset; offset += 4) {
+      checkSum -= this.objImage.readLong(offset);
+    }
+    // insert checksum into loader
+    this.objImage.replaceLong(checkSum, _checksum_);
   }
 
   public P2InsertClockSetter() {
-    // XYZZY we need code here P2InsertClockSetter()
+    // PNut insert_clock_setter:
+    if (this.spinResolver.clockMode != 0b00) {
+      const _ext1_ = 0x0;
+      const _ext2_ = 0x004;
+      const _ext3_ = 0x008;
+      const _rcslow_ = 0x028;
+      const _clkmode1_ = 0x034;
+      const _clkmode2_ = 0x038;
+      const _appblocks_ = 0x03c;
+      const _NOP_INSTRU_ = 0;
+
+      const clockSetterLength = this.externalFiles.clockSetterLength;
+      // move object upwards to accommodate interpreter
+      this.logMessage(`  -- move object up - clockSetterLength=(${clockSetterLength}) bytes`);
+      this.moveObjectUp(this.objImage, clockSetterLength, 0, this.objImage.offset);
+      // install clock setter
+      this.logMessage(`  -- load clock setter`);
+      this.objImage.rawUint8Array.set(this.externalFiles.clockSetter, 0);
+      // NOP unneeded instructions
+      if (this.spinResolver.clockMode == 0b01) {
+        this.objImage.replaceLong(_NOP_INSTRU_, _ext1_);
+        this.objImage.replaceLong(_NOP_INSTRU_, _ext2_);
+        this.objImage.replaceLong(_NOP_INSTRU_, _ext3_);
+      } else {
+        // here is @@notrcslow:
+        this.objImage.replaceLong(_NOP_INSTRU_, _rcslow_);
+      }
+      // install _clkmode1_
+      this.objImage.replaceLong(this.spinResolver.clockMode & 0xfffffffc, _clkmode1_);
+      // install _clkmode2_
+      this.objImage.replaceLong(this.spinResolver.clockMode, _clkmode2_);
+      // install _appblocks_
+      const numberOfBlocks = (this.objImage.offset >> (9 + 2)) + 1;
+      this.objImage.replaceLong(numberOfBlocks, _appblocks_);
+    }
   }
 
   public LoadHardware() {

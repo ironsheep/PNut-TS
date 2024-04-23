@@ -1,0 +1,6 @@
+_clkfreq = 10_000_000
+
+dat	org
+
+	rep	#1,#0
+	drvnot	#0
