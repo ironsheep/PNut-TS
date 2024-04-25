@@ -217,7 +217,10 @@ export class SpinResolver {
   private sizeFlashLoader: number = 0; // PNut size_flash_loader
   private sizeInterpreter: number = 0; // PNut size_interpreter
   private replacedName: string = ''; // side effect set by getElement when replacing name with value for type undefined
+  // distiller support
   private distilledBytes: number = 0; // PNut distilled_bytes end result of distill process
+  private distillPtr: number = 0; // PNut dis_ptr
+  private distiller: number[] = []; // PNut dis
 
   // debug mode support
   private debugPinRx: number = 63; // default maybe overridden by code
@@ -3840,6 +3843,7 @@ export class SpinResolver {
     if (this.pasmMode == false) {
       // here is distill_objects:
       const startingOffset: number = this.objImage.offset;
+      this.distillPtr = 0;
       this.distill_build();
       this.distill_scrub();
       this.distill_eliminate();
@@ -3849,10 +3853,76 @@ export class SpinResolver {
     }
   }
 
-  private distill_build() {
+  private distill_build(objectId: number = 0, objectOffset: number = 0, subObjectId: number = 1): number {
     // Build initial object list
     // PNut distill_build:
-    // XYZZY need code for distill_build()
+    // record object Id
+    this.logMessage(`* distillBuild(objId=(${objectId}),ofs=(${objectOffset}), subObjId=(${subObjectId}))`);
+    // here is @@record:
+    this.distillBuildEnter(objectId);
+    this.distillBuildEnter(objectOffset);
+
+    // count sub-objects
+    let tableEntry: number = 0;
+    let subObjectCount: number = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@countobjects:
+      tableEntry = this.objImage.readLong(objectOffset + subObjectCount * 8);
+      if ((tableEntry & 0x80000000) == 0) {
+        subObjectCount++;
+      } else {
+        break;
+      }
+    }
+    this.distillBuildEnter(subObjectCount);
+
+    // count methods
+    tableEntry = 0;
+    let methodCount: number = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@countobjects:
+      tableEntry = this.objImage.readLong(objectOffset + subObjectCount * 8 + methodCount * 4);
+      if ((tableEntry & 0x80000000) != 0) {
+        methodCount++;
+      } else {
+        break;
+      }
+    }
+    this.distillBuildEnter(methodCount);
+    this.distillBuildEnter(tableEntry); // record object size
+
+    let newSubObjectId = subObjectId;
+    if (subObjectCount != 0) {
+      // (initial sub object ID is passed parameter)
+      // enter record for each sub object
+      // here is @@id:
+      for (let index = 0; index < subObjectCount; index++) {
+        this.distillBuildEnter(subObjectId + index);
+      }
+
+      // here is @@sub:
+      newSubObjectId = subObjectId + subObjectCount;
+      for (let index = 0; index < subObjectCount; index++) {
+        let subObjectOffset = this.objImage.readLong(objectOffset + index * 8);
+        // recursively call distill_build to enter any sub-objects' sub-object records
+        // call ourself with new  [objectId, objectOffset, and subObjectId]
+        //                                  [eax] + [edx]=index,        [esi] + subObjectOffset,  [edi]
+        newSubObjectId = this.distill_build(subObjectId + index, objectOffset + subObjectOffset, newSubObjectId);
+      }
+    }
+    return newSubObjectId;
+  }
+
+  private distillBuildEnter(value: number) {
+    // PNut distill_build: @@enter:
+    if (this.distillPtr >= this.distiller_limit) {
+      // [error_odo]
+      throw new Error('Object distiller overflow');
+    }
+    this.distiller.push(value);
+    this.distillPtr++;
   }
 
   private distill_scrub() {
