@@ -130,6 +130,25 @@ enum eAugType {
   AT_S
 }
 
+// Distiller data
+//
+// 3+ long records:
+//
+// 0:	object id
+// 1:	object offset
+// 2:	sub-object count
+// 3:	method count
+// 4:	object size
+// 5+:	sub-object id's (if any)
+interface ObjectRecord {
+  objectId: number;
+  objectOffset: number;
+  subObjectCount: number;
+  methodCount: number;
+  objectSize: number;
+  subObjectIds: number[];
+}
+
 export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
@@ -3837,6 +3856,11 @@ export class SpinResolver {
     }
   }
 
+  // ************************************************************************
+  // *  Object Distiller                                                    *
+  // ************************************************************************
+  //
+
   private distill_obj_blocks() {
     // Distill obj blocks
     // PNut distill_obj_blocks:
@@ -3928,13 +3952,153 @@ export class SpinResolver {
   private distill_scrub() {
     // Scrub sub-object offsets within objects to enable comparison of redundant objects
     // PNut distill_scrub:
-    // XYZZY need code for distill_scrub()
+    let recordOffset = 0;
+    do {
+      const objectOffset = this.distiller[recordOffset + 1];
+      const subObjectCount = this.distiller[recordOffset + 2];
+      for (let subObjIndex = 0; subObjIndex < subObjectCount; subObjIndex++) {
+        // clear subOjbectOffsets
+        this.objImage.replaceLong(0, objectOffset + subObjIndex * 2);
+      }
+      recordOffset += 5 + subObjectCount;
+    } while (recordOffset < this.distillPtr);
   }
 
   private distill_eliminate() {
     // Eliminate redundant objects
     // PNut distill_eliminate:
-    // XYZZY need code for distill_eliminate()
+    let recordOffset = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // here is @@newobject:
+      const subObjectCount = this.distiller[recordOffset + 2];
+      if (subObjectCount != 0) {
+        // have subObjects
+        // here is @@msb:
+        for (let index = 0; index < subObjectCount; index++) {
+          const subObjectId = this.distiller[recordOffset + 5 + index];
+          if ((subObjectId & 0x80000000) != 0) {
+            // here is case 1 of @@nextobject:
+            recordOffset += 5 + subObjectCount;
+            if (recordOffset < this.distillPtr) {
+              break; // return to top of loop @@newobject:
+            } else {
+              return; // TODO: code this better!
+            }
+          }
+        }
+      } else {
+        let recordOffset = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          // check for match
+          const matchingRecordOffset = this.findMatchForRecord(recordOffset);
+          if (matchingRecordOffset !== undefined) {
+            // objects match, update all related sub-object id's
+            // set msb's of id's
+            const oldObjectId = this.distiller[recordOffset + 0];
+            const newObjectId = this.distiller[matchingRecordOffset + 0];
+            this.distillEliminateUpdate(oldObjectId, newObjectId);
+            // remove redundant object record from list
+            // (id is no longer referenced by any record)
+            this.distiller.splice(recordOffset, 5 + subObjectCount);
+            this.distillPtr -= 5 + subObjectCount;
+            // NOW break to outer loop which starts all over from top (or call ourself?)
+            this.distill_eliminate();
+          }
+          recordOffset += 5 + subObjectCount;
+          if (recordOffset >= this.distillPtr) {
+            break; // return to top of loop @@newobject:
+          }
+        }
+      }
+    }
+  }
+
+  private findMatchForRecord(matchRecordOffset: number): number | undefined {
+    // here is @@search:
+    let matchingRecordOffset: number | undefined = undefined;
+    let searchRecordOffset = matchRecordOffset;
+    const startSubObjectCount = this.distiller[searchRecordOffset + 2];
+
+    let matchSubObjectCount: number = 0;
+    let matchObjSize: number = 0;
+    // point to first record to check for match
+    searchRecordOffset = matchRecordOffset + 5 + startSubObjectCount;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // if we are at end of records in search?
+      if (searchRecordOffset >= this.distillPtr) {
+        // yes, abort search
+        break;
+      }
+      let recordMatched: boolean = true;
+      // do object sizes match?
+      matchObjSize = this.distiller[matchRecordOffset + 4];
+      const searchObjSize = this.distiller[searchRecordOffset + 4];
+      if (matchObjSize != searchObjSize) {
+        // NOT a match, abort search
+        recordMatched = false;
+      }
+      if (recordMatched) {
+        // do sub-object counts match?
+        matchSubObjectCount = this.distiller[matchRecordOffset + 2];
+        const searchSubObjectCount = this.distiller[searchRecordOffset + 2];
+        if (matchSubObjectCount != searchSubObjectCount) {
+          // NOT a match, abort search
+          recordMatched = false;
+        }
+      }
+      if (recordMatched) {
+        // do sub-object id's match?
+        for (let index = 0; index < matchSubObjectCount; index++) {
+          const matchSubObjectId = this.distiller[matchRecordOffset + 5 + index];
+          const searchSubObjectId = this.distiller[searchRecordOffset + 5 + index];
+          if (matchSubObjectId != searchSubObjectId) {
+            // NOT a match, abort search
+            recordMatched = false;
+            break; // have our answer
+          }
+        }
+      }
+      if (recordMatched) {
+        // do object binaries match?
+        const matchObjectOffset = this.distiller[matchRecordOffset + 1];
+        const searchObjectOffset = this.distiller[searchRecordOffset + 1];
+        for (let longIndex = 0; longIndex < matchObjSize / 4; longIndex++) {
+          const matchObjLong = this.objImage.readLong(matchObjectOffset + longIndex);
+          const searchObjLong = this.objImage.readLong(searchObjectOffset + longIndex);
+          if (matchObjLong != searchObjLong) {
+            // NOT a match, abort search
+            recordMatched = false;
+            break; // have our answer
+          }
+        }
+      }
+      if (recordMatched) {
+        // record still matched, let's return it
+        matchingRecordOffset = searchRecordOffset;
+        break;
+      }
+    }
+    return matchingRecordOffset;
+  }
+
+  private distillEliminateUpdate(objectId: number, newObjectId: number) {
+    // PNut distill_eliminate: @@update:
+    // update sub-object id's in records
+    let recordOffset: number = 0;
+    do {
+      const subObjectCount = this.distiller[recordOffset + 2];
+      for (let subObjectIndex = 0; subObjectIndex < subObjectCount; subObjectIndex++) {
+        const subObjectOffset = recordOffset + 5 + subObjectIndex;
+        let subObjectId = this.distiller[subObjectOffset] & 0x7fffffff;
+        if (subObjectId == objectId || subObjectId == newObjectId) {
+          this.distiller[subObjectOffset] = newObjectId | 0x80000000;
+        }
+      }
+      recordOffset += 5 + subObjectCount;
+    } while (recordOffset < this.distillPtr);
   }
 
   private distill_rebuild() {
