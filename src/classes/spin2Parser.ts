@@ -16,6 +16,7 @@ import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { ObjectImage } from './objectImage';
 import { ExternalFiles } from './externalFiles';
+import { hexLong } from '../utils/formatUtils';
 
 // src/classes/spin2Parser.ts
 
@@ -315,7 +316,7 @@ export class Spin2Parser {
     if (offset == 8) {
       const firstLong: number = objImage.readLong(0);
       const secondLong: number = objImage.readLong(4);
-      this.logMessage(`* longs BEFORE OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+      this.logMessage(`* longs BEFORE OBJ write first(${hexLong(firstLong)}), second=(${hexLong(secondLong)})`);
     }
     // copy our full buffer becuse it will be over written before the file write completes!
     const buffer = new Uint8Array(byteCount);
@@ -324,17 +325,13 @@ export class Spin2Parser {
     if (offset == 8) {
       const firstLong: number = objImage.readLong(0);
       const secondLong: number = objImage.readLong(4);
-      this.logMessage(`* longs AFTER OBJ write first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+      this.logMessage(`* longs AFTER OBJ write first(${hexLong(firstLong)}), second=(${hexLong(secondLong)})`);
     }
     stream.write(buffer);
 
     // Close the stream
     stream.end();
   }
-  private hexLong(uint32: number): string {
-    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
-  }
-
   public ComposeRam(programFlash: boolean, ramDownload: boolean) {
     // here is pascal ComposeRAM()
     const isPasmMode: boolean = this.spinResolver.isPasmMode;
@@ -342,7 +339,7 @@ export class Spin2Parser {
     if (isPasmMode == false) {
       const firstLong: number = this.objImage.readLong(0);
       const secondLong: number = this.objImage.readLong(4);
-      this.logMessage(`* ComposeRam() first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+      this.logMessage(`* ComposeRam() first(${hexLong(firstLong)}), second=(${hexLong(secondLong)})`);
     }
     // insert interpreter?
     if (isPasmMode == false) {
@@ -406,7 +403,7 @@ export class Spin2Parser {
     this.logMessage(`* P2InsertInterpreter()`);
     const firstLong: number = this.objImage.readLong(0);
     const secondLong: number = this.objImage.readLong(4);
-    this.logMessage(`* P2InsertInterpreter() first(${this.hexLong(firstLong)}), second=(${this.hexLong(secondLong)})`);
+    this.logMessage(`* P2InsertInterpreter() first(${hexLong(firstLong)}), second=(${hexLong(secondLong)})`);
 
     const pbase_init = 0x30;
     const vbase_init = 0x34;

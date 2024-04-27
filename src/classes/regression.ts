@@ -13,6 +13,7 @@ import { TextLine } from './textLine';
 import { SpinResolver } from './spinResolver';
 import { eOperationType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
+import { hexLong } from '../utils/formatUtils';
 
 export class RegressionReporter {
   private context: Context;
@@ -570,14 +571,9 @@ export class RegressionReporter {
     const opName: string = eOperationType[operation];
     const floatInterp: string = isFloatInConBlock ? ` flt ` : `     `;
     const opInterp: string = opName.padEnd(13, ' ');
-    const resultStr: string = `${this.hexLong(parmA)}, ${this.hexLong(parmB)}, ${opInterp}${floatInterp} = ${this.hexLong(result32)}`;
+    const resultStr: string = `${hexLong(parmA, '0x')}, ${hexLong(parmB, '0x')}, ${opInterp}${floatInterp} = ${hexLong(result32, '0x')}`;
     return resultStr;
   }
-  private hexLong(parm: number): string {
-    const newPair: string = `0x${parm.toString(16).toUpperCase().padStart(8, '0')}`;
-    return newPair;
-  }
-
   private logMessage(message: string): void {
     if (this.isLogging) {
       this.context.logger.logMessage(message);

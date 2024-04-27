@@ -495,7 +495,7 @@ export class SpinElement {
     return `Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}${offsetInterp}`;
   }
 
-  private hexLong(uint32: bigint): string {
-    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
+  private hexLong(biUint32: bigint): string {
+    return `$${biUint32.toString(16).toUpperCase().padStart(8, '0')}`;
   }
 }

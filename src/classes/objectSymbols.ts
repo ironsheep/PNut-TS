@@ -6,6 +6,7 @@
 'use strict';
 
 import { Context } from '../utils/context';
+import { hexAddress, hexByte } from '../utils/formatUtils';
 
 // src/classes/objectImage.ts
 
@@ -40,7 +41,7 @@ export class ObjectSymbols {
   public readNext(): number {
     let desiredValue: number = 0;
     desiredValue = this._objImage[this._objReadOffset++];
-    this.logMessage(`* OBJSYM: readnext(${this.hexOffset(this._objReadOffset - 1)}) -> v=(${this.hexByte(desiredValue)})`);
+    this.logMessage(`* OBJSYM: readnext(${hexAddress(this._objReadOffset - 1)}) -> v=(${hexByte(desiredValue)})`);
     return desiredValue;
   }
 
@@ -63,7 +64,7 @@ export class ObjectSymbols {
 
   public writeByte(uint8: number) {
     // append byte to end of image
-    this.logMessage(`* OBJSYM: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset)})`);
+    this.logMessage(`* OBJSYM: append(v=(${hexByte(uint8)})) wroteTo(${hexAddress(this._objOffset)})`);
     if (this._objOffset < ObjectSymbols.MAX_SIZE_IN_BYTES) {
       this._objImage[this._objOffset++] = uint8 & 0xff;
     } else {
@@ -79,22 +80,6 @@ export class ObjectSymbols {
       desiredValue = this._objImage[offset];
     }
     return desiredValue;
-  }
-
-  private hexByte(uint8: number): string {
-    return `$${uint8.toString(16).toUpperCase().padStart(2, '0')}`;
-  }
-
-  private hexWord(uint16: number): string {
-    return `$${uint16.toString(16).toUpperCase().padStart(4, '0')}`;
-  }
-
-  private hexLong(uint32: number): string {
-    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
-  }
-
-  private hexOffset(uint32: number): string {
-    return `$${uint32.toString(16).toUpperCase().padStart(5, '0')}`;
   }
 
   public reset() {

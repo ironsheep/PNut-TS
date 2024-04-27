@@ -6,6 +6,7 @@
 'use strict';
 
 import { Context } from '../utils/context';
+import { hexAddress, hexByte, hexLong, hexWord } from '../utils/formatUtils';
 
 // src/classes/objectImage.ts
 const SUPPRESS_LOG_MSG: boolean = true;
@@ -41,7 +42,7 @@ export class ObjectImage {
 
   get offsetHex(): string {
     // return current offset
-    return this.hexOffset(this._objOffset);
+    return hexAddress(this._objOffset);
   }
 
   get length(): number {
@@ -58,7 +59,7 @@ export class ObjectImage {
 
   public setOffsetTo(offset: number) {
     // ?? no guard for this for now...
-    this.logMessage(`* OBJ: setOffsetTo() (${this.hexOffset(this._objOffset)}) -> (${this.hexOffset(offset)}) diff(${this._objOffset - offset})`);
+    this.logMessage(`* OBJ: setOffsetTo() (${hexAddress(this._objOffset)}) -> (${hexAddress(offset)}) diff(${this._objOffset - offset})`);
     this._objOffset = offset;
   }
 
@@ -72,10 +73,10 @@ export class ObjectImage {
   public append(uint8: number, alreadyLogged: boolean = false) {
     // append byte to end of image
     if (alreadyLogged == false) {
-      this.logMessage(`* OBJ: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset)})`);
+      this.logMessage(`* OBJ[${this._id}]: append(v=(${hexByte(uint8 & 0xff)})) wroteTo(${hexAddress(this._objOffset)})`);
     }
     if (this._objOffset < ObjectImage.MAX_SIZE_IN_BYTES) {
-      this._objImage[this._objOffset++] = uint8;
+      this._objImage[this._objOffset++] = uint8 & 0xff;
       this.updateMax();
     } else {
       // [error_pex]
@@ -84,7 +85,7 @@ export class ObjectImage {
   }
 
   public appendLong(uint32: number) {
-    this.logMessage(`* OBJ: append(v=(${this.hexLong(uint32)})) wroteTo(${this.hexOffset(this._objOffset)})`);
+    this.logMessage(`* OBJ[${this._id}]: append(v=(${hexLong(uint32 & 0xffffffff)})) wroteTo(${hexAddress(this._objOffset)})`);
     this.append(uint32, SUPPRESS_LOG_MSG);
     this.append(uint32 >> 8, SUPPRESS_LOG_MSG);
     this.append(uint32 >> 16, SUPPRESS_LOG_MSG);
@@ -133,58 +134,42 @@ export class ObjectImage {
     desiredValue |= this._objImage[this._objOffset++] << 8;
     desiredValue |= this._objImage[this._objOffset++] << 16;
     desiredValue |= this._objImage[this._objOffset++] << 24;
-    this.logMessage(`* OBJ: readLongNext() v=(${this.hexLong(desiredValue)}) from(${this.hexOffset(this._objOffset - 4)})`);
+    this.logMessage(`* OBJ: readLongNext() v=(${hexLong(desiredValue)}) from(${hexAddress(this._objOffset - 4)})`);
     return desiredValue;
-  }
-
-  private hexByte(uint8: number): string {
-    return `$${uint8.toString(16).toUpperCase().padStart(2, '0')}`;
-  }
-
-  private hexWord(uint16: number): string {
-    return `$${uint16.toString(16).toUpperCase().padStart(4, '0')}`;
-  }
-
-  private hexLong(uint32: number): string {
-    return `$${uint32.toString(16).toUpperCase().padStart(8, '0')}`;
-  }
-
-  private hexOffset(uint32: number): string {
-    return `$${uint32.toString(16).toUpperCase().padStart(5, '0')}`;
   }
 
   public replaceByte(uint8: number, offset: number) {
     // replace existing value within image
-    this.logMessage(`* OBJ: replaceByte(v=(${this.hexByte(uint8)}), addr(${this.hexOffset(offset)}))`);
+    this.logMessage(`* OBJ: replaceByte(v=(${hexByte(uint8)}), addr(${hexAddress(offset)}))`);
     //if (offset >= 0 && offset <= this._objOffset - 1) {
     if (offset >= 0 && offset <= ObjectImage.MAX_SIZE_IN_BYTES - 1) {
       this._objImage[offset] = uint8;
     } else {
-      this.logMessage(`* OBJ: ERROR BAD address! replaceByte(v=(${this.hexByte(uint8)}), addr(${this.hexOffset(offset)}))`);
+      this.logMessage(`* OBJ: ERROR BAD address! replaceByte(v=(${hexByte(uint8)}), addr(${hexAddress(offset)}))`);
     }
   }
 
   public replaceWord(uint16: number, offset: number, alreadyLogged: boolean = false) {
     // replace existing value within image
     if (alreadyLogged == false) {
-      this.logMessage(`* OBJ: replaceWord(v=(${this.hexWord(uint16)}), addr(${this.hexOffset(offset)}))`);
+      this.logMessage(`* OBJ: replaceWord(v=(${hexWord(uint16)}), addr(${hexAddress(offset)}))`);
     }
     //if (offset >= 0 && offset <= this._objOffset - 2) {
     this._objImage[offset] = uint16 & 0xff;
     this._objImage[offset + 1] = (uint16 >> 8) & 0xff;
     //} else {
-    //  this.logMessage(`* OBJ: ERROR BAD address! replaceWord(v=(${this.hexWord(uint16)}), addr(${this.hexOffset(offset)}))`);
+    //  this.logMessage(`* OBJ: ERROR BAD address! replaceWord(v=(${hexWord(uint16)}), addr(${hexAddress(offset)}))`);
     //}
   }
 
   public replaceLong(uint32: number, offset: number) {
     // replace existing value within image
-    this.logMessage(`* OBJ: replaceLong(v=(${this.hexLong(uint32)}), addr(${this.hexOffset(offset)}))`);
+    this.logMessage(`* OBJ: replaceLong(addr(${hexAddress(offset)})) (${hexLong(this.readLong(offset))}) -> (${hexLong(uint32)})`);
     //if (offset >= 0 && offset <= this._objOffset - 4) {
     this.replaceWord(uint32, offset, SUPPRESS_LOG_MSG);
     this.replaceWord(uint32 >> 16, offset + 2, SUPPRESS_LOG_MSG);
     //} else {
-    //  this.logMessage(`* OBJ: ERROR BAD address! replacereplaceLongWord(v=(${this.hexLong(uint32)}), addr(${this.hexOffset(offset)}))`);
+    //  this.logMessage(`* OBJ: ERROR BAD address! replacereplaceLongWord(v=(${hexLong(uint32)}), addr(${hexAddress(offset)}))`);
     //}
   }
 
