@@ -8,6 +8,7 @@
 import { Context } from '../utils/context';
 
 // src/classes/objectImage.ts
+const SUPPRESS_LOG_MSG: boolean = true;
 
 export class ObjectImage {
   private context: Context;
@@ -68,9 +69,11 @@ export class ObjectImage {
     return desiredValue;
   }
 
-  public append(uint8: number) {
+  public append(uint8: number, alreadyLogged: boolean = false) {
     // append byte to end of image
-    this.logMessage(`* OBJ: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset)})`);
+    if (alreadyLogged == false) {
+      this.logMessage(`* OBJ: append(v=(${this.hexByte(uint8)})) wroteTo(${this.hexOffset(this._objOffset)})`);
+    }
     if (this._objOffset < ObjectImage.MAX_SIZE_IN_BYTES) {
       this._objImage[this._objOffset++] = uint8;
       this.updateMax();
@@ -78,6 +81,14 @@ export class ObjectImage {
       // [error_pex]
       throw new Error('Program exceeds 1024KB');
     }
+  }
+
+  public appendLong(uint32: number) {
+    this.logMessage(`* OBJ: append(v=(${this.hexLong(uint32)})) wroteTo(${this.hexOffset(this._objOffset)})`);
+    this.append(uint32, SUPPRESS_LOG_MSG);
+    this.append(uint32 >> 8, SUPPRESS_LOG_MSG);
+    this.append(uint32 >> 16, SUPPRESS_LOG_MSG);
+    this.append(uint32 >> 24, SUPPRESS_LOG_MSG);
   }
 
   public read(offset: number): number {
@@ -168,7 +179,6 @@ export class ObjectImage {
 
   public replaceLong(uint32: number, offset: number) {
     // replace existing value within image
-    const SUPPRESS_LOG_MSG: boolean = true;
     this.logMessage(`* OBJ: replaceLong(v=(${this.hexLong(uint32)}), addr(${this.hexOffset(offset)}))`);
     //if (offset >= 0 && offset <= this._objOffset - 4) {
     this.replaceWord(uint32, offset, SUPPRESS_LOG_MSG);

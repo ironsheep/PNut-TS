@@ -1,0 +1,3 @@
+pub go2()
+
+  waitms(1)

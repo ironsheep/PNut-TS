@@ -1,0 +1,7 @@
+obj
+
+  subobj2 : "spin_test14_child2"
+
+pub go1()
+
+  subobj2.go2()
