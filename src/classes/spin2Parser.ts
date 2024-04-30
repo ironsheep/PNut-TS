@@ -82,7 +82,15 @@ export class Spin2Parser {
 
   public P2Compile2() {
     this.logMessage('* P2Compile2() - ENTRY');
-    this.spinResolver.compile2();
+    //this.spinResolver.compile2();
+    try {
+      this.spinResolver.compile2();
+    } catch (error) {
+      // Handle the error here if necessary
+      const outFilename = this.context.compileOptions.listFilename;
+      this.writeObjectFile(this.objImage, 0, 0x35, outFilename); // full
+      throw error;
+    }
   }
 
   public P2List() {

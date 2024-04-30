@@ -54,12 +54,18 @@ export class ObjectImage {
     for (let index = fromOffset; index <= toOffset; index++) {
       sumValue -= this._objImage[index];
     }
+    const savedLogState = this.isLogging;
+    this.isLogging = true;
+    this.logMessage(`OBJ[${this._id}]: calculateChecksum(ofs=(${fromOffset}),len=(${toOffset})) -> ${sumValue & 0xff}`);
+    this.isLogging = savedLogState;
     return sumValue & 0xff;
   }
 
   public setOffsetTo(offset: number) {
     // ?? no guard for this for now...
-    this.logMessage(`* OBJ: setOffsetTo() (${hexAddress(this._objOffset)}) -> (${hexAddress(offset)}) diff(${this._objOffset - offset})`);
+    this.logMessage(
+      `* OBJ[${this._id}]: setOffsetTo() (${hexAddress(this._objOffset)}) -> (${hexAddress(offset)}) diff(${this._objOffset - offset})`
+    );
     this._objOffset = offset;
   }
 

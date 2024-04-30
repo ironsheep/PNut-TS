@@ -43,10 +43,10 @@ export class ChildObjectsImage {
 
   public checksum(offset: number, length: number): number {
     let desiredSum: number = 0;
-    const sumEndOffset = offset + length + 1; // +1 says include the checksum byte too
-    for (let readOffset = offset; readOffset < sumEndOffset; readOffset++) {
-      desiredSum += this._objImage[readOffset];
+    for (let readOffset = offset; readOffset < offset + length; readOffset++) {
+      desiredSum -= this._objImage[readOffset];
     }
+    this.logMessage(`* OBJ[${this._id}]: checksum(ofs=(${offset}), len=(${length})) => (${desiredSum})`);
     return desiredSum;
   }
 
