@@ -288,11 +288,13 @@ export class SpinFiles {
       this.logMessage(`* addObjFile([${spin2fileName}]) - found...`);
       for (let index = 0; index < this._objFiles.length; index++) {
         const possibleFile = this._objFiles[index];
-        if (possibleFile.fileName.toLowerCase() === fileName.toLowerCase()) {
+        if (possibleFile.fileName.toLowerCase() === spin2fileName.toLowerCase()) {
           fileSpec = possibleFile.fileSpec;
           break;
         }
       }
+      //const fileNames = this._objFiles.map((objFile) => objFile.fileName);
+      //this.logMessage(`  -- fileName=[${fileName}], spin2fileName=[${spin2fileName}], searched=[${fileNames}] -> fileSpec=[${fileSpec}]`);
     } else {
       fileSpec = locateSpin2File(spin2fileName, ALLOW_LIBRARY_SEARCH, this.context);
     }

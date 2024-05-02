@@ -367,7 +367,7 @@ export class SpinResolver {
 
   public compile2() {
     this.logMessage(`*==* compile2()`);
-    this.compile_obj_symbols(); // XYZZY why are we dying in here with bad checksum
+    this.compile_obj_symbols();
     this.determine_clock();
     this.compile_con_blocks_2nd();
     //this.determine_bauds_pins()
@@ -379,7 +379,7 @@ export class SpinResolver {
       this.compile_dat_blocks();
       this.compile_sub_blocks();
       this.compile_obj_blocks();
-      this.distill_obj_blocks(); // this didn't cause the problem...
+      this.distill_obj_blocks(); // XYZZY this didn't cause the problem...
       //this.point_to_con();
       //this.collapse_debug_data();
       this.compile_final();
@@ -3898,9 +3898,9 @@ export class SpinResolver {
       const startingOffset: number = this.objImage.offset;
       this.distillPtr = 0;
       this.distill_build();
-      const recordCount: number = this.distillRecordCount();
+      const recordCount: number = this.distillRecordCount('post_build');
       this.logMessage(`  -- post build: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
-      this.logMessage(`  -- raw record longs=[${this.distiller}]`);
+      this.logMessage(`  -- post raw record longs=[${this.distiller}](${this.distiller.length})`);
       this.distillDumpRecords();
       //if (recordCount > 1) {
       this.distill_scrub(); // damages object IDs in objImage
@@ -3916,7 +3916,7 @@ export class SpinResolver {
     }
   }
 
-  private distillRecordCount(): number {
+  private distillRecordCount(callerId: string): number {
     let recordcount = 0;
     if (this.distiller.length > 0) {
       let recordOffset = 0;
@@ -3926,7 +3926,7 @@ export class SpinResolver {
         recordOffset += 5 + subObjectCount;
       } while (recordOffset < this.distillPtr);
     }
-    this.logMessage(`* distillRecordCount() = (${recordcount})`);
+    this.logMessage(`* distillRecordCount() [${callerId}] = (${recordcount})`);
     return recordcount;
   }
 
@@ -3948,14 +3948,17 @@ export class SpinResolver {
         const subObjCount = this.distiller[recordOffset + 2];
         const methodCount = this.distiller[recordOffset + 3];
         const objectSize = this.distiller[recordOffset + 4];
-        const subObjIDs = [];
+        const subObjIDs: string[] = [];
         for (let index = 0; index < subObjCount; index++) {
-          const subObjId = this.distiller[recordOffset + 5 + index];
-          subObjIDs.push(subObjId);
+          const idValue: number = this.distiller[recordOffset + 5 + index];
+          const extraBit: string = (idValue & 0x80000000) != 0 ? `+` : ``;
+          const subObjId = idValue & 0x7fffffff;
+          subObjIDs.push(`${extraBit}${subObjId}`);
         }
         const recordIdStr: string = `#${recordNbr}[${recordOffset}](${5 + subObjCount})`;
+        const extraIDBit: string = (objID & 0x80000000) != 0 ? `+` : ``;
         this.logMessage(
-          `  -- ${recordIdStr} id=(${objID}), offset=(${objOffset}), subCt=(${subObjCount}), mthdCt=(${methodCount}), objSz=(${objectSize}) subObjIDs=[${subObjIDs}]`
+          `  -- ${recordIdStr} id=(${extraIDBit}${objID & 0x7fffffff}), offset=(${objOffset}), subCt=(${subObjCount}), mthdCt=(${methodCount}), objSz=(${objectSize}) subObjIDs=[${subObjIDs}]`
         );
         recordOffset += 5 + subObjCount;
         recordNbr++;
@@ -4302,6 +4305,12 @@ export class SpinResolver {
     // Reconnect any sub-objects
     // PNut distill_reconnect:
     this.logMessage(`* distill_reconnect(${recordOffset})`);
+    if (recordOffset == 0) {
+      const recordCount: number = this.distillRecordCount('reconnect');
+      this.logMessage(`  -- reconn build: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
+      this.logMessage(`  -- reconn raw record longs=[${this.distiller}](${this.distiller.length})`);
+      this.distillDumpRecords();
+    }
     const subObjectCount = this.distiller[recordOffset + 2];
     for (let subObjectIndex = 0; subObjectIndex < subObjectCount; subObjectIndex++) {
       const objOffset = this.distiller[recordOffset + 1]; // [edx]
@@ -4319,7 +4328,7 @@ export class SpinResolver {
         searchRcdOffset += 5 + subObjectCount;
         // assert that we did find our record ;-)
         if (searchRcdOffset >= this.distillPtr) {
-          throw new Error(`ERROR[INTERNAL] failed to locate Object Id ${subObjId} list`);
+          throw new Error(`ERROR[INTERNAL] failed to locate Object Id ${subObjId} list`); // XYZZY
         }
       }
       // now searchRcdOffset points to record matching our ID
