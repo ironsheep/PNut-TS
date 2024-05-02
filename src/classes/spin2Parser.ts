@@ -234,13 +234,18 @@ export class Spin2Parser {
       */
 
       const objectLength = isPasmMode ? this.objImage.length : this.objImage.readLong(4);
+      const removedBytes: number = this.spinResolver.removedBytes;
       const objString: string = this.rightAlignedDecimalValue(objectLength, 11);
       const varBytes: number = this.spinResolver.varBytes;
       const varString: string = this.rightAlignedDecimalValue(varBytes, 11);
       if (isPasmMode) {
         stream.write(`\n\nHub bytes: ${objString}\n\n`);
       } else {
-        stream.write(`\n\nOBJ bytes: ${objString}\n`);
+        if (removedBytes > 0) {
+          const removedString: string = this.rightAlignedDecimalValue(removedBytes, 11);
+          stream.write(`\n\nRedundant OBJ bytes removed: ${removedString}\n`);
+        }
+        stream.write(`\nOBJ bytes: ${objString}\n`);
         stream.write(`VAR bytes: ${varString}\n\n`);
       }
 

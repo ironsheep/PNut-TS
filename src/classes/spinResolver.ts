@@ -287,6 +287,10 @@ export class SpinResolver {
     return this.objImage;
   }
 
+  get removedBytes(): number {
+    return this.distilledBytes;
+  }
+
   get executableSize(): number {
     return this.sizeObj;
   }
@@ -375,7 +379,7 @@ export class SpinResolver {
       this.compile_dat_blocks();
       this.compile_sub_blocks();
       this.compile_obj_blocks();
-      //this.distill_obj_blocks();  // this didn't cause the problem...
+      this.distill_obj_blocks(); // this didn't cause the problem...
       //this.point_to_con();
       //this.collapse_debug_data();
       this.compile_final();
@@ -3715,10 +3719,23 @@ export class SpinResolver {
     //
     const objFileRecords: ObjFile[] = this.spinFiles.objFiles;
     this.activeSymbolTable = eSymbolTableId.STI_MAIN; // for these symbols to our MAIN symbol table
+    this.logMessage(`* - -------------------------------`);
+    this.logMessage(`* compObjSyms() has ${objFileRecords.length} objFiles in list`);
+    for (let index = 0; index < objFileRecords.length; index++) {
+      const objFile: ObjFile = objFileRecords[index];
+      this.logMessage(`  -- compObjSyms() objIndex[${index}], fName=[${objFile.fileName}]`);
+    }
+    for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
+      const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
+      this.logMessage(`  -- compObjSyms() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
+    }
+    this.logMessage(`* - -------------------------------`);
     for (let objFileIndex = 0; objFileIndex < objFileRecords.length; objFileIndex++) {
       // here is @@getfile:
       const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
-      this.logMessage(`  -- compObjSyms() objFileIndex=(${objFileIndex}), objOffset=(${objOffset}), objLength=(${objLength})`);
+      this.logMessage(
+        `  -- compObjSyms() objFileIndex=(${objFileIndex}), fName=[${objFileRecords[objFileIndex].fileName}], objOffset=(${objOffset}), objLength=(${objLength})`
+      );
       this.objectData.setOffset(objOffset); // PNut is using [esi]
       // here is @@checksum:
       if ((this.objectData.checksum(objOffset, objLength) & 0xff) != 0) {
@@ -3894,7 +3911,8 @@ export class SpinResolver {
       //}
       //}
       this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
-      this.distilledBytes = startingOffset - this.objImage.offset;
+      // NOTE: PNut v43 has this as an assign, we are moving to sum from assign
+      this.distilledBytes += startingOffset - this.objImage.offset;
     }
   }
 

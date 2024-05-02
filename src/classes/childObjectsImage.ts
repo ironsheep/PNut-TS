@@ -29,6 +29,10 @@ export class ChildObjectsImage {
     //this.isLogging = this.context.logOptions.logCompile;
   }
 
+  get rawUint8Array(): Uint8Array {
+    return this._objImage;
+  }
+
   public clear() {
     this._fileDetails = []; // empty tracking table
   }

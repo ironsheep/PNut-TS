@@ -10,8 +10,9 @@ import { RegressionReporter } from './regression';
 import { DatFile, ObjFile, SpinFiles } from './spinFiles';
 import { SymbolTable } from './symbolTable';
 import { ChildObjectsImage } from './childObjectsImage';
-import { loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
+import { dumpUniqueObjectFile, loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
 import { ObjectImage } from './objectImage';
+import path from 'path';
 
 // src/classes/compiler.ts
 
@@ -32,6 +33,8 @@ export class Compiler {
   // our pascal global equivalents
   private childImages: ChildObjectsImage; // pascal ObjFileBuff
   private objectFileOffset: number = 0; // pascal ObjFilePtr
+
+  private countByFilename = new Map<string, number>();
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -134,7 +137,10 @@ export class Compiler {
               const overrideSymbolTable: SymbolTable | undefined = objFile.parameterSymbolTable;
               this.compileRecursively(depth + 1, childObjSourceFile, overrideSymbolTable);
               // get sub-object's obj file index
-              objectCountsPerChild.push(this.objectFileCount - 1);
+              this.logMessage(
+                `  -- push [objectCountsPerChild] depth(${depth}) entry[${objectCountsPerChild.length}] = fileIndex=[${this.objectFileCount - 1}] file=[${path.basename(fileSpec)}]`
+              );
+              objectCountsPerChild.push(this.objectFileCount - 1); // XYZZY here might be part of the issue
             }
           }
 
@@ -143,9 +149,11 @@ export class Compiler {
           this.spin2Parser.P2Compile1(overrideParameters);
           //
           // load sub-objects' .obj files
+          //  move  ObjFileBuff (this.childImages) into P2.ObjData (this.objectData)
           this.logMessage(`* compRecur(${depth}) processing ${objectFiles} OBJ file(s)`);
           if (objectFiles > 0) {
             let objDataOffset: number = 0; // pascal p
+            this.objectData.clear();
             for (let childIdx = 0; childIdx < objectFiles; childIdx++) {
               const fileIdx = objectCountsPerChild[childIdx]; // pascal j
               // pascal inline       s
@@ -160,6 +168,16 @@ export class Compiler {
               }
               this.objectData.recordLengthOffsetForFile(fileIdx, objDataOffset, objLength);
               objDataOffset += objLength;
+              // DEBUG dump into .obj file for inspection
+              const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data');
+              dumpUniqueObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context);
+              // DEBUG dump object records for inspection
+              this.logMessage(`* - -------------------------------`);
+              for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
+                const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
+                this.logMessage(`  -- compObjSyms() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
+              }
+              this.logMessage(`* - -------------------------------`);
             }
           }
           //
@@ -188,11 +206,13 @@ export class Compiler {
           this.logMessage(`  -- compRecur(${depth}) - compile2 ----------------------------------------`);
           this.spin2Parser.P2Compile2(); // NOTE: if at zero  (see above note...)
 
-          // now copy obj data to ourput
+          // now copy obj data to output
           const objectLength: number = this.objImage.offset;
           if (this.objectFileOffset + objectLength > ChildObjectsImage.MAX_SIZE_IN_BYTES) {
             throw new Error(`OBJ data exceeds ${ChildObjectsImage.MAX_SIZE_IN_BYTES / 1024}k limit`);
           }
+          // Save obj file into memory
+          //  move P2.OBJ (this.objImage) into ObjFileBuff (this.childImages)
           this.childImages.setOffset(this.objectFileOffset);
           this.objImage.setOffsetTo(0);
           for (let index = 0; index < objectLength; index++) {
@@ -201,10 +221,27 @@ export class Compiler {
           this.childImages.recordLengthOffsetForFile(this.objectFileCount, this.objectFileOffset, objectLength);
           this.objectFileOffset += objectLength;
           this.objectFileCount++;
+          // DEBUG dump into .obj file for inspection
+          const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child');
+          dumpUniqueObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context);
         }
       }
     }
     this.logMessage(`* compileRecursively(${depth}) - EXIT ----------------------------------------`);
+  }
+
+  private uniqueObjectName(depth: number, dirSpec: string, filename: string, structId: string): string {
+    let uniqCount: number = 1;
+    if (this.countByFilename.has(filename)) {
+      const fileSeenCount = this.countByFilename.get(filename);
+      if (fileSeenCount !== undefined) {
+        uniqCount = fileSeenCount + 1;
+      }
+    }
+    this.countByFilename.set(filename, uniqCount);
+    const sourceType = path.extname(filename);
+    const newFileSpec = path.join(dirSpec, `${structId}-${depth}-${filename}`.replace(sourceType, '.obj'));
+    return newFileSpec;
   }
 
   private logMessage(message: string): void {
