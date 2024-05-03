@@ -1,0 +1,9 @@
+obj
+
+  subobj2a : "spin_test16_child3"
+  subobj2b : "spin_test16_child3"
+
+pub go2()
+
+  subobj2a.go3()
+  subobj2b.go3()

@@ -3898,10 +3898,8 @@ export class SpinResolver {
       const startingOffset: number = this.objImage.offset;
       this.distillPtr = 0;
       this.distill_build();
-      const recordCount: number = this.distillRecordCount('post_build');
-      this.logMessage(`  -- post build: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
-      this.logMessage(`  -- post raw record longs=[${this.distiller}](${this.distiller.length})`);
-      this.distillDumpRecords();
+      //this.logMessage(`  -- post raw record longs=[${this.distiller}](${this.distiller.length})`);
+      this.distillDumpRecords('post_build');
       //if (recordCount > 1) {
       this.distill_scrub(); // damages object IDs in objImage
       const removeObjectCount: number = this.distill_eliminate();
@@ -3926,7 +3924,7 @@ export class SpinResolver {
         recordOffset += 5 + subObjectCount;
       } while (recordOffset < this.distillPtr);
     }
-    this.logMessage(`* distillRecordCount() [${callerId}] = (${recordcount})`);
+    //this.logMessage(`  -- [${callerId}] distill Record Ct = (${recordcount})`);
     return recordcount;
   }
 
@@ -3937,8 +3935,10 @@ export class SpinResolver {
   // 4:	object size
   // 5+:	sub-object id's (if any)
 
-  private distillDumpRecords() {
+  private distillDumpRecords(callerId: string) {
+    const recordCount: number = this.distillRecordCount(callerId);
     this.logMessage('  -- ------------------------------');
+    this.logMessage(`  -- [${callerId}]: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
     if (this.distiller.length > 0) {
       let recordOffset: number = 0;
       let recordNbr: number = 1;
@@ -4162,8 +4162,14 @@ export class SpinResolver {
             this.distillEliminateUpdate(oldObjectId, newObjectId);
             // remove redundant object record from list
             // (id is no longer referenced by any record)
-            this.distiller.splice(elimRecordOffset, 5 + subObjectCount);
-            this.distillPtr -= 5 + subObjectCount;
+            this.distillDumpRecords('preDelete');
+            const elimRcdLength = 5 + this.distiller[elimRecordOffset + 2];
+            this.logMessage(
+              `DR: [${recordOffset}] DELETE len=(${elimRcdLength})  distPtr (${this.distillPtr}) -> (${this.distillPtr - elimRcdLength})`
+            );
+            this.distiller.splice(elimRecordOffset, elimRcdLength);
+            this.distillPtr -= elimRcdLength;
+            this.distillDumpRecords('postDelete');
             // NOW break to outer loop which starts all over from top (or call ourself?)
             eliminationCount += this.distill_eliminate();
           }
@@ -4263,6 +4269,10 @@ export class SpinResolver {
         const subObjectOffset = recordOffset + 5 + subObjectIndex;
         let subObjectId = this.distiller[subObjectOffset] & 0x7fffffff;
         if (subObjectId == objectId || subObjectId == newObjectId) {
+          const bitFlag: string = (this.distiller[subObjectOffset] & 0x80000000) != 0 ? '+' : '';
+          this.logMessage(
+            `DR: [${recordOffset}+5+${subObjectIndex}] subObjID (${bitFlag}${this.distiller[subObjectOffset] & 0x7fffffff}) -> (+${newObjectId})`
+          );
           this.distiller[subObjectOffset] = newObjectId | 0x80000000;
         }
       }
@@ -4281,6 +4291,7 @@ export class SpinResolver {
       // read the source object offset
       const objectOffset = this.distiller[recordOffset + 1];
       // replace with destination-object offset
+      this.logMessage(`DR: [${recordOffset}+1] OBJ-OFS (${this.distiller[recordOffset + 1]}) -> (${rebuildObjImage.offset})`);
       this.distiller[recordOffset + 1] = rebuildObjImage.offset;
       // get object length in bytes then convert to long count rounded up
       const objectSizeInBytes = this.distiller[recordOffset + 4];
@@ -4306,10 +4317,8 @@ export class SpinResolver {
     // PNut distill_reconnect:
     this.logMessage(`* distill_reconnect(${recordOffset})`);
     if (recordOffset == 0) {
-      const recordCount: number = this.distillRecordCount('reconnect');
-      this.logMessage(`  -- reconn build: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
-      this.logMessage(`  -- reconn raw record longs=[${this.distiller}](${this.distiller.length})`);
-      this.distillDumpRecords();
+      //this.logMessage(`  -- reconn raw record longs=[${this.distiller}](${this.distiller.length})`);
+      this.distillDumpRecords('reconnect');
     }
     const subObjectCount = this.distiller[recordOffset + 2];
     for (let subObjectIndex = 0; subObjectIndex < subObjectCount; subObjectIndex++) {

@@ -1,0 +1,1 @@
+TYPE: METHOD          VALUE: 00000000          NAME: GO3TYPE: CON             VALUE: 00000000          NAME: CLKMODE_TYPE: CON             VALUE: 01312D00          NAME: CLKFREQ_Spin2_v41CLKMODE:   $00000000CLKFREQ:  20,000,000XINFREQ:           0OBJ bytes:          16VAR bytes:           400000- 08 00 00 80 0D 00 00 00 00 A2 19 80 04 00 00 00   '................'
