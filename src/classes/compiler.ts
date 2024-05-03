@@ -10,7 +10,7 @@ import { RegressionReporter } from './regression';
 import { DatFile, ObjFile, SpinFiles } from './spinFiles';
 import { SymbolTable } from './symbolTable';
 import { ChildObjectsImage } from './childObjectsImage';
-import { dumpUniqueObjectFile, loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
+import { dumpUniqueChildObjectFile, loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
 import { ObjectImage } from './objectImage';
 import path from 'path';
 
@@ -170,7 +170,7 @@ export class Compiler {
               objDataOffset += objLength;
               // DEBUG dump into .obj file for inspection
               const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data');
-              dumpUniqueObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context);
+              dumpUniqueChildObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context);
               // DEBUG dump object records for inspection
               this.logMessage(`* - -------------------------------`);
               for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
@@ -223,7 +223,7 @@ export class Compiler {
           this.objectFileCount++;
           // DEBUG dump into .obj file for inspection
           const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child');
-          dumpUniqueObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context);
+          dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context);
         }
       }
     }

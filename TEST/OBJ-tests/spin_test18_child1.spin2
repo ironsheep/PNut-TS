@@ -1,0 +1,8 @@
+con
+
+  j = 1
+
+pub go1()
+
+  repeat j
+    waitms(1)

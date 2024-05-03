@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Context } from './context';
 import { ChildObjectsImage } from '../classes/childObjectsImage';
+import { ObjectImage } from '../classes/objectImage';
 
 export function libraryDir(): string {
   return './lib';
@@ -216,7 +217,25 @@ export function loadUint8ArrayFailed(content: Uint8Array): boolean {
   return emptyStatus;
 }
 
-export function dumpUniqueObjectFile(objImage: ChildObjectsImage, byteCount: number, fileSpec: string, ctx: Context | undefined = undefined): void {
+export function dumpUniqueChildObjectFile(
+  objImage: ChildObjectsImage,
+  byteCount: number,
+  fileSpec: string,
+  ctx: Context | undefined = undefined
+): void {
+  if (ctx) ctx.logger.logMessage(`  -- writing DIAG OBJ file (${byteCount} bytes from offset ${0}) to ${fileSpec}`);
+  const stream = fs.createWriteStream(fileSpec);
+  // copy our full buffer becuse it will be over written before the file write completes!
+  const buffer = new Uint8Array(byteCount);
+  buffer.set(objImage.rawUint8Array.subarray(0, byteCount));
+  //const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
+  stream.write(buffer);
+
+  // Close the stream
+  stream.end();
+}
+
+export function dumpUniqueObjectFile(objImage: ObjectImage, byteCount: number, fileSpec: string, ctx: Context | undefined = undefined): void {
   if (ctx) ctx.logger.logMessage(`  -- writing DIAG OBJ file (${byteCount} bytes from offset ${0}) to ${fileSpec}`);
   const stream = fs.createWriteStream(fileSpec);
   // copy our full buffer becuse it will be over written before the file write completes!

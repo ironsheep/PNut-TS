@@ -244,6 +244,8 @@ export class Spin2Parser {
         if (removedBytes > 0) {
           const removedString: string = this.rightAlignedDecimalValue(removedBytes, 11);
           stream.write(`\n\nRedundant OBJ bytes removed: ${removedString}\n`);
+        } else {
+          stream.write(`\n`);
         }
         stream.write(`\nOBJ bytes: ${objString}\n`);
         stream.write(`VAR bytes: ${varString}\n\n`);

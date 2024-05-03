@@ -21,6 +21,7 @@ import { ObjFile, SpinFiles } from './spinFiles';
 import { ChildObjectsImage, iFileDetails } from './childObjectsImage';
 import { ObjectSymbols } from './objectSymbols';
 import { DistillerList, DistillerRecord } from './distillerList';
+import { hexLong } from '../utils/formatUtils';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -4237,11 +4238,16 @@ export class SpinResolver {
         // do object binaries match?
         const matchObjectOffset = this.distiller[matchRecordOffset + 1];
         const searchObjectOffset = this.distiller[searchRecordOffset + 1];
+        //this.logMessage(`* BINARY COMPARE matchOffset(${matchObjectOffset}), searchOffset(${searchObjectOffset}), lengthInBytes(${matchObjSize})`);
+        //this.objImage.dumpBytes(matchObjectOffset, matchObjSize, 'matchObject');
+        //this.objImage.dumpBytes(searchObjectOffset, matchObjSize, 'searchObject');
         for (let longIndex = 0; longIndex < matchObjSize / 4; longIndex++) {
-          const matchObjLong = this.objImage.readLong(matchObjectOffset + longIndex);
-          const searchObjLong = this.objImage.readLong(searchObjectOffset + longIndex);
+          const matchObjLong = this.objImage.readLong(matchObjectOffset + longIndex * 4);
+          const searchObjLong = this.objImage.readLong(searchObjectOffset + longIndex * 4);
+          //this.logMessage(`  -- LONG COMPARE ${hexLong(matchObjLong)} <-> ${hexLong(searchObjLong)}`);
           if (matchObjLong != searchObjLong) {
             // NOT a match, abort search
+            //this.logMessage(`EEEE  failed match long[${longIndex}] match(${matchObjLong}) <> search(${searchObjLong})`);
             recordMatched = false;
           }
         }
