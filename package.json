@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "A Parallax Propeller 2 compiler in TypeScript",
   "main": "dist/pnut-ts.js",
+  "bin": {
+    "pnut-ts": "./bin/pnut-ts.js"
+  },
   "scripts": {
     "prebuild": "mkdir -p dist/ext && ./scripts/prepExt",
     "build": "tsc && chmod +x dist/pnut-ts.js",
@@ -21,11 +24,16 @@
     "type": "git",
     "url": "https://github.com/ironsheep/Pnut-ts-dev/tree/main"
   },
+  "bugs": {
+    "url": "https://github.com/ironsheep/Pnut-ts-dev/issues"
+  },
   "keywords": [
     "cli",
-    "typescript",
     "propeller2",
-    "parallax.com"
+    "parallax.com",
+    "spin2",
+    "pasm2",
+    "compiler"
   ],
   "author": "Stephen M Moraco",
   "publisher": "IronSheepProductionsLLC",

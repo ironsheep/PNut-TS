@@ -1,0 +1,20 @@
+# don't include these files
+jest*.json
+*.log
+tsconfig.json
+.eslintrc.json
+.editorconfig
+.prettierrc.json
+*.gz
+# don't include these folders
+.devcontainer/
+.github/
+.history/
+.vscode/
+dist/tests/
+DOCs/
+LogFiles/
+REF/
+scripts/
+src/
+TEST/
