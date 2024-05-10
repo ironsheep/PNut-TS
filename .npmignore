@@ -4,6 +4,9 @@
 .editorconfig
 .eslintrc.json
 .prettierrc.json
+BUILD-RUN.md
+Compiler.md
+PKG-STUDY.md
 jest*.json
 tsconfig.json
 # don't include these folders
@@ -14,6 +17,7 @@ tsconfig.json
 dist/tests/
 DOCs/
 LogFiles/
+pkgs/
 REF/
 scripts/
 src/

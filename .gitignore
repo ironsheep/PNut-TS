@@ -176,6 +176,8 @@ node_modules/
 *.lst
 *.scope
 
+pkgs/
+
 *-REF*
 *.REF*
 *-NEW*

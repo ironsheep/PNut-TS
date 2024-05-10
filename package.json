@@ -4,7 +4,16 @@
   "description": "A Parallax Propeller 2 compiler in TypeScript",
   "main": "dist/pnut-ts.js",
   "bin": {
-    "pnut-ts": "./bin/pnut-ts.js"
+    "pnut-ts": "./dist/pnut-ts.js"
+  },
+  "pkg": {
+    "assets": "dist/ext/*",
+    "targets": [
+      "latest-linux-arm64",
+      "node16-win-arm64",
+      "latest-macos-arm64"
+    ],
+    "outputPath": "pkgs"
   },
   "scripts": {
     "prebuild": "mkdir -p dist/ext && ./scripts/prepExt",
@@ -55,6 +64,7 @@
     "glob": "^7.2.3",
     "jest": "^26.6.3",
     "jest-mock-console": "^2.0.0",
+    "pkg": "^5.8.1",
     "ts-jest": "^26.5.6",
     "typescript": "^4.9.5"
   },
