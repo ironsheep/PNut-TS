@@ -1,11 +1,11 @@
 # don't include these files
-jest*.json
-*.log
-tsconfig.json
-.eslintrc.json
-.editorconfig
-.prettierrc.json
 *.gz
+*.log
+.editorconfig
+.eslintrc.json
+.prettierrc.json
+jest*.json
+tsconfig.json
 # don't include these folders
 .devcontainer/
 .github/
