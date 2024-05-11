@@ -13,6 +13,9 @@ import { ChildObjectsImage } from '../classes/childObjectsImage';
 import { ObjectImage } from '../classes/objectImage';
 import { SpinFiles } from '../classes/spinFiles';
 
+export interface RuntimeEnvironment {
+  serialPortDevices: string[];
+}
 export interface PassOptions {
   afterPreprocess: boolean; // stop after preprocessing
   afterElementize: boolean; // stop after elementize
@@ -50,6 +53,7 @@ export interface CompileOptions {
   writeObj: boolean; // write object file (.obj file)
   writeBin: boolean; // write binary file (.bin file)
   listFilename: string; // write compile report to this file
+  propPlug: string; // selected deviceNode for PropPlug
 }
 
 export interface CompileData {
@@ -112,11 +116,13 @@ export class Context {
   public reportOptions: ReportOptions;
   public preProcessorOptions: PreProcessorOptions;
   public passOptions: PassOptions;
+  public runEnvironment: RuntimeEnvironment;
 
   constructor() {
     this.logOptions = { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false, logCompile: false };
     this.reportOptions = { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false };
     this.preProcessorOptions = { defSymbols: [], undefSymbols: [], includeFolders: [] };
+    this.runEnvironment = { serialPortDevices: [] };
     this.passOptions = { afterPreprocess: false, afterElementize: false, afterConBlock: false };
     this.compileOptions = {
       writeFlash: false,
@@ -127,7 +133,8 @@ export class Context {
       writeListing: false,
       writeObj: false,
       writeBin: false,
-      listFilename: ''
+      listFilename: '',
+      propPlug: ''
     };
     this.compileData = {
       objectData: new ChildObjectsImage(this, 'ObjData'), // pascal P2.ObjData

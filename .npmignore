@@ -1,5 +1,7 @@
 # don't include these files
 *.gz
+*.tgz
+*.zip
 *.log
 .editorconfig
 .eslintrc.json
@@ -14,11 +16,13 @@ tsconfig.json
 .github/
 .history/
 .vscode/
-dist/tests/
+dist/
 DOCs/
 LogFiles/
-pkgs/
+pkgs*/
 REF/
 scripts/
 src/
 TEST/
+# get contents from here
+!out

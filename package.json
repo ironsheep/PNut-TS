@@ -2,21 +2,28 @@
   "name": "p2-pnut-ts",
   "version": "0.0.1",
   "description": "A Parallax Propeller 2 compiler in TypeScript",
-  "main": "dist/pnut-ts.js",
+  "main": "out/pnut-ts.js",
   "bin": {
-    "pnut-ts": "./dist/pnut-ts.js"
+    "pnut-ts": "./out/pnut-ts.js"
   },
   "pkg": {
-    "assets": "dist/ext/*",
+    "assets": "out/ext/*",
     "targets": [
+      "latest-win-arm64",
+      "latest-win-x64",
+      "latest-linux-x64",
       "latest-linux-arm64",
-      "node16-win-arm64",
-      "latest-macos-arm64"
+      "latest-macos-x64"
     ],
     "outputPath": "pkgs"
   },
   "scripts": {
-    "prebuild": "mkdir -p dist/ext && ./scripts/prepExt",
+    "prepack": "npm run prebuild && npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node",
+    "esbuild": "npm run prebuild && npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run prebuild && npm run esbuild-base -- --sourcemap --watch",
+    "prebuild": "npm run copy-ext",
+    "copy-ext": "mkdir -p out/ext && ./scripts/prepExt out/ext",
     "build": "tsc && chmod +x dist/pnut-ts.js",
     "start": "npm run build && dist/pnut-ts.js",
     "help": "npm run build && dist/pnut-ts.js --help",
@@ -69,7 +76,8 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "commander": "^7.2.0"
+    "commander": "^7.2.0",
+    "serialport": "^11.0.1"
   },
   "jest": {
     "transform": {

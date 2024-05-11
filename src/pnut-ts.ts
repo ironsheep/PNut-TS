@@ -8,6 +8,7 @@ import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
+//import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -17,12 +18,12 @@ import { SpinDocument } from './classes/spinDocument';
 // can then get by:
 //  var assets = require('foo');
 //  fs.readFile(assets.root + '/bar.png', function(){/*whatever*/});
-module.exports.root = __dirname;
+export const root: string = __dirname;
 
 export class PNutInTypeScript {
   private readonly program = new Command();
   private options: OptionValues = this.program.opts();
-  private version: string = '0.0.0';
+  private version: string = '0.0.1';
   private argsArray: string[] = [];
   private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
@@ -65,7 +66,7 @@ export class PNutInTypeScript {
       .name('pnut-ts')
       .version(`v${this.version}`, '-V, --version', 'Output the version number')
       .usage('[optons] filename')
-      .description('Propeller Spin2 compiler/downloader')
+      .description(`Propeller Spin2 compiler/downloader - v${this.version}`)
       .arguments('[filename]')
       .action((filename) => {
         this.options.filename = filename;
@@ -76,6 +77,8 @@ export class PNutInTypeScript {
       .option('-f, --flash', 'Download to FLASH and run')
       .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
+      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
+      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
       .option('-O, --obj', 'Generate object files (.obj) from compilation')
       .option('-B, --bin', 'Generate binrnary files (.bin) suitable for download')
       .option('-o, --output <name>', 'Specify output file basename')
@@ -83,7 +86,7 @@ export class PNutInTypeScript {
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
-      .addOption(new Option('--log <object...>', 'object').choices(['all', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver']))
+      .addOption(new Option('--log <objectName...>', 'objectName').choices(['all', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
       .option('-v, --verbose', 'Output verbose messages');
@@ -96,7 +99,9 @@ export class PNutInTypeScript {
       Example:
          $ pnut-ts -c my-top-level.spin2         # compile leaving .binary
          $ pnut-ts -c -l my-top-level.spin2      # compile file leaving .binary and .lst files
-         $ pnut-ts -c -d -r my-top-level.spin2   # compile file with Debug and run from RAM`
+         $ pnut-ts -c -d -r my-top-level.spin2   # compile file with Debug and run from RAM
+         $ pnut-ts -cf my-top-level.spin2        # compile file without Debug download to FLASH and run
+         `
     );
 
     //this.program.showHelpAfterError('(add --help for additional information)');
@@ -118,7 +123,9 @@ export class PNutInTypeScript {
             //this.program.outputHelp();
           }
         } else {
-          this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
+          if (error.name != 'oe' && error.message != 'outputHelp') {
+            this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
+          }
         }
       } else {
         this.context.logger.logMessage(`Catch unknown error=[${error}]`);
@@ -142,6 +149,22 @@ export class PNutInTypeScript {
 
     if (this.options.obj) {
       this.context.compileOptions.writeObj = true;
+    }
+
+    if (this.options.dvcnodes) {
+      //this.loadUsbPortsFound();
+      for (let index = 0; index < this.context.runEnvironment.serialPortDevices.length; index++) {
+        const dvcNode = this.context.runEnvironment.serialPortDevices[index];
+        this.context.logger.progressMsg(` USB #${index + 1} [${dvcNode}]`);
+      }
+      if (this.context.runEnvironment.serialPortDevices.length == 0) {
+        this.context.logger.progressMsg(` USB  - no Serial Ports Found!`);
+      }
+    }
+
+    if (this.options.plug) {
+      this.context.compileOptions.propPlug = this.options.plug;
+      this.context.logger.verboseMsg(`* using USB [${this.context.compileOptions.propPlug}]`);
     }
 
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
@@ -344,6 +367,11 @@ export class PNutInTypeScript {
     // this.progressMsg('Done');
     return 0;
   }
+
+  //private async loadUsbPortsFound(): Promise<void> {
+  //    const deviceNodes: string[] = await UsbSerial.serialDeviceList();
+  //    this.context.runEnvironment.serialPortDevices = deviceNodes;
+  //  }
 
   private errorColor(str: string): string {
     // Add ANSI escape codes to display text in red.
