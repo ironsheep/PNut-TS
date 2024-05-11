@@ -206,3 +206,4 @@ scripts/doitNoConsole
 scripts/run-PUBPRI-002nc
 
 TEST/OBJ-tests/spin_test11.obj
+scripts/mode.flg
