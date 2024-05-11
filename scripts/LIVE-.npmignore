@@ -1,0 +1,28 @@
+# don't include these files
+*.gz
+*.tgz
+*.zip
+*.log
+.editorconfig
+.eslintrc.json
+.prettierrc.json
+BUILD-RUN.md
+Compiler.md
+PKG-STUDY.md
+jest*.json
+tsconfig.json
+# don't include these folders
+.devcontainer/
+.github/
+.history/
+.vscode/
+dist/
+DOCs/
+LogFiles/
+pkgs*/
+REF/
+scripts/
+src/
+TEST/
+# get contents from here
+!out

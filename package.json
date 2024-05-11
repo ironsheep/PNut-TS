@@ -13,7 +13,8 @@
       "latest-win-x64",
       "latest-linux-x64",
       "latest-linux-arm64",
-      "latest-macos-x64"
+      "latest-macos-x64",
+      "latest-macos-arm64"
     ],
     "outputPath": "pkgs"
   },
