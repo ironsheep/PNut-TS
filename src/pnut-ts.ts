@@ -8,7 +8,7 @@ import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
-//import { UsbSerial } from './utils/usb.serial';
+import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -152,7 +152,7 @@ export class PNutInTypeScript {
     }
 
     if (this.options.dvcnodes) {
-      //this.loadUsbPortsFound();
+      this.loadUsbPortsFound();
       for (let index = 0; index < this.context.runEnvironment.serialPortDevices.length; index++) {
         const dvcNode = this.context.runEnvironment.serialPortDevices[index];
         this.context.logger.progressMsg(` USB #${index + 1} [${dvcNode}]`);
@@ -368,10 +368,10 @@ export class PNutInTypeScript {
     return 0;
   }
 
-  //private async loadUsbPortsFound(): Promise<void> {
-  //    const deviceNodes: string[] = await UsbSerial.serialDeviceList();
-  //    this.context.runEnvironment.serialPortDevices = deviceNodes;
-  //  }
+  private async loadUsbPortsFound(): Promise<void> {
+    const deviceNodes: string[] = await UsbSerial.serialDeviceList();
+    this.context.runEnvironment.serialPortDevices = deviceNodes;
+  }
 
   private errorColor(str: string): string {
     // Add ANSI escape codes to display text in red.

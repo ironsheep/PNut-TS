@@ -6,6 +6,7 @@
 .editorconfig
 .eslintrc.json
 .prettierrc.json
+pkg-json-REF.txt
 BUILD-RUN.md
 Compiler.md
 PKG-STUDY.md
@@ -20,6 +21,7 @@ dist/
 DOCs/
 LogFiles/
 pkgs*/
+nexe-config/
 REF/
 scripts/
 src/

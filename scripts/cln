@@ -1,0 +1,28 @@
+#!/usr/bin/bash
+
+# empty dist tree
+if [ -d dist ]; then
+  (set -x;rm -rf dist/*)
+fi
+
+# empty out tree
+if [ -d out ]; then
+  (set -x;rm -rf out/*)
+fi
+
+# remove built packages
+if [ -d pkgs ]; then
+  (set -x;rm -rf pkgs/*)
+fi
+
+# empty node_modules tree
+if [ -d node_modules ]; then
+  echo "rm -rf node_modules/*"
+  rm -rf node_modules/*
+fi
+
+# remove used modules lock file
+rm -f package-lock.json
+
+# remove built tarball
+rm -f p2-pnut-*.tgz
