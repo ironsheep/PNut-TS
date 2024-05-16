@@ -8,7 +8,7 @@ import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
-import { UsbSerial } from './utils/usb.serial';
+//import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -77,10 +77,10 @@ export class PNutInTypeScript {
       .option('-f, --flash', 'Download to FLASH and run')
       .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
-      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
-      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
+      //      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
+      //      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
       .option('-O, --obj', 'Generate object files (.obj) from compilation')
-      .option('-B, --bin', 'Generate binrnary files (.bin) suitable for download')
+      .option('-B, --bin', 'Generate binary files (.bin) suitable for download')
       .option('-o, --output <name>', 'Specify output file basename')
       .option('-i, --interface', 'Generate interface document files (.txt) during compilation')
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
@@ -151,6 +151,7 @@ export class PNutInTypeScript {
       this.context.compileOptions.writeObj = true;
     }
 
+    /*
     if (this.options.dvcnodes) {
       this.loadUsbPortsFound();
       for (let index = 0; index < this.context.runEnvironment.serialPortDevices.length; index++) {
@@ -166,6 +167,7 @@ export class PNutInTypeScript {
       this.context.compileOptions.propPlug = this.options.plug;
       this.context.logger.verboseMsg(`* using USB [${this.context.compileOptions.propPlug}]`);
     }
+    */
 
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
     //this.runTestCode(); // for quick live testing...
@@ -314,6 +316,7 @@ export class PNutInTypeScript {
 
     let filename: string | undefined = this.options.filename;
     if (filename && filename.endsWith('.json')) {
+      // we don't handle .json files if presented
       filename = undefined;
     }
 
@@ -340,7 +343,10 @@ export class PNutInTypeScript {
       }
     }
 
-    const theCompiler = new Compiler(this.context);
+    this.context.logger.logMessage('');
+    this.context.logger.infoMsg(`lib dir [${this.context.libraryFolder}]`);
+    this.context.logger.infoMsg(`wkg dir [${this.context.currentFolder}]`);
+    this.context.logger.logMessage('');
 
     if (this.options.compile) {
       this.context.compileOptions.compile = true;
@@ -350,15 +356,11 @@ export class PNutInTypeScript {
       } else {
         this.context.currentFolder = this.spinDocument?.dirName;
       }
-
-      this.context.logger.logMessage('');
-      this.context.logger.infoMsg(`lib dir [${this.context.libraryFolder}]`);
-      this.context.logger.infoMsg(`wkg dir [${this.context.currentFolder}]`);
-      this.context.logger.logMessage('');
     }
     if (!this.shouldAbort && this.spinDocument && this.options.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       if (!this.context.reportOptions.writePreprocessReport) {
+        const theCompiler = new Compiler(this.context);
         theCompiler.Compile();
       }
     }
@@ -368,10 +370,10 @@ export class PNutInTypeScript {
     return 0;
   }
 
-  private async loadUsbPortsFound(): Promise<void> {
-    const deviceNodes: string[] = await UsbSerial.serialDeviceList();
-    this.context.runEnvironment.serialPortDevices = deviceNodes;
-  }
+  //private async loadUsbPortsFound(): Promise<void> {
+  //  const deviceNodes: string[] = await UsbSerial.serialDeviceList();
+  //  this.context.runEnvironment.serialPortDevices = deviceNodes;
+  //}
 
   private errorColor(str: string): string {
     // Add ANSI escape codes to display text in red.
