@@ -54,10 +54,10 @@ export class ObjectImage {
     for (let index = fromOffset; index <= toOffset; index++) {
       sumValue -= this._objImage[index];
     }
-    const savedLogState = this.isLogging;
-    this.isLogging = true;
+    //const savedLogState = this.isLogging;
+    //this.isLogging = true;
     this.logMessage(`OBJ[${this._id}]: calculateChecksum(ofs=(${fromOffset}),len=(${toOffset})) -> ${sumValue & 0xff}`);
-    this.isLogging = savedLogState;
+    //this.isLogging = savedLogState;
     return sumValue & 0xff;
   }
 

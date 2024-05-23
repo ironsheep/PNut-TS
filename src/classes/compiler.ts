@@ -169,8 +169,8 @@ export class Compiler {
               this.objectData.recordLengthOffsetForFile(fileIdx, objDataOffset, objLength);
               objDataOffset += objLength;
               // DEBUG dump into .obj file for inspection
-              const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data');
-              dumpUniqueChildObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context);
+              //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data'); // REMOVE BEFORE FLIGHT
+              //dumpUniqueChildObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
               // DEBUG dump object records for inspection
               this.logMessage(`* - -------------------------------`);
               for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
@@ -222,8 +222,8 @@ export class Compiler {
           this.objectFileOffset += objectLength;
           this.objectFileCount++;
           // DEBUG dump into .obj file for inspection
-          const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child');
-          dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context);
+          //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child'); // REMOVE BEFORE FLIGHT
+          //dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
         }
       }
     }

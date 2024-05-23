@@ -1,0 +1,16 @@
+#!/usr/bin/bash
+
+# empty dist tree
+if [ -d dist ]; then
+  (set -x;rm -rf dist/*)
+fi
+
+# empty out tree
+if [ -d out ]; then
+  (set -x;rm -rf out/*)
+fi
+
+# remove built packages
+if [ -d pkgs ]; then
+  (set -x;rm -rf pkgs/*)
+fi

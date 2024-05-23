@@ -24,12 +24,26 @@ export class Logger {
   }
 
   public compilerErrorMsg(message: string | unknown) {
-    this.logErrorMessage(`${message}`);
+    this.logErrorMessage(`${this.errorColor(message)}`);
+  }
+
+  private errorColor(str: string | unknown): string {
+    // Add ANSI escape codes to display text in red.
+    return `\x1b[31m${str}\x1b[0m`;
+  }
+
+  private warningColor(str: string | unknown): string {
+    // Add ANSI escape codes to display text in yellow.
+    return `\x1b[33m${str}\x1b[0m`;
   }
 
   public verboseMsg(message: string): void {
     if (this.verboseEnabled) {
-      this.logMessage(`${this.programName}: Verbose- ${message}`);
+      if (message.length == 0) {
+        this.logMessage(``); // blank line
+      } else {
+        this.logMessage(`${this.programName}: Verbose- ${message}`);
+      }
     }
   }
 

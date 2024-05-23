@@ -581,12 +581,12 @@ export class SpinResolver {
 
   private getFilename(): string {
     let filename: string = '';
-    const savedLogState: boolean = this.isLogging;
+    //const savedLogState: boolean = this.isLogging;
     this.logMessage(`* getFilename() - ENTRY`);
     do {
-      this.isLogging = false;
+      //this.isLogging = false;
       this.getElement();
-      this.isLogging = savedLogState; // so exceptions have logging in good state...
+      //this.isLogging = savedLogState; // so exceptions have logging in good state...
       if (this.currElement.type != eElementType.type_con) {
         // [error_ifufiq]
         throw new Error('Invalid filename, use "FilenameInQuotes"');
@@ -602,7 +602,7 @@ export class SpinResolver {
       }
       this.isLogging = false; // disable again for checkComma()
     } while (this.checkComma());
-    this.isLogging = savedLogState;
+    //this.isLogging = savedLogState;
     this.logMessage(`* getFilename() - EXIT`);
     return filename;
   }
@@ -3895,7 +3895,7 @@ export class SpinResolver {
     if (this.pasmMode == false) {
       // here is distill_objects:
       this.logMessage(`* distill_obj_blocks()`);
-      this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
+      //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
       const startingOffset: number = this.objImage.offset;
       this.distillPtr = 0;
       this.distill_build();
@@ -3909,7 +3909,7 @@ export class SpinResolver {
       this.distill_reconnect();
       //}
       //}
-      this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
+      //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
       // NOTE: PNut v43 has this as an assign, we are moving to sum from assign
       this.distilledBytes += startingOffset - this.objImage.offset;
     }
@@ -4110,7 +4110,7 @@ export class SpinResolver {
     this.logMessage(`* distill_scrub()`);
     let recordOffset = 0;
     let recordID = 0;
-    //this.objImage.setLogging(true);
+    //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
     do {
       recordID++;
       const objectOffset = this.distiller[recordOffset + 1];
@@ -4122,7 +4122,7 @@ export class SpinResolver {
       }
       recordOffset += 5 + subObjectCount;
     } while (recordOffset < this.distillPtr);
-    //this.objImage.setLogging(false);
+    //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
   }
 
   private distill_eliminate(): number {
@@ -4645,10 +4645,10 @@ export class SpinResolver {
     this.logMessage(`* nextBlock huntFor=[${eBlockType[blockType]}] stop log at elem=[${this.currElement.toString()}]`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const savedLogState: boolean = this.isLogging;
-      this.isLogging = false;
+      //const savedLogState: boolean = this.isLogging;
+      //this.isLogging = false;
       this.getElement();
-      this.isLogging = savedLogState;
+      //this.isLogging = savedLogState;
       if (this.currElement.type == eElementType.type_block && Number(this.currElement.value) == blockType) {
         this.logMessage(`  -- nextBlock() found element=[${this.currElement.toString()}]`);
         foundStatus = true;

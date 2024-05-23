@@ -280,6 +280,7 @@ export class Spin2Parser {
 
       // Close the stream
       stream.end();
+      this.context.logger.progressMsg(`Wrote ${outFilename}`);
     }
   }
 
@@ -411,6 +412,7 @@ export class Spin2Parser {
 
     // Close the stream
     stream.end();
+    this.context.logger.progressMsg(`Wrote ${objFilename} (${byteCount} bytes)`);
   }
 
   public P2InsertInterpreter() {
@@ -435,7 +437,7 @@ export class Spin2Parser {
 
     // determine initial pub index
     this.logMessage(`  -- scan pubs`);
-    this.objImage.setLogging(true);
+    //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
     this.objImage.setOffsetTo(8);
 
     let pubIndex: number = 0;
@@ -456,7 +458,7 @@ export class Spin2Parser {
         pubIndex += 2;
       }
     }
-    this.objImage.setLogging(false);
+    //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
     this.logMessage(`  -- have pibIndex=(${pubIndex})`);
     // here is @@gotpub
     const interpreterLength = this.externalFiles.spinInterpreterLength;

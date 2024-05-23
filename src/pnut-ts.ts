@@ -71,11 +71,11 @@ export class PNutInTypeScript {
       .action((filename) => {
         this.options.filename = filename;
       })
-      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
+      //      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
       .option('-c, --compile', 'Compile file')
       .option('-d, --debug', 'Compile with DEBUG')
-      .option('-f, --flash', 'Download to FLASH and run')
-      .option('-r, --ram', 'Download to RAM and run')
+      //      .option('-f, --flash', 'Download to FLASH and run')
+      //      .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
       //      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
       //      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
@@ -123,7 +123,7 @@ export class PNutInTypeScript {
             //this.program.outputHelp();
           }
         } else {
-          if (error.name != 'oe' && error.message != 'outputHelp') {
+          if (error.name != 'oe' && error.name != 'Ee' && error.message != 'outputHelp') {
             this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
           }
         }
@@ -169,11 +169,18 @@ export class PNutInTypeScript {
     }
     */
 
+    const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
+    this.context.logger.infoMsg(`* ${signOnCompiler}`);
+    const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
+    this.context.logger.infoMsg(`* ${signOnVersion}`);
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
     //this.runTestCode(); // for quick live testing...
+    const commandLineArgs: string[] = process.argv;
+    const commandLine: string = `pnut_ts ${commandLineArgs.slice(2).join(' ')}`;
+    this.context.logger.infoMsg(`* ${commandLine}`);
 
-    this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
-    this.context.logger.verboseMsg(`* args[${this.program.args}]`);
+    //this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
+    //this.context.logger.verboseMsg(`* args[${this.program.args}]`);
 
     if (this.options.regression) {
       // forward our REGRESSION TEST Options
@@ -253,12 +260,13 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`* Override output filename, now [${outFilename}]`);
     }
 
+    /*
     if (this.options.both) {
       this.context.logger.verboseMsg('have BOTH: enabling FLASH and DEBUG');
       this.options.debug = true;
       this.options.flash = true;
       this.options.ram = false;
-    }
+    }*/
 
     if (this.options.debug) {
       this.context.logger.progressMsg('Compiling with DEBUG');
@@ -266,6 +274,7 @@ export class PNutInTypeScript {
       this.requiresFilename = true;
     }
 
+    /*
     if (this.options.flash) {
       this.context.logger.progressMsg('Downloading to FLASH');
       this.context.compileOptions.writeFlash = true;
@@ -282,7 +291,7 @@ export class PNutInTypeScript {
       //this.program.error('Please only use one of -f and -r');
       this.context.logger.errorMsg('Please only use one of -f and -r');
       this.shouldAbort = true;
-    }
+    }*/
 
     if (this.options.compile) {
       this.requiresFilename = true;
@@ -343,10 +352,11 @@ export class PNutInTypeScript {
       }
     }
 
-    this.context.logger.logMessage('');
-    this.context.logger.infoMsg(`lib dir [${this.context.libraryFolder}]`);
-    this.context.logger.infoMsg(`wkg dir [${this.context.currentFolder}]`);
-    this.context.logger.logMessage('');
+    this.context.logger.verboseMsg(''); // blank line
+    this.context.logger.verboseMsg(`ext dir [${this.context.extensionFolder}]`);
+    this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
+    this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
+    this.context.logger.verboseMsg(''); // blank line
 
     if (this.options.compile) {
       this.context.compileOptions.compile = true;
@@ -366,7 +376,7 @@ export class PNutInTypeScript {
     }
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
-    // this.progressMsg('Done');
+    this.context.logger.progressMsg('Done');
     return 0;
   }
 

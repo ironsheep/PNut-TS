@@ -20,7 +20,7 @@
   },
   "scripts": {
     "prepack": "npm run prebuild && npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node",
+    "esbuild-base": "esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node && node scripts/insertBuildDate.js",
     "esbuild": "npm run prebuild && npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run prebuild && npm run esbuild-base -- --sourcemap --watch",
     "prebuild": "npm run copy-ext",
@@ -35,7 +35,8 @@
     "pretest": "npm run build && npm run lint",
     "watch": "tsc -b -w",
     "lint": "eslint ./src --ext .ts,.tsx",
-    "prettier-format": "prettier --config .prettierrc.json 'src/**/*.ts' --write"
+    "prettier-format": "prettier --config .prettierrc.json 'src/**/*.ts' --write",
+    "buildfortest": "npm run build && npm run esbuild && npm pack && pkg ."
   },
   "repository": {
     "type": "git",
@@ -77,8 +78,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "commander": "^12.0.0",
-    "serialport": "^12.0.0"
+    "commander": "^12.0.0"
   },
   "jest": {
     "transform": {
