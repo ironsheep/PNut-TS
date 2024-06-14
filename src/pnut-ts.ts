@@ -23,7 +23,7 @@ export const root: string = __dirname;
 export class PNutInTypeScript {
   private readonly program = new Command();
   private options: OptionValues = this.program.opts();
-  private version: string = '0.0.1';
+  private version: string = '0.43.0';
   private argsArray: string[] = [];
   private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
@@ -72,17 +72,19 @@ export class PNutInTypeScript {
         this.options.filename = filename;
       })
       //      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
-      .option('-c, --compile', 'Compile file')
+      //.option('-c, --compile', 'Compile file')
       .option('-d, --debug', 'Compile with DEBUG')
       //      .option('-f, --flash', 'Download to FLASH and run')
+      .option('-f, --flash', 'Generate binary with incorporated flash loader')
       //      .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
       //      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
       //      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
       .option('-O, --obj', 'Generate object files (.obj) from compilation')
-      .option('-B, --bin', 'Generate binary files (.bin) suitable for download')
+      //.option('-B, --bin', 'Generate binary files (.bin) suitable for download')
       .option('-o, --output <name>', 'Specify output file basename')
       .option('-i, --interface', 'Generate interface document files (.txt) during compilation')
+      .option('-q, --quiet', 'Quiet mode (suppress banner and non-error text)')
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
@@ -97,12 +99,14 @@ export class PNutInTypeScript {
       'afterAll',
       `$-
       Example:
-         $ pnut-ts -c my-top-level.spin2         # compile leaving .binary
-         $ pnut-ts -c -l my-top-level.spin2      # compile file leaving .binary and .lst files
-         $ pnut-ts -c -d -r my-top-level.spin2   # compile file with Debug and run from RAM
-         $ pnut-ts -cf my-top-level.spin2        # compile file without Debug download to FLASH and run
+         $ pnut-ts my-top-level.spin2         # compile leaving .bin file
+         $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
          `
     );
+
+    // HOLD: (we don't support flash or ram download yet)
+    //   $ pnut-ts -c -d -r my-top-level.spin2   # compile file with Debug and run from RAM
+    //   $ pnut-ts -cf my-top-level.spin2        # compile file without Debug download to FLASH and run
 
     //this.program.showHelpAfterError('(add --help for additional information)');
 
@@ -123,7 +127,7 @@ export class PNutInTypeScript {
             //this.program.outputHelp();
           }
         } else {
-          if (error.name != 'oe' && error.name != 'Ee' && error.message != 'outputHelp') {
+          if (error.name != 'oe' && error.name != 'Ee' && error.name != 'CommanderError2' && error.message != 'outputHelp') {
             this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
           }
         }
@@ -135,6 +139,8 @@ export class PNutInTypeScript {
 
     this.options = { ...this.options, ...this.program.opts() };
 
+    const showingHelp: boolean = this.program.args.includes('--help');
+
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
     }
@@ -143,9 +149,10 @@ export class PNutInTypeScript {
       this.context.compileOptions.writeListing = true;
     }
 
-    if (this.options.bin) {
-      this.context.compileOptions.writeBin = true;
-    }
+    //if (this.options.bin) {
+    // ALWAYS SET THIS until we have a built-in flasher
+    this.context.compileOptions.writeBin = true;
+    //}
 
     if (this.options.obj) {
       this.context.compileOptions.writeObj = true;
@@ -168,16 +175,19 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`* using USB [${this.context.compileOptions.propPlug}]`);
     }
     */
-
-    const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
-    this.context.logger.infoMsg(`* ${signOnCompiler}`);
-    const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
-    this.context.logger.infoMsg(`* ${signOnVersion}`);
+    if (!this.options.quiet) {
+      const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
+      this.context.logger.infoMsg(`* ${signOnCompiler}`);
+      const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
+      this.context.logger.infoMsg(`* ${signOnVersion}`);
+    }
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
     //this.runTestCode(); // for quick live testing...
-    const commandLineArgs: string[] = process.argv;
-    const commandLine: string = `pnut_ts ${commandLineArgs.slice(2).join(' ')}`;
-    this.context.logger.infoMsg(`* ${commandLine}`);
+    if (!this.options.quiet && !showingHelp) {
+      const commandLineArgs: string[] = process.argv;
+      const commandLine: string = `pnut_ts ${commandLineArgs.slice(2).join(' ')}`;
+      this.context.logger.infoMsg(`* ${commandLine}`);
+    }
 
     //this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
     //this.context.logger.verboseMsg(`* args[${this.program.args}]`);
@@ -274,13 +284,13 @@ export class PNutInTypeScript {
       this.requiresFilename = true;
     }
 
-    /*
     if (this.options.flash) {
       this.context.logger.progressMsg('Downloading to FLASH');
       this.context.compileOptions.writeFlash = true;
       this.requiresFilename = true;
     }
 
+    /*
     if (this.options.ram) {
       this.context.logger.progressMsg('Downloading to RAM');
       this.context.compileOptions.writeRAM = true;
@@ -293,9 +303,16 @@ export class PNutInTypeScript {
       this.shouldAbort = true;
     }*/
 
-    if (this.options.compile) {
+    //const helpRequestedMsg: string = showingHelp ? 'Help requested' : 'Help not requested';
+    //this.context.logger.progressMsg(helpRequestedMsg);
+
+    //if (this.options.compile) {
+    // ALWAYS SET THIS until we have a built-in flasher
+    if (!showingHelp) {
       this.requiresFilename = true;
+      this.context.compileOptions.compile = true;
     }
+    //}
 
     if (this.options.Include) {
       // forward  Include Folder name(s)
@@ -358,8 +375,7 @@ export class PNutInTypeScript {
     this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
     this.context.logger.verboseMsg(''); // blank line
 
-    if (this.options.compile) {
-      this.context.compileOptions.compile = true;
+    if (this.context.compileOptions.compile) {
       if (!this.spinDocument || !this.spinDocument.validFile) {
         this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file`);
         this.shouldAbort = true;
@@ -367,7 +383,7 @@ export class PNutInTypeScript {
         this.context.currentFolder = this.spinDocument?.dirName;
       }
     }
-    if (!this.shouldAbort && this.spinDocument && this.options.compile) {
+    if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       if (!this.context.reportOptions.writePreprocessReport) {
         const theCompiler = new Compiler(this.context);
@@ -376,7 +392,9 @@ export class PNutInTypeScript {
     }
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
-    this.context.logger.progressMsg('Done');
+    if (!this.options.quiet && !showingHelp) {
+      this.context.logger.progressMsg('Done');
+    }
     return 0;
   }
 

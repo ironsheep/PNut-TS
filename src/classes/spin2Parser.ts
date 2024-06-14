@@ -63,6 +63,9 @@ export class Spin2Parser {
     }
     this.spinElements = this.elementizer.getFileElements();
     this.spinResolver.setElements(this.spinElements);
+    if (this.srcFile) {
+      this.spinResolver.setSourceFile(this.srcFile);
+    }
 
     this.P2ListElements(); // blank line
 
@@ -394,16 +397,17 @@ export class Spin2Parser {
     // save binary file?
     if (this.context.compileOptions.writeBin) {
       //const objImage: ObjectImage = this.context.compileData.objImage;
-      this.writeBinaryFile(this.objImage, 0, this.objImage.length); // full
+      this.writeBinaryFile(this.objImage, 0, this.objImage.length, programFlash); // full
     }
     if (ramDownload) {
       this.LoadHardware();
     }
   }
 
-  private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number) {
+  private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number, hasFlashLoader: boolean = false) {
     const lstFilename = this.context.compileOptions.listFilename;
-    const objFilename = lstFilename.replace('.lst', '.bin');
+    const binSuffix: string = hasFlashLoader ? '.binf' : '.bin';
+    const objFilename = lstFilename.replace('.lst', binSuffix);
     this.logMessage(`  -- writing BIN file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     const stream = fs.createWriteStream(objFilename);
 
@@ -611,7 +615,7 @@ export class Spin2Parser {
   }
 
   public LoadHardware() {
-    // XYZZY we need code here LoadHardware()
+    // XY-NOPE-ZZY we need code here LoadHardware()
   }
 
   private logMessage(message: string): void {

@@ -1,24 +1,1 @@
-TYPE: CON             VALUE: 0E4E1C00          NAME: CLK_FREQ
-TYPE: CON             VALUE: 0E4E1C00          NAME: _CLKFREQ
-TYPE: CON             VALUE: 0003A980          NAME: MS_001
-TYPE: CON             VALUE: 000000F0          NAME: US_001
-TYPE: CON             VALUE: 00000038          NAME: PIN_LED1
-TYPE: CON             VALUE: 00000039          NAME: PIN_LED2
-TYPE: CON             VALUE: 00000078          NAME: LED_BITS
-TYPE: CON             VALUE: 01000BFB          NAME: CLKMODE_
-TYPE: CON             VALUE: 0E4E1C00          NAME: CLKFREQ_
-TYPE: DAT_LONG        VALUE: 0070001C          NAME: ENTRY
-TYPE: DAT_LONG        VALUE: 00A00028          NAME: TIMEVAL
-
-Spin2_v41
-
-CLKMODE:   $01000BFB
-CLKFREQ: 240_000_000
-XINFREQ:  20_000_000
-
-
-Hub bytes:          44
-
-00000- 05 80 80 FF 00 F0 67 FD 86 01 80 FF 1F 80 66 FD   '......g.......f.'
-00010- 05 80 80 FF 00 F6 67 FD 59 F0 64 FD 4E F0 64 FD   '......g.Y.d.N.d.'
-00020- 1F 14 60 FD F4 FF 9F FD 00 36 6E 01               '..`......6n.'
+TYPE: CON             VALUE: 0E4E1C00          NAME: CLK_FREQTYPE: CON             VALUE: 0E4E1C00          NAME: _CLKFREQTYPE: CON             VALUE: 0003A980          NAME: MS_001TYPE: CON             VALUE: 000000F0          NAME: US_001TYPE: CON             VALUE: 0001C200          NAME: BR_TERMTYPE: CON             VALUE: 00000078          NAME: LED_PINSTYPE: CON             VALUE: 00000038          NAME: LED_PIN0TYPE: CON             VALUE: 00000039          NAME: LED_PIN1TYPE: CON             VALUE: 01000BFB          NAME: CLKMODE_TYPE: CON             VALUE: 0E4E1C00          NAME: CLKFREQ_TYPE: DAT_LONG        VALUE: 0070001C          NAME: ENTRYTYPE: DAT_LONG        VALUE: 00A00028          NAME: TIMEVALSpin2_v41CLKMODE:   $01000BFBCLKFREQ: 240,000,000XINFREQ:  20,000,000Hub bytes:          4400000- 05 80 80 FF 00 F0 67 FD 86 01 80 FF 1F 80 66 FD   '......g.......f.'00010- 05 80 80 FF 00 F6 67 FD 59 F0 64 FD 4E F0 64 FD   '......g.Y.d.N.d.'00020- 1F 14 60 FD F4 FF 9F FD 00 36 6E 01               '..`......6n.'

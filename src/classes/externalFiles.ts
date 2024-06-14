@@ -10,7 +10,7 @@ import { fileExists, loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils
 
 export class ExternalFiles {
   private context: Context;
-  private isLogging: boolean = true; // REMOVE BEFORE FLIGHT (change to false before release)
+  private isLogging: boolean = false; // REMOVE BEFORE FLIGHT (change to false before release)
   private _clockSetterImage: Uint8Array = new Uint8Array(0);
   private _flashLoaderImage: Uint8Array = new Uint8Array(0);
   private _spinDebuggerImage: Uint8Array = new Uint8Array(0);

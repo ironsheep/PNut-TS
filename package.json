@@ -19,11 +19,11 @@
     "outputPath": "pkgs"
   },
   "scripts": {
-    "prepack": "npm run prebuild && npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node && node scripts/insertBuildDate.js",
-    "esbuild": "npm run prebuild && npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run prebuild && npm run esbuild-base -- --sourcemap --watch",
-    "prebuild": "npm run copy-ext",
+    "prepack": "npm run esbuild-base -- --minify",
+    "esbuild-base": "npm run copy-ext && esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node && node scripts/insertBuildDate.js",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "prebuild": "mkdir -p dist/ext && ./scripts/prepExt",
     "copy-ext": "mkdir -p out/ext && ./scripts/prepExt out/ext",
     "build": "tsc && chmod +x dist/pnut-ts.js",
     "start": "npm run build && dist/pnut-ts.js",

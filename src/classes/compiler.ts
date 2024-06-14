@@ -10,7 +10,7 @@ import { RegressionReporter } from './regression';
 import { DatFile, ObjFile, SpinFiles } from './spinFiles';
 import { SymbolTable } from './symbolTable';
 import { ChildObjectsImage } from './childObjectsImage';
-import { dumpUniqueChildObjectFile, loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
+import { loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
 import { ObjectImage } from './objectImage';
 import path from 'path';
 
@@ -140,7 +140,7 @@ export class Compiler {
               this.logMessage(
                 `  -- push [objectCountsPerChild] depth(${depth}) entry[${objectCountsPerChild.length}] = fileIndex=[${this.objectFileCount - 1}] file=[${path.basename(fileSpec)}]`
               );
-              objectCountsPerChild.push(this.objectFileCount - 1); // XYZZY here might be part of the issue
+              objectCountsPerChild.push(this.objectFileCount - 1);
             }
           }
 

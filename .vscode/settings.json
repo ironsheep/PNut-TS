@@ -1,0 +1,17 @@
+{
+  "spin2.serialPort": "",
+  "spin2.fSpecCompiler": "/Applications/pnut_ts/pnut_ts",
+  "spin2.optionsBuild": [],
+  "github.copilot.editor.enableAutoCompletions": false,
+  "github.copilot.advanced": {},
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false
+  },
+  "[typescript]": {
+    "github.copilot.enableInlineCompletions": false,
+    "editor.suggest.showInlineCompletions": false
+  }
+}

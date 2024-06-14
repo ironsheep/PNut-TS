@@ -191,6 +191,8 @@ export function loadFileAsString(fspec: string): string {
   return fileContent;
 }
 
+const EMPTY_CONTENT_MARKER: string = 'XY$$ZZY';
+
 export function loadFileAsUint8Array(fspec: string, ctx: Context | undefined = undefined): Uint8Array {
   let fileContent: Uint8Array = new Uint8Array();
   if (fs.existsSync(fspec)) {
@@ -201,7 +203,7 @@ export function loadFileAsUint8Array(fspec: string, ctx: Context | undefined = u
     } catch (err) {
       //ctx.logger.log(`TRC: loadFileAsString() fspec=[${fspec}] NOT FOUND!`);
       const encoder = new TextEncoder();
-      fileContent = new Uint8Array(encoder.encode('XY$$ZZY'));
+      fileContent = new Uint8Array(encoder.encode(EMPTY_CONTENT_MARKER));
     }
   }
   return fileContent;
@@ -213,7 +215,7 @@ export function loadUint8ArrayFailed(content: Uint8Array): boolean {
   const checkContent = content.length > 7 ? content.slice(0, 7) : content;
   const decodedString = decoder.decode(checkContent);
   // Test if decoded string is 'XY$$ZZY'
-  const emptyStatus = decodedString === 'XY$$ZZY';
+  const emptyStatus = decodedString === EMPTY_CONTENT_MARKER;
   return emptyStatus;
 }
 

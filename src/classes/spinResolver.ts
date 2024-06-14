@@ -21,7 +21,8 @@ import { ObjFile, SpinFiles } from './spinFiles';
 import { ChildObjectsImage, iFileDetails } from './childObjectsImage';
 import { ObjectSymbols } from './objectSymbols';
 import { DistillerList, DistillerRecord } from './distillerList';
-import { hexLong } from '../utils/formatUtils';
+import { DebugData } from './debugData';
+import { SpinDocument } from './spinDocument';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -136,12 +137,12 @@ enum eAugType {
 //
 // 3+ long records:
 //
-// 0:	object id
-// 1:	object offset
-// 2:	sub-object count
-// 3:	method count
-// 4:	object size
-// 5+:	sub-object id's (if any)
+// 0:   object id
+// 1:   object offset
+// 2:   sub-object count
+// 3:   method count
+// 4:   object size
+// 5+:  sub-object id's (if any)
 interface ObjectRecord {
   objectId: number;
   objectOffset: number;
@@ -243,13 +244,24 @@ export class SpinResolver {
   private distillPtr: number = 0; // PNut dis_ptr  FIXME: remove this after implement use of distillerList
   private distiller: number[] = []; // PNut dis  FIXME: remove this after implement use of distillerList
   private distillerList: DistillerList;
+
+  // Debug()  support
   // debug mode support
   private debugPinRx: number = 63; // default maybe overridden by code
   private debugPinTx: number = 62; //
-  private debugBaud: number = 2000000; //
+  private debugBaud: number = 2000000;
+
+  private debug_record: Uint8Array = new Uint8Array(DebugData.MAX_RECORD_LENGTH + 1);
+  private debug_data: DebugData;
+  private debug_first: boolean = false;
+  private debug_record_size: number = 0;
+  private debug_src_start: number = 0;
+  private debug_src_finish: number = 0;
+  private srcFile: SpinDocument | undefined;
 
   constructor(ctx: Context) {
     this.context = ctx;
+    this.debug_data = new DebugData(this.context, 'debug_data');
     this.isLogging = this.context.logOptions.logResolver;
     // get refereces to the single global data
     this.objImage = ctx.compileData.objImage;
@@ -272,6 +284,12 @@ export class SpinResolver {
 
   public setElements(updatedElementList: SpinElement[]) {
     this.spinElements = updatedElementList;
+    // adopt source file from element list
+  }
+
+  public setSourceFile(spinCode: SpinDocument) {
+    this.srcFile = spinCode;
+    this.logMessage(`* Resolver.setSourceFile([${spinCode.fileName}])`);
   }
 
   // for lister  vvv
@@ -380,7 +398,7 @@ export class SpinResolver {
       this.compile_dat_blocks();
       this.compile_sub_blocks();
       this.compile_obj_blocks();
-      this.distill_obj_blocks(); // XYZZY this didn't cause the problem...
+      this.distill_obj_blocks();
       //this.point_to_con();
       //this.collapse_debug_data();
       this.compile_final();
@@ -3929,12 +3947,12 @@ export class SpinResolver {
     return recordcount;
   }
 
-  // 0:	object id
-  // 1:	object offset
-  // 2:	sub-object count
-  // 3:	method count
-  // 4:	object size
-  // 5+:	sub-object id's (if any)
+  // 0: object id
+  // 1: object offset
+  // 2: sub-object count
+  // 3: method count
+  // 4: object size
+  // 5+:        sub-object id's (if any)
 
   private distillDumpRecords(callerId: string) {
     const recordCount: number = this.distillRecordCount(callerId);
@@ -4343,7 +4361,7 @@ export class SpinResolver {
         searchRcdOffset += 5 + subObjectCount;
         // assert that we did find our record ;-)
         if (searchRcdOffset >= this.distillPtr) {
-          throw new Error(`ERROR[INTERNAL] failed to locate Object Id ${subObjId} list`); // XYZZY
+          throw new Error(`ERROR[INTERNAL] failed to locate Object Id ${subObjId} list`);
         }
       }
       // now searchRcdOffset points to record matching our ID
@@ -5150,10 +5168,278 @@ export class SpinResolver {
     this.compileVariablePre(adjustedByteCode);
   }
 
+  // ********************************
+  // *  DEBUG Instruction Compiler  *
+  // ********************************
+  //
+  //
+  //  DEBUG byte commands:
+  //
+  //  00000000  end                             end of DEBUG commands
+  //  00000001  asm                             set asm mode
+  //  00000010  IF(cond)                        abort if cond = 0
+  //  00000011  IFNOT(cond)                     abort if cond <> 0
+  //  00000100  cogn                            output "CogN  " with possible timestamp
+  //  00000101  chr                             output chr
+  //  00000110  str                             output string
+  //  00000111  DLY(ms)                         delay for ms
+  //  00001000  PC_KEY(ptr)                     get key
+  //  00001001  PC_MOUSE(ptr)                   get mouse
+  //
+  //  ______00  ', ' + zstr + ' = ' + data      specifiers for ZSTR..SBIN_LONG_ARRAY
+  //  ______01         zstr + ' = ' + data
+  //  ______10                 ', ' + data
+  //  ______11                        data
+  //
+  //  001000__  <empty>
+  //  001001__  ZSTR(ptr)                       z-string, in quotes for show
+  //  001010__  <empty>
+  //  001011__  FDEC(val)                       floating-point
+  //  001100__  FDEC_REG_ARRAY(ptr,len)         floating-point
+  //  001101__  LSTR(ptr,len)                   length-string, in quotes for show
+  //  001110__  <empty>
+  //  001111__  FDEC_ARRAY(ptr,len)             floating-point
+  //
+  //  010000__  UDEC(val)                       unsigned decimal
+  //  010001__  UDEC_BYTE(val)
+  //  010010__  UDEC_WORD(val)
+  //  010011__  UDEC_LONG(val)
+  //  010100__  UDEC_REG_ARRAY(ptr,len)
+  //  010100__  UDEC_BYTE_ARRAY(ptr,len)
+  //  010110__  UDEC_WORD_ARRAY(ptr,len)
+  //  010111__  UDEC_LONG_ARRAY(ptr,len)
+  //
+  //  011000__  SDEC(val)                       signed decimal
+  //  011001__  SDEC_BYTE(val)
+  //  011010__  SDEC_WORD(val)
+  //  011011__  SDEC_LONG(val)
+  //  011100__  SDEC_REG_ARRAY(ptr,len)
+  //  011101__  SDEC_BYTE_ARRAY(ptr,len)
+  //  011110__  SDEC_WORD_ARRAY(ptr,len)
+  //  011111__  SDEC_LONG_ARRAY(ptr,len)
+  //
+  //  100000__  UHEX(val)                       unsigned hex
+  //  100001__  UHEX_BYTE(val)
+  //  100010__  UHEX_WORD(val)
+  //  100011__  UHEX_LONG(val)
+  //  100100__  UHEX_REG_ARRAY(ptr,len)
+  //  100101__  UHEX_BYTE_ARRAY(ptr,len)
+  //  100110__  UHEX_WORD_ARRAY(ptr,len)
+  //  100111__  UHEX_LONG_ARRAY(ptr,len)
+  //
+  //  101000__  SHEX(val)                       signed hex
+  //  101001__  SHEX_BYTE(val)
+  //  101010__  SHEX_WORD(val)
+  //  101011__  SHEX_LONG(val)
+  //  101100__  SHEX_REG_ARRAY(ptr,len)
+  //  101101__  SHEX_BYTE_ARRAY(ptr,len)
+  //  101110__  SHEX_WORD_ARRAY(ptr,len)
+  //  101111__  SHEX_LONG_ARRAY(ptr,len)
+  //
+  //  110000__  UBIN(val)                       unsigned binary
+  //  110001__  UBIN_BYTE(val)
+  //  110010__  UBIN_WORD(val)
+  //  110011__  UBIN_LONG(val)
+  //  110100__  UBIN_REG_ARRAY(ptr,len)
+  //  110101__  UBIN_BYTE_ARRAY(ptr,len)
+  //  110110__  UBIN_WORD_ARRAY(ptr,len)
+  //  110111__  UBIN_LONG_ARRAY(ptr,len)
+  //
+  //  111000__  SBIN(val)                       signed binary
+  //  111001__  SBIN_BYTE(val)
+  //  111010__  SBIN_WORD(val)
+  //  111011__  SBIN_LONG(val)
+  //  111100__  SBIN_REG_ARRAY(ptr,len)
+  //  111101__  SBIN_BYTE_ARRAY(ptr,len)
+  //  111110__  SBIN_WORD_ARRAY(ptr,len)
+  //  111111__  SBIN_LONG_ARRAY(ptr,len)
+  //
+
   private ci_debug() {
     // Compile DEBUG for Spin2
     // PNut ci_debug:
     // XYZZY ci_debug()
+    this.debug_first = true;
+    this.debug_record_size = 0;
+
+    let tickMode: boolean = false; // PNut @@tickmode
+    let stackDepth: number = 0; // PNut @@stack
+    if (this.context.compileOptions.enableDebug) {
+      // remove all but end of line
+      this.skipToEnd();
+    } else {
+      if (!this.checkLeftParen()) {
+        this.getEndOfLine();
+        this.backElement();
+        this.objWrByte(eByteCode.bc_debug); // enter DEBUG bytecode
+        this.objWrByte(0); // enter rfvar value for stack popping
+        this.objWrByte(0); // enter BRK code for debugger
+      }
+      // here is @@left
+      if (this.checkRightParen()) {
+        // we found 'debug()'
+        this.enterDebug(stackDepth);
+      } else {
+        let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex); // XYZZY when this is needed
+
+        // XYZZY is this while(true) {...}
+        // do we have (`?
+        if (this.currElement.type == eElementType.type_tick) {
+          //
+          tickMode = true;
+          let needCheckNext: boolean = false;
+          // here is ci_debug:@@tickstr
+          if (this.debugTickString()) {
+            // enter string, returning indication if end of line
+            this.enterDebug(stackDepth);
+          } else {
+            // here is ci_debug:@@tickcommand
+            this.currElement = this.getElement();
+            if (this.currElement.type == eElementType.type_debug_cmd) {
+              // here is @@tickcmd
+              this.tickCmd(0b1100011, stackDepth); // UBIN()
+              // TERMINAL
+            } else if (this.currElement.type == eElementType.type_if) {
+              // here is @@isif
+              this.singleParam(eValueType.dc_if);
+              // go to @@checknext  XYZZY
+              needCheckNext = true;
+            } else if (this.currElement.type == eElementType.type_ifnot) {
+              // here is @@isifnot
+              this.singleParam(eValueType.dc_ifnot);
+              // go to @@checknext  XYZZY
+              needCheckNext = true;
+            } else if (this.currElement.type == eElementType.type_left) {
+              // here is @@tickdec
+              this.tickCmd(0b01100011, stackDepth); // '(', back up and do SDEC_
+              // TERMINAL
+            } else if (this.currElement.type == eElementType.type_dollar) {
+              // here is @@tickhex
+              this.tickCmd(0b10100011, stackDepth); // '$', do UHEX_
+              // TERMINAL
+            } else if (this.currElement.type == eElementType.type_percent) {
+              // here is @@tickbin
+              this.tickCmd(0b11000011, stackDepth); // '%', do UBIN_
+              // TERMINAL
+            } else if (this.currElement.type == eElementType.type_pound) {
+              // here is @@tickchr
+              this.getLeftParen();
+              // here is @@tickchrlp
+              do {
+                this.debugEnterByte(eValueType.dc_chr);
+                this.compileExpression();
+                stackDepth = this.incStack(stackDepth);
+              } while (this.getCommaOrRightParen());
+              // here is @@ticknext:  XYZZY
+            } else {
+              // [error_eldppodc]
+              throw new Error('Expected "(", "$", "%", "#", or DEBUG command');
+            }
+          }
+          if (needCheckNext) {
+            // here is @@checknext
+            if (tickMode) {
+              // goto @@ticknext  XYZZY
+            }
+            if (this.getCommaOrRightParen()) {
+              // goto @@ndxt  XYZZY
+            }
+            this.enterDebug(stackDepth);
+            // TERMINAL
+          }
+        } else {
+          // here is ci_debug:@@nottick  XYZZY
+        }
+      }
+    }
+  }
+
+  private enterDebug(stackDepth: number) {
+    // here is ci_debug:@@enterdebug
+    this.objWrByte(eByteCode.bc_debug); // end of DEBUG data/commands, enter DEBUG bytecode
+    this.objWrByte(stackDepth); // enter rfvar value for stack popping
+    const brkCode: number = this.debugEnterRecord(); // enter record into debug data, returning brk code
+    this.objWrByte(brkCode); // enter BRK code
+  }
+
+  private incStack(stackDepth: number): number {
+    stackDepth += 4;
+    if (stackDepth > 127) {
+      // [error_dditl]
+      throw new Error('DEBUG data is too long: too many expressions (> 31)');
+    }
+    return stackDepth;
+  }
+
+  private tickCmd(cmdValue: number, stackDepth: number) {
+    //Here is @@tickCmd:
+    if (cmdValue == eValueType.dc_dly || cmdValue == eValueType.dc_pc_key || cmdValue == eValueType.dc_pc_mouse) {
+      // here is ci_debug:@@dkm
+      this.singleParam(cmdValue);
+      this.getRightParen();
+      this.enterDebug(stackDepth);
+    } else {
+      // here is ci_debug:@@notdkm
+      if (cmdValue & 0x10) {
+        // here is @@dualparam  XYZZY
+      } else if (cmdValue & 0x02) {
+        // here is @@spsimple  XYZZY
+      }
+      this.getLeftParen();
+      // here is @@spverbose:  XYZZY
+    }
+  }
+
+  private debugTickString(): boolean {
+    // XYZZY need debug_tick_string:
+    return false;
+  }
+
+  private singleParam(cmdValue: number) {
+    // XYZZY need single_param:
+  }
+
+  private debugEnterByte(byteValue: number) {
+    // PNut debug_enter_byte:
+    if (this.debug_record_size >= DebugData.MAX_RECORD_LENGTH) {
+      // [error_dditl] WAS: DEBUG data is too long
+      throw new Error(`DEBUG data is too long: record exceeds ${DebugData.MAX_RECORD_LENGTH} bytes`);
+    }
+    this.debug_record[this.debug_record_size++] = byteValue;
+  }
+
+  private debugEnterRecord(): number {
+    // PNut debug_enter_record:
+    this.debugEnterByte(0); // zero-terminate record
+    let entryIndex: number = 1; // PNut bl register
+    let recordPresent: boolean = false;
+    do {
+      const recordPresent: boolean = this.debug_data.recordExists(entryIndex);
+      if (recordPresent) {
+        if (this.debug_data.recordIsMatch(entryIndex, this.debug_record, this.debug_record_size)) {
+          break; // return != 0 offset out of loop
+        }
+        if (++entryIndex > DebugData.MAX_ENTRIES) {
+          // [error_dditl] WAS: DEBUG data is too long
+          throw new Error(`DEBUG data is too long: too many records: max ${DebugData.MAX_ENTRIES}`);
+        }
+      }
+    } while (recordPresent);
+    // add new record here
+    if (recordPresent == false) {
+      this.debug_data.setRecord(entryIndex, this.debug_record, this.debug_record_size);
+    }
+    return entryIndex; // index of matched record or new record
+  }
+
+  private skipToEnd() {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (this.nextElementType() == eElementType.type_end || this.nextElementType() == eElementType.type_end_file) {
+        break;
+      }
+      this.getElement();
+    }
   }
 
   private ci_debug_asm() {
@@ -5285,7 +5571,7 @@ export class SpinResolver {
   private compileFlex(flexCode: eFlexcode) {
     // Compile flex instruction
     // PNut compile_flex:
-    //  // symbol		=		bytecode + (params shl 8) + (results shl 11) + (pinfld shl 14) + (hubcode shl 15)
+    //  // symbol               =               bytecode + (params shl 8) + (results shl 11) + (pinfld shl 14) + (hubcode shl 15)
     const flexEncodedValue: number = this.spinSymbolTables.flexValue(flexCode);
     // break out the values from within...
     const bytecode: number = flexEncodedValue & 0xff;
@@ -5470,10 +5756,10 @@ export class SpinResolver {
     // Compile a parameter - accommodates instructions/methods with multiple return values
     // on exit, eax holds number of actual parameters compiled
     //
-    //	rotxy/polxy/xypol
-    //	obj{[]}.method({params,...})
-    //	method({params,...})
-    //	var({params,...}):2+
+    //  rotxy/polxy/xypol
+    //  obj{[]}.method({params,...})
+    //  method({params,...})
+    //  var({params,...}):2+
     //
     // PNut compile_parameter:
     let compiledParameterCount: number = -1; // flag saying we need to compile expression
@@ -7460,38 +7746,38 @@ export class SpinResolver {
 
   private checkVariable(): iVariableReturn {
     //
-    //	field - type_field
-    //	------------------
+    //  field - type_field
+    //  ------------------
     //
-    //	FIELD[memfield]
-    //	FIELD[memfield][index]
-    //
-    //
-    //	register - type_register
-    //	------------------------
-    //
-    //	regname
-    //	regname.[bitfield]
-    //	regname[index]
-    //	regname[index].[bitfield]
+    //  FIELD[memfield]
+    //  FIELD[memfield][index]
     //
     //
-    //	hub memory - type_loc_???? / type_var_???? / type_dat_???? / type_hub_????
-    //	--------------------------------------------------------------------------
+    //  register - type_register
+    //  ------------------------
     //
-    //	hubname{.BYTE/WORD/LONG}
-    //	hubname{.BYTE/WORD/LONG}.[bitfield]
-    //	hubname{.BYTE/WORD/LONG}[index]
-    //	hubname{.BYTE/WORD/LONG}[index].[bitfield]
+    //  regname
+    //  regname.[bitfield]
+    //  regname[index]
+    //  regname[index].[bitfield]
     //
     //
-    //	hub memory - type_size
-    //	----------------------
+    //  hub memory - type_loc_???? / type_var_???? / type_dat_???? / type_hub_????
+    //  --------------------------------------------------------------------------
     //
-    //	BYTE/WORD/LONG[base]
-    //	BYTE/WORD/LONG[base].[bitfield]
-    //	BYTE/WORD/LONG[base][index]
-    //	BYTE/WORD/LONG[base][index].[bitfield]
+    //  hubname{.BYTE/WORD/LONG}
+    //  hubname{.BYTE/WORD/LONG}.[bitfield]
+    //  hubname{.BYTE/WORD/LONG}[index]
+    //  hubname{.BYTE/WORD/LONG}[index].[bitfield]
+    //
+    //
+    //  hub memory - type_size
+    //  ----------------------
+    //
+    //  BYTE/WORD/LONG[base]
+    //  BYTE/WORD/LONG[base].[bitfield]
+    //  BYTE/WORD/LONG[base][index]
+    //  BYTE/WORD/LONG[base][index].[bitfield]
     //
     let resultVariable: iVariableReturn = {
       isVariable: true,

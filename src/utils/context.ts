@@ -6,6 +6,7 @@
 // src/utils/context.ts
 
 'use strict';
+import fs from 'fs';
 import path from 'path';
 import { Logger } from '../classes/logger';
 import { SpinDocument } from '../classes/spinDocument';
@@ -142,8 +143,16 @@ export class Context {
       objImage: new ObjectImage(this, 'Obj'), // pascal P2.Obj
       spinFiles: new SpinFiles(this) // our list of OBJ and DAT files
     };
-    this.libraryFolder = path.join(__dirname, '../lib');
-    this.extensionFolder = path.join(__dirname, '../ext');
+    let possiblePath = path.join(__dirname, '../lib');
+    if (!fs.existsSync(possiblePath)) {
+      possiblePath = path.join(__dirname, 'lib');
+    }
+    this.libraryFolder = possiblePath;
+    possiblePath = path.join(__dirname, '../ext');
+    if (!fs.existsSync(possiblePath)) {
+      possiblePath = path.join(__dirname, 'ext');
+    }
+    this.extensionFolder = possiblePath;
     this.currentFolder = process.cwd();
     this.logger = new Logger();
     this.sourceFiles = new SourceFiles();

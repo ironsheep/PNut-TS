@@ -1,0 +1,22 @@
+CON
+
+  CLK_FREQ = 240_000_000                                        ' system freq as a constant
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+  MS_001   = CLK_FREQ / 1_000                                   ' ticks in 1ms
+  US_001   = CLK_FREQ / 1_000_000                               ' ticks in 1us
+
+  PIN_LED1 = 56
+  PIN_LED2 = 57
+  LED_BITS = PIN_LED1 addpins 1
+
+DAT
+        org
+        asmclk
+        drvh    #LED_BITS
+entry
+        outrnd  #LED_BITS
+        waitx   timeVal
+        jmp     #entry
+
+timeVal      LONG    MS_001 * 100

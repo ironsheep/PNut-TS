@@ -17,9 +17,9 @@ con
 DAT
         org
         asmclk
-        drvh    #LED_PINS
+        drvl    #LED_PINS   ' LOW turns LEDs off
 entry
-        outrnd  #LED_PINS
+        outrnd  #LED_PIN0
         waitx   timeVal
         jmp     #entry
 
