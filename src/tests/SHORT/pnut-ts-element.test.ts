@@ -5,15 +5,15 @@ import path from 'path';
 import glob from 'glob';
 
 // test lives in <rootDir>/src/tests/SHORT
-const dirPath = path.resolve(__dirname, '../../../TEST/SHORT/elementizerTESTs');
-const toolPath = path.resolve(__dirname, '../../../dist');
+const testDirPath = path.resolve(__dirname, '../../../TEST/SHORT/elementizerTESTs');
+const toolPath = path.resolve(__dirname, '../../../out');
 
 describe('Test directory existence', () => {
   test('Test directory should exist', () => {
-    //console.log(`LOG dirPath=[${dirPath}]`);
+    //console.log(`LOG testDirPath=[${testDirPath}]`);
 
-    if (!fs.existsSync(dirPath)) {
-      throw new Error(`Test directory does not exist: ${dirPath}`);
+    if (!fs.existsSync(testDirPath)) {
+      throw new Error(`Test directory does not exist: ${testDirPath}`);
     }
   });
 });
@@ -21,18 +21,18 @@ describe('Test directory existence', () => {
 test('CLI generates correct element listings', () => {
   // Get all .spin2 files in the ./TEST/element/ directory
 
-  const files = glob.sync(`${dirPath}/*.spin2`);
+  const files = glob.sync(`${testDirPath}/*.spin2`);
 
   let passCount = 0;
   const failList = [];
 
-  const options: string = '-c --pass elementize --regression element -- ';
+  const options: string = ' --pass elementize --regression element -- ';
 
   // Iterate over each .spin2 file
   for (const file of files) {
     // Run the CLI with the input file
     const basename = path.basename(file, '.spin2');
-    const reportFSpec = path.join(dirPath, `${basename}.elem`);
+    const reportFSpec = path.join(testDirPath, `${basename}.elem`);
     // if the report file exists delete it before we start
     if (fs.existsSync(reportFSpec)) {
       fs.unlinkSync(reportFSpec);
@@ -51,7 +51,7 @@ test('CLI generates correct element listings', () => {
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
 
     // Read the golden file
-    const goldenFSpec = path.join(dirPath, `${basename}.elem.GOLD`);
+    const goldenFSpec = path.join(testDirPath, `${basename}.elem.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
 
     // Compare the output to the golden file, ignoring lines that start with '# Run:'

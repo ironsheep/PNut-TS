@@ -60,7 +60,6 @@ export class DebugData {
   }
 
   public recordIsMatch(entryIndex: number, newRecord: Uint8Array, newRecordSize: number): boolean {
-    // XYZZY need code for recordIsMatch()
     const recordOffset = this.readWord(entryIndex << 1);
     let recordMatchStatus: boolean = true;
     for (let index = 0; index < newRecordSize; index++) {
