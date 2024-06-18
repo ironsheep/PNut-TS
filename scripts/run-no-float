@@ -1,3 +1,3 @@
 #!/bin/bash
 #  the following should abort if the compile fails
-(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -c --pass elementize --regression element --log parser elementizer -v TEST/SHORT/elementizerTESTs/parser_test_no_float.spin2)
+(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js  --pass elementize --regression element --log parser elementizer -v TEST/SHORT/elementizerTESTs/parser_test_no_float.spin2)

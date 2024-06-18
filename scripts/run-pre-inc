@@ -1,4 +1,4 @@
 #!/bin/bash
 #  the following should abort if the compile fails
-(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -I inc -c --regression preproc --log preproc  -v TEST/FULL/preprocessTESTs/include.spin2)
-#(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -c -D CLOCK_300MHZ --regression preproc --log preproc  -v TEST/FULL/preprocessTESTs/include.spin2)
+(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -I inc  --regression preproc --log preproc  -v TEST/FULL/preprocessTESTs/include.spin2)
+#(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js  -D CLOCK_300MHZ --regression preproc --log preproc  -v TEST/FULL/preprocessTESTs/include.spin2)

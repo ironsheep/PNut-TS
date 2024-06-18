@@ -1,0 +1,11 @@
+{
+  "coverageThreshold": {
+    "global": {
+      "branches": 90,
+      "functions": 100,
+      "lines": 90
+    }
+  },
+  "coverageReporters": ["lcov"],
+  "coverageDirectory": "./output/code-coverage"
+}

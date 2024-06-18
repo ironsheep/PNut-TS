@@ -10,7 +10,7 @@ import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
 import { SpinSymbolTables } from './parseUtils';
 import { SpinResolver } from './spinResolver';
-import { ID_SEPARATOR_STRING, SymbolEntry, SymbolTable } from './symbolTable';
+import { ID_SEPARATOR_STRING, SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
 import { getSourceSymbol } from '../utils/fileUtils';
@@ -539,7 +539,109 @@ export class Spin2Parser {
   }
 
   public P2InsertDebugger() {
-    // XYZZY we need code here P2InsertDebugger()
+    // PNut insert_debugger:
+    if ((this.spinResolver.clockMode & 0b10) == 0 || this.spinResolver.clockFrequency < 10000000) {
+      // [error_debugclk]
+      throw new Error('DEBUG requires at least 10 MHz of crystal/external clocking');
+    }
+
+    const debuggerLength = this.externalFiles.spinDebuggerLength;
+    const applicationSize = this.objImage.offset;
+    // patch offsets in debugger
+    const _clkfreq_ = 0xd4;
+    const _clkmode1_ = 0xd8;
+    const _clkmode2_ = 0xdc;
+    const _delay_ = 0xe0;
+    const _appsize_ = 0xe4;
+    const _hubset_ = 0xe8;
+    const _brkcond_ = 0x11c;
+    const _txpin_ = 0x140;
+    const _rxpin_ = 0x144;
+    const _baud_ = 0x148;
+
+    const SYM_DEBUG_COGS: string = 'DEBUG_COGS';
+    const SYM_DEBUG_COGINIT: string = 'DEBUG_COGINIT';
+    const SYM_DEBUG_MAIN: string = 'DEBUG_MAIN';
+    const SYM_DEBUG_DELAY: string = 'DEBUG_DELAY';
+    const SYM_DEBUG_TIMESTAMP: string = 'DEBUG_TIMESTAMP';
+
+    // move object upwards to accommodate debugger
+    this.logMessage(`  -- move object up - debuggerLength=(${debuggerLength}) bytes`);
+    this.moveObjectUp(this.objImage, debuggerLength, 0, applicationSize);
+    // install debugger
+    this.logMessage(`  -- load debugger`);
+    this.objImage.rawUint8Array.set(this.externalFiles.spinDebugger, 0);
+
+    // now patch the debugger
+    this.objImage.replaceLong(applicationSize, _appsize_);
+    this.objImage.replaceLong(this.spinResolver.clockFrequency, _clkfreq_);
+    this.objImage.replaceLong(this.spinResolver.clockMode, _clkmode2_);
+    this.objImage.replaceLong(this.spinResolver.clockMode & 0xfffffffc, _clkmode1_);
+
+    // is user specifying which cogs to debug?
+    let [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_COGS);
+    if (symbolFound) {
+      if (isConstInteger) {
+        this.objImage.replaceByte(Number(value), _hubset_);
+      } else {
+        // [error_debugcog]
+        throw new Error('DEBUG_COGS can only be defined as an integer constant');
+      }
+    }
+
+    // are we breaking on coginit?
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_COGINIT);
+    if (symbolFound) {
+      this.objImage.replaceLong(0x110, _brkcond_);
+    }
+
+    // -OR- are we breaking on main?
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_MAIN);
+    if (symbolFound) {
+      this.objImage.replaceLong(0x001, _brkcond_);
+    }
+
+    // user wanting delay?
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_DELAY);
+    if (symbolFound) {
+      if (isConstInteger) {
+        const clkFreqInKHz = this.spinResolver.clockFrequency / 1000;
+        let adjustedFreq = clkFreqInKHz * Number(value);
+        if (adjustedFreq > 0xffffffff) {
+          adjustedFreq = 0xffffffff; // limit to 0FFFFFFFFh
+        }
+        this.objImage.replaceLong(adjustedFreq, _delay_);
+      } else {
+        // [error_debugdly]
+        throw new Error('DEBUG_DELAY can only be defined as an integer constant');
+      }
+    }
+
+    this.objImage.replaceByte(this.spinResolver.debugPinTransmit, _txpin_);
+    this.objImage.replaceByte(this.spinResolver.debugPinReceive, _rxpin_);
+    this.objImage.replaceLong(this.spinResolver.debugBaudRate, _baud_);
+
+    // user wanting timestamps?
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_TIMESTAMP);
+    if (symbolFound) {
+      const tsValue = this.objImage.read(_rxpin_ + 3);
+      this.objImage.replaceByte(tsValue | 0x80, _rxpin_ + 3);
+    }
+  }
+
+  private checkDebugSymbol(smbolName: string): [boolean, boolean, bigint | string] {
+    let definedStatus: boolean = false;
+    let isConStatus: boolean = false;
+    let symValue: bigint | string = 0n;
+    const symbolFound: iSymbol | undefined = this.spinResolver.getSymbol(smbolName);
+    if (symbolFound) {
+      definedStatus = true;
+      if (symbolFound.type == eElementType.type_con) {
+        isConStatus = true;
+      }
+      symValue = symbolFound.value;
+    }
+    return [definedStatus, isConStatus, symValue];
   }
 
   public P2InsertFlashLoader() {
@@ -557,6 +659,7 @@ export class Spin2Parser {
     this.moveObjectUp(this.objImage, flashLoaderLength, 0, this.objImage.offset);
     // install flash loader
     this.logMessage(`  -- load flash loader`);
+    // now path the loader
     this.objImage.rawUint8Array.set(this.externalFiles.flashLoader, 0);
     const isDebugMode: boolean = this.context.compileOptions.enableDebug;
     if (isDebugMode) {

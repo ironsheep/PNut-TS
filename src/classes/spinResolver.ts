@@ -21,9 +21,9 @@ import { ObjFile, SpinFiles } from './spinFiles';
 import { ChildObjectsImage, iFileDetails } from './childObjectsImage';
 import { ObjectSymbols } from './objectSymbols';
 import { DistillerList, DistillerRecord } from './distillerList';
-import { DebugData } from './debugData';
+import { DebugData, DebugRecord } from './debugData';
 import { SpinDocument } from './spinDocument';
-import { runInThisContext } from 'vm';
+import { hexByte } from '../utils/formatUtils';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -251,18 +251,29 @@ export class SpinResolver {
   private debugPinRx: number = 63; // default maybe overridden by code
   private debugPinTx: number = 62; //
   private debugBaud: number = 2000000;
+  private downloadBaud: number = 2000000;
+  // host side debug values
+  private debug_left: number = 0;
+  private debug_top: number = 0;
+  private debug_width: number = 0;
+  private debug_height: number = 0;
+  private debug_display_left: number = 0;
+  private debug_display_top: number = 0;
+  private debug_log_size: number = 0;
+  private debug_windows_off: boolean = false;
 
-  private debug_record: Uint8Array = new Uint8Array(DebugData.MAX_RECORD_LENGTH + 1);
-  private debug_data: DebugData;
+  private debug_record: DebugRecord; // a single debug record (fill in, then commit it)
+  private debug_data: DebugData; // the collection of committed debug records
   private debug_first: boolean = false;
-  private debug_record_size: number = 0;
+  private debug_stack_depth: number = 0; // our overall debug stack depth
   private debug_src_start: number = 0;
   private debug_src_finish: number = 0;
-  private srcFile: SpinDocument | undefined;
+  private srcFile: SpinDocument | undefined; // reference to the file we are compiling (element list refers to this file)
 
   constructor(ctx: Context) {
     this.context = ctx;
-    this.debug_data = new DebugData(this.context, 'debug_data');
+    this.debug_record = new DebugRecord(this.context);
+    this.debug_data = new DebugData(this.context);
     this.isLogging = this.context.logOptions.logResolver;
     // get refereces to the single global data
     this.objImage = ctx.compileData.objImage;
@@ -291,6 +302,10 @@ export class SpinResolver {
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
     this.logMessage(`* Resolver.setSourceFile([${spinCode.fileName}])`);
+  }
+
+  public getSymbol(symbolName: string): iSymbol | undefined {
+    return this.mainSymbols.get(symbolName);
   }
 
   // for lister  vvv
@@ -333,6 +348,10 @@ export class SpinResolver {
 
   get debugPinReceive(): number {
     return this.debugPinRx;
+  }
+
+  get debugBaudRate(): number {
+    return this.debugBaud;
   }
 
   get debugPinTransmit(): number {
@@ -390,7 +409,7 @@ export class SpinResolver {
     this.compile_obj_symbols();
     this.determine_clock();
     this.compile_con_blocks_2nd();
-    //this.determine_bauds_pins()
+    this.determine_bauds_pins();
     if (this.context.passOptions.afterConBlock == false) {
       this.logMessage('* COMPILE_dat_blocks()');
       if (this.pasmMode == false) {
@@ -748,6 +767,124 @@ export class SpinResolver {
     this.recordSymbol(tempSymbol);
     tempSymbol = { name: 'CLKFREQ_', type: eElementType.type_con, value: BigInt(this.clkFreq) };
     this.recordSymbol(tempSymbol);
+  }
+
+  private determine_bauds_pins() {
+    // PNut determine_bauds_pins:
+    // Determine download baud and debug pins and baud
+
+    const symlbaud = 'DOWNLOAD_BAUD';
+
+    const sympin = 'DEBUG_PIN'; //same purpose as debug_pin_tx
+    const sympintx = 'DEBUG_PIN_TX';
+    const sympinrx = 'DEBUG_PIN_RX';
+    const symdbaud = 'DEBUG_BAUD';
+
+    const symleft = 'DEBUG_LEFT';
+    const symtop = 'DEBUG_TOP';
+    const symwidth = 'DEBUG_WIDTH';
+    const symheight = 'DEBUG_HEIGHT';
+    const symdisleft = 'DEBUG_DISPLAY_LEFT';
+    const symdistop = 'DEBUG_DISPLAY_TOP';
+    const symlog = 'DEBUG_LOG_SIZE';
+    const symoff = 'DEBUG_WINDOWS_OFF';
+
+    let [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symlbaud);
+    if (symbolFound) {
+      if (isConstInteger) {
+        this.downloadBaud = Number(value);
+      } else {
+        // [error_downbaud]
+        throw new Error('DOWNLOAD_BAUD can only be defined as an integer constant');
+      }
+    }
+    this.debugPinTx = 62; // TX defaults to 62
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(sympin);
+    if (symbolFound) {
+      if (isConstInteger) {
+        this.debugPinTx = Number(value) & 0x3f;
+      } else {
+        // [error_debugpin]
+        throw new Error('DEBUG_PIN can only be defined as an integer constant');
+      }
+    }
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(sympintx);
+    if (symbolFound) {
+      if (isConstInteger) {
+        this.debugPinTx = Number(value) & 0x3f;
+      } else {
+        // [error_debugptx]
+        throw new Error('DEBUG_PIN_TX can only be defined as an integer constant');
+      }
+    }
+    this.debugPinRx = 63; // Rx defaults to 63
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(sympinrx);
+    if (symbolFound) {
+      if (isConstInteger) {
+        this.debugPinTx = Number(value) & 0x3f;
+      } else {
+        // [error_debugprx]
+        throw new Error('DEBUG_PIN_RX can only be defined as an integer constant');
+      }
+    }
+    this.debugBaud = this.downloadBaud; // use default in case not defined
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symdbaud);
+    if (symbolFound) {
+      if (isConstInteger) {
+        this.debugBaud = Number(value);
+      } else {
+        // [error_debugbaud]
+        throw new Error('DEBUG_BAUD can only be defined as an integer constant');
+      }
+    }
+
+    // place default OR users specified value for each of these
+    this.debug_left = this.hostSymbolOverrideNumber(symleft, -1);
+    this.debug_top = this.hostSymbolOverrideNumber(symtop, -1);
+    this.debug_width = this.hostSymbolOverrideNumber(symwidth, -1);
+    this.debug_height = this.hostSymbolOverrideNumber(symheight, -1);
+    this.debug_display_left = this.hostSymbolOverrideNumber(symdisleft, 0);
+    this.debug_display_top = this.hostSymbolOverrideNumber(symdistop, 0);
+    this.debug_log_size = this.hostSymbolOverrideNumber(symlog, 0);
+
+    this.debug_windows_off = this.hostSymbolOverrideBoolean(symoff, false);
+  }
+
+  private hostSymbolOverrideNumber(symbolName: string, defaultValue: number): number {
+    let desiredValue: number = defaultValue;
+    const [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symbolName);
+    if (symbolFound) {
+      if (isConstInteger) {
+        desiredValue = Number(value);
+      }
+    }
+    return desiredValue;
+  }
+
+  private hostSymbolOverrideBoolean(symbolName: string, defaultValue: boolean): boolean {
+    let desiredValue: boolean = defaultValue;
+    const [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symbolName);
+    if (symbolFound) {
+      if (isConstInteger) {
+        desiredValue = Number(value) == 0 ? false : true; // non zero == true
+      }
+    }
+    return desiredValue;
+  }
+
+  private checkDebugSymbol(smbolName: string): [boolean, boolean, bigint | string] {
+    let definedStatus: boolean = false;
+    let isConStatus: boolean = false;
+    let symValue: bigint | string = 0n;
+    const symbolFound: iSymbol | undefined = this.getSymbol(smbolName);
+    if (symbolFound) {
+      definedStatus = true;
+      if (symbolFound.type == eElementType.type_con) {
+        isConStatus = true;
+      }
+      symValue = symbolFound.value;
+    }
+    return [definedStatus, isConStatus, symValue];
   }
 
   private pllCalc(inputFrequency: number, requestedFrequency: number, allowedError: number): [number, number] {
@@ -5261,52 +5398,56 @@ export class SpinResolver {
     // PNut ci_debug:
     // XYZZY ci_debug() IN PROGRESS
     this.debug_first = true;
-    this.debug_record_size = 0;
+    this.debug_record.clear();
+    this.debug_stack_depth = 0;
 
-    let tickMode: boolean = false; // PNut @@tickmode
-    let stackDepth: number = 0; // PNut @@stack
-
-    if (this.context.compileOptions.enableDebug) {
+    if (this.context.compileOptions.enableDebug == false) {
       // remove all but end of line
+      this.logMessage(`*--* ci_debug(${this.currElement.toString()}) - Debug() processing disabled`);
       this.skipToEnd();
     } else {
+      this.logMessage(`*--* ci_debug(${this.currElement.toString()})`);
       if (!this.checkLeftParen()) {
+        // consumes left paren if next is left paren
         this.getEndOfLine();
         this.backElement();
         this.objWrByte(eByteCode.bc_debug); // enter DEBUG bytecode
         this.objWrByte(0); // enter rfvar value for stack popping
         this.objWrByte(0); // enter BRK code for debugger
-      }
-      // here is @@left
-      if (this.checkRightParen()) {
-        // we found 'debug()'
-        this.enterDebug(stackDepth);
       } else {
-        // do we have (`?
-        // here is ci_debug:@@tickcommand
-        if (this.currElement.type == eElementType.type_tick) {
-          //
-          tickMode = true;
-          this.debug_first = true; // this would normally be set in this.debugTickString()
-          this.processBackTickDebug(tickMode, stackDepth); // this always sets debug_first
+        // here is @@left
+        if (this.checkRightParen()) {
+          // consumes right paren if next is right paren
+          // we found 'debug()'
+          this.enterDebug();
         } else {
-          // here is ci_debug:@@nottick
-          this.processNonTickDebug();
+          // do we have (`?
+          this.getElement(); // move to next after left
+          // here is ci_debug:@@tickcommand
+          if (this.currElement.type == eElementType.type_tick) {
+            //
+            this.debug_first = true; // this would normally be set in this.debugTickString()
+            this.processBackTickDebug(); // this always sets debug_first
+          } else {
+            // here is ci_debug:@@nottick
+            this.processNonTickDebug();
+          }
         }
       }
     }
   }
 
-  private processBackTickDebug(tickMode: boolean, stackDepth: number) {
+  private processBackTickDebug() {
     // here is ci_debug:@@tickstr
     //  NOTE: debug(`...) is BackTickDebug
     // enter string, returning indication if end of line
     // NOTE: the following method always sets debug_first
+    this.logMessage(` -- processBackTickDebug(${this.currElement.toString()})`);
     const haveTickCommand: boolean = this.debugTickString();
     if (haveTickCommand == false) {
       // found ')' and end of line, enter debug data
       this.skipToEnd(); // syncronize our element list position
-      this.enterDebug(stackDepth);
+      this.enterDebug();
     } else {
       // syncronize our element list position
       while (this.skipToTickOrEndOfLine()) {
@@ -5314,28 +5455,28 @@ export class SpinResolver {
         this.currElement = this.getElement();
         if (this.currElement.type == eElementType.type_debug_cmd) {
           // here is @@tickcmd
-          this.tickCmd(0b1100011, stackDepth); // UBIN()
+          this.tickCmd(this.currElement.numberValue); // UBIN()
         } else if (this.currElement.type == eElementType.type_if) {
           // here is @@isif
-          stackDepth = this.singleParam(eValueType.dc_if, stackDepth);
+          this.singleParam(eValueType.dc_if);
           // go to @@checknext
           // logically if there is a next tick loop, else bail
           // goto @@ticknext to test for tick, if found go to @@tickcommand
         } else if (this.currElement.type == eElementType.type_ifnot) {
           // here is @@isifnot
-          stackDepth = this.singleParam(eValueType.dc_ifnot, stackDepth);
+          this.singleParam(eValueType.dc_ifnot);
           // go to @@checknext
           // logically if there is a next tick loop, else bail
           // goto @@ticknext to test for tick, if found go to @@tickcommand
         } else if (this.currElement.type == eElementType.type_left) {
           // here is @@tickdec
-          this.tickCmd(0b01100011, stackDepth); // '(', back up and do SDEC_
+          this.tickCmd(0b01100011); // '(', back up and do SDEC_
         } else if (this.currElement.type == eElementType.type_dollar) {
           // here is @@tickhex
-          this.tickCmd(0b10100011, stackDepth); // '$', do UHEX_
+          this.tickCmd(0b10100011); // '$', do UHEX_
         } else if (this.currElement.type == eElementType.type_percent) {
           // here is @@tickbin
-          this.tickCmd(0b11000011, stackDepth); // '%', do UBIN_
+          this.tickCmd(0b11000011); // '%', do UBIN_
         } else if (this.currElement.type == eElementType.type_pound) {
           // here is @@tickchr
           this.getLeftParen();
@@ -5343,7 +5484,7 @@ export class SpinResolver {
           do {
             this.debugEnterByte(eValueType.dc_chr);
             this.compileExpression();
-            stackDepth = this.incStack(stackDepth);
+            this.incStack();
             // call	 get_comma_or_right
             // je	   @@tickchrlp
           } while (this.getCommaOrRightParen());
@@ -5357,69 +5498,121 @@ export class SpinResolver {
 
   private processNonTickDebug() {
     // here is ci_debug::@@nottick:
-    //  NOTE: debug(`...) is BackTickDebug
-    //        debug("...) or e.g., debug(uhex_long()) is nonTickDebug
-    // XYZZY need code here processNonTickDebug()
+    //  NOTE: NOT THIS: debug(`...)    (this is BackTickDebug, above)
+    //        BUT THIS: debug("...) or e.g., debug(uhex_long()) is nonTickDebug
+    this.logMessage(` -- processNonTickDebug(${this.currElement.toString()})`);
+    let atFrontOfStatement: boolean = true;
+    do {
+      if (atFrontOfStatement) {
+        atFrontOfStatement = false;
+        //this.getElement(); // FIXME: UNDONE is this needed?
+        // her for leading occurrence of if()/ifnot()
+        if (this.currElement.type == eElementType.type_if) {
+          this.singleParam(eValueType.dc_if); // compile single-parameter command
+        } else if (this.currElement.type == eElementType.type_ifnot) {
+          this.singleParam(eValueType.dc_ifnot); // compile single-parameter command
+        }
+        this.debugEnterByte(eValueType.dc_cogn); // enter cogn command
+        this.backElement();
+      } else {
+        // here is @@next:
+        this.getElement();
+        // here for 2nd or more occurrence of if()/ifnot()
+        if (this.currElement.type == eElementType.type_if) {
+          this.singleParam(eValueType.dc_if);
+        } else if (this.currElement.type == eElementType.type_ifnot) {
+          this.singleParam(eValueType.dc_ifnot);
+        } else {
+          // here is @@notif3:
+          if (this.currElement.type == eElementType.type_debug_cmd) {
+            const debugCmd: number = this.currElement.numberValue;
+            if (debugCmd == eValueType.dc_dly || debugCmd == eValueType.dc_pc_key || debugCmd == eValueType.dc_pc_mouse) {
+              this.singleParam(debugCmd);
+              this.getRightParen();
+              this.enterDebug();
+            } else {
+              // here is @@notdkm
+              if (debugCmd & 0x10) {
+                this.dualParam(debugCmd);
+              } else if (debugCmd & 0x02) {
+                // dont print literal
+                this.singleParamSimple(debugCmd);
+              } else {
+                this.getLeftParen();
+                // here for @@spverbose
+                this.singleParamVerbose(debugCmd);
+              }
+            }
+          } else {
+            // here is @@notcmd:
+            // this.backElement(); // FIXME: UNDONE is this needed?
+            const foundString: boolean = this.debugCheckString();
+            if (foundString == false) {
+              this.debugEnterByte(eValueType.dc_chr);
+              this.compileExpression();
+              this.incStack();
+              this.debug_first = true;
+            }
+          }
+        }
+      }
+    } while (this.getCommaOrRightParen());
+    this.enterDebug();
   }
 
-  private enterDebug(stackDepth: number) {
+  private enterDebug() {
     // here is ci_debug:@@enterdebug
     this.objWrByte(eByteCode.bc_debug); // end of DEBUG data/commands, enter DEBUG bytecode
-    this.objWrByte(stackDepth); // enter rfvar value for stack popping
+    this.objWrByte(this.debug_stack_depth); // enter rfvar value for stack popping
     const brkCode: number = this.debugEnterRecord(); // enter record into debug data, returning brk code
     this.objWrByte(brkCode); // enter BRK code
   }
 
-  private incStack(stackDepth: number): number {
-    stackDepth += 4;
-    if (stackDepth > 127) {
+  private incStack() {
+    this.debug_stack_depth += 4;
+    if (this.debug_stack_depth > 127) {
       // [error_dditl]
       throw new Error('DEBUG data is too long: too many expressions (> 31)');
     }
-    return stackDepth;
   }
 
-  private tickCmd(cmdValue: number, stackDepth: number): number {
+  private tickCmd(cmdValue: number) {
     //Here is @@tickCmd:
-    let updatedStackDepth = stackDepth;
     if (cmdValue == eValueType.dc_dly || cmdValue == eValueType.dc_pc_key || cmdValue == eValueType.dc_pc_mouse) {
       // NOTE any of these three MUST be the last tickcommand in a debug() statement
       // here is ci_debug:@@dkm
-      updatedStackDepth = this.singleParam(cmdValue, updatedStackDepth);
+      this.singleParam(cmdValue);
       this.getRightParen();
-      this.enterDebug(updatedStackDepth);
+      this.enterDebug();
     } else {
       // here is ci_debug:@@notdkm
       if (cmdValue & 0x10) {
         // here is @@dualparam
-        updatedStackDepth = this.dualParam(cmdValue, updatedStackDepth);
+        this.dualParam(cmdValue);
       } else if (cmdValue & 0x02) {
         // here is @@spsimple
-        updatedStackDepth = this.singleParamSimple(cmdValue, updatedStackDepth);
+        this.singleParamSimple(cmdValue);
+      } else {
+        this.getLeftParen();
+        // here is @@spverbose:
+        this.singleParamVerbose(cmdValue);
       }
-      this.getLeftParen();
-      // here is @@spverbose:
-      updatedStackDepth = this.singleParamVerbose(cmdValue, updatedStackDepth);
     }
-    return updatedStackDepth;
   }
 
-  private dualParam(cmdValue: number, stackDepth: number): number {
-    let updatedStackDepth = stackDepth;
+  private dualParam(cmdValue: number) {
     if (cmdValue & 0x02) {
       // here is @@dpsimple
-      updatedStackDepth = this.dualParamSimple(cmdValue, updatedStackDepth);
+      this.dualParamSimple(cmdValue);
     } else {
       this.getLeftParen();
       // here is @@dpverbose
-      updatedStackDepth = this.dualParamVerbose(cmdValue, updatedStackDepth);
+      this.dualParamVerbose(cmdValue);
     }
-    return updatedStackDepth;
   }
 
-  private dualParamSimple(cmdValue: number, stackDepth: number): number {
+  private dualParamSimple(cmdValue: number) {
     // PNut ci_debug:@@dpsimple
-    let updatedStackDepth = stackDepth;
     let parameterCount = this.compileParametersMethodPtr();
     if (parameterCount == 0) {
       // [error_eaet]
@@ -5430,62 +5623,55 @@ export class SpinResolver {
     }
     while (parameterCount--) {
       this.debugEnterByteFlag(cmdValue);
-      updatedStackDepth = this.incStack(updatedStackDepth);
-      updatedStackDepth = this.incStack(updatedStackDepth);
+      this.incStack();
+      this.incStack();
     }
-    return updatedStackDepth;
   }
 
-  private dualParamVerbose(cmdValue: number, stackDepth: number): number {
+  private dualParamVerbose(cmdValue: number) {
     // PNut ci_debug:@@dpverbose:
-    let newStackDepth: number = stackDepth;
     do {
       const [startCharOffset, endCharOffset] = this.debugExpSource();
       const parameterCount: number = 2;
       this.compileParametersNoParens(parameterCount);
       this.debugEnterByteFlag(cmdValue);
-      newStackDepth = this.incStack(newStackDepth);
-      newStackDepth = this.incStack(newStackDepth);
+      this.incStack();
+      this.incStack();
       this.debugVerboseString(startCharOffset, endCharOffset);
     } while (this.getCommaOrRightParen());
-    return newStackDepth;
   }
 
-  private singleParamSimple(cmdValue: number, stackDepth: number): number {
+  private singleParamSimple(cmdValue: number) {
     // PNut ci_debug:@@spsimple:
     let parameterCount = this.compileParametersMethodPtr();
-    let newStackDepth: number = stackDepth;
     if (parameterCount == 0) {
       // [error_eaet]
       throw new Error('Expected an expression term');
     }
     while (parameterCount--) {
       this.debugEnterByteFlag(cmdValue);
-      newStackDepth = this.incStack(newStackDepth);
+      this.incStack();
     }
-    return newStackDepth;
   }
 
-  private singleParamVerbose(cmdValue: number, stackDepth: number): number {
+  private singleParamVerbose(cmdValue: number) {
     // PNut ci_debug:@@spverbose:
-    let newStackDepth: number = stackDepth;
     do {
       const [startCharOffset, endCharOffset] = this.debugExpSource();
       let parameterCount = this.compileParameter();
       this.debugEnterByteFlag(cmdValue);
-      newStackDepth = this.incStack(newStackDepth);
+      this.incStack();
       this.debugVerboseString(startCharOffset, endCharOffset);
       parameterCount--;
       if (parameterCount > 0) {
         let adjustedCmdValue = cmdValue & 0x02;
         while (parameterCount--) {
           this.debugEnterByteFlag(adjustedCmdValue);
-          newStackDepth = this.incStack(newStackDepth);
+          this.incStack();
         }
         adjustedCmdValue &= 0xfc;
       }
     } while (this.getCommaOrRightParen());
-    return newStackDepth;
   }
 
   private debugExpSource(): [number, number] {
@@ -5522,24 +5708,63 @@ export class SpinResolver {
     this.debug_first = false;
   }
 
-  private singleParam(cmdValue: number, stackDepth: number): number {
+  private singleParam(cmdValue: number) {
     // PNut ci_debug:@@singleparam:
     this.debugEnterByte(cmdValue);
     this.compileParameters(1);
-    const updatedStackDepth = this.incStack(stackDepth);
-    return updatedStackDepth;
+    this.incStack();
+  }
+
+  private debugCheckString(): boolean {
+    // PNut debug_check_string:
+    // If chrs expressed in source, enter string
+    let foundStringStatus = true;
+    this.backElement(); // postion to left paren
+    let stringLength: number = 0;
+    const savedElementIndex = this.saveElementLocation();
+    do {
+      this.getElement();
+      if (this.currElement.type != eElementType.type_con) {
+        foundStringStatus = false;
+        break;
+      }
+      const charValue: number = this.currElement.numberValue;
+      if (charValue < 1 || charValue > 0xff) {
+        foundStringStatus = false;
+        break;
+      }
+      stringLength++;
+    } while (this.checkComma());
+    // here is @@notchr:
+    this.restoreElementLocation(savedElementIndex); // restore to left paren
+    if (stringLength == 0) {
+      foundStringStatus = false;
+    } else {
+      this.debugEnterByte(eValueType.dc_str);
+      for (let index = 0; index < stringLength; index++) {
+        if (index > 0 || index < stringLength - 1) {
+          this.getComma();
+        }
+        this.getElement();
+        let chrByte: number = this.currElement.numberValue;
+        this.debugEnterByte(chrByte);
+      }
+    }
+    this.logMessage(` -- debugCheckString(${this.currElement.toString()}) -> foundString=(${foundStringStatus})`);
+    return foundStringStatus;
   }
 
   private debugTickString(): boolean {
     // PNut debug_tick_string:
     // TODO: need to check for opening "(`"?
     // return value z=1 if '`', z=0 if ')'
+    //this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
     let foundEndWithTickStatus: boolean = false;
     let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
+    let charCount: number = 0;
     if (currSrcLine) {
       let charOffset = this.currElement.sourceCharacterOffset + 1; // char after backtick
       // count number of bytes to emit
-      let charCount: number = 0;
       let parenNestCount: number = 0;
       for (let index = charOffset; index < currSrcLine.length; index++) {
         const currChar = currSrcLine.charAt(index);
@@ -5570,17 +5795,15 @@ export class SpinResolver {
       }
       this.debugEnterByte(0); // zero-terminate string
     }
+    this.logMessage(` -- debugTickString(${this.currElement.toString()}) charCount=(${charCount}) --> endWithTic=(${foundEndWithTickStatus})`);
 
     return foundEndWithTickStatus;
   }
 
   private debugEnterByte(byteValue: number) {
     // PNut debug_enter_byte:
-    if (this.debug_record_size >= DebugData.MAX_RECORD_LENGTH) {
-      // [error_dditl] WAS: DEBUG data is too long
-      throw new Error(`DEBUG data is too long: record exceeds ${DebugData.MAX_RECORD_LENGTH} bytes`);
-    }
-    this.debug_record[this.debug_record_size++] = byteValue;
+    this.logMessage(` -- debugEnterByte(${hexByte(byteValue, '0x')})`);
+    this.debug_record.append(byteValue);
   }
 
   private debugEnterRecord(): number {
@@ -5591,7 +5814,7 @@ export class SpinResolver {
     do {
       const recordPresent: boolean = this.debug_data.recordExists(entryIndex);
       if (recordPresent) {
-        if (this.debug_data.recordIsMatch(entryIndex, this.debug_record, this.debug_record_size)) {
+        if (this.debug_data.recordIsMatch(entryIndex, this.debug_record)) {
           break; // return != 0 offset out of loop
         }
         if (++entryIndex > DebugData.MAX_ENTRIES) {
@@ -5602,7 +5825,7 @@ export class SpinResolver {
     } while (recordPresent);
     // add new record here
     if (recordPresent == false) {
-      this.debug_data.setRecord(entryIndex, this.debug_record, this.debug_record_size);
+      this.debug_data.setRecord(entryIndex, this.debug_record);
     }
     return entryIndex; // index of matched record or new record
   } // syncronize our element list position
@@ -5611,12 +5834,16 @@ export class SpinResolver {
     let foundTickStatus: boolean = false;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      if (this.nextElementType() == eElementType.type_tick || this.nextElementType() == eElementType.type_end) {
-        foundTickStatus = this.nextElementType() == eElementType.type_tick;
+      if (this.nextElementType() == eElementType.type_end) {
         break;
       }
       this.getElement();
+      if (this.currElement.type == eElementType.type_tick) {
+        foundTickStatus = true;
+        break;
+      }
     }
+    this.logMessage(` -- skipToTickOrEndOfLine() -> foundTic=(${foundTickStatus})`);
     return foundTickStatus;
   }
 

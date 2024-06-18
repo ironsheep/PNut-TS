@@ -2,4 +2,4 @@
 
 #  the following should abort if the compile fails
 
-(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -c -v -l -O --log compiler resolver parser --regression element -v TEST/OBJ-tests/spin_test14_child2.spin2)
+(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js  -v -l -O --log compiler resolver parser --regression element -v TEST/OBJ-tests/spin_test14_child2.spin2)
