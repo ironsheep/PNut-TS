@@ -5873,9 +5873,9 @@ export class SpinResolver {
 
   private collapse_debug_data(isTopLevel: boolean) {
     // PNut collapse_debug_data:
-
     if (this.context.compileOptions.enableDebug == true && isTopLevel) {
       // compress our debug data then store it for listing and binary writing
+      this.logMessage('* collapse_debug_data()');
       this.debug_compressed_data = this.debug_data.collapseDebugData;
     }
   }

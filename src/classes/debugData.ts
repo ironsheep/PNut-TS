@@ -134,6 +134,7 @@ export class DebugData {
         break; // outta here we have answer
       }
     }
+    this.logMessage(`recordIsMatch(idx=${entryIndex}, sz=${newRecord.length}) -> match=(${recordMatchStatus})`);
     return recordMatchStatus;
   }
 
