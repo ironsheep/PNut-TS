@@ -662,6 +662,8 @@ export class SpinResolver {
   }
 
   private determine_clock() {
+    // PNut determine_clock:
+    // Determine clock mode and frequency
     const clockSymbols = new Map([
       ['CLKMODE_', 0x80], // shouldn't exist
       ['CLKFREQ_', 0x40], // shouldn't exist
@@ -5403,7 +5405,6 @@ export class SpinResolver {
   private ci_debug() {
     // Compile DEBUG for Spin2
     // PNut ci_debug:
-    // XYZZY ci_debug() IN PROGRESS
     this.debug_first = true;
     this.debug_record.clear();
     this.debug_stack_depth = 0;

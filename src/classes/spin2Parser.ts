@@ -343,7 +343,8 @@ export class Spin2Parser {
   }
 
   private rightAlignedDecimalValue(value: number, width: number): string {
-    const interpValue: string = `${value.toLocaleString().padStart(width).replace(/,/g, '_')}`;
+    //const interpValue: string = `${value.toLocaleString().padStart(width).replace(/,/g, '_')}`;
+    const interpValue: string = `${value.toLocaleString().padStart(width)}`;
     return interpValue;
   }
 

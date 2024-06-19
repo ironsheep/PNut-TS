@@ -1,0 +1,14 @@
+con _clkfreq = 20_000_000
+
+obj
+
+  subobj1 : "debug_test_002_c1"
+  subobj2 : "debug_test_002_c2"
+  subobj3 : "debug_test_002_c3"
+
+pub go()
+
+  subobj1.go1()
+  subobj2.go2()
+  subobj3.go3()
+  debug("TopFile")
