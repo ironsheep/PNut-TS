@@ -588,11 +588,11 @@ export class Spin2Parser {
     const _rxpin_ = 0x144;
     const _baud_ = 0x148;
 
-    const SYM_DEBUG_COGS: string = 'DEBUG_COGS';
-    const SYM_DEBUG_COGINIT: string = 'DEBUG_COGINIT';
-    const SYM_DEBUG_MAIN: string = 'DEBUG_MAIN';
-    const SYM_DEBUG_DELAY: string = 'DEBUG_DELAY';
-    const SYM_DEBUG_TIMESTAMP: string = 'DEBUG_TIMESTAMP';
+    const symcogs: string = 'DEBUG_COGS';
+    const symcoginit: string = 'DEBUG_COGINIT';
+    const symmain: string = 'DEBUG_MAIN';
+    const symdelay: string = 'DEBUG_DELAY';
+    const symtimestamp: string = 'DEBUG_TIMESTAMP';
 
     // move object upwards to accommodate debugger
     this.logMessage(`  -- move object up - debuggerLength=(${debuggerLength})+debugDataLength=(${debugData.length}) bytes`);
@@ -611,7 +611,7 @@ export class Spin2Parser {
     this.objImage.replaceLong(this.spinResolver.clockMode & 0xfffffffc, _clkmode1_);
 
     // is user specifying which cogs to debug?
-    let [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_COGS);
+    let [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symcogs);
     if (symbolFound) {
       if (isConstInteger) {
         this.objImage.replaceByte(Number(value), _hubset_);
@@ -622,19 +622,19 @@ export class Spin2Parser {
     }
 
     // are we breaking on coginit?
-    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_COGINIT);
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symcoginit);
     if (symbolFound) {
       this.objImage.replaceLong(0x110, _brkcond_);
     }
 
     // -OR- are we breaking on main?
-    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_MAIN);
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symmain);
     if (symbolFound) {
       this.objImage.replaceLong(0x001, _brkcond_);
     }
 
     // user wanting delay?
-    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_DELAY);
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symdelay);
     if (symbolFound) {
       if (isConstInteger) {
         const clkFreqInKHz = this.spinResolver.clockFrequency / 1000;
@@ -654,7 +654,7 @@ export class Spin2Parser {
     this.objImage.replaceLong(this.spinResolver.debugBaudRate, _baud_);
 
     // user wanting timestamps?
-    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(SYM_DEBUG_TIMESTAMP);
+    [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symtimestamp);
     if (symbolFound) {
       const tsValue = this.objImage.read(_rxpin_ + 3);
       this.objImage.replaceByte(tsValue | 0x80, _rxpin_ + 3);
