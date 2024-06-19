@@ -264,10 +264,9 @@ export class SpinResolver {
 
   private debug_record: DebugRecord; // a single debug record (fill in, then commit it)
   private debug_data: DebugData; // the collection of committed debug records
+  private debug_compressed_data: Uint8Array | undefined = undefined; // a zero's removed version of the debug data
   private debug_first: boolean = false;
   private debug_stack_depth: number = 0; // our overall debug stack depth
-  private debug_src_start: number = 0;
-  private debug_src_finish: number = 0;
   private srcFile: SpinDocument | undefined; // reference to the file we are compiling (element list refers to this file)
 
   constructor(ctx: Context) {
@@ -320,6 +319,14 @@ export class SpinResolver {
 
   get objectImage(): ObjectImage {
     return this.objImage;
+  }
+
+  get debugData(): Uint8Array {
+    return this.debug_compressed_data !== undefined ? this.debug_compressed_data : new Uint8Array();
+  }
+
+  get debugRawData(): DebugData {
+    return this.debug_data;
   }
 
   get removedBytes(): number {
@@ -404,7 +411,7 @@ export class SpinResolver {
     }
   }
 
-  public compile2() {
+  public compile2(isTopLevel: boolean) {
     this.logMessage(`*==* compile2()`);
     this.compile_obj_symbols();
     this.determine_clock();
@@ -420,7 +427,7 @@ export class SpinResolver {
       this.compile_obj_blocks();
       this.distill_obj_blocks();
       //this.point_to_con();
-      //this.collapse_debug_data();
+      this.collapse_debug_data(isTopLevel);
       this.compile_final();
       //this.compile_done();
     }
@@ -5492,6 +5499,13 @@ export class SpinResolver {
           // [error_eldppodc]
           throw new Error('Expected "(", "$", "%", "#", or DEBUG command');
         }
+        // if white space before next tic emit it
+        // UNGH! back up, go forward to allow compile of the following if!
+        this.backElement();
+        this.currElement = this.getElement();
+        if (this.currElement.type == eElementType.type_right) {
+          this.debugWhiteSpaceString();
+        }
       }
     }
   }
@@ -5514,45 +5528,44 @@ export class SpinResolver {
         }
         this.debugEnterByte(eValueType.dc_cogn); // enter cogn command
         this.backElement();
+      }
+      // here is @@next:
+      this.getElement();
+      // here for 2nd or more occurrence of if()/ifnot()
+      if (this.currElement.type == eElementType.type_if) {
+        this.singleParam(eValueType.dc_if);
+      } else if (this.currElement.type == eElementType.type_ifnot) {
+        this.singleParam(eValueType.dc_ifnot);
       } else {
-        // here is @@next:
-        this.getElement();
-        // here for 2nd or more occurrence of if()/ifnot()
-        if (this.currElement.type == eElementType.type_if) {
-          this.singleParam(eValueType.dc_if);
-        } else if (this.currElement.type == eElementType.type_ifnot) {
-          this.singleParam(eValueType.dc_ifnot);
-        } else {
-          // here is @@notif3:
-          if (this.currElement.type == eElementType.type_debug_cmd) {
-            const debugCmd: number = this.currElement.numberValue;
-            if (debugCmd == eValueType.dc_dly || debugCmd == eValueType.dc_pc_key || debugCmd == eValueType.dc_pc_mouse) {
-              this.singleParam(debugCmd);
-              this.getRightParen();
-              this.enterDebug();
-            } else {
-              // here is @@notdkm
-              if (debugCmd & 0x10) {
-                this.dualParam(debugCmd);
-              } else if (debugCmd & 0x02) {
-                // dont print literal
-                this.singleParamSimple(debugCmd);
-              } else {
-                this.getLeftParen();
-                // here for @@spverbose
-                this.singleParamVerbose(debugCmd);
-              }
-            }
+        // here is @@notif3:
+        if (this.currElement.type == eElementType.type_debug_cmd) {
+          const debugCmd: number = this.currElement.numberValue;
+          if (debugCmd == eValueType.dc_dly || debugCmd == eValueType.dc_pc_key || debugCmd == eValueType.dc_pc_mouse) {
+            this.singleParam(debugCmd);
+            this.getRightParen();
+            this.enterDebug();
           } else {
-            // here is @@notcmd:
-            // this.backElement(); // FIXME: UNDONE is this needed?
-            const foundString: boolean = this.debugCheckString();
-            if (foundString == false) {
-              this.debugEnterByte(eValueType.dc_chr);
-              this.compileExpression();
-              this.incStack();
-              this.debug_first = true;
+            // here is @@notdkm
+            if (debugCmd & 0x10) {
+              this.dualParam(debugCmd);
+            } else if (debugCmd & 0x02) {
+              // dont print literal
+              this.singleParamSimple(debugCmd);
+            } else {
+              this.getLeftParen();
+              // here for @@spverbose
+              this.singleParamVerbose(debugCmd);
             }
+          }
+        } else {
+          // here is @@notcmd:
+          // this.backElement(); // FIXME: UNDONE is this needed?
+          const foundString: boolean = this.debugCheckString();
+          if (foundString == false) {
+            this.debugEnterByte(eValueType.dc_chr);
+            this.compileExpression();
+            this.incStack();
+            this.debug_first = true;
           }
         }
       }
@@ -5737,21 +5750,49 @@ export class SpinResolver {
     } while (this.checkComma());
     // here is @@notchr:
     this.restoreElementLocation(savedElementIndex); // restore to left paren
+    //this.logMessage(` -- debugCheckString(${this.currElement.toString()}) stringLength=(${stringLength})`);
     if (stringLength == 0) {
       foundStringStatus = false;
     } else {
       this.debugEnterByte(eValueType.dc_str);
       for (let index = 0; index < stringLength; index++) {
-        if (index > 0 || index < stringLength - 1) {
-          this.getComma();
-        }
         this.getElement();
         let chrByte: number = this.currElement.numberValue;
         this.debugEnterByte(chrByte);
+        if (index < stringLength - 1) {
+          this.getComma();
+        }
       }
+      this.debugEnterByte(0); // zero terminate our string
     }
-    this.logMessage(` -- debugCheckString(${this.currElement.toString()}) -> foundString=(${foundStringStatus})`);
+    this.logMessage(` -- debugCheckString(${this.currElement.toString()})  stringLength=(${stringLength}) -> foundString=(${foundStringStatus})`);
     return foundStringStatus;
+  }
+
+  private debugWhiteSpaceString() {
+    //this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()})`);
+    let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
+    let charCount: number = 0;
+    if (currSrcLine) {
+      let charOffset = this.currElement.sourceCharacterOffset + 1; // char after )
+      for (let index = charOffset; index < currSrcLine.length; index++) {
+        const currChar = currSrcLine.charAt(index);
+        if (currChar == ' ' || currChar == '\t') {
+          charCount++;
+        } else {
+          break;
+        }
+      }
+      // now write the string to debug
+      this.debugEnterByte(eValueType.dc_str); // enter debug string command
+      // enter string bytes
+      for (let index = charOffset; index < charOffset + charCount; index++) {
+        const currCharCode: number = currSrcLine.charCodeAt(index);
+        this.debugEnterByte(currCharCode);
+      }
+      this.debugEnterByte(0); // zero-terminate string
+    }
+    this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()}) charCount=(${charCount})`);
   }
 
   private debugTickString(): boolean {
@@ -5761,12 +5802,12 @@ export class SpinResolver {
     //this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
     let foundEndWithTickStatus: boolean = false;
     let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
-    let charCount: number = 0;
+    let charCount: number = 1;
     if (currSrcLine) {
-      let charOffset = this.currElement.sourceCharacterOffset + 1; // char after backtick
+      let charOffset = this.currElement.sourceCharacterOffset; // the backtick
       // count number of bytes to emit
       let parenNestCount: number = 0;
-      for (let index = charOffset; index < currSrcLine.length; index++) {
+      for (let index = charOffset + 1; index < currSrcLine.length; index++) {
         const currChar = currSrcLine.charAt(index);
         if (currChar == '`') {
           // if we found next '`'
@@ -5812,7 +5853,7 @@ export class SpinResolver {
     let entryIndex: number = 1; // PNut bl register
     let recordPresent: boolean = false;
     do {
-      const recordPresent: boolean = this.debug_data.recordExists(entryIndex);
+      recordPresent = this.debug_data.recordExists(entryIndex);
       if (recordPresent) {
         if (this.debug_data.recordIsMatch(entryIndex, this.debug_record)) {
           break; // return != 0 offset out of loop
@@ -5830,8 +5871,18 @@ export class SpinResolver {
     return entryIndex; // index of matched record or new record
   } // syncronize our element list position
 
+  private collapse_debug_data(isTopLevel: boolean) {
+    // PNut collapse_debug_data:
+
+    if (this.context.compileOptions.enableDebug == true && isTopLevel) {
+      // compress our debug data then store it for listing and binary writing
+      this.debug_compressed_data = this.debug_data.collapseDebugData;
+    }
+  }
+
   private skipToTickOrEndOfLine(): boolean {
     let foundTickStatus: boolean = false;
+    this.logMessage(` -- skipToTickOrEndOfLine(${this.currElement.toString()})`);
     // eslint-disable-next-line no-constant-condition
     while (true) {
       if (this.nextElementType() == eElementType.type_end) {

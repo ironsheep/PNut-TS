@@ -93,11 +93,38 @@ export class DebugData {
     return this._debugOffset;
   }
 
+  get collapseDebugData(): Uint8Array {
+    // locate first zero
+    // move upper down overwriting zero entries
+    // fix up our addresses (table entries)
+    let countOfWords = 0;
+    for (let wordOffset = 0; wordOffset < 0x200; wordOffset += 2) {
+      const entryValue = this.readWord(wordOffset);
+      if (entryValue == 0) {
+        break;
+      }
+      countOfWords++;
+    }
+    const arraySize: number = countOfWords * 2 + (this.length - 0x200);
+    const dataOnlyArray = new Uint8Array(arraySize);
+    //dataOnlyArray.set(this._debugImage.subarray(0, countOfWords * 2 - 1), 0);
+    let dataOnlyOffset: number = 0;
+    for (let index = 0; index < countOfWords; index++) {
+      const wordValue = this.readWord(index << 1) - (0x200 - countOfWords * 2);
+      dataOnlyArray[dataOnlyOffset++] = wordValue & 0xff;
+      dataOnlyArray[dataOnlyOffset++] = (wordValue >> 8) & 0xff;
+    }
+    dataOnlyArray.set(this._debugImage.subarray(0x200, this.length), countOfWords * 2);
+    return dataOnlyArray;
+  }
+
   public recordExists(entryIndex: number): boolean {
+    // NOTE: entryIndex should be 1-n
     return this.readWord(entryIndex << 1) != 0;
   }
 
   public recordIsMatch(entryIndex: number, newRecord: DebugRecord): boolean {
+    // NOTE: entryIndex should be 1-n
     const recordOffset = this.readWord(entryIndex << 1);
     let recordMatchStatus: boolean = true;
     for (let index = 0; index < newRecord.length; index++) {
@@ -111,6 +138,8 @@ export class DebugData {
   }
 
   public setRecord(entryIndex: number, newRecord: DebugRecord) {
+    // NOTE: entryIndex should be 1-n
+    this.logMessage(`* setRecord(idx=${entryIndex}, sz=${newRecord.length})`);
     const recordOffset: number = this.readWord(0);
     if (recordOffset + newRecord.length > DebugData.DEBUG_SIZE_IN_BYTES) {
       // [error_dditl] WAS: DEBUG data is too long
@@ -120,6 +149,7 @@ export class DebugData {
     for (let index = 0; index < newRecord.length; index++) {
       this._debugImage[index + recordOffset] = newRecord.byteAt(index);
     }
+    this.setOffsetTo(recordOffset + newRecord.length);
     // set index pointer to this record just saved
     this.replaceWord(recordOffset, entryIndex << 1);
     // record next available location

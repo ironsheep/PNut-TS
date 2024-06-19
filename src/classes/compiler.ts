@@ -204,7 +204,7 @@ export class Compiler {
           //
           // perform second pass of compilation
           this.logMessage(`  -- compRecur(${depth}) - compile2 ----------------------------------------`);
-          this.spin2Parser.P2Compile2(); // NOTE: if at zero  (see above note...)
+          this.spin2Parser.P2Compile2(depth == 0); // NOTE: if at zero  (see above note...)
 
           // now copy obj data to output
           const objectLength: number = this.objImage.offset;

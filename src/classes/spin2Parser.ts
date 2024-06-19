@@ -83,11 +83,11 @@ export class Spin2Parser {
     this.spinResolver.compile1(overrideSymbol);
   }
 
-  public P2Compile2() {
+  public P2Compile2(isTopLevel: boolean) {
     this.logMessage('* P2Compile2() - ENTRY');
     //this.spinResolver.compile2();
     try {
-      this.spinResolver.compile2();
+      this.spinResolver.compile2(isTopLevel);
     } catch (error) {
       // Handle the error here if necessary
       const outFilename = this.context.compileOptions.listFilename;
@@ -270,6 +270,34 @@ export class Spin2Parser {
           const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
           for (let i = 0; i < lineLength; i++) {
             const byteValue = this.objImage.read(currOffset + i);
+            hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
+            asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
+          }
+          const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
+
+          stream.write(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
+          currOffset += lineLength;
+          displayOffset += lineLength;
+        }
+      }
+
+      const debugData = this.spinResolver.debugData;
+      //const debugData = this.spinResolver.debugRawData;
+      const debugLength = debugData.length;
+      // if we have object data, dump it
+      if (debugLength > 0) {
+        stream.write(`\n\nDEBUG data\n\n`);
+        /// dump hex and ascii data
+        let displayOffset: number = 0;
+        let currOffset = 0;
+        while (displayOffset < debugLength) {
+          let hexPart = '';
+          let asciiPart = '';
+          const remainingBytes = debugLength - displayOffset;
+          const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
+          for (let i = 0; i < lineLength; i++) {
+            const byteValue = debugData[currOffset + i];
+            //const byteValue = debugData.read(currOffset + i);
             hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
             asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
           }
@@ -545,6 +573,7 @@ export class Spin2Parser {
       throw new Error('DEBUG requires at least 10 MHz of crystal/external clocking');
     }
 
+    const debugData = this.spinResolver.debugData;
     const debuggerLength = this.externalFiles.spinDebuggerLength;
     const applicationSize = this.objImage.offset;
     // patch offsets in debugger
@@ -566,11 +595,14 @@ export class Spin2Parser {
     const SYM_DEBUG_TIMESTAMP: string = 'DEBUG_TIMESTAMP';
 
     // move object upwards to accommodate debugger
-    this.logMessage(`  -- move object up - debuggerLength=(${debuggerLength}) bytes`);
-    this.moveObjectUp(this.objImage, debuggerLength, 0, applicationSize);
+    this.logMessage(`  -- move object up - debuggerLength=(${debuggerLength})+debugDataLength=(${debugData.length}) bytes`);
+    this.moveObjectUp(this.objImage, debuggerLength + debugData.length, 0, applicationSize);
     // install debugger
     this.logMessage(`  -- load debugger`);
     this.objImage.rawUint8Array.set(this.externalFiles.spinDebugger, 0);
+
+    this.logMessage(`  -- load debugg data`);
+    this.objImage.rawUint8Array.set(debugData, debuggerLength);
 
     // now patch the debugger
     this.objImage.replaceLong(applicationSize, _appsize_);
