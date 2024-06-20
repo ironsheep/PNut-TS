@@ -6,7 +6,7 @@ PUB go() | i
   debug(`MyBitmap TRACE 14 LUTCOLORS WHITE RED BLUE YELLOW 6)
   repeat
     debug(`MyBitmap `if(0) `uhex_(flag[i++ & $1F]) `dly(100))
-    debug("HI")
+    debug("HI", uhex(i ,i), sdec_long_array(flag , 5, flag, 6))
 
 DAT
 
