@@ -1,0 +1,9 @@
+_clkfreq = 10_000_000
+
+dat	org
+
+loop	debug(uhex_long(i))
+	add	i,#1
+	jmp	#loop
+
+i	res	1
