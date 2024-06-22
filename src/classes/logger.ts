@@ -24,7 +24,8 @@ export class Logger {
   }
 
   public compilerErrorMsg(message: string | unknown) {
-    this.logErrorMessage(`${this.errorColor(message)}`);
+    const redMessage: string = this.errorColor(message);
+    this.logErrorMessage(`${redMessage}`);
   }
 
   private errorColor(str: string | unknown): string {

@@ -291,6 +291,7 @@ export class SpinResolver {
     this.pubConList = new ObjectSymbols(ctx, 'PUBCONList');
     this.distillerList = new DistillerList(ctx);
     this.distillerList.enableLogging(this.isLogging);
+    this.spinSymbolTables.enableLogging(this.isLogging);
   }
 
   public setElements(updatedElementList: SpinElement[]) {
@@ -315,6 +316,10 @@ export class SpinResolver {
     const allSymbols: SymbolEntry[] = [...allMain, ...allLocal, ...allInline];
     allSymbols.sort((a, b) => a.instanceNumber - b.instanceNumber);
     return allSymbols;
+  }
+
+  get sourceLineNumber(): number {
+    return this.currElement.sourceLineNumber;
   }
 
   get objectImage(): ObjectImage {
@@ -5022,6 +5027,7 @@ export class SpinResolver {
       this.ci_debug();
     } else if (this.currElement.type == eElementType.type_i_flex) {
       // flex instruction?
+      this.logMessage(`* compileInstruction() flexCode=(${this.currElement.flexByteCode})[${eByteCode[this.currElement.flexByteCode]}]`);
       if (this.currElement.flexResultCount > 0) {
         // [error_ticobu]
         throw new Error('This instruction can only be used as an expression term, since it returns results');
@@ -6028,7 +6034,6 @@ export class SpinResolver {
     // Compile DEBUG for assembler
     // PNut ci_debug_asm:
     // NOTE: only here if we have debug(...) or debug()
-    // XYZZY ci_debug_asm()
     let brkCode: number = 0;
     this.debug_first = true;
     this.debug_record.clear();

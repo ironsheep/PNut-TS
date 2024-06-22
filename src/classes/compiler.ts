@@ -83,6 +83,7 @@ export class Compiler {
           this.context.logger.logMessage(`EEEE: About to report: ${error.message}`);
           const filename: string = this.srcFile.fileName;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
+          this.context.logger.logMessage(` DBG filename=[${filename}], sourceLineNumber=(${sourceLineNumber})`);
           this.context.logger.compilerErrorMsg(`${filename}:${sourceLineNumber}:error:${error.message}`);
           if (error.stack) {
             this.context.logger.errorMsg(error.stack);

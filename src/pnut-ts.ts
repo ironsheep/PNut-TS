@@ -341,7 +341,7 @@ export class PNutInTypeScript {
     }
 
     let filename: string | undefined = this.options.filename;
-    if (filename && filename.endsWith('.json')) {
+    if (filename !== undefined && filename.endsWith('.json')) {
       // we don't handle .json files if presented
       filename = undefined;
     }

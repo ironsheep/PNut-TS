@@ -1,0 +1,22 @@
+_clkfreq = 10_000_000
+
+PUB Go() | j
+
+  debug("This is a string")
+  coginit(newcog, @asmcode, 0)
+
+  repeat
+    debug(sdec(j++))
+    org
+    getct  pr0
+    debug(uhex_long(pr0))
+    end
+
+dat	org
+
+asmcode	debug(uhex_long(i, ina), " Hello")
+	add	i,#1
+	jmp	#asmcode
+	debug
+
+i	res	1

@@ -7,6 +7,7 @@
 
 import { eElementType, eValueType, eByteCode, eOperationType, eFlexcode } from './types';
 import { Context } from '../utils/context';
+import { hexByte, hexWord } from '../utils/formatUtils';
 
 export interface iSpinSymbol {
   symbol: string;
@@ -2751,18 +2752,33 @@ export class SpinSymbolTables {
 
   // Function to get fc_ value from bc_ value
   public getFlexcodeFromBytecode(bcValue: eByteCode): eFlexcode {
+    this.logMessage(`* getFlexcodeFromBytecode(bc_=(${eByteCode[bcValue]}(${bcValue},${hexByte(bcValue, '0x')})`);
     let foundFlexCode: eFlexcode = 0;
     if (this.byteCodeToFlexCodeMap.has(bcValue)) {
-      const tmpFlexCode = this.byteCodeToFlexCodeMap.get(bcValue);
-      if (tmpFlexCode) {
+      const tmpFlexCode: number | undefined = this.byteCodeToFlexCodeMap.get(bcValue);
+      // AUGH!!! 0 value fails `if(tmpFlexCode)`!! -> converted to check explicitly for undefined!
+      if (tmpFlexCode !== undefined) {
         foundFlexCode = tmpFlexCode;
       } else {
+        //this.dumpFlexCodeMap();
         // [error_INTERNAL]
         throw new Error(`[INTERNAL] failed to located fc_ value for bc_ (${bcValue})[${eByteCode[bcValue]}]`);
       }
     }
     return foundFlexCode;
   }
+
+  private dumpFlexCodeMap() {
+    let tbleIdx: number = 0;
+    for (const [bcValue, fcValue] of this.byteCodeToFlexCodeMap) {
+      const fullFlexValue: number | undefined = this.flexcodeValues.get(fcValue);
+      const flexValueInterp = fullFlexValue ? hexWord(fullFlexValue, '0x') : '??---??';
+      this.logMessage(
+        `- [${tbleIdx++}] fc=(${fcValue}, ${hexByte(fcValue, '0x')}), bc=(${bcValue}, ${hexByte(bcValue, '0x')}), [${eFlexcode[fcValue]}]=(${flexValueInterp})`
+      );
+    }
+  }
+
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
     this.isLogging = enable;
@@ -2779,7 +2795,7 @@ export class SpinSymbolTables {
     //const desiredName: string = symbolName.toUpperCase(); // the caller has already done this
     if (this.automatic_symbols.has(symbolName)) {
       const symbolInfo: iBaseSymbolInfo | undefined = this.automatic_symbols.get(symbolName);
-      if (symbolInfo) {
+      if (symbolInfo !== undefined) {
         this.logMessage(`- builtInSymbol(${symbolName}) = (${symbolInfo.value})`);
         findResult = { symbol: symbolName, type: symbolInfo.type, value: symbolInfo.value };
       }
@@ -2795,12 +2811,12 @@ export class SpinSymbolTables {
       this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = this.find_symbol_s3.find((symbol) => symbol.symbol === searchString);
     }
-    if (!findResult && searchString.length > 1) {
+    if (findResult === undefined && searchString.length > 1) {
       searchString = possibleOperator.substring(0, 2);
       this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = this.find_symbol_s2.find((symbol) => symbol.symbol === searchString);
     }
-    if (!findResult && searchString.length > 0) {
+    if (findResult === undefined && searchString.length > 0) {
       searchString = possibleOperator.substring(0, 1);
       this.logMessage(`  --  searchString=[${searchString}]`);
       findResult = this.find_symbol_s1.find((symbol) => symbol.symbol === searchString);
@@ -2906,7 +2922,7 @@ export class SpinSymbolTables {
       const enumKey = eFlexcode[stringKey as keyof typeof eFlexcode];
       const value: number | undefined = this.flexcodeValues.get(enumKey);
       //this.logMessage(`- got ${enumKey} = ${value}`);
-      if (value) {
+      if (value !== undefined) {
         resultStrings.push(this.regressionString(stringKey, value));
         //this.logMessage(`- returning [${newPair}]`);
       }

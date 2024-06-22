@@ -44,7 +44,8 @@ export class Spin2Parser {
   }
 
   get sourceLineNumber(): number {
-    return this.elementizer.sourceLineNumber;
+    return this.spinResolver.sourceLineNumber;
+    //return this.elementizer.sourceLineNumber;
   }
 
   public setSourceFile(spinCode: SpinDocument) {
