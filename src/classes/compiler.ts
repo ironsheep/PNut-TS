@@ -80,12 +80,13 @@ export class Compiler {
         this.spin2Parser.ComposeRam(needFLash, ramDownload);
       } catch (error: unknown) {
         if (error instanceof Error) {
-          this.context.logger.logMessage(`EEEE: About to report: ${error.message}`);
           const filename: string = this.srcFile.fileName;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
-          this.context.logger.logMessage(` DBG filename=[${filename}], sourceLineNumber=(${sourceLineNumber})`);
-          this.context.logger.compilerErrorMsg(`${filename}:${sourceLineNumber}:error:${error.message}`);
-          if (error.stack) {
+          const compilerErrorText: string = `${filename}:${sourceLineNumber}:error:${error.message}`;
+          this.context.logger.logMessage(`EEEE: About to report:   ${compilerErrorText}`);
+          //this.context.logger.logMessage(` DBG filename=[${filename}], sourceLineNumber=(${sourceLineNumber}), errTxt=[${compilerErrorText}]`);
+          this.context.logger.compilerErrorMsg(compilerErrorText);
+          if (error.stack !== undefined) {
             this.context.logger.errorMsg(error.stack);
           }
         } else {

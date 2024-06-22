@@ -20,22 +20,19 @@ export class Logger {
   }
 
   public errorMsg(message: string | unknown) {
-    this.logErrorMessage(`${this.programName}: ERROR- ${message}`);
-  }
-
-  public compilerErrorMsg(message: string | unknown) {
     const redMessage: string = this.errorColor(message);
+    this.logErrorMessage(`${this.programName}: ERROR- ${redMessage}`);
+  }
+
+  public compilerErrorMsg(message: string) {
+    if (typeof message !== 'string') {
+      this.logMessage(`* compilerErrorMsg() - message is ${typeof message}`);
+    }
+    const redMessage: string = this.errorColor(message);
+    if (typeof redMessage !== 'string') {
+      this.logMessage(`* compilerErrorMsg() - redMessage is ${typeof redMessage}`);
+    }
     this.logErrorMessage(`${redMessage}`);
-  }
-
-  private errorColor(str: string | unknown): string {
-    // Add ANSI escape codes to display text in red.
-    return `\x1b[31m${str}\x1b[0m`;
-  }
-
-  private warningColor(str: string | unknown): string {
-    // Add ANSI escape codes to display text in yellow.
-    return `\x1b[33m${str}\x1b[0m`;
   }
 
   public verboseMsg(message: string): void {
@@ -53,11 +50,22 @@ export class Logger {
   }
 
   public warningMsg(message: string): void {
-    this.logErrorMessage(`${this.programName}: WARNING- ${message}`);
+    const yellowMessage: string = this.warningColor(message);
+    this.logErrorMessage(`${this.programName}: WARNING- ${yellowMessage}`);
   }
 
   public progressMsg(message: string): void {
     this.logMessage(`${this.programName}: ${message}`);
+  }
+
+  private errorColor(str: string | unknown): string {
+    // Add ANSI escape codes to display text in red.
+    return `\x1b[31m${str}\x1b[0m`;
+  }
+
+  private warningColor(str: string | unknown): string {
+    // Add ANSI escape codes to display text in yellow.
+    return `\x1b[33m${str}\x1b[0m`;
   }
 
   /**
@@ -76,6 +84,9 @@ export class Logger {
    * @memberof Logger
    */
   public logErrorMessage(message: string) {
+    if (typeof message !== 'string') {
+      this.logMessage(`* logErrorMessage() - message is ${typeof message}`);
+    }
     process.stderr.write(`${message}\r\n`);
   }
 }
