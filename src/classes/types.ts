@@ -282,7 +282,7 @@ export enum eValueType {
   dc_pc_mouse = 9, // 0x09
 
   // discrete values
-  pasm_regs = 482, // 0x1D8
+  pasm_regs = 472, // 0x1D8
 
   // operands
   operand_ds = 0, // 0x00

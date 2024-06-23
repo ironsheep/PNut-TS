@@ -270,6 +270,7 @@ export class SpinElementizer {
         if (typeFound == eElementType.type_op) {
           valueFound = knownOperator.value;
         }
+        symbolLengthFound = knownOperator.charsUsed;
         this.unprocessedLine = this.skipAhead(knownOperator.charsUsed, this.unprocessedLine);
       } else {
         // NEW: generate exception on  bad character....  we added a new Unknown type to be able to do this

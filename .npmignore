@@ -10,6 +10,7 @@ pkg-json-REF.txt
 BUILD-RUN.md
 Compiler.md
 PKG-STUDY.md
+.jest*.json
 jest*.json
 tsconfig.json
 # don't include these folders

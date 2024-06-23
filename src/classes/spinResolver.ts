@@ -1060,7 +1060,7 @@ export class SpinResolver {
             // we have a local symbol... (must be undef or is storage type)
             this.logMessage(`* FOUND local symbol name=[${symbol.name}], type=[${eElementType[symbol.type]}], value=[${symbol.value}]`);
           }
-          this.logMessage(`* compile_dat_blocks() e=[${this.currElement.toString()}]`);
+          this.logMessage(`* compile_dat_blocks() inLineMode=(${inLineMode}) e=[${this.currElement.toString()}]`);
           this.weHaveASymbol = this.currElement.isTypeUndefined;
           const isDatStorage: boolean = this.isDatStorageType();
           if ((this.weHaveASymbol || isDatStorage) && !didFindLocal) {
@@ -1144,6 +1144,8 @@ export class SpinResolver {
             continue;
           } else if (this.currElement.type == eElementType.type_asm_dir) {
             // HANDLE pasm directive
+            this.logMessage(`  -- have pasm directive`);
+
             const pasmDirective: number = Number(this.currElement.value);
             this.wordSize = eWordSize.WS_Long;
 
@@ -1202,6 +1204,7 @@ export class SpinResolver {
             } else if (pasmDirective == eValueType.dir_org) {
               //
               // ORG [{address}[,{limit}]]- (for COG ram)
+              this.logMessage(`  -- compDatBlocks() have ORG`);
               if (inLineMode) {
                 // [error_onawiac]
                 throw new Error('ORG not allowed within inline assembly code');
@@ -1302,6 +1305,7 @@ export class SpinResolver {
             this.getEndOfLine();
           } else if (this.isThereAnInstruction()) {
             //
+            this.logMessage(`  -- have instruction`);
             // HANDLE if-condition, and/or instruction
             // write symbol if present
             this.advanceToNextCogLong();
@@ -1310,6 +1314,7 @@ export class SpinResolver {
             this.assembleInstructionFromLine(pass);
             this.getEndOfLine();
           } else if (inLineMode) {
+            this.logMessage(`  -- NO instruction but INLINE mode, so must be pasm 'END' elem=[${this.currElement.toString()}]`);
             //
             // HANDLE inline must have end
             if (this.currElement.type != eElementType.type_asm_end) {
@@ -1317,7 +1322,9 @@ export class SpinResolver {
               throw new Error('Expected instruction, directive, BYTE/WORD/LONG, or END');
             }
             this.enterDataLong(BigInt(0xfd64002d)); // enter a RET istruction
-            this.getEndOfLine();
+            this.getEndOfLine(); // throw exception if NOT end of line!
+            this.backElement(); // allow our caller to see the end of line in this case
+            break;
           } else if (this.currElement.type == eElementType.type_file) {
             //
             // HANDLE FILE
@@ -1366,6 +1373,7 @@ export class SpinResolver {
         // eslint-disable-next-line no-constant-condition
       } while (this.nextElementType() == eElementType.type_block); // NEXT BLOCK...
     } while (++pass < 2);
+    this.logMessage(`* compile_dat_blocks() done, cleaning up inlineMode`);
     if (inLineMode) {
       this.inlineSymbols.reset();
       this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
@@ -1438,6 +1446,7 @@ export class SpinResolver {
     // handle operands
     // NOTE: tryD() gets the next element, before it does anything
     let skipInstructionGeneration: boolean = false;
+    this.logMessage(`  -- AInstruFmLn() operandType=([${eValueType[operandType]}](${operandType}))`);
     switch (operandType) {
       case eValueType.operand_ds:
         // inst d,s/#
@@ -1999,33 +2008,39 @@ export class SpinResolver {
         break;
       case eValueType.operand_debug: // we have break register 0
         {
+          this.logMessage(`  -- at operand_debug:`);
           const asmCondition = (this.instructionImage >> 28) & 0x0f;
           if (asmCondition > 0x0 && asmCondition < 0xf) {
             // [error_dcbpbac]
             throw new Error('DEBUG cannot be preceded by a condition, except _RET_');
           }
           if (this.context.compileOptions.enableDebug == false) {
+            this.logMessage(`  -- DEBUG is OFF`);
             this.skipToEnd();
             skipInstructionGeneration = true;
           } else {
+            this.logMessage(`  -- DEBUG is ON`);
             // head debug() in assembly code
             if (this.checkLeftParen() == false) {
               // have 'debug' without ()
               // keeping condition value, convert to BRK #0 (break immediate 0)
+              this.logMessage(`  -- NO open paren`);
               this.instructionImage |= 1 << 18;
-              this.getEndOfLine();
+              this.getEndOfLine(); // throw exception if NOT end of line!
               this.backElement(); // allow our effects check to work but do nothing!
             } else {
+              this.logMessage(`  -- found open paren pass=(${pass})`);
               // here is debug() - PNut @@debugleft:
               if (pass == 0) {
                 this.skipToEnd();
+                //this.backElement(); // TODO: bad?
                 // allow instruction generation to avoid pass phase error
               } else {
                 // PNut @@debugpass1:
                 const breakCode = this.ci_debug_asm();
                 // keeping condition value, convert to given BRK n immediate
                 this.instructionImage |= (1 << 18) | (breakCode << 9);
-                this.getEndOfLine();
+                this.getEndOfLine(); // throw exception if NOT end of line!
                 this.backElement(); // allow our effects check to work but do nothing!
               }
             }
@@ -2040,6 +2055,7 @@ export class SpinResolver {
         break;
     }
     // end of line or have effect?
+    this.logMessage(`  -- AInstruFmLn() should be at end - elem=[${this.currElement.toString()}]`);
     if (this.nextElementType() != eElementType.type_end) {
       // we have an effect!
       this.getElement();
@@ -5206,7 +5222,8 @@ export class SpinResolver {
       // [error_isie]
       throw new Error('Inline section is empty');
     }
-    this.objImage.replaceWord(lengthInLongs, patchLocation - 2); // replace the placeholder with length
+    this.objImage.replaceWord(lengthInLongs - 1, patchLocation - 2); // replace the placeholder with length
+    this.logMessage(`  -- compileInLine() - EXIT`);
   }
 
   private ci_next_quit() {
@@ -5797,11 +5814,12 @@ export class SpinResolver {
 
   private debugExpSource(isPasmMode: boolean = false): [number, number] {
     // PNut debug_exp_source:
-    this.logMessage(`* debugExpSource(isPasm=(${isPasmMode})) - ENTRY`);
     const savedElementIndex = this.saveElementLocation();
     this.getElement(); // skip paren
+    this.logMessage(
+      `* debugExpSource(isPasm=(${isPasmMode})) - ENTRY elem=[${this.currElement.toString()}](${this.currElement.sourceCharacterOffset},?)`
+    );
     const startOffset: number = this.currElement.sourceCharacterOffset;
-    const endoffset: number = this.currElement.sourceCharacterEndOffset;
     this.backElement();
     // here is ci_debug:@@skipparam for debug() (not asm form)
     if (isPasmMode == false) {
@@ -5813,6 +5831,10 @@ export class SpinResolver {
       // NOTE we are just skipping past so we don't use this return value
       const startValueReturn: iValueReturn = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
     }
+    this.logMessage(
+      `* debugExpSource() elem=[${this.currElement.toString()}](${this.currElement.sourceCharacterOffset},${this.currElement.sourceCharacterEndOffset})`
+    );
+    const endoffset: number = this.currElement.sourceCharacterEndOffset;
     this.logMessage(`* debugExpSource() - EXIT srt=(${startOffset}), end=(${endoffset})`);
     this.restoreElementLocation(savedElementIndex); // restore to left paren
     return [startOffset, endoffset];
@@ -5823,7 +5845,7 @@ export class SpinResolver {
     let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
     if (currSrcLine) {
       // enter string bytes
-      for (let index = startOffset; index < endOffset; index++) {
+      for (let index = startOffset; index <= endOffset; index++) {
         const currCharCode: number = currSrcLine.charCodeAt(index);
         this.debugEnterByte(currCharCode);
       }

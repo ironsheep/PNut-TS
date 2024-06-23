@@ -1,6 +1,6 @@
 {
   "name": "p2-pnut-ts",
-  "version": "0.0.1",
+  "version": "0.43.0",
   "description": "A Parallax Propeller 2 compiler in TypeScript",
   "main": "out/pnut-ts.js",
   "bin": {

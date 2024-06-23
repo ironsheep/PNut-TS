@@ -59,7 +59,7 @@ export class PNutInTypeScript {
       .configureOutput({
         // Visibly override write routines as example!
         writeOut: (str) => process.stdout.write(this.prefixName(str)),
-        writeErr: (str) => process.stdout.write(this.prefixName(str)),
+        writeErr: (str) => process.stderr.write(this.prefixName(str)),
         // Highlight errors in color.
         outputError: (str, write) => write(this.errorColor(str))
       })
@@ -68,7 +68,7 @@ export class PNutInTypeScript {
       .usage('[optons] filename')
       .description(`Propeller Spin2 compiler/downloader - v${this.version}`)
       .arguments('[filename]')
-      .action((filename) => {
+      .action((filename: string) => {
         this.options.filename = filename;
       })
       //      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
@@ -187,6 +187,16 @@ export class PNutInTypeScript {
       const commandLineArgs: string[] = process.argv;
       const commandLine: string = `pnut_ts ${commandLineArgs.slice(2).join(' ')}`;
       this.context.logger.infoMsg(`* ${commandLine}`);
+    }
+
+    // OVERRIDE mech to allow args of ['', 'filename.spin2'] - spin2 extension does this!!!
+    for (let index = 0; index < this.program.args.length; index++) {
+      const argument: string = this.program.args[index];
+      if (argument.length > 0 && argument.includes('.spin')) {
+        if (this.options.filename !== argument) {
+          this.options.filename = argument;
+        }
+      }
     }
 
     //this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);

@@ -73,7 +73,7 @@ export class SpinElement {
   }
 
   get sourceCharacterEndOffset(): number {
-    return this._sourceCharacterOffset + this._symbolLength;
+    return this._sourceCharacterOffset + this._symbolLength - 1;
   }
 
   get type(): eElementType {
