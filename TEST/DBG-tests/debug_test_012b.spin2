@@ -1,0 +1,11 @@
+'' Spin2 Language Manual - DEBUG Scope Example #2
+CON _clkfreq = 100_000_000
+
+PUB go() | i
+
+  debug(`SCOPE_XY MyXY RANGE 500 POLAR 360 'G' 'R' 'B')
+
+  repeat
+    repeat i from 0 to 500
+      debug(`MyXY `(i, i, i, i+120, i, i+240))
+      waitms(5)

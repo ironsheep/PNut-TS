@@ -1,0 +1,11 @@
+'' Spin2 Language Manual - DEBUG MIDI Example #1
+CON _clkfreq = 10_000_000
+
+PUB go() | i
+
+  debug(`midi MyMidi size 3 range 36 84)
+  repeat
+    repeat i from 36 to 84
+      debug(`MyMidi $90 `(i, getrnd() & $7F))
+      waitms(150)
+      debug(`MyMidi $80 `(i, 0))

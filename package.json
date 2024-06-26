@@ -31,6 +31,7 @@
     "test": "npm run build && jest -c jest-config/jest-short-only-config.json",
     "test-full": "npm run build && jest -c jest-config/jest-full-config.json",
     "test-datpasm": "npm run build && jest -c jest-config/jest-datpasm-only-config.json",
+    "test-dbg": "npm run build && jest -c jest-config/jest-dbg-only-config.json --verbose",
     "test-full-only": "npm run build && jest -c jest-config/jest-full-only-config.json",
     "pretest": "npm run build && npm run lint",
     "watch": "tsc -b -w",

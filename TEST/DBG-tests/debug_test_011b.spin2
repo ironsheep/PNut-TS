@@ -1,0 +1,35 @@
+'' Spin2 Language Manual - DEBUG Logic Display Example #2
+CON _clkfreq  = 333_333_333  'go really fast, 3ns clock period
+    rxpin     = 24           'even pin
+    txpin     = rxpin+1      'odd pin
+    samps     = 32           'multiple of 16 samples
+    bufflongs = samps / 16   'each long holds 16 2-bit samples
+    xmode     = $D0800000 + rxpin << 17 + samps   'streamer mode
+
+VAR buff[bufflongs]
+
+PUB go() | i, buffaddr
+
+  debug(`logic Serial samples `(samps) spacing 12 'TX' 'IN' longs_2bit)
+  debug(`Serial trigger %10 %10 22)
+  buffaddr := @buff
+
+  repeat
+    org
+    wrpin	##+1<<28,#rxpin       'rxpin inputs txpin at rxpin+1
+
+    wrpin	#%01_11110_0,#txpin   'set async tx mode for txpin
+    wxpin	##1<<16+8-1,#txpin    'set baud=sysclock/1 and size=8
+    dirh	#txpin                'enable smart pin
+
+    wrfast	#0,buffaddr           'set write-fast at buff
+    xinit	##xmode,#0            'start capturing 2-bit samples
+
+    wypin	i,#txpin              'transmit serial byte
+
+    waitxfi                          'wait for streamer capture done
+    end
+
+    debug(`Serial `uhex_long_array_(@buff, bufflongs))
+    i++
+    waitms(20)

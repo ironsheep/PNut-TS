@@ -1,0 +1,10 @@
+'' Spin2 Language Manual - DEBUG TERM Example #1
+CON _clkfreq = 10_000_000
+
+PUB go() | i
+
+  debug(`TERM MyTerm SIZE 9 1 TEXTSIZE 40)
+  repeat
+    repeat i from 50 to 60
+      debug(`MyTerm 1 'Temp = `(i)')
+      waitms(500)

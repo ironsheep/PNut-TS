@@ -1,0 +1,23 @@
+'' Spin2 Language Manual - DEBUG MIDI Example #2
+CON	_clkfreq	= 10_000_000
+	rxpin		= 16
+
+DAT	org
+
+	debug	(`midi m size 2)
+
+	wrpin	#%11111_0,#rxpin
+	wxpin	##(clkfreq_/31250) << 16 + 8-1, #rxpin
+	drvl	#rxpin
+
+.wait	testp	#rxpin	wc
+ if_nc	jmp	#.wait
+
+	rdpin	x,#rxpin
+	shr	x,#32-8
+
+	debug	("`m ", uhex_byte_(x))
+
+	jmp	#.wait
+
+x	res	1

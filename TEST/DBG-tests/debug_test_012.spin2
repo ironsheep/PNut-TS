@@ -1,0 +1,15 @@
+'' Spin2 Language Manual - DEBUG Scope Example #1
+CON _clkfreq	= 100_000_000
+
+PUB go() | a, af, b, bf
+
+  debug(`SCOPE MyScope)
+  debug(`MyScope 'FreqA' -1000 1000 100 136 15 MAGENTA)
+  debug(`MyScope 'FreqB' -1000 1000 100 20 15 ORANGE)
+  debug(`MyScope TRIGGER 0 HOLDOFF 2)
+
+  repeat
+    a := qsin(1000, af++, 200)
+    b := qsin(1000, bf++, 99)
+    debug(`MyScope `(a,b))
+    waitus(200)

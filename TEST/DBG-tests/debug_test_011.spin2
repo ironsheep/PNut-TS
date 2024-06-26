@@ -1,0 +1,18 @@
+'' Spin2 Language Manual - DEBUG Logic Display Example #1
+CON _clkfreq	= 10_000_000
+
+PUB go() | i
+
+  debug(`LOGIC MyLogic SAMPLES 32 'Low' 3 'Mid' 2 'High')
+  debug(`MyLogic TRIGGER $07 $04 HOLDOFF 2)
+
+  repeat
+    'debug(`MyLogic `((i & 63) +1) 'test')
+    'debug(`MyLogic `(i & 63))  BAD
+    debug(`MyLogic `(i & 63))
+    'debug(`MyLogic `$(i & 63)) BAD
+    'debug(`MyLogic) WORKS
+    'debug(`MyLogic `uhex_(63)) BAD
+    'debug(`MyLogic `if(0))
+    i++
+    waitms(25)

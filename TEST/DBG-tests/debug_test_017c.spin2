@@ -1,0 +1,21 @@
+'' Spin2 Language Manual - DEBUG BITMAP Example #3
+CON _clkfreq = 100_000_000
+
+PUB go() | i
+  debug(`bitmap a title 'LUMA8'  pos 100 100 size 1 256 dotsize 256 1 luma8  cyan)
+  debug(`bitmap b title 'LUMA8W' pos 370 100 size 1 256 dotsize 256 1 luma8w cyan)
+  debug(`bitmap c title 'LUMA8X' pos 640 100 size 1 256 dotsize 256 1 luma8x cyan)
+  debug(`bitmap d title 'RGBI8'  pos 100 395 size 8 32 dotsize 32 8 trace 4 rgbi8)
+  debug(`bitmap e title 'RGBI8W' pos 370 395 size 8 32 dotsize 32 8 trace 4 rgbi8w)
+  debug(`bitmap f title 'RGBI8X' pos 640 395 size 8 32 dotsize 32 8 trace 4 rgbi8x)
+  debug(`bitmap g title 'HSV8'   pos 100 690 size 16 16 trace 4 dotsize 16 hsv8)
+  debug(`bitmap h title 'HSV8W'  pos 370 690 size 16 16 trace 4 dotsize 16 hsv8w)
+  debug(`bitmap i title 'HSV8X'  pos 640 690 size 16 16 trace 4 dotsize 16 hsv8x)
+  debug(`bitmap j title 'HSV16'  pos 100 985 size 256 256 trace 4 hsv16)
+  debug(`bitmap k title 'HSV16W' pos 370 985 size 256 256 trace 4 hsv16w)
+  debug(`bitmap l title 'HSV16X' pos 640 985 size 256 256 trace 4 hsv16x)
+  waitms(1000)
+  repeat i from 0 to 255			'feed 8-bit displays
+    debug(`a b c d e f g h i `uhex_(i))
+  repeat i from 0 to 65535			'feed 16-bit displays
+    debug(`j k l `uhex_(i))

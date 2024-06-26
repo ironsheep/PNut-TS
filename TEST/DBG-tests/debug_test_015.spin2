@@ -1,0 +1,32 @@
+'' Spin2 Language Manual - DEBUG PLOT Example #1
+CON _clkfreq = 10_000_000
+
+PUB go(): i, j, k
+
+  debug(`plot myplot size 400 480 backcolor white update)
+  debug(`myplot origin 200 200 polar -64 -16)
+  k~
+  repeat
+    debug(`myplot clear)
+    debug(`myplot set 240 0 cyan 3 text 24 3 'Hub RAM Interface')
+    debug(`myplot set 210 0 text 11 3 'Cogs can r/w 32 bits per clock')
+
+    if k & 8    'move RAMs or draw spokes?
+      j++
+    else
+      repeat i from 0 to 7
+        debug(`myplot gray 12 set 83 `(i*8) line 150 `(i*8) 15)
+
+    debug(`myplot set 0 0 cyan 4 circle 121 yellow 7 circle 117 3)
+    debug(`myplot set 20 0 white text 9 'Address LSBs')
+    debug(`myplot set 0 0 text 11 1 '8 Hub RAMs')
+    debug(`myplot set 20 32 text 9 '16K x 32' )
+
+    repeat i from 0 to 7    'draw RAMs and cogs
+      debug(`myplot cyan 6 set 83 `(i*8-j) circle 43 text 14 '`(i)')
+      debug(`myplot cyan 4 set 83 `(i*8-j) circle 45 3)
+      debug(`myplot orange 6 set 150 `(i*8) circle 61 text 13 'Cog`(i)')
+      debug(`myplot orange 4 set 150 `(i*8) circle 63 3)
+
+    debug(`myplot update `dly(30))
+    k++

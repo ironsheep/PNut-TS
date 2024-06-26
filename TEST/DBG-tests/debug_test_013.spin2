@@ -1,0 +1,19 @@
+'' Spin2 Language Manual - DEBUG FFT Example #1
+CON _clkfreq = 100_000_000
+
+PUB go() | i, j, k
+
+  ' Set up FFT
+  debug(`FFT MyFFT SIZE 250 200 SAMPLES 2048 0 127 RATE 256 LOGSCALE COLOR YELLOW 4 YELLOW 5)
+  debug(`MyFFT 'FFT' 0 1000 180 10 15 YELLOW 12)
+
+  ' Set up SCOPE
+  debug(`scope MyScope POS 300 0 SIZE 255 200 COLOR CYAN 4 CYAN 5)
+  debug(`MyScope 'Sine' -1000 1000 180 10 15 CYAN 12)
+  debug(`MyScope TRIGGER 0)
+
+  repeat
+    j += 1550 + qsin(1300, i++, 31_000)
+    k := qsin(1000, j, 50_000)
+    debug(`MyFFT MyScope `(k))
+    waitus(100)

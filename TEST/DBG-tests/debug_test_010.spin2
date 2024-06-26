@@ -1,0 +1,12 @@
+'' Spin2 Language Manual - DEBUG Scope
+CON _clkfreq = 10_000_000
+
+PUB go() | i
+
+  debug(`SCOPE MyScope SIZE 254 84 SAMPLES 128)
+  debug(`MyScope 'Sawtooth' 0 63 64 10 %1111)
+
+  repeat
+    debug(`MyScope `(i & 63))
+    i++
+    waitms(50)
