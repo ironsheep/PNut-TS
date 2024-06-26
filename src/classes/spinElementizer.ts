@@ -54,6 +54,8 @@ export class SpinElementizer {
   private firstCharColumn: number = 0;
   private lastSymboblEndOffset: number = 0;
   private debugStringState: eDebugStringState = eDebugStringState.NOT_IN_DEBUG;
+  private debugParenNestCount: number = 0; // count of nested parens in `{dbgCmd}(...) directives
+  private debugInQuotedString: boolean = false; // avoid stuff while in strings
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -228,6 +230,12 @@ export class SpinElementizer {
       // exit string but will return after `{dbgCmd}(...)
       this.debugStringState = eDebugStringState.WAITING_CLOSE_PAREN;
     } else if (this.unprocessedLine.charAt(0) == '"') {
+      // note state for () avoidance
+      if (this.debugInQuotedString == false && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
+        this.debugInQuotedString = true;
+      } else if (this.debugInQuotedString == true) {
+        this.debugInQuotedString = false;
+      }
       // handle double-quoted string
       const endQuoteOffset = this.unprocessedLine.substring(1).indexOf('"');
       // if we have an end and not an empty string
@@ -341,13 +349,21 @@ export class SpinElementizer {
         if (typeFound == eElementType.type_left && this.debugStringState == eDebugStringState.FOUND_DEBUG) {
           // found debug(
           this.debugStringState = eDebugStringState.FOUND_OPEN_PAREN;
+        } else if (typeFound == eElementType.type_left && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
+          this.debugParenNestCount++;
         } else if (typeFound == eElementType.type_right && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
-          this.debugStringState = eDebugStringState.IN_TRAILING_TIC_STRING;
+          if (this.debugParenNestCount > 0) {
+            this.debugParenNestCount++;
+          }
+          if (this.debugParenNestCount == 0) {
+            this.debugStringState = eDebugStringState.IN_TRAILING_TIC_STRING;
+          }
         } else if (typeFound == eElementType.type_tick) {
           if (this.debugStringState == eDebugStringState.FOUND_OPEN_PAREN) {
             // found debug(`
             this.debugStringState = eDebugStringState.IN_LEADING_TIC_STRING;
           }
+          this.debugParenNestCount = 0; // reset depth
         }
       } else {
         // NEW: generate exception on  bad character....  we added a new Unknown type to be able to do this

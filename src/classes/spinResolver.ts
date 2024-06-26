@@ -5476,7 +5476,7 @@ export class SpinResolver {
   private ci_debug() {
     // Compile DEBUG for Spin2
     // PNut ci_debug:
-    this.debug_first = true;
+    this.debug_first = true; // assure first at start of new debug() line
     this.debug_record.clear(); // each debug() line, start with empty record
     this.debug_stack_depth = 0;
 
@@ -5705,6 +5705,7 @@ export class SpinResolver {
     //Here is @@tickCmd:
     let brkCode: number = 0;
     const pasmMode: boolean = true;
+    let currCmdValue: number = cmdValue;
     this.logMessage(`* tickCmdAsm(${hexByte(cmdValue, '0x')}) ENTRY elem=[${this.currElement.toString()}]`);
     if (cmdValue == eValueType.dc_dly || cmdValue == eValueType.dc_pc_key || cmdValue == eValueType.dc_pc_mouse) {
       // NOTE any of these three MUST be the last tickcommand in a debug() statement
@@ -5717,15 +5718,15 @@ export class SpinResolver {
       this.getLeftParen();
       // here is @@param:
       do {
-        this.debugEnterByteFlag(cmdValue);
-        if ((cmdValue & 0x02) == 0) {
+        currCmdValue = this.debugEnterByteFlag(currCmdValue);
+        if ((currCmdValue & 0x02) == 0) {
           // select getparam
           const [startOffset, endOffset] = this.debugExpSource(pasmMode);
           this.debugVerboseString(startOffset, endOffset);
           //this.getElement();
         }
         // here is @@notverbose
-        if (cmdValue & 0x10) {
+        if (currCmdValue & 0x10) {
           this.compileParamAsm();
           this.getComma();
         }
@@ -5750,7 +5751,7 @@ export class SpinResolver {
   }
 
   private singleParamCheck(cmdValue: number) {
-    this.logMessage(`* singleParamCheck(${hexByte(cmdValue, '0x')})`);
+    this.logMessage(`* singleParamChk(${hexByte(cmdValue, '0x')})`);
     if (cmdValue & 0x02) {
       // here is @@spsimple
       this.singleParamSimple(cmdValue);
@@ -5764,6 +5765,7 @@ export class SpinResolver {
   private dualParamSimple(cmdValue: number) {
     // PNut ci_debug:@@dpsimple
     let parameterCount = this.compileParametersMethodPtr();
+    let currCmdValue: number = cmdValue;
     if (parameterCount == 0) {
       // [error_eaet]
       throw new Error('Expected an expression term');
@@ -5772,7 +5774,7 @@ export class SpinResolver {
       throw new Error('Expected an even number of parameters');
     }
     while ((parameterCount -= 2) >= 0) {
-      this.debugEnterByteFlag(cmdValue);
+      currCmdValue = this.debugEnterByteFlag(currCmdValue);
       this.incStack();
       this.incStack();
     }
@@ -5780,13 +5782,14 @@ export class SpinResolver {
 
   private dualParamVerbose(cmdValue: number) {
     // PNut ci_debug:@@dpverbose:
+    let currCmdValue: number = cmdValue;
     this.logMessage(`* dualParamVerbose(${hexByte(cmdValue, '0x')}) curElem=${this.currElement.toString()}`);
     //this.getElement(); // move to value after '('
     do {
       const [startCharOffset, endCharOffset] = this.debugExpSource();
       const twoParams: number = 2;
       this.compileParametersNoParens(twoParams);
-      this.debugEnterByteFlag(cmdValue);
+      currCmdValue = this.debugEnterByteFlag(currCmdValue);
       this.incStack();
       this.incStack();
       this.debugVerboseString(startCharOffset, endCharOffset);
@@ -5795,33 +5798,37 @@ export class SpinResolver {
 
   private singleParamSimple(cmdValue: number) {
     // PNut ci_debug:@@spsimple:
+    let currCmdValue: number = cmdValue;
+    this.logMessage(`* singleParamSimple(${hexByte(cmdValue, '0x')}) curElem=${this.currElement.toString()}`);
     let parameterCount = this.compileParametersMethodPtr();
+    this.logMessage(`* singleParamSimple(${hexByte(cmdValue, '0x')}) curElem=${this.currElement.toString()} -> parameterCount=(${parameterCount})`);
     if (parameterCount == 0) {
       // [error_eaet]
       throw new Error('Expected an expression term');
     }
     while (parameterCount--) {
-      this.debugEnterByteFlag(cmdValue);
+      currCmdValue = this.debugEnterByteFlag(currCmdValue);
       this.incStack();
     }
   }
 
   private singleParamVerbose(cmdValue: number) {
     // PNut ci_debug:@@spverbose:
+    let currCmdValue: number = cmdValue;
     do {
       const [startCharOffset, endCharOffset] = this.debugExpSource();
       let parameterCount = this.compileParameter();
-      this.debugEnterByteFlag(cmdValue);
+      currCmdValue = this.debugEnterByteFlag(currCmdValue);
       this.incStack();
       this.debugVerboseString(startCharOffset, endCharOffset);
       parameterCount--;
       if (parameterCount > 0) {
-        let adjustedCmdValue = cmdValue & 0x02;
+        currCmdValue |= 0x02;
         while (parameterCount--) {
-          this.debugEnterByteFlag(adjustedCmdValue);
+          currCmdValue = this.debugEnterByteFlag(currCmdValue);
           this.incStack();
         }
-        adjustedCmdValue &= 0xfc;
+        currCmdValue &= 0xfc;
       }
     } while (this.getCommaOrRightParen());
   }
@@ -5867,10 +5874,12 @@ export class SpinResolver {
     }
   }
 
-  private debugEnterByteFlag(cmdValue: number) {
+  private debugEnterByteFlag(cmdValue: number): number {
     // PNut debug_enter_byte_flag:
+    this.logMessage(`* debugEnterByteFlag(${hexByte(cmdValue, '0x')}) debug_first=(${this.debug_first})`);
     this.debugEnterByte(cmdValue | (this.debug_first ? 1 : 0));
-    this.debug_first = false;
+    this.debug_first = false; // we marked the first, remaining are not first
+    return cmdValue & 0xfe;
   }
 
   private singleParam(cmdValue: number, isPasmMode: boolean = false) {
@@ -6086,7 +6095,7 @@ export class SpinResolver {
     // PNut ci_debug_asm:
     // NOTE: only here if we have debug(...) or debug()
     let brkCode: number = 0;
-    this.debug_first = true;
+    this.debug_first = true; // assure first at start of new debug() line
     this.debug_record.clear(); // each debug() line, start with empty record
 
     this.logMessage(`*--* ci_debug_asm(${this.currElement.toString()})`);
@@ -6831,6 +6840,7 @@ export class SpinResolver {
     // Compile term - @"string", @obj{[]}.method, @method, or @hubvar
     // PNut ct_at:
     this.getElement();
+    this.logMessage(`* ct_at() get then elem=[${this.currElement.toString()}]`);
     if (this.currElement.type == eElementType.type_con) {
       // here is @@string:
       this.objWrByte(eByteCode.bc_string);
@@ -6849,12 +6859,14 @@ export class SpinResolver {
           // [error_sdcx]
           throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
         }
+        this.logMessage(`* ct_at() post getValue elem=[${this.currElement.toString()}]`);
+        this.getElement();
         if (this.currElement.isMidStringComma == false) {
-          break;
+          break; // this could be comma (not mid), right-paren or EOL
         }
-        this.getComma();
         // eslint-disable-next-line no-constant-condition
       } while (true);
+      this.backElement();
       this.objWrByte(0); // emit string terminator
       this.objImage.replaceByte(stringLength, patchLocation); // replace the placeholder with length
     } else if (this.currElement.type == eElementType.type_obj) {
@@ -8754,7 +8766,7 @@ export class SpinResolver {
     this.getElement();
     if (this.currElement.type != eElementType.type_right) {
       // [error_eright]
-      throw new Error('Expected ")"');
+      throw new Error('get Expected ")"');
     }
   }
 
