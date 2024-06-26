@@ -1,4 +1,4 @@
 #!/bin/bash
 #  the following should abort if the compile fails
 #(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -v -d -l -O --log compiler resolver parser elementizer --regression element -v TEST/DBG-tests/debug_test_011.spin2)
-(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -v -d -l -O --log resolver --regression element -v TEST/DBG-tests/debug_test_011.spin2)
+(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -v -d -l -O --log resolver --regression element -v TEST/DBG-tests/debug_test_016.spin2)

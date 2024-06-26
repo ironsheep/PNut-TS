@@ -1,0 +1,5 @@
+_clkfreq = 10_000_000
+
+PUB Go()
+
+  debug(`MyJunk `zstr_(@"This is a ))) string"))

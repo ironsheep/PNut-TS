@@ -1,0 +1,7 @@
+_clkfreq = 10_000_000
+
+PUB Go()
+
+  print(@"This is a ))) string")
+
+PUB print(str)
