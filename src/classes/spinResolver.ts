@@ -5771,7 +5771,7 @@ export class SpinResolver {
       // [error_eaenop]
       throw new Error('Expected an even number of parameters');
     }
-    while (parameterCount--) {
+    while ((parameterCount -= 2) >= 0) {
       this.debugEnterByteFlag(cmdValue);
       this.incStack();
       this.incStack();
