@@ -15,7 +15,7 @@ export function getSourceSymbol(context: Context, element: SpinElement): string 
   if (srcDocument !== undefined && element.refersToSymbol) {
     const sourceLine: string = srcDocument.lineAt(element.sourceLineIndex).text;
     //context.logger.logMessage(`funcGetSourceSymbol() sourceLine=[${sourceLine}](${element.sourceCharacterEndOffset})`);
-    desiredSymbol = sourceLine.substring(element.sourceCharacterOffset, element.sourceCharacterEndOffset).toUpperCase();
+    desiredSymbol = sourceLine.substring(element.sourceCharacterOffset, element.sourceCharacterEndOffset + 1).toUpperCase();
     //} else {
     //  context.logger.logMessage(`funcGetSourceSymbol() refersToSymbol==FALSE!!!)`);
   }

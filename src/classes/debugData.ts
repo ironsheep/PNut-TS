@@ -19,7 +19,7 @@ export class DebugRecord {
 
   constructor(ctx: Context) {
     this.context = ctx;
-    this.isLogging = this.context.logOptions.logCompile;
+    this.isLogging = this.context.logOptions.logResolver;
   }
 
   get length(): number {
@@ -64,7 +64,7 @@ export class DebugData {
 
   constructor(ctx: Context) {
     this.context = ctx;
-    this.isLogging = this.context.logOptions.logCompile;
+    this.isLogging = this.context.logOptions.logResolver;
     const nextFreeOffset: number = 0x200;
     this.replaceWord(nextFreeOffset, 0); // set offset to first record
     this._debugOffset = nextFreeOffset;
@@ -134,13 +134,13 @@ export class DebugData {
         break; // outta here we have answer
       }
     }
-    this.logMessage(`recordIsMatch(idx=${entryIndex}, sz=${newRecord.length}) -> match=(${recordMatchStatus})`);
+    this.logMessage(`* DebugData: recordIsMatch(idx=${entryIndex}, sz=${newRecord.length}) -> match=(${recordMatchStatus})`);
     return recordMatchStatus;
   }
 
   public setRecord(entryIndex: number, newRecord: DebugRecord) {
     // NOTE: entryIndex should be 1-n
-    this.logMessage(`* setRecord(idx=${entryIndex}, sz=${newRecord.length})`);
+    this.logMessage(`* DebugData: setRecord(idx=${entryIndex}, sz=${newRecord.length})`);
     const recordOffset: number = this.readWord(0);
     if (recordOffset + newRecord.length > DebugData.DEBUG_SIZE_IN_BYTES) {
       // [error_dditl] WAS: DEBUG data is too long

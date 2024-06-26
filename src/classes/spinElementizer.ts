@@ -26,7 +26,16 @@ interface iBuiltInSymbol {
   type: eElementType;
 }
 
-// FIXME: TODO: debug() returns new type debug-statment whoes value is a list: SpinSymobl[]
+enum eDebugStringState {
+  NOT_IN_DEBUG,
+  FOUND_DEBUG,
+  FOUND_OPEN_PAREN,
+  IN_LEADING_TIC_STRING,
+  WAITING_CLOSE_PAREN,
+  IN_TRAILING_TIC_STRING
+}
+
+// FIXME: TODO: debug() returns new type debug-statment whose value is a list: SpinSymbol[]
 
 export class SpinElementizer {
   private context: Context;
@@ -44,6 +53,7 @@ export class SpinElementizer {
   private lastEmittedIsLineEnd: boolean = true;
   private firstCharColumn: number = 0;
   private lastSymboblEndOffset: number = 0;
+  private debugStringState: eDebugStringState = eDebugStringState.NOT_IN_DEBUG;
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -118,6 +128,8 @@ export class SpinElementizer {
     // eslint-disable-next-line prefer-const
     let valueFound: string | bigint = '';
     let symbolLengthFound: number = 0;
+    let firstElementOfLine: boolean = false;
+    let inDebugStatement: boolean = false;
     //
     // let's parse like spin example initially
     //
@@ -126,10 +138,15 @@ export class SpinElementizer {
       const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
       this.logMessage(`  --- NEW ---   Ln#${lineNbrString}  line=[${this.unprocessedLine}]`);
       this.firstCharColumn = this.countColumnsOfLeftEdgeWhite(this.unprocessedLine) + 1;
+      firstElementOfLine = true;
+      inDebugStatement = false;
+      this.debugStringState = eDebugStringState.NOT_IN_DEBUG;
     }
 
     // skip initial white space on opening line
-    this.skipLeadingWhiteSpace();
+    if (this.debugStringState != eDebugStringState.IN_TRAILING_TIC_STRING) {
+      this.skipLeadingWhiteSpace();
+    }
 
     // if we are positioned at the start of a '...' line-continuation then skip lines until not at '...'
     if (this.unprocessedLine.startsWith('...')) {
@@ -170,9 +187,48 @@ export class SpinElementizer {
       this.recordSymbolLocation();
       this.loadNextLine();
       typeFound = eElementType.type_end;
+    } else if (
+      this.debugStringState == eDebugStringState.IN_LEADING_TIC_STRING ||
+      this.debugStringState == eDebugStringState.IN_TRAILING_TIC_STRING
+    ) {
+      // TODO: need debug(` entry and need `{cmd}(...) reentry, exit will be "`" or )EOL
+      // handle double-quoted string
+
+      let charOffset = 0; //this.currCharacterIndex;
+      this.logMessage(`* EmitTickString --  unprocessedLine=[${this.unprocessedLine}](${this.unprocessedLine.length})`);
+      let stringEndOffset = this.unprocessedLine.indexOf('`');
+      if (stringEndOffset == -1) {
+        stringEndOffset = this.unprocessedLine.indexOf(')');
+      }
+      let stringLength: number = 0;
+      returningSingleEntry = false;
+      // if we have an end and not an empty string
+      if (stringEndOffset != -1 && stringEndOffset != 0) {
+        stringLength = stringEndOffset - charOffset;
+        this.logMessage(`* EmitTickString --  at(${charOffset}), end(${stringEndOffset}), charCount=(${stringLength})`);
+        if (stringLength > 0) {
+          for (let charIndex = 0; charIndex < stringEndOffset; charIndex++) {
+            const char = this.unprocessedLine.charAt(charIndex);
+            const elementChar: SpinElement = this.buildElement(eElementType.type_con, char, charOffset);
+            elementsFound.push(elementChar);
+            if (charIndex < stringEndOffset - 1) {
+              const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
+              elementComma.midStringComma = true;
+              elementsFound.push(elementComma);
+            }
+            charOffset += 1;
+          }
+        }
+        if (stringLength) {
+          this.unprocessedLine = this.skipAhead(stringLength, this.unprocessedLine);
+        }
+      } else {
+        this.logMessage(`* EmitTickString -- charCount=(${stringLength}) emit nothing`);
+      }
+      // exit string but will return after `{dbgCmd}(...)
+      this.debugStringState = eDebugStringState.WAITING_CLOSE_PAREN;
     } else if (this.unprocessedLine.charAt(0) == '"') {
       // handle double-quoted string
-      // FIXME: TODO: add double-quoted string parsing!
       const endQuoteOffset = this.unprocessedLine.substring(1).indexOf('"');
       // if we have an end and not an empty string
       if (endQuoteOffset != -1 && endQuoteOffset != 0) {
@@ -200,10 +256,14 @@ export class SpinElementizer {
         }
       }
     } else if (this.unprocessedLine.charAt(0) == "'") {
-      // handle tic-comment, skip rest of line
-      typeFound = eElementType.type_end;
-      this.recordSymbolLocation();
-      this.loadNextLine();
+      if (inDebugStatement == false) {
+        // handle tic-comment, skip rest of line
+        typeFound = eElementType.type_end;
+        this.recordSymbolLocation();
+        this.loadNextLine();
+      } else {
+        // handle tic delimited string within debug statement
+      }
     } else if (this.isDigit(this.unprocessedLine.charAt(0))) {
       // handle decimal or decimal-float convertion
       const [isFloat, charsUsed, value] = this.decimalConversion(this.unprocessedLine);
@@ -255,13 +315,18 @@ export class SpinElementizer {
       if (foundSymbol.foundStatus) {
         typeFound = foundSymbol.type;
         valueFound = foundSymbol.value;
+        symbolLengthFound = foundSymbol.charsUsed;
+        if (typeFound == eElementType.type_debug && firstElementOfLine) {
+          inDebugStatement = true;
+          this.debugStringState = eDebugStringState.FOUND_DEBUG;
+        }
       } else {
         // this is a user defined symbol name which is as of yet undefined
         typeFound = eElementType.type_undefined;
         // NOTE: when value is string of symbol name.
         valueFound = value;
       }
-      this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+      this.unprocessedLine = this.skipAhead(symbolLengthFound, this.unprocessedLine);
     } else {
       // lookup operator but in 3 then 2 then 1 length ...
       const knownOperator: iKnownOperator = this.operatorConvert(this.unprocessedLine);
@@ -272,6 +337,18 @@ export class SpinElementizer {
         }
         symbolLengthFound = knownOperator.charsUsed;
         this.unprocessedLine = this.skipAhead(knownOperator.charsUsed, this.unprocessedLine);
+        // special state handling for debug() string parsing
+        if (typeFound == eElementType.type_left && this.debugStringState == eDebugStringState.FOUND_DEBUG) {
+          // found debug(
+          this.debugStringState = eDebugStringState.FOUND_OPEN_PAREN;
+        } else if (typeFound == eElementType.type_right && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
+          this.debugStringState = eDebugStringState.IN_TRAILING_TIC_STRING;
+        } else if (typeFound == eElementType.type_tick) {
+          if (this.debugStringState == eDebugStringState.FOUND_OPEN_PAREN) {
+            // found debug(`
+            this.debugStringState = eDebugStringState.IN_LEADING_TIC_STRING;
+          }
+        }
       } else {
         // NEW: generate exception on  bad character....  we added a new Unknown type to be able to do this
         // [error_uc]
@@ -311,6 +388,7 @@ export class SpinElementizer {
         this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${element.value})${flagInterp}`);
       }
       this.lastEmittedIsLineEnd = false;
+      firstElementOfLine = false;
       //this.logMessage(`  -- lastEmittedIsLineEnd=(${this.lastEmittedIsLineEnd})`); // blank line
       this.logMessage(''); // blank line
     }
@@ -746,6 +824,7 @@ export class SpinElementizer {
   private skipAhead(symbolLength: number, line: string) {
     this.recordSymbolLocation();
     //this.logMessage(`- skipAhead(${symbolLength}) currCharacterIndex=(${this.currCharacterIndex}), remLine=[${line}](${line.length})`);
+    this.logMessage(`- SA remLn=[${line}](${line.length}) len(${symbolLength})`);
     this.currCharacterIndex += symbolLength;
     let remainingLine = line.substring(symbolLength);
     //this.logMessage(`- skipAhead() EARLY remainingLine=[${remainingLine}]`);
@@ -757,6 +836,7 @@ export class SpinElementizer {
       //  this.logMessage(`- skipAhead() remainingLine=[${remainingLine}]`);
     }
     //this.logMessage(`- skipAhead() EXIT w/remainingLine=[${remainingLine}]`);
+    this.logMessage(`     remLn=[${remainingLine}](${remainingLine.length})`);
     return remainingLine;
   }
 

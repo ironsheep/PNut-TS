@@ -4590,6 +4590,7 @@ export class SpinResolver {
 
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
     // compile all CON blocks in file
+    this.logMessage(`*==* compile_con_blocks()`);
     this.restoreElementLocation(0); // start from first in list
 
     // move past opening CON if we have one
@@ -4610,7 +4611,7 @@ export class SpinResolver {
       let enumValid: boolean = true;
       let enumValue: bigint = 0n;
       let enumStep: bigint = 1n;
-      //let assignFlag: boolean = false;
+      //let assignFlag: boolean = false;TO-CHIO
 
       do {
         // here is @@nextline:   NEXT LINE
@@ -4620,6 +4621,13 @@ export class SpinResolver {
           // here is @@sameline:   SAME LINE (process a line)
           this.getElement();
           //assignFlag = this.currElement.type == eElementType.type_pound ? true : false;
+          if (this.nextElementType() == eElementType.type_end) {
+            this.getElement(); // throw element away
+          }
+          // if the File is Empty we are done!
+          if (this.nextElementType() == eElementType.type_end_file) {
+            break;
+          }
 
           // do we have an enum declaration?
           if (this.currElement.type == eElementType.type_pound) {
@@ -4876,7 +4884,7 @@ export class SpinResolver {
       this.getElement();
       //this.isLogging = savedLogState;
       if (this.currElement.type == eElementType.type_block && Number(this.currElement.value) == blockType) {
-        this.logMessage(`  -- nextBlock() found element=[${this.currElement.toString()}]`);
+        this.logMessage(`  -- nextBlock() found element=[${this.currElement.toString()}]  Found!`);
         foundStatus = true;
         break;
       }
@@ -5549,6 +5557,7 @@ export class SpinResolver {
           // goto @@ticknext to test for tick, if found go to @@tickcommand
         } else if (this.currElement.type == eElementType.type_left) {
           // here is @@tickdec
+          this.backElement(); // backup so we start with paren immediately after the tic of "`(...)"
           brkCode = this.tickCmd(0b01100011, isPasmMode); // '(', back up and do SDEC_
         } else if (this.currElement.type == eElementType.type_dollar) {
           // here is @@tickhex
@@ -5581,10 +5590,13 @@ export class SpinResolver {
         // UNGH! back up, go forward to allow compile of the following if!
         this.backElement();
         this.currElement = this.getElement();
+        this.logMessage(`* ProcessBackTickDebug() at tickCmd rightParen? elem=[${this.currElement.toString()}]`);
         if (this.currElement.type == eElementType.type_right) {
           this.debugWhiteSpaceString();
         }
       }
+      // all tick commands processed, now record the new debug records
+      this.enterDebug();
     }
     return brkCode;
   }
@@ -5955,14 +5967,16 @@ export class SpinResolver {
           break;
         }
       }
-      // now write the string to debug
-      this.debugEnterByte(eValueType.dc_str); // enter debug string command
-      // enter string bytes
-      for (let index = charOffset; index < charOffset + charCount; index++) {
-        const currCharCode: number = currSrcLine.charCodeAt(index);
-        this.debugEnterByte(currCharCode);
+      if (charCount > 0) {
+        // now write the string to debug
+        this.debugEnterByte(eValueType.dc_str); // enter debug string command
+        // enter string bytes
+        for (let index = charOffset; index < charOffset + charCount; index++) {
+          const currCharCode: number = currSrcLine.charCodeAt(index);
+          this.debugEnterByte(currCharCode);
+        }
+        this.debugEnterByte(0); // zero-terminate string
       }
-      this.debugEnterByte(0); // zero-terminate string
     }
     this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()}) charCount=(${charCount})`);
   }
@@ -5971,7 +5985,7 @@ export class SpinResolver {
     // PNut debug_tick_string:
     // TODO: need to check for opening "(`"?
     // return value z=1 if '`', z=0 if ')'
-    //this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
+    this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
     let foundEndWithTickStatus: boolean = false;
     let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
     let charCount: number = 1;
@@ -6362,10 +6376,12 @@ export class SpinResolver {
   }
 
   private compileParameters(parameterCount: number) {
+    this.logMessage(`* compileParameters(${parameterCount}) elem=[${this.currElement.toString()}]`);
     this.getLeftParen();
     if (parameterCount > 0) {
       this.compileParametersNoParens(parameterCount);
     }
+    this.logMessage(`* compileParameters() returned from compileParametersNoParens(), get right`);
     this.getRightParen();
   }
 
