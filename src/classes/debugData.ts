@@ -159,7 +159,7 @@ export class DebugData {
 
   public setOffsetTo(offset: number) {
     // ?? no guard for this for now...
-    this.logMessage(`* DebugData: setOffsetTo() (${hexAddress(this._debugOffset)}) -> (${hexAddress(offset)}) diff(${this._debugOffset - offset})`);
+    this.logMessage(`* DebugData: setOffsetTo() (${hexAddress(this._debugOffset)}) -> (${hexAddress(offset)}) diff(${offset - this._debugOffset})`);
     this._debugOffset = offset;
   }
 

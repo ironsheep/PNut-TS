@@ -5477,7 +5477,7 @@ export class SpinResolver {
     // Compile DEBUG for Spin2
     // PNut ci_debug:
     this.debug_first = true;
-    this.debug_record.clear();
+    this.debug_record.clear(); // each debug() line, start with empty record
     this.debug_stack_depth = 0;
 
     if (this.context.compileOptions.enableDebug == false) {
@@ -5596,7 +5596,9 @@ export class SpinResolver {
         }
       }
       // all tick commands processed, now record the new debug records
-      this.enterDebug();
+      if (this.debug_record.length > 0) {
+        this.enterDebug();
+      }
     }
     return brkCode;
   }
@@ -5954,31 +5956,42 @@ export class SpinResolver {
   }
 
   private debugWhiteSpaceString() {
-    //this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()})`);
-    let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
-    let charCount: number = 0;
-    if (currSrcLine) {
-      let charOffset = this.currElement.sourceCharacterOffset + 1; // char after )
-      for (let index = charOffset; index < currSrcLine.length; index++) {
-        const currChar = currSrcLine.charAt(index);
-        if (currChar == ' ' || currChar == '\t') {
-          charCount++;
-        } else {
-          break;
+    this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()})`);
+    // PNut debug_check_string:
+    // If chrs expressed in source, enter string
+    let foundStringStatus = true;
+    let stringLength: number = 0;
+    const savedElementIndex = this.saveElementLocation();
+    do {
+      this.getElement();
+      if (this.currElement.type != eElementType.type_con) {
+        break;
+      }
+      const charValue: number = this.currElement.numberValue;
+      if (charValue < 1 || charValue > 0xff) {
+        foundStringStatus = false;
+        break;
+      }
+      stringLength++;
+    } while (this.checkComma());
+    // here is @@notchr:
+    this.restoreElementLocation(savedElementIndex); // restore to left paren
+    //this.logMessage(` -- debugCheckString(${this.currElement.toString()}) stringLength=(${stringLength})`);
+    if (stringLength == 0) {
+      foundStringStatus = false;
+    } else {
+      this.debugEnterByte(eValueType.dc_str);
+      for (let index = 0; index < stringLength; index++) {
+        this.getElement();
+        let chrByte: number = this.currElement.numberValue;
+        this.debugEnterByte(chrByte);
+        if (index < stringLength - 1) {
+          this.getComma();
         }
       }
-      if (charCount > 0) {
-        // now write the string to debug
-        this.debugEnterByte(eValueType.dc_str); // enter debug string command
-        // enter string bytes
-        for (let index = charOffset; index < charOffset + charCount; index++) {
-          const currCharCode: number = currSrcLine.charCodeAt(index);
-          this.debugEnterByte(currCharCode);
-        }
-        this.debugEnterByte(0); // zero-terminate string
-      }
+      this.debugEnterByte(0); // zero terminate our string
     }
-    this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()}) charCount=(${charCount})`);
+    this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()}) charCount=(${stringLength})`);
   }
 
   private debugTickString(): boolean {
@@ -6035,6 +6048,7 @@ export class SpinResolver {
 
   private debugEnterRecord(): number {
     // PNut debug_enter_record:
+    this.logMessage(`debugEnterRcd() curr rcd len=(${this.debug_record.length})`);
     this.debugEnterByte(0); // zero-terminate record
     let entryIndex: number = 1; // PNut bl register
     let recordPresent: boolean = false;
@@ -6054,8 +6068,9 @@ export class SpinResolver {
     if (recordPresent == false) {
       this.debug_data.setRecord(entryIndex, this.debug_record);
     }
+    this.debug_record.clear(); // record recorded or skipped, empty it
     return entryIndex; // index of matched record or new record
-  } // syncronize our element list position
+  }
 
   private collapse_debug_data(isTopLevel: boolean) {
     // PNut collapse_debug_data:
@@ -6072,7 +6087,7 @@ export class SpinResolver {
     // NOTE: only here if we have debug(...) or debug()
     let brkCode: number = 0;
     this.debug_first = true;
-    this.debug_record.clear();
+    this.debug_record.clear(); // each debug() line, start with empty record
 
     this.logMessage(`*--* ci_debug_asm(${this.currElement.toString()})`);
     // here is @@left
