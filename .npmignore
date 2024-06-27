@@ -7,6 +7,7 @@
 .eslintrc.json
 .prettierrc.json
 pkg-json-REF.txt
+exceptions-list.ts.txt
 BUILD-RUN.md
 Compiler.md
 PKG-STUDY.md

@@ -11,9 +11,30 @@ import { sync as globSync } from 'glob';
 import { compareListingFiles, compareObjOrBinFiles, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
-const dirPath = path.resolve(__dirname, '../../../TEST/DBG-tests');
+const dirPath = path.resolve(__dirname, '../../../TEST/EXT-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
+/*
+describe('Test directory existence', () => {
+  test('Test directory should exist', () => {
+    //console.log(`LOG dirPath=[${dirPath}]`);
+
+    if (!fs.existsSync(dirPath)) {
+      throw new Error(`Test directory does not exist: ${dirPath}`);
+    }
+  });
+});
+
+describe('Tool directory existence', () => {
+  test('Tool directory should exist', () => {
+    //console.log(`LOG dirPath=[${dirPath}]`);
+
+    if (!fs.existsSync(toolPath)) {
+      throw new Error(`Tool directory does not exist: ${toolPath}`);
+    }
+  });
+});
+*/
 const directories = [
   { name: 'Test directory', path: dirPath, relFolder: dirPath.replace(topLevel, './') },
   { name: 'Tool directory', path: toolPath, relFolder: toolPath.replace(topLevel, './') }
@@ -27,7 +48,7 @@ describe('Directory existence tests', () => {
   });
 });
 
-describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
+describe('PNut_ts builds our EXTernal files (.obj) correctly', () => {
   let files: string[] = [];
   try {
     files = globSync(`${dirPath}/*.spin2`);
@@ -39,18 +60,18 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
   }
   files.forEach((file) => {
     test(`Test for file: ${path.basename(file)}`, () => {
-      const options: string = '-d -v -l -O --regression element --';
+      const options: string = '-v -l -O --regression element --';
       const basename = path.basename(file, '.spin2');
 
       const listingFSpec = path.join(dirPath, `${basename}.lst`);
       const objectFSpec = path.join(dirPath, `${basename}.obj`);
-      const binaryFSpec = path.join(dirPath, `${basename}.bin`);
+      //const binaryFSpec = path.join(dirPath, `${basename}.bin`);
       const elementsFSpec = path.join(dirPath, `${basename}.elem`);
 
       // Remove existing files
       removeExistingFile(listingFSpec);
       removeExistingFile(objectFSpec);
-      removeExistingFile(binaryFSpec);
+      //removeExistingFile(binaryFSpec);
       removeExistingFile(elementsFSpec);
 
       // compile our file generating output files
@@ -80,12 +101,12 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
       }
 
       // ID the golden .bin file
-      const goldenBinFSpec = path.join(dirPath, `${basename}.bin.GOLD`);
+      //const goldenBinFSpec = path.join(dirPath, `${basename}.bin.GOLD`);
       // Compare binary files
-      filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
-      if (!filesMatch) {
-        whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
-      }
+      //filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
+      //if (!filesMatch) {
+      //  whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
+      //}
 
       if (whatFailed.length > 0) {
         whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');

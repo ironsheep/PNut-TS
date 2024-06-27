@@ -1,5 +1,5 @@
 {
-  "name": "full suite of tests",
+  "displayName": "full suite of tests",
   "roots": ["<rootDir>/../dist/tests/DAT-PASM-tests/"],
   "testMatch": ["**/*.test.js"],
   "verbose": false

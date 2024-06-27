@@ -1,0 +1,6 @@
+{
+  "displayName": "EXTernal suite of tests",
+  "roots": ["<rootDir>/../dist/tests/EXT-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": false
+}
