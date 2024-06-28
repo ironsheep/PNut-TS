@@ -477,9 +477,9 @@ export class SpinResolver {
       element = this.getElement();
 
       if (element.type == eElementType.type_block) {
-        if (Number(element.value) == eValueType.block_con) {
+        if (Number(element.value) == eBlockType.block_con) {
           continue;
-        } else if (Number(element.value) == eValueType.block_dat) {
+        } else if (Number(element.value) == eBlockType.block_dat) {
           pasmModeStatus = true;
         } else {
           pasmModeStatus = false;
@@ -498,7 +498,7 @@ export class SpinResolver {
     this.restoreElementLocation(0); // start from first in list
 
     // for each VAR block...
-    while (this.nextBlock(eValueType.block_var)) {
+    while (this.nextBlock(eBlockType.block_var)) {
       // BLOCK loop
       do {
         // LINE loop
@@ -600,7 +600,7 @@ export class SpinResolver {
     this.spinFiles.clearDataFiles();
     this.restoreElementLocation(0); // start at first element
     // for all dat block locate FILE statements and record the filename we find and the index
-    while (this.nextBlock(eValueType.block_dat)) {
+    while (this.nextBlock(eBlockType.block_dat)) {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         this.getElement();
@@ -1036,7 +1036,7 @@ export class SpinResolver {
         // NEXT BLOCK Loop
         this.logMessage(`LOOP: next block TOP`);
         if (inLineMode === false) {
-          this.nextBlock(eValueType.block_dat);
+          this.nextBlock(eBlockType.block_dat);
         }
 
         // process the DAT block
@@ -2660,19 +2660,19 @@ export class SpinResolver {
     if (this.pasmMode == false) {
       const subStartIndex: number = this.objImage.offset >> 2;
       // compile PUB blocks
-      const pubsFound = this.compilePubPriBlocksId(eValueType.block_pub, subStartIndex);
+      const pubsFound = this.compilePubPriBlocksId(eBlockType.block_pub, subStartIndex);
       // if we didn't find any PUB blocks
       if (pubsFound == false) {
         // [error_npmf]
         throw new Error('No PUB method or DAT block found');
       }
       // compile PRI blocks
-      this.compilePubPriBlocksId(eValueType.block_pri, subStartIndex);
+      this.compilePubPriBlocksId(eBlockType.block_pri, subStartIndex);
       this.objWrLong(0); // enter 0 (future size) into index
     }
   }
 
-  private compilePubPriBlocksId(blockType: eValueType, subStartIndex: number): boolean {
+  private compilePubPriBlocksId(blockType: eBlockType, subStartIndex: number): boolean {
     // here is compile_sub_blocks_id: @@compile
     // this locates PUB and PRI blocks, validates and emits symbols and obj public interface
     let foundBlocksStatus: boolean = false;
@@ -2763,7 +2763,7 @@ export class SpinResolver {
       const objMethodDetails: number = 0x80000000 | (parameterCount << 24) | (resultCount << 20);
       this.objWrLong(objMethodDetails);
       // if we have a PUB method...
-      if (blockType == eValueType.block_pub) {
+      if (blockType == eBlockType.block_pub) {
         // record Objects' PUB method details: symbol, number results, number parameters
         this.objWrPubSymbol(symbolName, resultCount, parameterCount);
       }
@@ -2779,9 +2779,9 @@ export class SpinResolver {
     // PNut compile_sub_blocks:
     if (this.pasmMode == false) {
       // compile PUB blocks
-      const lastPubSymbolValue = this.compilePubPriBlocks(eValueType.block_pub);
+      const lastPubSymbolValue = this.compilePubPriBlocks(eBlockType.block_pub);
       // compile PRI blocks
-      const lastPriSymbolValue = this.compilePubPriBlocks(eValueType.block_pri);
+      const lastPriSymbolValue = this.compilePubPriBlocks(eBlockType.block_pri);
       // here is @@enteroffset
       const finalSymbolValue = lastPriSymbolValue == 0 ? lastPubSymbolValue : lastPriSymbolValue;
       /// record the final object image offset into the last symbol entry
@@ -2791,7 +2791,7 @@ export class SpinResolver {
     }
   }
 
-  private compilePubPriBlocks(blockType: eValueType): number {
+  private compilePubPriBlocks(blockType: eBlockType): number {
     // here is compile_sub_blocks: @@compile
     let localOffset: number = 0;
     let localVariableOffset: number = 0;
@@ -3813,7 +3813,7 @@ export class SpinResolver {
 
     // for each OBJ block...
     // here is @@nextblock:
-    while (this.nextBlock(eValueType.block_obj)) {
+    while (this.nextBlock(eBlockType.block_obj)) {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         // here is @@nextline:
@@ -4592,12 +4592,29 @@ export class SpinResolver {
     // compile all CON blocks in file
     this.logMessage(`*==* compile_con_blocks()`);
     this.restoreElementLocation(0); // start from first in list
+    this.logMessage(`  -- restore to nextType=[${eElementType[this.nextElementType()]}]`);
 
-    // move past opening CON if we have one
-    if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eValueType.block_con) {
-      this.getElement(); // throw element away
-      if (this.nextElementType() == eElementType.type_end) {
-        this.getElement(); // throw element away
+    // at head of file, if 1st elem is NOT a block start then we assume CON
+    //  if is a block start but NOT con then skip to first CON
+    if (this.nextElementType() == eElementType.type_block) {
+      this.logMessage(`  -- next block [${eBlockType[this.nextElementValue()]}]`);
+      // move past opening CON if we have one
+      if (this.nextElementValue() == eBlockType.block_con) {
+        this.getElement(); // throw BLOCK element away
+        if (this.nextElementType() == eElementType.type_end) {
+          this.getElement(); // throw EOL element away
+        }
+      } else {
+        // we have leading block which is NOT 'CON'
+        if (!this.nextBlock(eBlockType.block_con)) {
+          // we failed to located any CON after starting block
+          this.logMessage(`  -- no CON blocks found!`);
+          return;
+        }
+        this.logMessage(`  -- now at CON : elem=[${this.currElement.toString()}]`);
+        if (this.currElement.type == eElementType.type_end) {
+          this.getElement(); // throw EOL element away
+        }
       }
     }
     // if the File is Empty we are done!
@@ -4762,7 +4779,7 @@ export class SpinResolver {
           break;
         }
       } while (this.nextElementType() != eElementType.type_block);
-    } while (this.nextBlock(eValueType.block_con));
+    } while (this.nextBlock(eBlockType.block_con));
   }
 
   private compile_final() {
@@ -4873,7 +4890,7 @@ export class SpinResolver {
     return overrideConSymbol;
   }
 
-  private nextBlock(blockType: eValueType): boolean {
+  private nextBlock(blockType: eBlockType): boolean {
     let foundStatus: boolean = false;
     let element: SpinElement;
     this.logMessage(`* nextBlock huntFor=[${eBlockType[blockType]}] stop log at elem=[${this.currElement.toString()}]`);
@@ -8917,7 +8934,7 @@ export class SpinResolver {
     return element.type;
   }
 
-  private nextElementValue(): eValueType {
+  private nextElementValue(): eValueType | eBlockType {
     const element = this.spinElements[this.nextElementIndex];
     return Number(element.value);
   }

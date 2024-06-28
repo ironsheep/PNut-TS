@@ -214,15 +214,6 @@ export enum eBlockType {
 export enum eValueType {
   value_undefined = 0, // no value determined
   //
-  // Blocks
-  //
-  block_con = 0, // 0x00
-  block_obj = 1, // 0x01
-  block_var = 2, // 0x02
-  block_pub = 3, // 0x03
-  block_pri = 4, // 0x04
-  block_dat = 5, // 0x05
-  //
   // Directives
   //
   dir_orgh = 0, // 0x00

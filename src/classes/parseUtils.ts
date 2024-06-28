@@ -5,7 +5,7 @@
 
 // a collection of generally useful functions for parsing spin
 
-import { eElementType, eValueType, eByteCode, eOperationType, eFlexcode } from './types';
+import { eElementType, eValueType, eBlockType, eByteCode, eOperationType, eFlexcode } from './types';
 import { Context } from '../utils/context';
 import { hexByte, hexWord } from '../utils/formatUtils';
 
@@ -1651,12 +1651,12 @@ export class SpinSymbolTables {
 
     this.automatic_symbols.set(SYMBOLS.STRING, { type: eElementType.type_constr, value: 0 }); // string expressions
 
-    this.automatic_symbols.set(SYMBOLS.CON, { type: eElementType.type_block, value: eValueType.block_con }); // block designators
-    this.automatic_symbols.set(SYMBOLS.OBJ, { type: eElementType.type_block, value: eValueType.block_obj });
-    this.automatic_symbols.set(SYMBOLS.VAR, { type: eElementType.type_block, value: eValueType.block_var });
-    this.automatic_symbols.set(SYMBOLS.PUB, { type: eElementType.type_block, value: eValueType.block_pub });
-    this.automatic_symbols.set(SYMBOLS.PRI, { type: eElementType.type_block, value: eValueType.block_pri });
-    this.automatic_symbols.set(SYMBOLS.DAT, { type: eElementType.type_block, value: eValueType.block_dat });
+    this.automatic_symbols.set(SYMBOLS.CON, { type: eElementType.type_block, value: eBlockType.block_con }); // block designators
+    this.automatic_symbols.set(SYMBOLS.OBJ, { type: eElementType.type_block, value: eBlockType.block_obj });
+    this.automatic_symbols.set(SYMBOLS.VAR, { type: eElementType.type_block, value: eBlockType.block_var });
+    this.automatic_symbols.set(SYMBOLS.PUB, { type: eElementType.type_block, value: eBlockType.block_pub });
+    this.automatic_symbols.set(SYMBOLS.PRI, { type: eElementType.type_block, value: eBlockType.block_pri });
+    this.automatic_symbols.set(SYMBOLS.DAT, { type: eElementType.type_block, value: eBlockType.block_dat });
 
     this.automatic_symbols.set(SYMBOLS.FIELD, { type: eElementType.type_field, value: 0 }); // field
 

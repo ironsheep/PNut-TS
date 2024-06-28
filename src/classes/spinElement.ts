@@ -212,7 +212,7 @@ export class SpinElement {
   get isBlockCon(): boolean {
     let foundStatus: boolean = false;
     if (this._type == eElementType.type_block && typeof this._value === 'bigint') {
-      foundStatus = Number(this._value) == eValueType.block_con;
+      foundStatus = Number(this._value) == eBlockType.block_con;
     }
     return foundStatus;
   }
