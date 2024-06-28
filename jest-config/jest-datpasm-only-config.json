@@ -1,5 +1,5 @@
 {
-  "displayName": "full suite of tests",
+  "displayName": "Spin2 DAT-PASM suite of tests",
   "roots": ["<rootDir>/../dist/tests/DAT-PASM-tests/"],
   "testMatch": ["**/*.test.js"],
   "verbose": false

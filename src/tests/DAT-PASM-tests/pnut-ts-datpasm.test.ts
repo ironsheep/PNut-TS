@@ -8,28 +8,21 @@ import path from 'path';
 
 // Alternatively, if you want to use the synchronous version, you can do:
 import { sync as globSync } from 'glob';
-import { compareListingFiles, compareObjOrBinFiles, removeExistingFile } from '../testUtils';
+import { compareListingFiles, compareObjOrBinFiles, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
 const dirPath = path.resolve(__dirname, '../../../TEST/DAT-PASM-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
-describe('Test directory existence', () => {
-  test('Test directory should exist', () => {
-    //console.log(`LOG dirPath=[${dirPath}]`);
+const directories = [
+  { name: 'Test directory', path: dirPath, relFolder: dirPath.replace(topLevel, './') },
+  { name: 'Tool directory', path: toolPath, relFolder: toolPath.replace(topLevel, './') }
+];
 
-    if (!fs.existsSync(dirPath)) {
-      throw new Error(`Test directory does not exist: ${dirPath}`);
-    }
-  });
-});
-
-describe('Tool directory existence', () => {
-  test('Tool directory should exist', () => {
-    //console.log(`LOG dirPath=[${dirPath}]`);
-
-    if (!fs.existsSync(toolPath)) {
-      throw new Error(`Tool directory does not exist: ${toolPath}`);
+describe('Directory existence tests', () => {
+  test.each(directories)('Directory exists: $relFolder', ({ path }) => {
+    if (!fs.existsSync(path)) {
+      throw new Error(`Directory does not exist: ${path}`);
     }
   });
 });
@@ -48,7 +41,7 @@ describe('PNut_ts compiles .spin2 DAT-PASM correctly', () => {
   }
 
   files.forEach((file) => {
-    test(`Test for file: ${path.basename(file)}`, () => {
+    test(`Compile file: ${path.basename(file)}`, () => {
       const options: string = '-v -l -O --regression element --';
       const basename = path.basename(file, '.spin2');
 

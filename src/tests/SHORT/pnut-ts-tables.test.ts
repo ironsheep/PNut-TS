@@ -3,26 +3,24 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import glob from 'glob';
+import { removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/SHORT
 const dirPath = path.resolve(__dirname, '../../../TEST/SHORT/tablesTESTs');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
-describe('Test directory existence', () => {
-  test('Test directory should exist', () => {
-    //console.log(`LOG dirPath=[${dirPath}]`);
+const directories = [
+  { name: 'Test directory', path: dirPath, relFolder: dirPath.replace(topLevel, './') },
+  { name: 'Tool directory', path: toolPath, relFolder: toolPath.replace(topLevel, './') }
+];
 
-    if (!fs.existsSync(dirPath)) {
-      throw new Error(`Test directory does not exist: ${dirPath}`);
+describe('Directory existence tests', () => {
+  test.each(directories)('Directory exists: $relFolder', ({ path }) => {
+    if (!fs.existsSync(path)) {
+      throw new Error(`Directory does not exist: ${path}`);
     }
   });
 });
-
-function removeFileIfExists(fspec: string) {
-  if (fs.existsSync(fspec)) {
-    fs.unlinkSync(fspec);
-  }
-}
 
 test('CLI generates correct table listings', () => {
   // Get all .spin2 files in the ./TEST/SHORT/tablesTESTs/ directory
@@ -40,7 +38,7 @@ test('CLI generates correct table listings', () => {
     const basename = path.basename(file, '.spin2');
     const reportFSpec = path.join(dirPath, `${basename}.tabl`);
     // if the report file exists delete it before we start
-    removeFileIfExists(reportFSpec);
+    removeExistingFile(reportFSpec);
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
     } catch (error) {
@@ -54,14 +52,14 @@ test('CLI generates correct table listings', () => {
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
     const reportDebugFSpec = path.join(dirPath, `${basename}.tabl.txt`);
     // if the diagnostic file exists delete it before we start
-    removeFileIfExists(reportDebugFSpec);
+    removeExistingFile(reportDebugFSpec);
 
     // Read the golden file
     const goldenFSpec = path.join(dirPath, `${basename}.tabl.GOLD`);
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split('\n');
     const goldenDebugFSpec = path.join(dirPath, `${basename}.tabl.GOLD.txt`);
     // if the diagnostic file exists delete it before we start
-    removeFileIfExists(goldenDebugFSpec);
+    removeExistingFile(goldenDebugFSpec);
 
     // Compare the output to the golden file, ignoring lines that start with
     //  '#' which are comments

@@ -3,17 +3,21 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import glob from 'glob';
+import { topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
 const dirPath = path.resolve(__dirname, '../../../TEST/FULL/preprocessTESTs');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
-describe('Test directory existence', () => {
-  test('Test directory should exist', () => {
-    //console.log(`LOG dirPath=[${dirPath}]`);
+const directories = [
+  { name: 'Test directory', path: dirPath, relFolder: dirPath.replace(topLevel, './') },
+  { name: 'Tool directory', path: toolPath, relFolder: toolPath.replace(topLevel, './') }
+];
 
-    if (!fs.existsSync(dirPath)) {
-      throw new Error(`Test directory does not exist: ${dirPath}`);
+describe('Directory existence tests', () => {
+  test.each(directories)('Directory exists: $relFolder', ({ path }) => {
+    if (!fs.existsSync(path)) {
+      throw new Error(`Directory does not exist: ${path}`);
     }
   });
 });

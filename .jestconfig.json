@@ -7,5 +7,7 @@
     }
   },
   "coverageReporters": ["lcov"],
-  "coverageDirectory": "./output/code-coverage"
+  "coverageDirectory": "./output/code-coverage",
+  "coveragePathIgnorePatterns": ["/node_modules/", "/src/tests/"],
+  "collectCoverageFrom": ["dist/**/*.{js,jsx,ts,tsx}", "!dist/tests"]
 }

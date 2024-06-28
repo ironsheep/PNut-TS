@@ -21,10 +21,12 @@ tsconfig.json
 .vscode/
 dist/
 DOCs/
+jest-config/
 LogFiles/
 pkgs*/
 nexe-config/
 REF/
+RESULTS/
 scripts/
 src/
 TEST/

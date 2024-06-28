@@ -1,5 +1,5 @@
 {
-  "displayName": "full suite of tests",
+  "displayName": "FULL: larger suite of tests",
   "roots": ["<rootDir>/../dist/tests/FULL/"],
   "testMatch": ["**/*.test.js"],
   "verbose": false

@@ -20,7 +20,7 @@ const directories = [
 ];
 
 describe('Directory existence tests', () => {
-  test.each(directories)('$relFolder should exist', ({ path }) => {
+  test.each(directories)('Directory exists: $relFolder', ({ path }) => {
     if (!fs.existsSync(path)) {
       throw new Error(`Directory does not exist: ${path}`);
     }
@@ -38,7 +38,7 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
     files.sort();
   }
   files.forEach((file) => {
-    test(`Test for file: ${path.basename(file)}`, () => {
+    test(`Compile file: ${path.basename(file)}`, () => {
       const options: string = '-d -v -l -O --regression element --';
       const basename = path.basename(file, '.spin2');
 

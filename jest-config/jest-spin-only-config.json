@@ -1,0 +1,6 @@
+{
+  "displayName": "Spin2 suite of tests",
+  "roots": ["<rootDir>/../dist/tests/SPIN-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": false
+}

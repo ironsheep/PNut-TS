@@ -1,4 +1,4 @@
-DAT
+'DAT
 CON  EnableFlow = 8                'single assignments
      DisableFlow = 4
      ColorBurstFreq = 3_579_545
@@ -34,3 +34,5 @@ CON  #0,a,b, ...
 
 CON  e0,e1,e2             'e0=0, e1=1, e2=2      (start=0, step=1)
                           '..enumeration is reset at each CON
+
+DAT

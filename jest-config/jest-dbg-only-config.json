@@ -1,5 +1,5 @@
 {
-  "displayName": "Debug() suite of tests",
+  "displayName": "Spin2 Debug() suite of tests",
   "roots": ["<rootDir>/../dist/tests/DBG-tests/"],
   "testMatch": ["**/*.test.js"],
   "verbose": false

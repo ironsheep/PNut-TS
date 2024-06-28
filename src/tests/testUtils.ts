@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { match } from 'assert';
 
 export const topLevel: string = path.join(path.sep, 'workspaces', path.sep, 'Pnut-ts-dev', path.sep);
 
@@ -62,7 +63,12 @@ export function compareListingFiles(reportFSpec: string, goldenFSpec: string): b
     const goldenFiltered = goldenContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
 
     // Compare the filtered content of both files
-    filesMatchStatus = reportFiltered.join('\n') === goldenFiltered.join('\n');
+    // NOPE, not good enough:  filesMatchStatus = reportFiltered.join('\n') === goldenFiltered.join('\n');
+    filesMatchStatus = reportFiltered.length == reportFiltered.length;
+    if (filesMatchStatus == true) {
+      // line count is SAME, now do more detaile match
+      filesMatchStatus = compareConFloatValues(reportFiltered, goldenFiltered);
+    }
     //if (filesMatchStatus == false) {
     //const listingFName = path.basename(reportFSpec);
     //const goldFName = path.basename(goldenFSpec);
@@ -77,6 +83,51 @@ export function compareListingFiles(reportFSpec: string, goldenFSpec: string): b
     //}
   }
   return filesMatchStatus;
+}
+
+function compareConFloatValues(compileLines: string[], goldenLines: string[]): boolean {
+  let matchStatus: boolean = false;
+  if (compileLines.length == goldenLines.length) {
+    for (let index = 0; index < compileLines.length; index++) {
+      const compLine: string = compileLines[index];
+      const goldLine: string = goldenLines[index];
+      matchStatus = compLine === goldLine;
+      if (compLine.includes('CON_FLOAT')) {
+        // diff float hex strings (can be +/- 1)
+        // LHS:  TYPE: CON_FLOAT       VALUE: 40C90FDB          NAME: TWOPI (...FDB, ...FDA or ...FD9 should pass!)
+        // RHS:  TYPE: CON_FLOAT       VALUE: 40C90FDA          NAME: TWOPI
+        // Regular expression to extract TYPE, VALUE, and NAME
+        const regex = /TYPE:\s*(\w+)\s+VALUE:\s*([0-9A-F]+)\s+NAME:\s*(\w+)/;
+
+        // Extracting information from both lines
+        const goldMatch = goldLine.match(regex);
+        const compMatch = compLine.match(regex);
+        if (goldMatch !== null && compMatch !== null) {
+          // have good match values, let's see what we have
+
+          // Destructuring to get TYPE, VALUE, and NAME from matches
+          const [, goldType, goldValue, goldName] = goldMatch;
+          const [, compType, compValue, compName] = compMatch;
+
+          // Compare TYPE and NAME for equality
+          if (goldType === compType && goldName === compName) {
+            // have matching type and name, now check values
+
+            // Convert VALUE from hex string to number and compare within +/- 1 range
+            const goldValueNum = parseInt(goldValue, 16);
+            const compValueNum = parseInt(compValue, 16);
+
+            matchStatus = Math.abs(goldValueNum - compValueNum) <= 1;
+          }
+        }
+      }
+      if (matchStatus == false) {
+        // on first non-match, break! we have answer
+        break;
+      }
+    }
+  }
+  return matchStatus;
 }
 
 export function removeExistingFile(fileSpec: string) {

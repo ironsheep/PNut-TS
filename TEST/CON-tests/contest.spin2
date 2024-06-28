@@ -1,4 +1,4 @@
-DAT
+'DAT
 CON
 
 symbol_size		= 32		'cannot exceed 255
@@ -1090,9 +1090,9 @@ opc_alias	=	1 << 29
 
 '			op		   precedence	bytecode	       ternary  binary   unary    assign   float    alias
 
-oc_bitnot	=	op_bitnot	|  0	<<8 |	bc_bitnot	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' !	
+oc_bitnot	=	op_bitnot	|  0	<<8 |	bc_bitnot	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' !
 oc_neg		=	op_neg		|  0	<<8 |	bc_neg		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' -	(uses op_sub symbol)
-oc_abs		=	op_abs		|  0	<<8 |	bc_abs		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' ABS	
+oc_abs		=	op_abs		|  0	<<8 |	bc_abs		<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 1 <<28 | 0 <<29	' ABS
 oc_encod	=	op_encod	|  0	<<8 |	bc_encod	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' ENCOD
 oc_decod	=	op_decod	|  0	<<8 |	bc_decod	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' DECOD
 oc_bmask	=	op_bmask	|  0	<<8 |	bc_bmask	<<16 | 0 <<24 | 0 <<25 | 1 <<26 | 1 <<27 | 0 <<28 | 0 <<29	' BMASK
@@ -1201,3 +1201,6 @@ info_dat			'data0/1 = obj start/finish
 info_dat_symbol			'data0 = offset, data1 = size
 info_pub			'data0/1 = obj start/finish, data2/3 = name start/finish
 info_pri			'data0/1 = obj start/finish, data2/3 = name start/finish
+
+
+DAT

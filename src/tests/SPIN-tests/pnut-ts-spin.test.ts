@@ -11,7 +11,7 @@ import { sync as globSync } from 'glob';
 import { compareListingFiles, compareObjOrBinFiles, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
-const dirPath = path.resolve(__dirname, '../../../TEST/EXT-tests');
+const dirPath = path.resolve(__dirname, '../../../TEST/SPIN-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
 const directories = [
@@ -27,7 +27,7 @@ describe('Directory existence tests', () => {
   });
 });
 
-describe('PNut_ts builds our EXTernal files (.obj) correctly', () => {
+describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
   let files: string[] = [];
   try {
     files = globSync(`${dirPath}/*.spin2`);
@@ -44,13 +44,13 @@ describe('PNut_ts builds our EXTernal files (.obj) correctly', () => {
 
       const listingFSpec = path.join(dirPath, `${basename}.lst`);
       const objectFSpec = path.join(dirPath, `${basename}.obj`);
-      //const binaryFSpec = path.join(dirPath, `${basename}.bin`);
+      const binaryFSpec = path.join(dirPath, `${basename}.bin`);
       const elementsFSpec = path.join(dirPath, `${basename}.elem`);
 
       // Remove existing files
       removeExistingFile(listingFSpec);
       removeExistingFile(objectFSpec);
-      //removeExistingFile(binaryFSpec);
+      removeExistingFile(binaryFSpec);
       removeExistingFile(elementsFSpec);
 
       // compile our file generating output files
@@ -80,12 +80,12 @@ describe('PNut_ts builds our EXTernal files (.obj) correctly', () => {
       }
 
       // ID the golden .bin file
-      //const goldenBinFSpec = path.join(dirPath, `${basename}.bin.GOLD`);
+      const goldenBinFSpec = path.join(dirPath, `${basename}.bin.GOLD`);
       // Compare binary files
-      //filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
-      //if (!filesMatch) {
-      //  whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
-      //}
+      filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
+      if (!filesMatch) {
+        whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
+      }
 
       if (whatFailed.length > 0) {
         whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');
