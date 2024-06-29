@@ -1,4 +1,4 @@
-'DAT
+DAT
 CON
 
 symbol_size		= 32		'cannot exceed 255
@@ -1201,6 +1201,3 @@ info_dat			'data0/1 = obj start/finish
 info_dat_symbol			'data0 = offset, data1 = size
 info_pub			'data0/1 = obj start/finish, data2/3 = name start/finish
 info_pri			'data0/1 = obj start/finish, data2/3 = name start/finish
-
-
-DAT

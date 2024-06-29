@@ -2,5 +2,5 @@
   "displayName": "CON block suite of tests",
   "roots": ["<rootDir>/../dist/tests/CON-tests/"],
   "testMatch": ["**/*.test.js"],
-  "verbose": false
+  "verbose": true
 }

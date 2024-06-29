@@ -218,3 +218,4 @@ exceptions-list.ts.txt
 TEST/emptySpinFile.binf
 /RESULTS
 /jest-config/coverage
+*.elemold

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Define the directory to search in, replace "/path/to/folder" with your actual folder path
+search_dir="TEST"
+
+# Use find to locate all .elem files in the directory and its subdirectories
+find "$search_dir" -type f -name "*.elem" -print0 | while IFS= read -r -d '' file; do
+    # Construct the new file name by replacing .elem with .elemnew
+    new_file="${file%.elem}.elemold"
+
+    # Rename the file
+    (set -x;mv -- "$file" "$new_file")
+done

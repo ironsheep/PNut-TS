@@ -2,5 +2,5 @@
   "displayName": "EXTernal suite of tests (to .obj only)",
   "roots": ["<rootDir>/../dist/tests/EXT-tests/"],
   "testMatch": ["**/*.test.js"],
-  "verbose": false
+  "verbose": true
 }

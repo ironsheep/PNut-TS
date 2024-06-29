@@ -1,0 +1,6 @@
+{
+  "displayName": "LOADER suite of tests",
+  "roots": ["<rootDir>/../dist/tests/LOADER-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

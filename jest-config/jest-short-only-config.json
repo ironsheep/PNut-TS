@@ -2,5 +2,5 @@
   "displayName": "SHORT: minimal suite of tests",
   "roots": ["<rootDir>/../dist/tests/SHORT/"],
   "testMatch": ["**/*.test.js"],
-  "verbose": false
+  "verbose": true
 }

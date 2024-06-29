@@ -1,0 +1,6 @@
+{
+  "displayName": "OBJ only suite of tests",
+  "roots": ["<rootDir>/../dist/tests/OBJ-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

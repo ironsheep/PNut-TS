@@ -7,3 +7,6 @@ var
   word aw,bw[2],cw[3]
   long al,bl[2],cl[3]
   j,k[2],l[3]
+
+
+pub main()

@@ -1,0 +1,6 @@
+{
+  "displayName": "VAR only suite of tests",
+  "roots": ["<rootDir>/../dist/tests/VAR-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}
