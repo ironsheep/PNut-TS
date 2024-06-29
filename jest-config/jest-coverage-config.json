@@ -1,0 +1,14 @@
+{
+  "displayName": "Coverage suite of tests",
+  "roots": [
+    "<rootDir>/dist/tests/CON-tests/",
+    "<rootDir>/dist/tests/DAT-PASM-tests/",
+    "<rootDir>/dist/tests/EXT-tests/",
+    "<rootDir>/dist/tests/LOADER-tests/",
+    "<rootDir>/dist/tests/OBJ-tests/",
+    "<rootDir>/dist/tests/SPIN-tests/",
+    "<rootDir>/dist/tests/VAR-tests/"
+  ],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

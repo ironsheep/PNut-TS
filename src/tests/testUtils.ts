@@ -3,7 +3,6 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { match } from 'assert';
 
 export const topLevel: string = path.join(path.sep, 'workspaces', path.sep, 'Pnut-ts-dev', path.sep);
 
@@ -118,6 +117,77 @@ function compareConFloatValues(compileLines: string[], goldenLines: string[]): b
             const compValueNum = parseInt(compValue, 16);
 
             matchStatus = Math.abs(goldValueNum - compValueNum) <= 1;
+          }
+        }
+      } else if (compLine.includes('CLKMODE_')) {
+        // diff strings: this pair can pass ( our compiler has diff default clock value)
+        // LHS:  TYPE: CON             VALUE: 0000000A          NAME: CLKMODE_ (0000000A should pass when other is 00000000)
+        // RHS:  TYPE: CON             VALUE: 00000000          NAME: CLKMODE_
+        const regex = /TYPE:\s*(\w+)\s*VALUE:\s*([0-9A-F]+)\s*NAME:\s*(\w+)/;
+        const goldMatch = goldLine.match(regex);
+        const compMatch = compLine.match(regex);
+        if (goldMatch !== null && compMatch !== null) {
+          // have good match values, let's see what we have
+
+          // Destructuring to get TYPE, VALUE, and NAME from matches
+          const [, goldType, goldValue, goldName] = goldMatch;
+          const [, compType, compValue, compName] = compMatch;
+
+          // Compare TYPE and NAME for equality
+          if (goldType === compType && goldName === compName) {
+            // have matching type and name, now check values
+
+            // ensure we have expected values
+            matchStatus = compValue === goldValue || (compValue === '0000000A' && goldValue === '00000000');
+            //console.log(
+            //  ` -- name=[${compName},${goldName}], type=[${compType},${goldType}], value=[${compValue},${goldValue}], matchStatus=(${matchStatus})`
+            //);
+          }
+        }
+      } else if (compLine.includes('CLKMODE:')) {
+        // diff strings: this pair can pass ( our compiler has diff default clock value)
+        // LHS:  CLKMODE:   $0000000A ($0000000A should pass when other is $00000000)
+        // RHS:  CLKMODE:   $00000000
+        const regex = /([A-Z]+):\s*\$(\w+)/;
+        const goldMatch = goldLine.match(regex);
+        const compMatch = compLine.match(regex);
+        if (goldMatch !== null && compMatch !== null) {
+          // have good match values, let's see what we have
+
+          // Destructuring to get TYPE, VALUE, and NAME from matches
+          const [, goldName, goldValue] = goldMatch;
+          const [, compName, compValue] = compMatch;
+
+          // Compare NAME for equality
+          if (goldName === compName) {
+            // have matching type and name, now check values
+
+            // ensure we have expected values, less the '$'
+            matchStatus = compValue === goldValue || (compValue === '0000000A' && goldValue === '00000000');
+            //console.log(` -- name=[${compName},${goldName}], value=[${compValue},${goldValue}], matchStatus=(${matchStatus})`);
+          }
+        }
+      } else if (compLine.includes('XINFREQ:')) {
+        // diff strings: this pair can pass ( our compiler has diff default clock value)
+        // LHS:  XINFREQ:  20,000,000 (20,000,000 should pass when other is 0)
+        // RHS:  XINFREQ:           0
+        const regex = /([A-Z]+):\s*([0-9,]+)/;
+        const goldMatch = goldLine.match(regex);
+        const compMatch = compLine.match(regex);
+        if (goldMatch !== null && compMatch !== null) {
+          // have good match values, let's see what we have
+
+          // Destructuring to get TYPE, VALUE, and NAME from matches
+          const [, goldName, goldValue] = goldMatch;
+          const [, compName, compValue] = compMatch;
+
+          // Compare NAME for equality
+          if (goldName === compName) {
+            // have matching type and name, now check values
+
+            // ensure we have expected values
+            matchStatus = compValue === goldValue || (compValue === '20,000,000' && goldValue === '0');
+            //console.log(` -- name=[${compName},${goldName}], value=[${compValue},${goldValue}], matchStatus=(${matchStatus})`);
           }
         }
       }

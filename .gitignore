@@ -219,3 +219,6 @@ TEST/emptySpinFile.binf
 /RESULTS
 /jest-config/coverage
 *.elemold
+/jest-coverage/lcov-report
+/out-jest
+/jest-coverage
