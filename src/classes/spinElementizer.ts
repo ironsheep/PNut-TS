@@ -203,7 +203,8 @@ export class SpinElementizer {
       // TODO: need debug(` entry and need `{cmd}(...) reentry, exit will be "`" or )EOL
       // handle double-quoted string
 
-      let charOffset = 0; //this.currCharacterIndex;
+      let charOffset = this.currCharacterIndex;
+      let stringOffset = 0;
       this.logMessage(`* EmitTickString --  unprocessedLine=[${this.unprocessedLine}](${this.unprocessedLine.length})`);
       let stringEndOffset = this.unprocessedLine.indexOf('`');
       if (stringEndOffset == -1) {
@@ -213,8 +214,8 @@ export class SpinElementizer {
       returningSingleEntry = false;
       // if we have an end and not an empty string
       if (stringEndOffset != -1 && stringEndOffset != 0) {
-        stringLength = stringEndOffset - charOffset;
-        this.logMessage(`* EmitTickString --  at(${charOffset}), end(${stringEndOffset}), charCount=(${stringLength})`);
+        stringLength = stringEndOffset - stringOffset;
+        this.logMessage(`* EmitTickString --  at(${stringOffset}), end(${stringEndOffset}), charCount=(${stringLength})`);
         if (stringLength > 0) {
           for (let charIndex = 0; charIndex < stringEndOffset; charIndex++) {
             const char = this.unprocessedLine.charAt(charIndex);
@@ -225,6 +226,7 @@ export class SpinElementizer {
               elementComma.midStringComma = true;
               elementsFound.push(elementComma);
             }
+            stringOffset += 1;
             charOffset += 1;
           }
         }
