@@ -35,7 +35,7 @@ export function compareObjOrBinFiles(outputFSpec: string, goldenFSpec: string): 
   return filesMatchStatus;
 }
 
-export function compareListingFiles(reportFSpec: string, goldenFSpec: string): boolean {
+export function compareListingFiles(reportFSpec: string, goldenFSpec: string, stringsToExlude?: string[]): boolean {
   let filesMatchStatus: boolean = false;
   let inputFileCount: number = 0;
   if (fs.existsSync(reportFSpec)) {
@@ -55,11 +55,11 @@ export function compareListingFiles(reportFSpec: string, goldenFSpec: string): b
     const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s*\r\n|\s*\r/);
 
     // Strings to exclude from comparison
-    const stringsToExclude = ['Redundant OBJ '];
+    const filterStrings: string[] = stringsToExlude !== undefined ? stringsToExlude : ['Redundant OBJ bytes removed'];
 
     // Filter out lines based on exclusion criteria
-    const reportFiltered = reportContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
-    const goldenFiltered = goldenContentLines.filter((line) => !stringsToExclude.some((excludeString) => line.startsWith(excludeString)));
+    const reportFiltered = reportContentLines.filter((line) => !filterStrings.some((excludeString) => line.startsWith(excludeString)));
+    const goldenFiltered = goldenContentLines.filter((line) => !filterStrings.some((excludeString) => line.startsWith(excludeString)));
 
     // Compare the filtered content of both files
     // NOPE, not good enough:  filesMatchStatus = reportFiltered.join('\n') === goldenFiltered.join('\n');
@@ -204,4 +204,12 @@ export function removeExistingFile(fileSpec: string) {
   if (fs.existsSync(fileSpec)) {
     fs.unlinkSync(fileSpec);
   }
+}
+
+export function appendDiagnosticString(origString: string, appendString: string, separator: string): string {
+  let longerString: string = appendString;
+  if (origString.length > 0) {
+    longerString = `${origString}${separator}${appendString}`;
+  }
+  return longerString;
 }

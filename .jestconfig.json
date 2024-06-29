@@ -17,7 +17,7 @@
     ".test.js",
     "testUtils.js"
   ],
-  "collectCoverage": true,
+  "collectCoverage": false,
   "collectCoverageFrom": [
     "dist/**/*.js",
     "src/**/*.ts",
@@ -27,7 +27,8 @@
   "preset": "ts-jest",
   "testEnvironment": "node",
   "transform": {
-    "^.+\\.tsx?$": "ts-jest"
+    "^.+\\.(ts|tsx)?$": "ts-jest",
+    "^.+\\.(js|jsx)$": "babel-jest"
   },
   "verbose": true
 }

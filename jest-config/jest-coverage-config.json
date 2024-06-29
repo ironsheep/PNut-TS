@@ -1,5 +1,5 @@
 {
-  "displayName": "Coverage suite of tests",
+  "displayName": "Run all test compiles",
   "roots": [
     "<rootDir>/dist/tests/CON-tests/",
     "<rootDir>/dist/tests/DAT-PASM-tests/",

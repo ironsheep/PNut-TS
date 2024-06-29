@@ -8,14 +8,14 @@ import path from 'path';
 
 // Alternatively, if you want to use the synchronous version, you can do:
 import { sync as globSync } from 'glob';
-import { compareListingFiles, compareObjOrBinFiles, removeExistingFile, topLevel } from '../testUtils';
+import { appendDiagnosticString, compareListingFiles, compareObjOrBinFiles, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
-const dirPath = path.resolve(__dirname, '../../../TEST/SPIN-tests');
+const testDirPath = path.resolve(__dirname, '../../../TEST/SPIN-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
 const directories = [
-  { name: 'Test directory', path: dirPath, relFolder: dirPath.replace(topLevel, './') },
+  { name: 'Test directory', path: testDirPath, relFolder: testDirPath.replace(topLevel, './') },
   { name: 'Tool directory', path: toolPath, relFolder: toolPath.replace(topLevel, './') }
 ];
 
@@ -30,7 +30,7 @@ describe('Directory existence tests', () => {
 describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
   let files: string[] = [];
   try {
-    files = globSync(`${dirPath}/*.spin2`);
+    files = globSync(`${testDirPath}/*.spin2`);
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
@@ -42,10 +42,10 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
       const options: string = '-v -l -O --regression element --';
       const basename = path.basename(file, '.spin2');
 
-      const listingFSpec = path.join(dirPath, `${basename}.lst`);
-      const objectFSpec = path.join(dirPath, `${basename}.obj`);
-      const binaryFSpec = path.join(dirPath, `${basename}.bin`);
-      const elementsFSpec = path.join(dirPath, `${basename}.elem`);
+      const listingFSpec = path.join(testDirPath, `${basename}.lst`);
+      const objectFSpec = path.join(testDirPath, `${basename}.obj`);
+      const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
+      const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
 
       // Remove existing files
       removeExistingFile(listingFSpec);
@@ -57,14 +57,14 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
       try {
         execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
       } catch (error) {
-        console.error(`ERROR: running PNut-TS: ${error}`);
+        console.error(`ERROR: running PNut-ts: ${error}`);
         fail(`Execution failed for ${file}`);
       }
 
       // count the number of matching outputs, should be 3!
       let whatFailed: string = '';
       // ID the golden listing file
-      const goldenFSpec = path.join(dirPath, `${basename}.lst.GOLD`);
+      const goldenFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
       // Compare listing files
       let filesMatch: boolean = compareListingFiles(listingFSpec, goldenFSpec);
       if (!filesMatch) {
@@ -72,7 +72,7 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
       }
 
       // ID the golden .obj file
-      const goldenObjFSpec = path.join(dirPath, `${basename}.obj.GOLD`);
+      const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
       // Compare object files
       filesMatch = compareObjOrBinFiles(objectFSpec, goldenObjFSpec);
       if (!filesMatch) {
@@ -80,7 +80,7 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
       }
 
       // ID the golden .bin file
-      const goldenBinFSpec = path.join(dirPath, `${basename}.bin.GOLD`);
+      const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
       // Compare binary files
       filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
       if (!filesMatch) {
@@ -94,11 +94,3 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
     });
   });
 });
-
-function appendDiagnosticString(origString: string, appendString: string, separator: string): string {
-  let longerString: string = appendString;
-  if (origString.length > 0) {
-    longerString = `${origString}${separator}${appendString}`;
-  }
-  return longerString;
-}

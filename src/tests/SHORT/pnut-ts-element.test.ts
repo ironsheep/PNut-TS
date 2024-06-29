@@ -1,32 +1,43 @@
 /* eslint-disable no-console */
+'use strict';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import glob from 'glob';
+// Import the glob function specifically
+//import { glob } from 'glob';
+
+// Alternatively, if you want to use the synchronous version, you can do:
+import { sync as globSync } from 'glob';
+import { appendDiagnosticString, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/SHORT
 const testDirPath = path.resolve(__dirname, '../../../TEST/SHORT/elementizerTESTs');
 const toolPath = path.resolve(__dirname, '../../../out');
 
-describe('Test directory existence', () => {
-  test('Test directory should exist', () => {
-    //console.log(`LOG testDirPath=[${testDirPath}]`);
+const directories = [
+  { name: 'Test directory', path: testDirPath, relFolder: testDirPath.replace(topLevel, './') },
+  { name: 'Tool directory', path: toolPath, relFolder: toolPath.replace(topLevel, './') }
+];
 
-    if (!fs.existsSync(testDirPath)) {
-      throw new Error(`Test directory does not exist: ${testDirPath}`);
+describe('Directory existence tests', () => {
+  test.each(directories)('$relFolder should exist', ({ path }) => {
+    if (!fs.existsSync(path)) {
+      throw new Error(`Directory does not exist: ${path}`);
     }
   });
 });
 
-test('CLI generates correct element listings', () => {
+describe('PNut_ts generates correct element listings', () => {
   // Get all .spin2 files in the ./TEST/element/ directory
-
-  const files = glob.sync(`${testDirPath}/*.spin2`);
-
-  let passCount = 0;
-  const failList = [];
-
-  const options: string = ' --pass elementize --regression element -- ';
+  let files: string[] = [];
+  try {
+    files = globSync(`${testDirPath}/*.spin2`);
+  } catch (error) {
+    console.error('ERROR: glob issue:', error);
+  }
+  if (files.length > 1) {
+    files.sort();
+  }
 
   // Iterate over each .spin2 file
   for (const file of files) {
@@ -34,18 +45,18 @@ test('CLI generates correct element listings', () => {
     const basename = path.basename(file, '.spin2');
     const reportFSpec = path.join(testDirPath, `${basename}.elem`);
     // if the report file exists delete it before we start
-    if (fs.existsSync(reportFSpec)) {
-      fs.unlinkSync(reportFSpec);
-    }
+    removeExistingFile(reportFSpec);
 
+    const options: string = ' --pass elementize --regression element -- ';
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
     } catch (error) {
-      console.error(`Error running PNut-TS: ${error}`);
+      console.error(`Error running PNut-ts: ${error}`);
     }
+
     // Ensure the file exists after the test run
     if (!fs.existsSync(reportFSpec)) {
-      console.error(`PNut-TS: Failed to write output file [${reportFSpec}]`);
+      fail(`PNut-ts: Failed to write output file [${reportFSpec}]`);
     }
     // Read the generated output file
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split('\n');
@@ -59,17 +70,16 @@ test('CLI generates correct element listings', () => {
     const goldenFiltered = goldenContentLines.filter((line) => !line.startsWith('# Run:'));
 
     // Compare the output to the golden file
+    let whatFailed: string = '';
     if (reportFiltered.join('\n') === goldenFiltered.join('\n')) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      passCount++;
+      //
     } else {
-      failList.push(file);
+      whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
     }
+
+    if (whatFailed.length > 0) {
+      whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');
+    }
+    expect(whatFailed).toBe('');
   }
-
-  //console.log(`Pass count: ${passCount}`);
-  //console.log(`Fail list: ${failList}`);
-
-  // Expect all tests to pass
-  expect(failList.length).toBe(0);
 });
