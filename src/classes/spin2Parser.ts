@@ -68,14 +68,18 @@ export class Spin2Parser {
       this.spinResolver.setSourceFile(this.srcFile);
     }
 
-    this.P2ListElements(); // blank line
+    //this.logMessage(`* P2Elementize() - Log Element List - ENTRY`);
+    //this.P2ListElements(); // blank line
+    //this.logMessage(`* P2Elementize() - Log Element List - EXIT`);
 
     // if regression reporting enabled then generate the report
     if (this.context.reportOptions.writeElementsReport) {
+      this.logMessage(`* P2Elementize() - Dump Element List - ENTRY`);
       const reporter: RegressionReporter = new RegressionReporter(this.context);
       if (this.srcFile) {
         reporter.writeElementReport(this.srcFile.dirName, this.srcFile.fileName, this.spinElements);
       }
+      this.logMessage(`* P2Elementize() - Dump Element List - EXIT`);
     }
   }
 

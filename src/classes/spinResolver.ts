@@ -455,16 +455,16 @@ export class SpinResolver {
   private compile_con_blocks_1st() {
     // true here means very-first pass!
     const FIRST_PASS: boolean = true;
-    this.logMessage('* COMPILE_con_blocks_1st() 1of2');
+    this.logMessage('*==* COMPILE_con_blocks_1st() 1of2');
     this.compile_con_blocks(eResolve.BR_Try, FIRST_PASS);
-    this.logMessage('* COMPILE_con_blocks_1st() 2of2');
+    this.logMessage('*==* COMPILE_con_blocks_1st() 2of2');
     this.compile_con_blocks(eResolve.BR_Try);
   }
 
   private compile_con_blocks_2nd() {
-    this.logMessage('* COMPILE_con_blocks_2nd() 1of2');
+    this.logMessage('*==* COMPILE_con_blocks_2nd() 1of2');
     this.compile_con_blocks(eResolve.BR_Try);
-    this.logMessage('* COMPILE_con_blocks_2nd() 2of2');
+    this.logMessage('*==* COMPILE_con_blocks_2nd() 2of2');
     this.compile_con_blocks(eResolve.BR_Must);
   }
 
@@ -473,6 +473,8 @@ export class SpinResolver {
     let pasmModeStatus: boolean = true;
     let element: SpinElement;
     this.restoreElementLocation(0); // start from first in list
+    const savedLogState: boolean = this.isLogging;
+    this.isLogging = false;
     do {
       element = this.getElement();
 
@@ -487,13 +489,14 @@ export class SpinResolver {
         }
       }
     } while (element.type != eElementType.type_end_file);
+    this.isLogging = savedLogState;
     this.logMessage(`* determinePasmMode() = (${pasmModeStatus})`);
     return pasmModeStatus;
   }
 
   private compile_var_blocks() {
     // Compile var blocks
-    this.logMessage('* compile_var_blocks()');
+    this.logMessage('*==* COMPILE_var_blocks()');
     this.varPtr = 4; // leave room for the long pointer to object
     this.restoreElementLocation(0); // start from first in list
 
@@ -595,7 +598,7 @@ export class SpinResolver {
 
   private compile_dat_blocks_fn() {
     // PNut compile_dat_blocks_fn:
-    this.logMessage('* COMPILE_dat_blocks_fn()');
+    this.logMessage('*==* COMPILE_dat_blocks_fn()');
 
     this.spinFiles.clearDataFiles();
     this.restoreElementLocation(0); // start at first element
@@ -991,7 +994,7 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
-    this.logMessage(`* COMPILE_dat_blocks() inLineMode=(${inLineMode})`);
+    this.logMessage(`*==* COMPILE_dat_blocks() inLineMode=(${inLineMode})`);
     this.inlineModeForGetConstant = inLineMode;
     if (inLineMode) {
       this.activeSymbolTable = eSymbolTableId.STI_INLINE;
@@ -2658,6 +2661,7 @@ export class SpinResolver {
     // Compile sub blocks - id only
     // PNut compile_sub_blocks_id:
     if (this.pasmMode == false) {
+      this.logMessage('*==* COMPILE_sub_blocks_id()');
       const subStartIndex: number = this.objImage.offset >> 2;
       // compile PUB blocks
       const pubsFound = this.compilePubPriBlocksId(eBlockType.block_pub, subStartIndex);
@@ -2778,6 +2782,7 @@ export class SpinResolver {
     // Compile sub blocks
     // PNut compile_sub_blocks:
     if (this.pasmMode == false) {
+      this.logMessage('*==* COMPILE_sub_blocks()');
       // compile PUB blocks
       const lastPubSymbolValue = this.compilePubPriBlocks(eBlockType.block_pub);
       // compile PRI blocks
@@ -3805,7 +3810,7 @@ export class SpinResolver {
 
   private compile_obj_blocks_id() {
     // PNut compile_obj_blocks_id:
-    this.logMessage('* compile_obj_blocks_id()');
+    this.logMessage('*==* COMPILE_obj_blocks_id()');
     this.objImage.setOffsetTo(0);
     this.spinFiles.clearObjFiles();
     this.objectInstanceInMemoryCount = 0;
@@ -4045,6 +4050,7 @@ export class SpinResolver {
     //   moves data from objects into our output binary image
     // PNut compile_obj_blocks:
     if (this.pasmMode == false) {
+      this.logMessage('*==* COMPILE_obj_blocks()');
       this.pad_obj_long();
       // 1st pass
 
@@ -4590,33 +4596,18 @@ export class SpinResolver {
 
   private compile_con_blocks(resolve: eResolve, firstPass: boolean = false) {
     // compile all CON blocks in file
-    this.logMessage(`*==* compile_con_blocks()`);
+    this.logMessage(`*==* COMPILE_con_blocks(firstPass=(${firstPass}))`);
     this.restoreElementLocation(0); // start from first in list
     this.logMessage(`  -- restore to nextType=[${eElementType[this.nextElementType()]}]`);
 
-    // at head of file, if 1st elem is NOT a block start then we assume CON
-    //  if is a block start but NOT con then skip to first CON
-    if (this.nextElementType() == eElementType.type_block) {
-      this.logMessage(`  -- next block [${eBlockType[this.nextElementValue()]}]`);
-      // move past opening CON if we have one
-      if (this.nextElementValue() == eBlockType.block_con) {
-        this.getElement(); // throw BLOCK element away
-        if (this.nextElementType() == eElementType.type_end) {
-          this.getElement(); // throw EOL element away
-        }
-      } else {
-        // we have leading block which is NOT 'CON'
-        if (!this.nextBlock(eBlockType.block_con)) {
-          // we failed to located any CON after starting block
-          this.logMessage(`  -- no CON blocks found!`);
-          return;
-        }
-        this.logMessage(`  -- now at CON : elem=[${this.currElement.toString()}]`);
-        if (this.currElement.type == eElementType.type_end) {
-          this.getElement(); // throw EOL element away
-        }
+    // move past opening CON if we have one
+    if (this.nextElementType() == eElementType.type_block && this.nextElementValue() == eBlockType.block_con) {
+      this.getElement(); // throw BLOCK element away
+      if (this.nextElementType() == eElementType.type_end) {
+        this.getElement(); // throw EOL element away
       }
     }
+
     // if the File is Empty we are done!
     if (this.nextElementType() == eElementType.type_end_file) {
       return;
@@ -4624,6 +4615,7 @@ export class SpinResolver {
 
     do {
       // NEXT BLOCK
+      this.logMessage(`  -- NEW BLOCK do {} elem=[${this.currElement.toString()}]`);
       // reset our enumeration
       let enumValid: boolean = true;
       let enumValue: bigint = 0n;
@@ -4631,20 +4623,38 @@ export class SpinResolver {
       //let assignFlag: boolean = false;TO-CHIO
 
       do {
+        this.logMessage(`  -- NEW LINE do {} elem=[${this.currElement.toString()}]`);
         // here is @@nextline:   NEXT LINE
         let backupSymbolName: string = '';
+
+        // BUGFIX: these moved from same-line loop to hear to fix CON processing
+        if (this.nextElementType() == eElementType.type_end) {
+          this.getElement(); // throw element away
+        }
+        // BUGIFX: get out of line processing if next is new non-CON block
+        if (this.nextElementType() == eElementType.type_block && this.nextElementValue() != eBlockType.block_con) {
+          break;
+        }
+
+        if (this.nextElementType() == eElementType.type_end_file) {
+          break;
+        }
 
         do {
           // here is @@sameline:   SAME LINE (process a line)
           this.getElement();
+          this.logMessage(`  -- SAME LINE do {} elem=[${this.currElement.toString()}]`);
           //assignFlag = this.currElement.type == eElementType.type_pound ? true : false;
+          // if the File is Empty we are done!
+
+          /*  BUGFIX: moved to above...
           if (this.nextElementType() == eElementType.type_end) {
             this.getElement(); // throw element away
           }
-          // if the File is Empty we are done!
           if (this.nextElementType() == eElementType.type_end_file) {
             break;
           }
+          //*/
 
           // do we have an enum declaration?
           if (this.currElement.type == eElementType.type_pound) {
@@ -4674,7 +4684,7 @@ export class SpinResolver {
             //   name = value, name = value, name = name = value, #0[4], name1, name2
             if (firstPass) {
               // [error_eaucnop]
-              throw new Error('Expected a unique constant name or "#"');
+              throw new Error('1st Expected a unique constant name or "#"');
             }
             backupSymbolName = this.replacedName; // stashed by getElement()
             this.logMessage(`* BACKUP SYMBOL name for use in set/verify name=[${backupSymbolName}]`);
@@ -4771,7 +4781,7 @@ export class SpinResolver {
             this.getElement();
             this.logMessage(`EEEE: Element at fail: [${this.currElement.toString()}]`);
             // [error_eaucnop]
-            throw new Error('Expected a unique constant name or "#"');
+            throw new Error('case Expected a unique constant name or "#"');
           }
         } while (this.getCommaOrEndOfLine());
         // if we hit end of file, we're done
@@ -4784,7 +4794,7 @@ export class SpinResolver {
 
   private compile_final() {
     // PNut compile_final:
-    this.logMessage(`*==* compile_final()`);
+    this.logMessage(`*==* COMPILE_final()`);
     // TODO: place code for flash_loader file size and interpreter file size
     this.sizeFlashLoader = 0; // for now
     this.sizeInterpreter = 0;
@@ -9020,10 +9030,12 @@ export class SpinResolver {
   }
 
   private backElement(): void {
-    this.nextElementIndex -= 2;
+    // don't let our index get < 0!
+    this.nextElementIndex -= this.nextElementIndex > 2 ? 2 : this.nextElementIndex;
+    this.logMessage(`* BACKele nextElemIdx=(${this.nextElementIndex})`);
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.nextElementIndex++]);
     // and make sure our column offset into the line is set
-    this.logMessage(`* BACKele i#${this.nextElementIndex - 1}, e=[${this.currElement.toString()}]`);
+    this.logMessage(`* BACKele i#${this.nextElementIndex - 1}, e=[${this.currElement.toString()}], nextElemIdx=(${this.nextElementIndex})`);
   }
 
   private getColumn() {
