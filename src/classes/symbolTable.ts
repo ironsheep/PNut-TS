@@ -48,7 +48,7 @@ export class SymbolEntry {
   }
 }
 /**
- * The Pnut_ts symbol table class.
+ * The PNut_ts symbol table class.
  *   Found in src/classes/symbolTable.ts
  *
  * @export

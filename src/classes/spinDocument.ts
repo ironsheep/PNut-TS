@@ -62,7 +62,7 @@ export class SpinDocument {
   private gatheringTrailerComment: boolean = true;
   private inDocComment: boolean = false;
   private inNonDocComment: boolean = false;
-  // Pnut_TS version number handling for this .spin2 file
+  // PNut-ts version number handling for this .spin2 file
   private defualtVersion: number = 41;
   private legalVersions: number[] = [41, 43];
   private requiredVersion: number = 0;
