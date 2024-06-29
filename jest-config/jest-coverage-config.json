@@ -3,6 +3,7 @@
   "roots": [
     "<rootDir>/dist/tests/CON-tests/",
     "<rootDir>/dist/tests/DAT-PASM-tests/",
+    "<rootDir>/dist/tests/DBG-tests/",
     "<rootDir>/dist/tests/EXT-tests/",
     "<rootDir>/dist/tests/LOADER-tests/",
     "<rootDir>/dist/tests/OBJ-tests/",

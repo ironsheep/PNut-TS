@@ -28,7 +28,7 @@
     "build": "tsc && chmod +x dist/pnut-ts.js",
     "start": "npm run build && dist/pnut-ts.js",
     "help": "npm run build && dist/pnut-ts.js --help",
-    "test": "npm run build && jest -c jest-config/jest-short-only-config.json",
+    "test": "jest",
     "test-full": "npm run build && jest -c jest-config/jest-full-config.json",
     "test-datpasm": "npm run build && jest -c jest-config/jest-datpasm-only-config.json",
     "test-dbg": "npm run build && jest -c jest-config/jest-dbg-only-config.json",
@@ -39,7 +39,8 @@
     "test-loader": "npm run build && jest -c jest-config/jest-loader-only-config.json",
     "test-spin": "npm run build && jest -c jest-config/jest-spin-only-config.json",
     "test-full-only": "npm run build && jest -c jest-config/jest-full-only-config.json",
-    "test-coverage": "npm run build && jest --coverage -c jest-config/jest-ext-only-config.json",
+    "test-coverage": "npm run build && jest --coverage -c smm.jestconfig.js",
+    "test-cov": "npm run build && jest --coverage --verbose",
     "pretest": "npm run build && npm run lint",
     "watch": "tsc -b -w",
     "lint": "eslint ./src --ext .ts,.tsx",
@@ -65,11 +66,13 @@
   "publisher": "IronSheepProductionsLLC",
   "license": "MIT",
   "devDependencies": {
+    "@babel/preset-env": "^7.24.7",
     "@types/glob": "^8.1.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.4.19",
     "@typescript-eslint/eslint-plugin": "^6.18.1",
     "@typescript-eslint/parser": "^6.18.1",
+    "babel-jest": "^29.7.0",
     "esbuild": "^0.21.2",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
@@ -83,23 +86,10 @@
     "jest-mock-console": "^2.0.0",
     "pkg": "^5.8.1",
     "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
   },
   "dependencies": {
     "commander": "^12.0.0"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.tsx?$": "ts-jest"
-    },
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "jsx",
-      "json",
-      "node"
-    ]
   }
 }

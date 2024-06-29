@@ -123,6 +123,13 @@ export class SpinElementizer {
     return element_list;
   }
 
+  private setDebugStringState(newState: eDebugStringState) {
+    if (this.debugStringState != newState) {
+      this.logMessage(`  -- debugStringState [${eDebugStringState[this.debugStringState]}] -> [${eDebugStringState[newState]}]`);
+    }
+    this.debugStringState = newState;
+  }
+
   private get_element_entries(): SpinElement[] {
     const elementsFound: SpinElement[] = [];
     let returningSingleEntry: boolean = true;
@@ -142,7 +149,7 @@ export class SpinElementizer {
       this.firstCharColumn = this.countColumnsOfLeftEdgeWhite(this.unprocessedLine) + 1;
       firstElementOfLine = true;
       inDebugStatement = false;
-      this.debugStringState = eDebugStringState.NOT_IN_DEBUG;
+      this.setDebugStringState(eDebugStringState.NOT_IN_DEBUG);
     }
 
     // skip initial white space on opening line
@@ -228,7 +235,7 @@ export class SpinElementizer {
         this.logMessage(`* EmitTickString -- charCount=(${stringLength}) emit nothing`);
       }
       // exit string but will return after `{dbgCmd}(...)
-      this.debugStringState = eDebugStringState.WAITING_CLOSE_PAREN;
+      this.setDebugStringState(eDebugStringState.WAITING_CLOSE_PAREN);
     } else if (this.unprocessedLine.charAt(0) == '"') {
       // note state for () avoidance
       if (this.debugInQuotedString == false && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
@@ -326,7 +333,7 @@ export class SpinElementizer {
         symbolLengthFound = foundSymbol.charsUsed;
         if (typeFound == eElementType.type_debug && firstElementOfLine) {
           inDebugStatement = true;
-          this.debugStringState = eDebugStringState.FOUND_DEBUG;
+          this.setDebugStringState(eDebugStringState.FOUND_DEBUG);
         }
       } else {
         // this is a user defined symbol name which is as of yet undefined
@@ -348,20 +355,20 @@ export class SpinElementizer {
         // special state handling for debug() string parsing
         if (typeFound == eElementType.type_left && this.debugStringState == eDebugStringState.FOUND_DEBUG) {
           // found debug(
-          this.debugStringState = eDebugStringState.FOUND_OPEN_PAREN;
+          this.setDebugStringState(eDebugStringState.FOUND_OPEN_PAREN);
         } else if (typeFound == eElementType.type_left && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
           this.debugParenNestCount++;
         } else if (typeFound == eElementType.type_right && this.debugStringState == eDebugStringState.WAITING_CLOSE_PAREN) {
           if (this.debugParenNestCount > 0) {
-            this.debugParenNestCount++;
+            this.debugParenNestCount--;
           }
           if (this.debugParenNestCount == 0) {
-            this.debugStringState = eDebugStringState.IN_TRAILING_TIC_STRING;
+            this.setDebugStringState(eDebugStringState.IN_TRAILING_TIC_STRING);
           }
         } else if (typeFound == eElementType.type_tick) {
           if (this.debugStringState == eDebugStringState.FOUND_OPEN_PAREN) {
             // found debug(`
-            this.debugStringState = eDebugStringState.IN_LEADING_TIC_STRING;
+            this.setDebugStringState(eDebugStringState.IN_LEADING_TIC_STRING);
           }
           this.debugParenNestCount = 0; // reset depth
         }

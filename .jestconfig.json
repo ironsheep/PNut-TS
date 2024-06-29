@@ -7,7 +7,27 @@
     }
   },
   "coverageReporters": ["lcov"],
-  "coverageDirectory": "./output/code-coverage",
-  "coveragePathIgnorePatterns": ["/node_modules/", "/src/tests/"],
-  "collectCoverageFrom": ["dist/**/*.{js,jsx,ts,tsx}", "!dist/tests"]
+  "coverageDirectory": "out-jest/code-coverage",
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "/dist/tests/",
+    "/dist/ext/",
+    "/src/tests/",
+    "/src/ext/",
+    ".test.js",
+    "testUtils.js"
+  ],
+  "collectCoverage": true,
+  "collectCoverageFrom": [
+    "dist/**/*.js",
+    "src/**/*.ts",
+    "!dist/**/*.{test,testUtils}.{js,jsx}",
+    "!src/**/*.{test,testUtils}.{ts,tsx}"
+  ],
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "transform": {
+    "^.+\\.tsx?$": "ts-jest"
+  },
+  "verbose": true
 }
