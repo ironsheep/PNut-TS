@@ -43,7 +43,7 @@ const config: Config = {
   // coveragePathIgnorePatterns: [
   //   "/node_modules/"
   // ],
-
+  coveragePathIgnorePatterns: ['/node_modules/', '/dist/', 'src/tests/'],
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: 'v8',
 
@@ -178,7 +178,18 @@ const config: Config = {
   //   "/node_modules/"
   // ],
   //testPathIgnorePatterns: ['/node_modules/', '/dist/tests/', '/dist/ext/', '/src/tests/', '/src/ext/']
-
+  /*
+  testPathIgnorePatterns: [
+    'src/tests/SHORT/pnut-ts.test.js',
+    'src/tests/SHORT/pnut-ts-tables.test.js',
+    'src/tests/SHORT/pnut-ts-element.test.js',
+    'src/tests/FULL/pnut-ts-preproc.test.js',
+    'dist/tests/SHORT/pnut-ts.test.js',
+    'dist/tests/SHORT/pnut-ts-tables.test.js',
+    'dist/tests/SHORT/pnut-ts-element.test.js',
+    'dist/tests/FULL/pnut-ts-preproc.test.js'
+  ],
+  */
   // The regexp pattern or array of patterns that Jest uses to detect test files
   // testRegex: [],
 
