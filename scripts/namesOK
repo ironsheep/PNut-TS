@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Navigate to the TEST directory
+cd TEST
+
+# Find all .spin2 files, extract basenames, sort, and check for duplicates
+duplicates=$(find . -type f -name "*.spin2" -exec basename {} .spin2 \; | sort | uniq -d)
+
+if [ -z "$duplicates" ]; then
+    echo "All .spin2 file basenames are unique."
+else
+    echo "Duplicate .spin2 file basenames found!"
+fi
+
+# Assuming $duplicates contains a list of duplicate basenames
+echo "$duplicates" | while read basename; do
+    echo "Duplicate basename: $basename"
+    find . -type f -name "$basename.spin2" -exec dirname {} \; | sort | uniq
+done
+
+cd -

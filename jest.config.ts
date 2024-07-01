@@ -44,6 +44,7 @@ const config: Config = {
   //   "/node_modules/"
   // ],
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/', 'src/tests/'],
+
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: 'v8',
 
@@ -54,10 +55,18 @@ const config: Config = {
   //   "lcov",
   //   "clover"
   // ],
-  coverageReporters: ['lcov'],
 
   // An object that configures minimum threshold enforcement for coverage results
   // coverageThreshold: undefined,
+  /*
+  coverageThreshold: {
+    global: {
+      branches: 75,
+      functions: 75,
+      lines: 75
+    }
+  },
+  //*/
 
   // A path to a custom dependency extractor
   // dependencyExtractor: undefined,
@@ -72,7 +81,7 @@ const config: Config = {
 
   // Force coverage collection from ignored files using an array of glob patterns
   // forceCoverageMatch: [],
-
+  forceCoverageMatch: ['src/classes/*.ts', 'src/utils/*.ts', 'src/*.ts'],
   // A path to a module which exports an async function that is triggered once before all test suites
   // globalSetup: undefined,
 
@@ -177,22 +186,24 @@ const config: Config = {
   // testPathIgnorePatterns: [
   //   "/node_modules/"
   // ],
-  //testPathIgnorePatterns: ['/node_modules/', '/dist/tests/', '/dist/ext/', '/src/tests/', '/src/ext/']
-  /*
+  testPathIgnorePatterns: ['/node_modules/', '/dist/tests/', '/dist/ext/', '/src/ext/'],
+  /* BREAKs THINGS
   testPathIgnorePatterns: [
-    'src/tests/SHORT/pnut-ts.test.js',
-    'src/tests/SHORT/pnut-ts-tables.test.js',
-    'src/tests/SHORT/pnut-ts-element.test.js',
-    'src/tests/FULL/pnut-ts-preproc.test.js',
+    'src/tests/SHORT/pnut-ts.test.ts',
+    'src/tests/SHORT/pnut-ts-tables.test.ts',
+    'src/tests/SHORT/pnut-ts-element.test.ts',
+    'src/tests/FULL/pnut-ts-preproc.test.ts',
     'dist/tests/SHORT/pnut-ts.test.js',
     'dist/tests/SHORT/pnut-ts-tables.test.js',
     'dist/tests/SHORT/pnut-ts-element.test.js',
     'dist/tests/FULL/pnut-ts-preproc.test.js'
   ],
-  */
+  //*/
   // The regexp pattern or array of patterns that Jest uses to detect test files
   // testRegex: [],
-
+  /* BREAKs THINGS
+  testRegex: ['src/tests/SPIN-tests/pnut-ts-spin.test.ts', 'src/tests/OBJ-tests/pnut-ts-obj.test.ts'],
+  //*/
   // This option allows the use of a custom results processor
   // testResultsProcessor: undefined,
 
@@ -204,7 +215,7 @@ const config: Config = {
   transform: {
     '^.+\\.(ts|tsx)?$': 'ts-jest',
     '^.+\\.(js|jsx)$': 'babel-jest'
-  }
+  },
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   // transformIgnorePatterns: [
@@ -217,6 +228,7 @@ const config: Config = {
 
   // Indicates whether each individual test should be reported during the run
   // verbose: undefined,
+  verbose: true
 
   // An array of regexp patterns that are matched against all source file paths before re-running tests in watch mode
   // watchPathIgnorePatterns: [],

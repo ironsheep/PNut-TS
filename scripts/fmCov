@@ -1,0 +1,26 @@
+#!/bin/bash
+SCRIPT=${0##*/}
+SCRIPT_VERSION="1.0"
+
+NEW_TEST_DIR="TEST/ALLCODE-tests"
+DIST_DIR="dist"
+
+# Check if the directory is empty
+if [ -z "$(ls -A ${NEW_TEST_DIR}/)" ]; then
+    echo "${SCRIPT}: Abort: ${NEW_TEST_DIR} is already town down." >&2
+    exit 1
+fi
+
+# remove compiled tests so they are compiled again
+(set -x;rm -rf ${DIST_DIR}/tests)
+
+# remove all files from TEST/ALLCODE-tests
+echo "rm -f ${NEW_TEST_DIR}/*"
+rm -f "${NEW_TEST_DIR}"/*
+
+# Find and rename all *.test.ts.HOLD files in src/tests back to *.test.ts
+find src/tests -type f -name "*.test.ts.HOLD" -exec bash -c 'mv "$0" "${0%.test.ts.HOLD}.test.ts"' {} \;
+
+mv src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.HOLD
+
+echo "${SCRIPT}: Undo actions completed."

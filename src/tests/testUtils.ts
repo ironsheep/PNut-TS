@@ -6,6 +6,42 @@ import crypto from 'crypto';
 
 export const topLevel: string = path.join(path.sep, 'workspaces', path.sep, 'Pnut-ts-dev', path.sep);
 
+export async function delay_mSec(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Checks if all files in a list exist, polling every 500ms, for up to 5 minutes.
+ * @param fileSpecs Array of file paths to check.
+ * @returns Promise that resolves to a boolean indicating if all files are present.
+ */
+
+export async function waitForFiles(fileSpecs: string[]): Promise<boolean> {
+  console.log(`* waitForFiles([${fileSpecs.join(', ')}])`);
+  const maxAttempts = 600; // 5 minutes / 500ms
+
+  let foundAllFilesStatus: boolean = false;
+  let attempts = 0;
+  while (attempts < maxAttempts) {
+    let allFilesPresentStatus: boolean = true;
+    for (let index = 0; index < fileSpecs.length; index++) {
+      const fileSpec = fileSpecs[index];
+      if (!fs.existsSync(fileSpec)) {
+        allFilesPresentStatus = false;
+        break;
+      }
+    }
+    if (allFilesPresentStatus) {
+      foundAllFilesStatus = true;
+      break;
+    }
+    await delay_mSec(500); // Wait for 500ms before checking again
+    attempts++;
+  }
+
+  return foundAllFilesStatus; // Timeout reached without finding all files
+}
+
 export function generateFileHash(filePath: string): string {
   // Function to generate an MD5 hash of a file's contents
   const fileBuffer = fs.readFileSync(filePath);
@@ -33,6 +69,14 @@ export function compareObjOrBinFiles(outputFSpec: string, goldenFSpec: string): 
     filesMatchStatus = file1Hash === file2Hash;
   }
   return filesMatchStatus;
+}
+
+export function fileExists(fileSpec: string): boolean {
+  let foundExistsStatus: boolean = false;
+  if (fs.existsSync(fileSpec)) {
+    foundExistsStatus = true;
+  }
+  return foundExistsStatus;
 }
 
 export function compareListingFiles(reportFSpec: string, goldenFSpec: string, stringsToExlude?: string[]): boolean {

@@ -1,0 +1,34 @@
+#!/bin/bash
+SCRIPT=${0##*/}
+SCRIPT_VERSION="1.0"
+
+NEW_TEST_DIR="TEST/ALLCODE-tests"
+DIST_DIR="dist"
+
+# Create the target directory if it doesn't exist
+(set -x;mkdir -p "${NEW_TEST_DIR}")
+
+# Check if TEST/ALLCODE-tests directory already contains files
+if [ "$(ls -A "${NEW_TEST_DIR}")" ]; then
+    echo "${SCRIPT}: Abort: ${NEW_TEST_DIR} is already set up!"
+    exit 1
+fi
+
+# remove compiled tests so they are compiled again
+(set -x;rm -rf ${DIST_DIR}/tests)
+
+# Copy all files from the specified source directories to the target directory
+# Define a list of directories to copy from
+dirs=("TEST/SPIN-tests" "TEST/OBJ-tests" "TEST/DBG-tests" "TEST/DAT-PASM-tests" "TEST/VAR-tests" "TEST/CON-tests" "TEST/LOADER-tests")
+
+# Loop over the list and copy each directory's contents to TEST/ALLCODE-tests
+for dir in "${dirs[@]}"; do
+    cp "$dir"/* ${NEW_TEST_DIR}
+done
+# Find and rename all *.test.ts files in src/tests to *.test.ts.HOLD
+find src/tests -type f -name "*.test.ts" -exec bash -c 'mv "$0" "${0%.test.ts}.test.ts.HOLD"' {} \;
+
+mv src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.HOLD src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts
+
+num_files=$(find ${NEW_TEST_DIR} -type f -name '*.spin2' | wc -l)
+echo "${SCRIPT}: Copied $num_files .spin2 test files to ${NEW_TEST_DIR}"

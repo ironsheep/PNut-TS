@@ -1,0 +1,20 @@
+#!/bin/bash
+SCRIPT=${0##*/}
+SCRIPT_VERSION="1.0"
+
+NEW_TEST_DIR="TEST/ALLCODE-tests"
+
+if [ "$(ls -A "${NEW_TEST_DIR}")" ]; then
+    echo ""
+    echo "${SCRIPT}: ${NEW_TEST_DIR} is set up!  (NEW coverage)"
+    echo ""
+    exit 0
+fi
+
+# Check if the directory is empty
+if [ -z "$(ls -A ${NEW_TEST_DIR}/)" ]; then
+    echo ""
+    echo "${SCRIPT}: ${NEW_TEST_DIR} is torn down!  (OLD coverage)"
+    echo ""
+    exit 0
+fi
