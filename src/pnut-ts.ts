@@ -22,6 +22,7 @@ export const root: string = __dirname;
 
 export class PNutInTypeScript {
   private readonly program = new Command();
+  //static isTesting: boolean = false;
   private options: OptionValues = this.program.opts();
   private version: string = '0.43.0';
   private argsArray: string[] = [];
@@ -30,7 +31,12 @@ export class PNutInTypeScript {
   private shouldAbort: boolean = false;
   private requiresFilename: boolean = false;
 
-  constructor() {
+  constructor(argsOverride?: string[]) {
+    //console.log(`PNut-TS: argsOverride=[${argsOverride}]`);
+    if (argsOverride !== undefined) {
+      this.argsArray = argsOverride;
+      //PNutInTypeScript.isTesting = true;
+    }
     process.stdout.on('error', (error: Error) => {
       console.error(`PNut-TS: An error occurred on stdout: "${error.message}", Aborting.`);
       process.exit(1);
@@ -50,11 +56,13 @@ export class PNutInTypeScript {
     this.context = Context.instance();
   }
 
-  public setArgs(args: string[]): void {
-    this.argsArray = args;
+  public setArgs(runArgs: string[]) {
+    //console.log('runArgs: %o', runArgs);
+    this.argsArray = runArgs;
+    //PNutInTypeScript.isTesting = true;
   }
 
-  public run(): number {
+  public async run(): Promise<number> {
     this.program
       .configureOutput({
         // Visibly override write routines as example!
@@ -113,9 +121,23 @@ export class PNutInTypeScript {
     this.program.exitOverride(); // throw instead of exit
 
     this.context.logger.setProgramName(this.program.name());
-    //this.context.logger.progressMsg(`after setting name`);
+
+    // Combine process.argv with the modified this.argsArray
+    //const testArgsInterp = this.argsArray.length === 0 ? '[]' : this.argsArray.join(', ');
+    //this.context.logger.progressMsg(`** process.argv=[${process.argv.join(', ')}], this.argsArray=[${testArgsInterp}]`);
+    const combinedArgs = this.argsArray.length == 0 ? process.argv : [...process.argv, ...this.argsArray.slice(2)];
+    //const GAHrunAsCoverageBUG: boolean = combinedArgs.includes('/workspaces/Pnut-ts-dev/node_modules/.bin/jest');
+    /*
+    if (combinedArgs.includes('/workspaces/Pnut-ts-dev/node_modules/.bin/jest')) {
+      //console.error(`ABORT pnut-ts.js run as jest coverage`);
+      return 0;
+      //process.exit(0);
+    }
+    //*/
+    this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
+
     try {
-      this.program.parse();
+      this.program.parse(combinedArgs);
     } catch (error: unknown) {
       if (error instanceof CommanderError) {
         //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
@@ -129,13 +151,18 @@ export class PNutInTypeScript {
         } else {
           if (error.name != 'oe' && error.name != 'Ee' && error.name != 'CommanderError2' && error.message != 'outputHelp') {
             this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
+            throw error;
           }
         }
       } else {
         this.context.logger.logMessage(`Catch unknown error=[${error}]`);
+        throw error;
       }
     }
     //this.context.logger.progressMsg(`after parse()`);
+    //console.log('arguments: %o', this.program.args);  // should be just filespec to compile
+    //console.log('combArguments: %o', combinedArgs);
+    //console.log('options: %o', this.program.opts());
 
     this.options = { ...this.options, ...this.program.opts() };
 
@@ -175,6 +202,7 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`* using USB [${this.context.compileOptions.propPlug}]`);
     }
     */
+
     if (!this.options.quiet) {
       const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
       this.context.logger.infoMsg(`* ${signOnCompiler}`);
@@ -364,6 +392,10 @@ export class PNutInTypeScript {
       if (this.options.list) {
         this.context.logger.verboseMsg(`* Write listing file: ${lstFilespec}`);
       }
+      if (this.context.compileOptions.writeObj) {
+        const objFilespec = filename.replace('.spin2', '.obj');
+        this.context.logger.verboseMsg(`* Write object file: ${objFilespec}`);
+      }
       // and load our .spin2 top-level file
       this.spinDocument = new SpinDocument(this.context, filename);
       // record this new file in our master list of files we compiled to buid the binary
@@ -372,7 +404,8 @@ export class PNutInTypeScript {
       this.spinDocument.defineSymbol('__VERSION__', this.version);
     } else {
       if (this.requiresFilename) {
-        console.log('arguments: %O', this.program.args);
+        console.log('arguments: %o', this.program.args);
+        console.log('combArguments: %o', combinedArgs);
         console.log('options: %o', this.program.opts());
         this.context.logger.errorMsg('Missing filename argument');
         this.shouldAbort = true;
@@ -397,7 +430,7 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       if (!this.context.reportOptions.writePreprocessReport) {
         const theCompiler = new Compiler(this.context);
-        theCompiler.Compile();
+        await theCompiler.Compile();
       }
     }
     // const optionsString: string = 'options: ' + String(this.options);
@@ -405,7 +438,7 @@ export class PNutInTypeScript {
     if (!this.options.quiet && !showingHelp) {
       this.context.logger.progressMsg('Done');
     }
-    return 0;
+    return Promise.resolve(0);
   }
 
   //private async loadUsbPortsFound(): Promise<void> {
@@ -544,5 +577,7 @@ export class PNutInTypeScript {
 // --------------------------------------------------
 // our actual command line tool when run stand-alone
 //
+//if (PNutInTypeScript.isTesting == false) {
 const cliTool = new PNutInTypeScript();
 cliTool.run();
+//}

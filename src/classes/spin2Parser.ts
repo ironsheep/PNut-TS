@@ -384,6 +384,7 @@ export class Spin2Parser {
 
     // Close the stream
     stream.end();
+    this.context.logger.progressMsg(`Wrote ${objFilename} (${byteCount} bytes)`);
   }
   public ComposeRam(programFlash: boolean, ramDownload: boolean) {
     // here is pascal ComposeRAM()
