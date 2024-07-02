@@ -114,20 +114,20 @@ export function locateSpin2File(filename: string, canSearchLibray: boolean = fal
   if (isSpin2File(filename)) {
     // is it in our current directory?
     let fileSpec: string = path.join(ctx.currentFolder, filename);
-    if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
+    //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
     if (fileExists(fileSpec)) {
       locatedFSpec = fileSpec;
     } else if (canSearchLibray) {
       // no, is it in our LIB directory?
       fileSpec = path.join(libraryDir(), filename);
-      if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
+      //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() checking [${fileSpec}]`);
       if (fileExists(fileSpec)) {
         locatedFSpec = fileSpec;
       }
     }
-    if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() -> [${locatedFSpec}]`);
-  } else {
-    if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File(${path.basename(filename)}) NOT a .spin2 file!`);
+    //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File() -> [${locatedFSpec}]`);
+    //} else {
+    //if (ctx) ctx.logger.logMessage(`TRC: locateSpin2File(${path.basename(filename)}) NOT a .spin2 file!`);
   }
   return locatedFSpec;
 }
@@ -155,7 +155,7 @@ export function locateDataFile(workingDir: string, filename: string, ctx?: Conte
       locatedFSpec = fileSpec;
     }
   }
-  if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() -> [${locatedFSpec}]`);
+  //if (ctx) ctx.logger.logMessage(`TRC: locateDataFile() -> [${locatedFSpec}]`);
   return locatedFSpec;
 }
 
@@ -199,7 +199,7 @@ export function loadFileAsUint8Array(fspec: string, ctx: Context | undefined = u
     try {
       const buffer = fs.readFileSync(fspec);
       fileContent = new Uint8Array(buffer);
-      if (ctx) ctx.logger.logMessage(`loaded (${fileContent.length}) bytes from [${path.basename(fspec)}]`);
+      //if (ctx) ctx.logger.logMessage(`loaded (${fileContent.length}) bytes from [${path.basename(fspec)}]`);
     } catch (err) {
       //ctx.logger.log(`TRC: loadFileAsString() fspec=[${fspec}] NOT FOUND!`);
       const encoder = new TextEncoder();
@@ -225,7 +225,7 @@ export function dumpUniqueChildObjectFile(
   fileSpec: string,
   ctx: Context | undefined = undefined
 ): void {
-  if (ctx) ctx.logger.logMessage(`  -- writing DIAG OBJ file (${byteCount} bytes from offset ${0}) to ${fileSpec}`);
+  //if (ctx) ctx.logger.logMessage(`  -- writing DIAG OBJ file (${byteCount} bytes from offset ${0}) to ${fileSpec}`);
   const stream = fs.createWriteStream(fileSpec);
   // copy our full buffer becuse it will be over written before the file write completes!
   const buffer = new Uint8Array(byteCount);
@@ -238,7 +238,7 @@ export function dumpUniqueChildObjectFile(
 }
 
 export function dumpUniqueObjectFile(objImage: ObjectImage, byteCount: number, fileSpec: string, ctx: Context | undefined = undefined): void {
-  if (ctx) ctx.logger.logMessage(`  -- writing DIAG OBJ file (${byteCount} bytes from offset ${0}) to ${fileSpec}`);
+  //if (ctx) ctx.logger.logMessage(`  -- writing DIAG OBJ file (${byteCount} bytes from offset ${0}) to ${fileSpec}`);
   const stream = fs.createWriteStream(fileSpec);
   // copy our full buffer becuse it will be over written before the file write completes!
   const buffer = new Uint8Array(byteCount);

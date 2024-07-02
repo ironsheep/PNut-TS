@@ -75,6 +75,7 @@ export class SpinDocument {
     this.isLogging = this.context.logOptions.logPreprocessor;
     this.documentId = SpinDocument.nextDocumentId++;
     const bFileFound: boolean = fileExists(fileSpec);
+    this.logMessage(`CODE: checking fileSpec=[${fileSpec}] bFileFound=(${bFileFound})`);
     this.docFolder = bFileFound ? path.dirname(fileSpecFromURI(fileSpec)) : '';
     this.fileBaseName = bFileFound ? path.basename(fileSpecFromURI(fileSpec)) : '';
     // record file type (decoded from name)

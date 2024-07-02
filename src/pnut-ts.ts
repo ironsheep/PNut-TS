@@ -53,7 +53,7 @@ export class PNutInTypeScript {
     process.stderr.on('close', () => {
       console.log('PNut-TS: stderr was closed');
     });
-    this.context = Context.instance();
+    this.context = new Context();
   }
 
   public setArgs(runArgs: string[]) {
@@ -125,7 +125,12 @@ export class PNutInTypeScript {
     // Combine process.argv with the modified this.argsArray
     //const testArgsInterp = this.argsArray.length === 0 ? '[]' : this.argsArray.join(', ');
     //this.context.logger.progressMsg(`** process.argv=[${process.argv.join(', ')}], this.argsArray=[${testArgsInterp}]`);
-    const combinedArgs = this.argsArray.length == 0 ? process.argv : [...process.argv, ...this.argsArray.slice(2)];
+    const combinedArgs: string[] = this.argsArray.length == 0 ? process.argv : [...process.argv, ...this.argsArray.slice(2)];
+    let filteredArgs: string[] = combinedArgs.filter((arg) => arg !== '--coverage'); // jest is passing this but we don't use it
+    const runningCoverageTesting: boolean = combinedArgs !== filteredArgs;
+    if (runningCoverageTesting) {
+      filteredArgs = filteredArgs.filter((arg) => arg !== '--verbose'); // jest is passing this but we can't use it
+    }
     //const GAHrunAsCoverageBUG: boolean = combinedArgs.includes('/workspaces/Pnut-ts-dev/node_modules/.bin/jest');
     /*
     if (combinedArgs.includes('/workspaces/Pnut-ts-dev/node_modules/.bin/jest')) {
@@ -134,10 +139,10 @@ export class PNutInTypeScript {
       //process.exit(0);
     }
     //*/
-    this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
+    this.context.logger.progressMsg(`** RUN WITH ARGV=[${filteredArgs.join(', ')}]`);
 
     try {
-      this.program.parse(combinedArgs);
+      this.program.parse(filteredArgs);
     } catch (error: unknown) {
       if (error instanceof CommanderError) {
         //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
@@ -203,7 +208,7 @@ export class PNutInTypeScript {
     }
     */
 
-    if (!this.options.quiet) {
+    if (!this.options.quiet && !runningCoverageTesting) {
       const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
       this.context.logger.infoMsg(`* ${signOnCompiler}`);
       const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
@@ -212,8 +217,7 @@ export class PNutInTypeScript {
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
     //this.runTestCode(); // for quick live testing...
     if (!this.options.quiet && !showingHelp) {
-      const commandLineArgs: string[] = process.argv;
-      const commandLine: string = `pnut_ts ${commandLineArgs.slice(2).join(' ')}`;
+      const commandLine: string = `pnut_ts ${filteredArgs.slice(2).join(' ')}`;
       this.context.logger.infoMsg(`* ${commandLine}`);
     }
 
@@ -386,22 +390,28 @@ export class PNutInTypeScript {
 
     if (filename !== undefined && filename !== '') {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
-      // set up output filespec in case we are writing a listing file
-      const lstFilespec = filename.replace('.spin2', '.lst');
-      this.context.compileOptions.listFilename = lstFilespec;
-      if (this.options.list) {
-        this.context.logger.verboseMsg(`* Write listing file: ${lstFilespec}`);
-      }
-      if (this.context.compileOptions.writeObj) {
-        const objFilespec = filename.replace('.spin2', '.obj');
-        this.context.logger.verboseMsg(`* Write object file: ${objFilespec}`);
-      }
       // and load our .spin2 top-level file
       this.spinDocument = new SpinDocument(this.context, filename);
-      // record this new file in our master list of files we compiled to buid the binary
-      this.context.sourceFiles.addFile(this.spinDocument);
-      // TODO post symbols to conext object instead of top-level doc??
-      this.spinDocument.defineSymbol('__VERSION__', this.version);
+      if (!this.spinDocument || !this.spinDocument.validFile) {
+        this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file!`);
+        this.shouldAbort = true;
+      } else {
+        // record this new file in our master list of files we compiled to buid the binary
+        this.context.sourceFiles.addFile(this.spinDocument);
+        // TODO post symbols to conext object instead of top-level doc??
+        this.spinDocument.defineSymbol('__VERSION__', this.version);
+        this.context.currentFolder = this.spinDocument.dirName;
+        // set up output filespec in case we are writing a listing file
+        const lstFilespec = filename.replace('.spin2', '.lst');
+        this.context.compileOptions.listFilename = lstFilespec;
+        if (this.options.list) {
+          this.context.logger.verboseMsg(`* Write listing file: ${lstFilespec}`);
+        }
+        if (this.context.compileOptions.writeObj) {
+          const objFilespec = filename.replace('.spin2', '.obj');
+          this.context.logger.verboseMsg(`* Write object file: ${objFilespec}`);
+        }
+      }
     } else {
       if (this.requiresFilename) {
         console.log('arguments: %o', this.program.args);
@@ -412,20 +422,14 @@ export class PNutInTypeScript {
       }
     }
 
-    this.context.logger.verboseMsg(''); // blank line
-    this.context.logger.verboseMsg(`ext dir [${this.context.extensionFolder}]`);
-    this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
-    this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
-    this.context.logger.verboseMsg(''); // blank line
-
-    if (this.context.compileOptions.compile) {
-      if (!this.spinDocument || !this.spinDocument.validFile) {
-        this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file`);
-        this.shouldAbort = true;
-      } else {
-        this.context.currentFolder = this.spinDocument?.dirName;
-      }
+    if (this.shouldAbort == false) {
+      this.context.logger.verboseMsg(''); // blank line
+      this.context.logger.verboseMsg(`ext dir [${this.context.extensionFolder}]`);
+      this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
+      this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
+      this.context.logger.verboseMsg(''); // blank line
     }
+
     if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       if (!this.context.reportOptions.writePreprocessReport) {
@@ -436,7 +440,11 @@ export class PNutInTypeScript {
     // const optionsString: string = 'options: ' + String(this.options);
     // this.verboseMsg(optionsString);
     if (!this.options.quiet && !showingHelp) {
-      this.context.logger.progressMsg('Done');
+      if (this.shouldAbort) {
+        this.context.logger.progressMsg('Aborted!');
+      } else {
+        this.context.logger.progressMsg('Done');
+      }
     }
     return Promise.resolve(0);
   }

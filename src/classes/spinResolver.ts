@@ -4264,6 +4264,7 @@ export class SpinResolver {
     return newSubObjectId;
   }
 
+  /*
   private distill_build_new(objectId: number = 0, objectOffset: number = 0, subObjectId: number = 1): number {
     // Build initial object list
     // PNut distill_build:
@@ -4324,6 +4325,7 @@ export class SpinResolver {
     }
     return newSubObjectId;
   }
+  //*/
 
   private distillBuildEnter(value: number) {
     // PNut distill_build: @@enter:
@@ -8416,26 +8418,6 @@ export class SpinResolver {
         }
       }
       this.getRightBracket();
-    }
-  }
-
-  private compileRfvarsOLD(value: bigint) {
-    // generates 1-4 bytes (signed)
-    const masks = [
-      { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
-      { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
-      { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
-    ];
-    let needLastCompile: boolean = true;
-    for (let i = 0; i < masks.length; i++) {
-      if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
-        this.compileRfvar(value & masks[i].bits);
-        needLastCompile = false;
-        break;
-      }
-    }
-    if (needLastCompile) {
-      this.compileRfvar(value & BigInt(0x1fffffff)); // 29 bits
     }
   }
 

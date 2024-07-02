@@ -17,7 +17,7 @@ export async function delay_mSec(ms: number): Promise<void> {
  */
 
 export async function waitForFiles(fileSpecs: string[]): Promise<boolean> {
-  console.log(`* waitForFiles([${fileSpecs.join(', ')}])`);
+  //console.log(`* waitForFiles([${fileSpecs.join(', ')}])`);
   const maxAttempts = 600; // 5 minutes / 500ms
 
   let foundAllFilesStatus: boolean = false;

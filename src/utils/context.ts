@@ -105,7 +105,6 @@ export function logContextState(ctx: Context, callerId: string) {
 }
 
 export class Context {
-  private static _singeInstance: Context | undefined = undefined;
   public libraryFolder: string;
   public extensionFolder: string;
   public currentFolder: string;
@@ -156,12 +155,5 @@ export class Context {
     this.currentFolder = process.cwd();
     this.logger = new Logger();
     this.sourceFiles = new SourceFiles();
-  }
-
-  static instance(): Context {
-    if (this._singeInstance === undefined) {
-      this._singeInstance = new Context();
-    }
-    return this._singeInstance;
   }
 }
