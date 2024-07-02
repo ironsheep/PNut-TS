@@ -1,0 +1,5 @@
+CON
+
+  debug_windows_off = 0
+
+PUB Go()

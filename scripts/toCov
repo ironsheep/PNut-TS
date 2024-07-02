@@ -19,7 +19,7 @@ fi
 
 # Copy all files from the specified source directories to the target directory
 # Define a list of directories to copy from
-dirs=("TEST/SPIN-tests" "TEST/OBJ-tests" "TEST/DBG-tests" "TEST/DAT-PASM-tests" "TEST/VAR-tests" "TEST/CON-tests" "TEST/LOADER-tests")
+dirs=("TEST/SPIN-tests" "TEST/OBJ-tests" "TEST/DBG-tests" "TEST/DAT-PASM-tests" "TEST/VAR-tests" "TEST/CON-tests" "TEST/COV-tests" "TEST/LOADER-tests")
 
 # Loop over the list and copy each directory's contents to TEST/ALLCODE-tests
 for dir in "${dirs[@]}"; do

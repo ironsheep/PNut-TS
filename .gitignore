@@ -227,3 +227,4 @@ TEST/SHORT/tablesTESTs/dumpTables.tabl.GOLD.txt
 *.HOLD
 /TEST/ALLCODE-tests
 src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.ORIG
+/TEST/EXCEPT-tests

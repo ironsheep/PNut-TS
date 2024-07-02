@@ -1,0 +1,6 @@
+CON
+
+  download_baud = 3_000_000
+  debug_pin = 62
+
+PUB Go()

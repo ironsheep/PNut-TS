@@ -1,0 +1,60 @@
+CON
+
+  _clkfreq = 100_000_00
+
+PUB Go()
+
+DAT
+
+  org 0,100
+  long fvars -500, -1
+
+  orgh $400,$800
+  long 0
+
+  long word 5[10]
+
+  alti 1,2
+  alti 1,#2
+
+  calld pa,1
+  calld pa,#1
+
+  jnse1 #$-4
+
+  getrnd 0
+  getrnd wc
+  getrnd wz
+
+  modcz 1,2 wcz
+  modc 3 wc
+  modz 4 wz
+
+  pushb #4
+  pushb 4
+  popb	5
+  popb	5
+
+  reta
+  retb
+  reti0
+  reti1
+  reti2
+  reti3
+  resi0
+  resi1
+  resi2
+  resi3
+  xstop
+
+  asmclk
+if_z asmclk
+  debug
+  debug()
+blah
+  djnz 6,##blah
+  djnz 7,8
+
+  rdlong 10,ptra--
+  rdlong 11,ptra++
+

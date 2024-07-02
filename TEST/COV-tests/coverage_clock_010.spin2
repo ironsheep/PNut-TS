@@ -1,0 +1,6 @@
+CON
+
+  debug_width = 1000
+  debug_height = 1000
+
+PUB Go()

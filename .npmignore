@@ -14,8 +14,13 @@ PKG-STUDY.md
 .jest*.json
 jest*.json
 tsconfig.json
+babel.config.js
+jest.config.ts
+old.*
+smm.*
 # don't include these folders
 .devcontainer/
+jest-*/
 .github/
 .history/
 .vscode/

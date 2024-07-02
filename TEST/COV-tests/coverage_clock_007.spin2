@@ -1,0 +1,6 @@
+CON
+
+  debug_pin_tx = 62
+  debug_pin_rx = 62
+
+PUB Go()

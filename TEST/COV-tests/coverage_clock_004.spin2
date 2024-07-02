@@ -1,0 +1,5 @@
+CON
+
+  _xinfreq = 10_000_000
+
+PUB Go()

@@ -1,0 +1,5 @@
+CON
+
+  debug_baud = 3_000_000
+
+PUB Go()

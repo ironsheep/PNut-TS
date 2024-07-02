@@ -1,0 +1,6 @@
+{
+  "displayName": "COVERAGE increase suite of tests",
+  "roots": ["<rootDir>/../dist/tests/COV-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

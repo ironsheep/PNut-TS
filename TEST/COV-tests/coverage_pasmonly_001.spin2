@@ -1,0 +1,17 @@
+CON
+
+  rcfast
+
+'PASM-Only
+
+DAT
+	orgh	$1000
+	long	0
+	orgh	$2000
+	word	1
+	alignl
+	byte	2
+	alignw
+	long	3
+	asmclk
+  if_c	asmclk

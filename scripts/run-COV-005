@@ -1,0 +1,3 @@
+#!/bin/bash
+#  the following should abort if the compile fails
+(set -x;npm run build && ./scripts/doit ./dist/pnut-ts.js -v  -l -O --log compiler resolver elementizer --regression element -v TEST/COV-tests/coverage_clock_005.spin2)

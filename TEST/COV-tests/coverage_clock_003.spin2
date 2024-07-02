@@ -1,0 +1,3 @@
+PUB Go()
+
+  debug("Hello")

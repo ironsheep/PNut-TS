@@ -45,7 +45,7 @@ describe('Directory existence tests', () => {
 describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
   let files: string[] = [];
   try {
-    files = globSync(`${testDirPath}/{debug_,isp_}*.spin2`);
+    files = globSync(`${testDirPath}/{debug_,isp_,coverage_debug_}*.spin2`);
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
@@ -72,7 +72,7 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
       removeExistingFile(elementsFSpec);
 
       // compile our file generating output files
-      const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '-v', '-l', '-O', '--regression', 'element', '--', `${file}`];
+      const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '-l', '-O', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
       try {
         PNut_ts_compiler = new PNutInTypeScript(testArguments);
@@ -152,7 +152,7 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
 describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
   let files: string[] = [];
   try {
-    files = globSync(`${testDirPath}/!(debug_|isp_)*.spin2`);
+    files = globSync(`${testDirPath}/!(debug_|isp_|coverage_debug_)*.spin2`);
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
@@ -161,7 +161,7 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
   }
   //console.log(`* files=[${files.join(', ')}]`); // no extra file coming in here
 
-  let PNut_ts_compiler: PNutInTypeScript;
+  let PNut_ts_compilerNO: PNutInTypeScript;
 
   files.forEach((file) => {
     test(`Compile file: ${path.basename(file)}`, async () => {
@@ -179,12 +179,12 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
       removeExistingFile(elementsFSpec);
 
       // compile our file generating output files
-      const testArguments: string[] = ['node', 'pnut-ts.js', '-v', '-l', '-O', '--regression', 'element', '--', `${file}`];
+      const testArguments: string[] = ['node', 'pnut-ts.js', '-l', '-O', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
       try {
-        PNut_ts_compiler = new PNutInTypeScript(testArguments);
+        PNut_ts_compilerNO = new PNutInTypeScript(testArguments);
         //PNut_ts_instance.setArgs(testArguments);
-        await PNut_ts_compiler.run();
+        await PNut_ts_compilerNO.run();
       } catch (error) {
         console.error(`ERROR: running PNut-ts (instance): ${error}`);
         console.error(`Execution failed for ${file}`);

@@ -35,6 +35,7 @@
     "test-dbg": "npm run build && jest -c jest-config/jest-dbg-only-config.json",
     "test-ext": "npm run build && jest -c jest-config/jest-ext-only-config.json",
     "test-con": "npm run build && jest -c jest-config/jest-con-only-config.json",
+    "test-cov": "npm run build && jest -c jest-config/jest-cov-only-config.json",
     "test-obj": "npm run build && jest -c jest-config/jest-obj-only-config.json",
     "test-var": "npm run build && jest -c jest-config/jest-var-only-config.json",
     "test-loader": "npm run build && jest -c jest-config/jest-loader-only-config.json",
@@ -51,7 +52,7 @@
     "watch": "tsc -b -w",
     "lint": "eslint ./src --ext .ts,.tsx",
     "prettier-format": "prettier --config .prettierrc.json 'src/**/*.ts' --write",
-    "build-exes": "npm run build && npm run esbuild && npm pack && pkg ."
+    "pkg-exes": "npm run build && npm run esbuild && npm pack && pkg ."
   },
   "repository": {
     "type": "git",
