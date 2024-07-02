@@ -1,0 +1,5 @@
+PUB go()
+
+DAT
+
+  long 0[$3FFF0]

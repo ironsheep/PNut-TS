@@ -8,6 +8,7 @@ import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
+import path from 'path';
 //import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
@@ -126,8 +127,13 @@ export class PNutInTypeScript {
     //const testArgsInterp = this.argsArray.length === 0 ? '[]' : this.argsArray.join(', ');
     //this.context.logger.progressMsg(`** process.argv=[${process.argv.join(', ')}], this.argsArray=[${testArgsInterp}]`);
     const combinedArgs: string[] = this.argsArray.length == 0 ? process.argv : [...process.argv, ...this.argsArray.slice(2)];
+    const foundJest: boolean = path.basename(combinedArgs[1]) == 'jest';
     let filteredArgs: string[] = combinedArgs.filter((arg) => arg !== '--coverage'); // jest is passing this but we don't use it
     const runningCoverageTesting: boolean = combinedArgs !== filteredArgs;
+    if (foundJest) {
+      filteredArgs = combinedArgs.filter((arg) => arg !== '-c'); // jest is passing this when running interactively
+    }
+    console.log(`DBG: foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
     if (runningCoverageTesting) {
       filteredArgs = filteredArgs.filter((arg) => arg !== '--verbose'); // jest is passing this but we can't use it
     }
@@ -156,12 +162,14 @@ export class PNutInTypeScript {
         } else {
           if (error.name != 'oe' && error.name != 'Ee' && error.name != 'CommanderError2' && error.message != 'outputHelp') {
             this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
-            throw error;
+            // Instead of throwing, return a resolved Promise with a specific value, e.g., -1
+            return Promise.resolve(-1);
           }
         }
       } else {
         this.context.logger.logMessage(`Catch unknown error=[${error}]`);
-        throw error;
+        // Instead of throwing, return a resolved Promise with a specific value, e.g., -1
+        return Promise.resolve(-1);
       }
     }
     //this.context.logger.progressMsg(`after parse()`);
@@ -351,8 +359,14 @@ export class PNutInTypeScript {
     //if (this.options.compile) {
     // ALWAYS SET THIS until we have a built-in flasher
     if (!showingHelp) {
-      this.requiresFilename = true;
-      this.context.compileOptions.compile = true;
+      if (foundJest && path.extname(this.options.filename) === 'json') {
+        // we don't handle this!
+        this.requiresFilename = false;
+        this.context.compileOptions.compile = false;
+      } else {
+        this.requiresFilename = true;
+        this.context.compileOptions.compile = true;
+      }
     }
     //}
 
@@ -434,7 +448,13 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       if (!this.context.reportOptions.writePreprocessReport) {
         const theCompiler = new Compiler(this.context);
-        await theCompiler.Compile();
+        try {
+          await theCompiler.Compile();
+        } catch (error) {
+          this.context.logger.errorMsg(`Compilation failed: ${error}`);
+          // Instead of throwing, return a resolved Promise with a specific value, e.g., -1
+          return Promise.resolve(-1);
+        }
       }
     }
     // const optionsString: string = 'options: ' + String(this.options);

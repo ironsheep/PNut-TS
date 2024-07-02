@@ -1,0 +1,6 @@
+{
+  "displayName": "EXCEPTION handling suite of tests",
+  "roots": ["<rootDir>/../dist/tests/EXCEPT-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}
