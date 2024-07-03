@@ -1386,6 +1386,7 @@ export class SpinResolver {
   }
 
   private advanceToNextCogLong() {
+    // PNut compile_dat: @@coglong
     // advance to next cog-long boundary
     if (this.hubMode == false) {
       while (this.cogOrg & 0x03) {

@@ -24,7 +24,8 @@ export class ObjectImage {
   constructor(ctx: Context, idString: string) {
     this.context = ctx;
     this._id = idString;
-    this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logResolver;
+    //this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logResolver;
+    this.isLogging = true;
   }
 
   public setLogging(enable: boolean) {

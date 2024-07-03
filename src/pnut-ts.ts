@@ -127,13 +127,15 @@ export class PNutInTypeScript {
     //const testArgsInterp = this.argsArray.length === 0 ? '[]' : this.argsArray.join(', ');
     //this.context.logger.progressMsg(`** process.argv=[${process.argv.join(', ')}], this.argsArray=[${testArgsInterp}]`);
     const combinedArgs: string[] = this.argsArray.length == 0 ? process.argv : [...process.argv, ...this.argsArray.slice(2)];
-    const foundJest: boolean = path.basename(combinedArgs[1]) == 'jest';
     let filteredArgs: string[] = combinedArgs.filter((arg) => arg !== '--coverage'); // jest is passing this but we don't use it
     const runningCoverageTesting: boolean = combinedArgs !== filteredArgs;
+    const foundJest: boolean = path.basename(combinedArgs[1]) == 'jest';
     if (foundJest) {
-      filteredArgs = combinedArgs.filter((arg) => arg !== '-c'); // jest is passing this when running interactively
+      filteredArgs = filteredArgs.filter((arg) => arg !== '-c'); // jest is passing this when running interactively
     }
-    console.log(`DBG: foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
+    if (!runningCoverageTesting) {
+      console.log(`DBG: foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
+    }
     if (runningCoverageTesting) {
       filteredArgs = filteredArgs.filter((arg) => arg !== '--verbose'); // jest is passing this but we can't use it
     }

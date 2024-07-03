@@ -1,0 +1,7 @@
+CON
+
+  _xtlfreq = 17_000_000
+  _clkfreq = 340_000_000
+  _errfreq = 1000
+
+PUB Go()
