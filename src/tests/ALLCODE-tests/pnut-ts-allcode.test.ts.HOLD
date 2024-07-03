@@ -83,7 +83,6 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
         console.error(`Execution failed for ${file}`);
       }
 
-      //delay_mSec(500); // Wait for 200ms for files to appear
       const allFilesExist: boolean = await waitForFiles([listingFSpec, objectFSpec, binaryFSpec]);
       // ensure all output files were generated!
       let whatFailed: string = '';
@@ -190,7 +189,6 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
         console.error(`Execution failed for ${file}`);
       }
 
-      //delay_mSec(500); // Wait for 200ms for files to appear
       const allFilesExist: boolean = await waitForFiles([listingFSpec, objectFSpec, binaryFSpec]);
       let whatFailed: string = '';
       if (!allFilesExist) {

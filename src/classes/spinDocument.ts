@@ -497,6 +497,11 @@ export class SpinDocument {
   get fileName(): string {
     return this.fileBaseName;
   }
+
+  get fileSpec(): string {
+    return path.join(this.docFolder, this.fileBaseName);
+  }
+
   get dirName(): string {
     return this.docFolder;
   }

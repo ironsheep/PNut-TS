@@ -36,6 +36,7 @@ export interface ReportOptions {
   writeElementsReport: boolean; // write elementizer
   writePreprocessReport: boolean;
   writeResolverReport: boolean;
+  regressionTesting: boolean;
 }
 
 export interface PreProcessorOptions {
@@ -120,7 +121,13 @@ export class Context {
 
   constructor() {
     this.logOptions = { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false, logCompile: false };
-    this.reportOptions = { writeTablesReport: false, writeElementsReport: false, writePreprocessReport: false, writeResolverReport: false };
+    this.reportOptions = {
+      writeTablesReport: false,
+      writeElementsReport: false,
+      writePreprocessReport: false,
+      writeResolverReport: false,
+      regressionTesting: false
+    };
     this.preProcessorOptions = { defSymbols: [], undefSymbols: [], includeFolders: [] };
     this.runEnvironment = { serialPortDevices: [] };
     this.passOptions = { afterPreprocess: false, afterElementize: false, afterConBlock: false };

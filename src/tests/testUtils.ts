@@ -50,6 +50,12 @@ export function generateFileHash(filePath: string): string {
   return hashSum.digest('hex');
 }
 
+export function fileExists(fileSpec: string): boolean {
+  const fileFoundStatus: boolean = fs.existsSync(fileSpec);
+  //console.log(`testUtils: fileExists([${fileSpec}]) -> (${fileFoundStatus})`);
+  return fileFoundStatus;
+}
+
 export function compareObjOrBinFiles(outputFSpec: string, goldenFSpec: string): boolean {
   let filesMatchStatus: boolean = false;
   let inputFileCount: number = 0;
@@ -71,12 +77,34 @@ export function compareObjOrBinFiles(outputFSpec: string, goldenFSpec: string): 
   return filesMatchStatus;
 }
 
-export function fileExists(fileSpec: string): boolean {
-  let foundExistsStatus: boolean = false;
-  if (fs.existsSync(fileSpec)) {
-    foundExistsStatus = true;
+export function compareExceptionFiles(reportFSpec: string, goldenFSpec: string): boolean {
+  let filesMatchStatus: boolean = false;
+  let inputFileCount: number = 0;
+  if (fs.existsSync(reportFSpec)) {
+    inputFileCount++;
+  } else {
+    console.error(`ERROR: missing compile output [${reportFSpec}]`);
   }
-  return foundExistsStatus;
+  if (fs.existsSync(goldenFSpec)) {
+    inputFileCount++;
+  } else {
+    console.error(`ERROR: missing GOLDEN output [${goldenFSpec}]`);
+  }
+  if (inputFileCount == 2) {
+    // Read the report file and split into lines
+    const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split(/\s*\r?\n/);
+    // Read the golden file and split into lines
+    const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s*\r\n|\s*\r/);
+
+    // Compare the filtered content of both files
+    // NOPE, not good enough:  filesMatchStatus = reportFiltered.join('\n') === goldenFiltered.join('\n');
+    filesMatchStatus = reportContentLines.length == goldenContentLines.length;
+    if (filesMatchStatus == true) {
+      // line count is SAME, now do more detaile match
+      filesMatchStatus = reportContentLines === goldenContentLines;
+    }
+  }
+  return filesMatchStatus;
 }
 
 export function compareListingFiles(reportFSpec: string, goldenFSpec: string, stringsToExlude?: string[]): boolean {
@@ -107,7 +135,7 @@ export function compareListingFiles(reportFSpec: string, goldenFSpec: string, st
 
     // Compare the filtered content of both files
     // NOPE, not good enough:  filesMatchStatus = reportFiltered.join('\n') === goldenFiltered.join('\n');
-    filesMatchStatus = reportFiltered.length == reportFiltered.length;
+    filesMatchStatus = reportFiltered.length == goldenFiltered.length;
     if (filesMatchStatus == true) {
       // line count is SAME, now do more detaile match
       filesMatchStatus = compareConFloatValues(reportFiltered, goldenFiltered);
@@ -242,6 +270,15 @@ function compareConFloatValues(compileLines: string[], goldenLines: string[]): b
     }
   }
   return matchStatus;
+}
+
+export function removeExistingFiles(fileSpecList: string[]) {
+  for (let index = 0; index < fileSpecList.length; index++) {
+    const fileSpec = fileSpecList[index];
+    if (fs.existsSync(fileSpec)) {
+      fs.unlinkSync(fileSpec);
+    }
+  }
 }
 
 export function removeExistingFile(fileSpec: string) {

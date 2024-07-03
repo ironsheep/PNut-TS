@@ -30,5 +30,8 @@ find src/tests -type f -name "*.test.ts" -exec bash -c 'mv "$0" "${0%.test.ts}.t
 
 mv src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.HOLD src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts
 
+# this one never moves to .HOLD so undo the rename
+mv src/tests/EXCEPT-tests/pnut-ts-except.test.ts.HOLD src/tests/EXCEPT-tests/pnut-ts-except.test.ts
+
 num_files=$(find ${NEW_TEST_DIR} -type f -name '*.spin2' | wc -l)
 echo "${SCRIPT}: Copied $num_files .spin2 test files to ${NEW_TEST_DIR}"

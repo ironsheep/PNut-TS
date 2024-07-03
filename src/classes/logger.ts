@@ -24,11 +24,11 @@ export class Logger {
     this.logErrorMessage(`${this.programName}: ERROR- ${redMessage}`);
   }
 
-  public compilerErrorMsg(message: string) {
+  public compilerErrorMsg(message: string, underTest: boolean = false) {
     if (typeof message !== 'string') {
       this.logMessage(`* compilerErrorMsg() - message is ${typeof message}`);
     }
-    const redMessage: string = this.errorColor(message);
+    const redMessage: string = underTest ? message : this.errorColor(message);
     if (typeof redMessage !== 'string') {
       this.logMessage(`* compilerErrorMsg() - redMessage is ${typeof redMessage}`);
     }

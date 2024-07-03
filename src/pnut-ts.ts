@@ -126,19 +126,18 @@ export class PNutInTypeScript {
     // Combine process.argv with the modified this.argsArray
     //const testArgsInterp = this.argsArray.length === 0 ? '[]' : this.argsArray.join(', ');
     //this.context.logger.progressMsg(`** process.argv=[${process.argv.join(', ')}], this.argsArray=[${testArgsInterp}]`);
-    const combinedArgs: string[] = this.argsArray.length == 0 ? process.argv : [...process.argv, ...this.argsArray.slice(2)];
-    let filteredArgs: string[] = combinedArgs.filter((arg) => arg !== '--coverage'); // jest is passing this but we don't use it
-    const runningCoverageTesting: boolean = combinedArgs !== filteredArgs;
-    const foundJest: boolean = path.basename(combinedArgs[1]) == 'jest';
-    if (foundJest) {
-      filteredArgs = filteredArgs.filter((arg) => arg !== '-c'); // jest is passing this when running interactively
+    let processArgv: string[] = process.argv;
+    const runningCoverageTesting: boolean = processArgv.includes('--coverage') || path.basename(processArgv[1]) == 'processChild.js';
+    const foundJest: boolean = path.basename(processArgv[1]) == 'jest';
+    this.context.logger.progressMsg(`(DBG) foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
+    if (foundJest && !runningCoverageTesting) {
+      processArgv = processArgv.slice(0, 2);
     }
-    if (!runningCoverageTesting) {
-      console.log(`DBG: foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
-    }
-    if (runningCoverageTesting) {
-      filteredArgs = filteredArgs.filter((arg) => arg !== '--verbose'); // jest is passing this but we can't use it
-    }
+    const combinedArgs: string[] = this.argsArray.length == 0 ? processArgv : [...processArgv, ...this.argsArray.slice(2)];
+    //console.log(`DBG: combinedArgs=[${combinedArgs}](${combinedArgs.length})`);
+
+    //if (!runningCoverageTesting) {
+    //}
     //const GAHrunAsCoverageBUG: boolean = combinedArgs.includes('/workspaces/Pnut-ts-dev/node_modules/.bin/jest');
     /*
     if (combinedArgs.includes('/workspaces/Pnut-ts-dev/node_modules/.bin/jest')) {
@@ -147,10 +146,10 @@ export class PNutInTypeScript {
       //process.exit(0);
     }
     //*/
-    this.context.logger.progressMsg(`** RUN WITH ARGV=[${filteredArgs.join(', ')}]`);
+    //this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
 
     try {
-      this.program.parse(filteredArgs);
+      this.program.parse(combinedArgs);
     } catch (error: unknown) {
       if (error instanceof CommanderError) {
         //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
@@ -218,7 +217,7 @@ export class PNutInTypeScript {
     }
     */
 
-    if (!this.options.quiet && !runningCoverageTesting) {
+    if (!this.options.quiet && !foundJest && !runningCoverageTesting) {
       const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
       this.context.logger.infoMsg(`* ${signOnCompiler}`);
       const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
@@ -227,7 +226,12 @@ export class PNutInTypeScript {
     // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
     //this.runTestCode(); // for quick live testing...
     if (!this.options.quiet && !showingHelp) {
-      const commandLine: string = `pnut_ts ${filteredArgs.slice(2).join(' ')}`;
+      let commandLine: string;
+      if ((foundJest || runningCoverageTesting) && this.argsArray.length === 0) {
+        commandLine = `pnut_ts -- pre-run, IGNORED --`;
+      } else {
+        commandLine = `pnut_ts ${combinedArgs.slice(2).join(' ')}`;
+      }
       this.context.logger.infoMsg(`* ${commandLine}`);
     }
 
@@ -243,6 +247,9 @@ export class PNutInTypeScript {
 
     //this.context.logger.verboseMsg(`* opts[${this.program.opts()}]`);
     //this.context.logger.verboseMsg(`* args[${this.program.args}]`);
+
+    // let other systems know we are running tests of the compiler
+    this.context.reportOptions.regressionTesting = foundJest || runningCoverageTesting;
 
     if (this.options.regression) {
       // forward our REGRESSION TEST Options
@@ -361,7 +368,7 @@ export class PNutInTypeScript {
     //if (this.options.compile) {
     // ALWAYS SET THIS until we have a built-in flasher
     if (!showingHelp) {
-      if (foundJest && path.extname(this.options.filename) === 'json') {
+      if ((foundJest || runningCoverageTesting) && this.options.filename === undefined) {
         // we don't handle this!
         this.requiresFilename = false;
         this.context.compileOptions.compile = false;

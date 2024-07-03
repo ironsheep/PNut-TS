@@ -95,8 +95,10 @@ export class Spin2Parser {
       this.spinResolver.compile2(isTopLevel);
     } catch (error) {
       // Handle the error here if necessary
-      const outFilename = this.context.compileOptions.listFilename;
-      this.writeObjectFile(this.objImage, 0, 0x35, outFilename); // full
+      if (this.context.reportOptions.regressionTesting == false) {
+        const outFilename = this.context.compileOptions.listFilename;
+        this.writeObjectFile(this.objImage, 0, 0x35, outFilename); // full
+      }
       throw error;
     }
   }

@@ -10,10 +10,11 @@ import { sync as globSync } from 'glob';
 import { PNutInTypeScript } from '../../pnut-ts';
 import {
   appendDiagnosticString,
+  compareExceptionFiles,
   compareListingFiles,
   compareObjOrBinFiles,
   fileExists,
-  removeExistingFile,
+  removeExistingFiles,
   topLevel,
   waitForFiles
 } from '../testUtils';
@@ -43,6 +44,12 @@ describe('Directory existence tests', () => {
 });
 
 describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
+  // Variable to store stderr output
+  let stderrOutput: string[] = [];
+  let stdErrOutFile: string;
+  // Store the original process.stderr.write function
+  const originalStderrWrite = process.stderr.write;
+  // get our list of files to compile
   let files: string[] = [];
   try {
     files = globSync(`${testDirPath}/{debug_,isp_,coverage_debug_}*.spin2`);
@@ -53,6 +60,30 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
     files.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }
   //console.log(`* files=[${files.join(', ')}]`); // no extra file coming in here
+
+  if (files.length > 0) {
+    beforeEach(() => {
+      // Override process.stderr.write
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
+        // Store the stderr output
+        stderrOutput.push(chunk.toString());
+        // Call the original function to ensure any other behaviors are preserved
+        return originalStderrWrite.call(process.stderr, chunk, encoding, callback);
+      };
+    });
+
+    afterEach(() => {
+      // Restore the original process.stderr.write function
+      process.stderr.write = originalStderrWrite;
+
+      // Write the stderr output to a file
+      fs.writeFileSync(stdErrOutFile, stderrOutput.join('\n'));
+
+      // Clear the stderrOutput array for the next test
+      stderrOutput = [];
+    });
+  }
 
   let PNut_ts_compiler: PNutInTypeScript;
 
@@ -65,20 +96,17 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
       const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
       const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
       const errorFSpec = path.join(testDirPath, `${basename}.errout`);
+      stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
       // Remove existing files
-      removeExistingFile(listingFSpec);
-      removeExistingFile(objectFSpec);
-      removeExistingFile(binaryFSpec);
-      removeExistingFile(elementsFSpec);
-      removeExistingFile(errorFSpec);
+      const existingFiles: string[] = [listingFSpec, objectFSpec, binaryFSpec, elementsFSpec, errorFSpec];
+      removeExistingFiles(existingFiles);
 
       // compile our file generating output files
       const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '-l', '-O', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
       try {
         PNut_ts_compiler = new PNutInTypeScript(testArguments);
-        //PNut_ts_instance.setArgs(testArguments);
         await PNut_ts_compiler.run();
       } catch (error) {
         // Write the error message to a .errout file
@@ -97,20 +125,25 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
       const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
       // ID the golden .bin file
       const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
+      // ID the golden .errout file
+      const goldenErroutFSpec = path.join(testDirPath, `${basename}.errout.GOLD`);
 
       // my wait list...
-      let outFilesList: string[] = [];
-      if (fs.existsSync(goldenFSpec)) {
-        outFilesList = [listingFSpec, objectFSpec, binaryFSpec];
-      }
-      if (!fs.existsSync(goldenBinFSpec)) {
-        outFilesList = [listingFSpec, objectFSpec];
+      let outFilesList: string[] = [listingFSpec, objectFSpec, binaryFSpec];
+      if (fileExists(goldenFSpec) == false) {
+        //console.log(`TEST: don't have GOLD .lst`);
+        outFilesList = [];
+      } else {
+        if (fileExists(goldenBinFSpec) == false) {
+          //console.log(`TEST: don't have GOLD .bin`);
+          outFilesList = [listingFSpec, objectFSpec];
+        }
       }
       const compileProducesFiles: boolean = outFilesList.length > 0;
+      //console.log(`TEST: compileProducesFiles=(${compileProducesFiles}), outFilesList=[${outFilesList.join(', ')}]`);
 
       let whatFailed: string = '';
       if (compileProducesFiles) {
-        //delay_mSec(500); // Wait for 200ms for files to appear
         const allFilesExist: boolean = await waitForFiles(outFilesList);
         // ensure all output files were generated!
         if (!allFilesExist) {
@@ -173,6 +206,17 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
             }
           }
 
+          if (fileExists(errorFSpec)) {
+            filesMatch = compareExceptionFiles(errorFSpec, goldenErroutFSpec);
+            if (!filesMatch) {
+              whatFailed = appendDiagnosticString(whatFailed, 'Exception File', ', ');
+              allFilesMatch = false;
+            }
+          } else {
+            whatFailed = appendDiagnosticString(whatFailed, '(MISSING) Exception File', ', ');
+            allFilesMatch = false;
+          }
+
           if (allFilesMatch == false) {
             whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');
           }
@@ -185,6 +229,13 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
 });
 
 describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
+  // Variable to store stderr output
+  let stderrOutput: string[] = [];
+  let stdErrOutFile: string;
+  // Store the original process.stderr.write function
+  const originalStderrWrite = process.stderr.write;
+
+  // get our list of files to compile
   let files: string[] = [];
   try {
     files = globSync(`${testDirPath}/!(debug_|isp_|coverage_debug_)*.spin2`);
@@ -196,7 +247,36 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
   }
   //console.log(`* files=[${files.join(', ')}]`); // no extra file coming in here
 
-  let PNut_ts_compilerNO: PNutInTypeScript;
+  if (files.length > 0) {
+    beforeEach(() => {
+      // Override process.stderr.write
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
+        // Store the stderr output
+        stderrOutput.push(chunk.toString());
+        // Call the original function to ensure any other behaviors are preserved
+        return originalStderrWrite.call(process.stderr, chunk, encoding, callback);
+      };
+    });
+
+    afterEach(() => {
+      // Restore the original process.stderr.write function
+      process.stderr.write = originalStderrWrite;
+
+      // remove color escape sequences from text
+      // Regular expression to match ANSI color escape sequences
+      const ansiEscapeSeqRegex = /\\x1b\[[0-9;]*m/g;
+
+      // Remove color escape sequences from each string in stderrOutput
+      const noColorStderrOutput = stderrOutput.map((line) => line.replace(ansiEscapeSeqRegex, '')); // Write the stderr output to a file
+      fs.writeFileSync(stdErrOutFile, noColorStderrOutput.join('\n'));
+
+      // Clear the stderrOutput array for the next test
+      stderrOutput = [];
+    });
+  }
+
+  let PNut_ts_compiler: PNutInTypeScript;
 
   files.forEach((file) => {
     test(`Compile file: ${path.basename(file)}`, async () => {
@@ -207,21 +287,18 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
       const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
       const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
       const errorFSpec = path.join(testDirPath, `${basename}.errout`);
+      stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
       // Remove existing files
-      removeExistingFile(listingFSpec);
-      removeExistingFile(objectFSpec);
-      removeExistingFile(binaryFSpec);
-      removeExistingFile(elementsFSpec);
-      removeExistingFile(errorFSpec);
+      const existingFiles: string[] = [listingFSpec, objectFSpec, binaryFSpec, elementsFSpec, errorFSpec];
+      removeExistingFiles(existingFiles);
 
       // compile our file generating output files
       const testArguments: string[] = ['node', 'pnut-ts.js', '-l', '-O', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
       try {
-        PNut_ts_compilerNO = new PNutInTypeScript(testArguments);
-        //PNut_ts_instance.setArgs(testArguments);
-        await PNut_ts_compilerNO.run();
+        PNut_ts_compiler = new PNutInTypeScript(testArguments);
+        await PNut_ts_compiler.run();
       } catch (error) {
         // Write the error message to a .errout file
         console.log(`test framework sees exception [${error}]`);
@@ -240,18 +317,25 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
       const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
       // ID the golden .bin file
       const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
-      let outFilesList: string[] = [];
-      if (fs.existsSync(goldenFSpec)) {
-        outFilesList = [listingFSpec, objectFSpec, binaryFSpec];
-      }
-      if (!fs.existsSync(goldenBinFSpec)) {
-        outFilesList = [listingFSpec, objectFSpec];
+      // ID the golden .errout file
+      const goldenErroutFSpec = path.join(testDirPath, `${basename}.errout.GOLD`);
+
+      // my wait list...
+      let outFilesList: string[] = [listingFSpec, objectFSpec, binaryFSpec];
+      if (fileExists(goldenFSpec) == false) {
+        //console.log(`TEST: don't have GOLD .lst`);
+        outFilesList = [];
+      } else {
+        if (fileExists(goldenBinFSpec) == false) {
+          //console.log(`TEST: don't have GOLD .bin`);
+          outFilesList = [listingFSpec, objectFSpec];
+        }
       }
       const compileProducesFiles: boolean = outFilesList.length > 0;
+      //console.log(`TEST: compileProducesFiles=(${compileProducesFiles}), outFilesList=[${outFilesList.join(', ')}]`);
 
       let whatFailed: string = '';
       if (compileProducesFiles) {
-        //delay_mSec(500); // Wait for 200ms for files to appear
         const allFilesExist: boolean = await waitForFiles(outFilesList);
         if (!allFilesExist) {
           // ensure all output files were generated!
@@ -311,6 +395,17 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
               whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
               allFilesMatch = false;
             }
+          }
+
+          if (fileExists(errorFSpec)) {
+            filesMatch = compareExceptionFiles(errorFSpec, goldenErroutFSpec);
+            if (!filesMatch) {
+              whatFailed = appendDiagnosticString(whatFailed, 'Exception File', ', ');
+              allFilesMatch = false;
+            }
+          } else {
+            whatFailed = appendDiagnosticString(whatFailed, '(MISSING) Exception File', ', ');
+            allFilesMatch = false;
           }
 
           if (allFilesMatch == false) {
