@@ -1,0 +1,108 @@
+'' covering if cases
+
+pub testIF()
+
+   pinl(0 addpins 1)
+   IF  0 ' Initial IF
+     pinh(0)
+   ELSEIF  1 ' Optional ELSEIF
+     pinh(1)
+   ELSE
+     pinl(0 addpins 1)
+
+   IFNOT 1 ' Initial IFNOT
+     pinh(0)
+   ELSEIFNOT 0 ' Optional ELSEIFNOT
+     pinh(1)
+   ELSE
+     pinl(0 addpins 1)
+
+
+   IF  1 ' Initial IF
+     pinh(0)
+   ELSEIFNOT 42 ' Optional ELSEIFNOT
+     pinh(1)
+   ELSE
+     pinl(0 addpins 1)
+
+pub testREPEAT() | index
+
+  Repeat   ' Repeat forever (useful for putting atend of program if you don't want the cog to stop and cease driving its I/O's)
+       pint(1)
+
+  Repeat 5 ' Repeat <count> times, if <count> is zero then <indented code> is skipped
+       pint(4)
+
+  REPEAT 12 WITH index   ' Repeat <positive_count> times while iterating <variable> from 0 to <positive_count> - 1
+    pint(4)             ' After completion, <variable> = <positive_count>
+
+
+  REPEAT index FROM 5 TO 12   ' Repeat while iterating <variable> from <first> to <last>, stepping by +/-1
+    pint(4)   ' After completion, <variable> = <last> +/- 1
+
+
+  REPEAT index FROM 5 TO 30 STEP 5   ' Repeat while iterating <variable> from <first> to <last>, stepping by +/-<delta>
+    pint(4)   ' After completion, <variable> = <last> +/- <delta>
+
+
+  REPEAT WHILE index == 5   ' Repeat while <condition> is not zero, <condition> is evaluated before <indented code> executes
+    pint(4)
+
+
+  REPEAT UNTIL index < 5   ' Repeat until <condition> is not zero, <condition> is evaluated before <indented code> executes
+    pint(4)
+
+  REPEAT   ' Repeat while <condition> is not zero, <condition> is evaluated after <indented code> executes
+    pint(4)
+  WHILE index < 5   ' WHILE must have same indentation as REPEAT
+
+  REPEAT   ' Repeat until <condition> is not zero, <condition> is evaluated after <indented code> executes
+    pint(4)
+  UNTIL index < 5   ' UNTIL must have same indentation as REPEAT
+
+
+ ' Within REPEAT constructs, there are two special instructions which can be used to change the course of execution: NEXT and QUIT. NEXT will immediately branch to the point
+ ' in the REPEAT construct where the decision to loop again is made, while QUIT will exit the REPEAT construct and continue after it. These instructions are usually used
+ 'conditionally:
+  REPEAT
+   index += 1
+   IF index < 4 ' Optionally force the next iteration of the REPEAT
+      NEXT
+   pint(4)
+   IF index >= 10 ' Optionally quit the REPEAT
+    QUIT
+   pint(5)
+
+PUB testCALL() | x
+ REPEAT
+   CALL(@random)
+   PINWRITE(56 ADDPINS 7, x)
+   WAITMS(100)
+
+DAT ORGH 'hub PASM program to rotate a random bit into x
+ random GETRND WC
+ _RET_ add ptra,#1  ' RCL x,#1
+
+PUB testRECV()
+ RECV := @GetPattern
+ REPEAT
+   PINWRITE(56 ADDPINS 7, !RECV())
+   WAITMS(125)
+VAR i
+PRI GetPattern() : Pattern
+ RETURN DECOD(i++ & 7)
+
+
+PUB testSEND()
+ SEND := @SetLED
+ REPEAT
+   SEND(Flash(),$01,$02,$04,$08,$10,$20,$40,$80)
+
+PRI Flash() : x
+ REPEAT 2
+   SEND($00,$FF,$00)
+ RETURN $AA
+
+PRI SetLED(x)
+ PINWRITE(56 ADDPINS 7, !x)
+ WAITMS(125)

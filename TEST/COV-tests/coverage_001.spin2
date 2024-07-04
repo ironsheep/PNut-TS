@@ -1,16 +1,101 @@
 CON
 
   _clkfreq = 100_000_00
+  screen_size = 1024
 
-PUB Go()
+
+PUB Go() | alignw word localWord[3]
+
+VAR
+
+  long screen[screen_size]
+  long color
+
+PRI GoCalled() | byte myByte, alignw myWord, chr, row, col, flag
+  ' bad CODE EMITTED HEREIN... 18 bytes different!!!
+  '{
+   CASE chr
+       0:
+         BYTEFILL(@screen, " ", screen_size)
+         col := row := 0
+       1:
+         col := row := 0
+       2..3:
+         flag := chr
+         RETURN
+       7..4:
+         flag := chr
+         RETURN
+       8: IF col
+            col--
+       9: REPEAT
+            out(" ")
+          WHILE col & 7
+      10: RETURN
+      11: color := $00
+      12: color := $80
+      13: newline()
+      other:
+        flag := chr
+  '}
+PRI GoCalled2() | byte myByte, alignw myWord, chr, row, col, flag
+  ' bad CODE EMITTED HEREIN... 22 bytes different!!!
+  '{
+   CASE_FAST chr
+       0:
+         BYTEFILL(@screen, " ", screen_size)
+         col := row := 0
+       1:
+         col := row := 0
+       2..3:
+         flag := chr
+         RETURN
+       7..4:
+         flag := chr
+         RETURN
+       8: IF col
+            col--
+       9: REPEAT
+            out(" ")
+          WHILE col & 7
+      10: RETURN
+      11: color := $00
+      12: color := $80
+      13: newline()
+      other:
+        flag := chr
+  '}
+PRI out(str) | i, col, row
+  ' bad CODE EMITTED HEREIN... 6 bytes different!!!
+  '{
+  repeat i from 0 to strsize(str) - 1
+    screen[col + row * 32] := str[i]
+    col++
+    IF col == 32
+      col := 0
+      row++
+'}
+
+PRI newline()
+
+
+pri lastPrivate()
+' no issues in this code
+  if(0)
+    pinh(0)
 
 DAT
 
   org 0,100
-  long fvars -500, -1
+  ' cog mode
+  calld pa,#$
+  calld ptrb,#$3ff
+  jnct1 ##$3ff
 
   orgh $400,$800
+  ' hub mode
   long 0
+  long fvars -$10000000, -1
 
   long word 5[10]
 
@@ -19,6 +104,9 @@ DAT
 
   calld pa,1
   calld pa,#1
+  calld pa,#$
+  calld ptra,#$+1
+  calld ptra,#$8000
 
   jnse1 #$-4
 
@@ -47,8 +135,11 @@ DAT
   resi3
   xstop
 
+sep8 long $88888888
   asmclk
 if_z asmclk
+_RET_ asmclk
+sep5 long $55555555
   debug
   debug()
 blah
@@ -58,3 +149,32 @@ blah
   rdlong 10,ptra--
   rdlong 11,ptra++
 
+  ' testing ##
+  rdlong 0,ptra[##$8000]
+  rdlong 0,++ptra[##$8000]
+  rdlong 0,--ptra[##$8000]
+
+
+  ' testing non-##
+  rdlong 0,--ptra[1]
+  rdlong 0,++ptra[1]
+
+  sca 0,0
+  scas 0,0
+
+  waitatn
+
+sep3 long $33333333
+
+'testword  word wordfit 345  ' ERROR!  spin2 extension needs to mark this as fail!
+'testbyte  byte bytefit 345  ' ERROR!  spin2 extension needs to mark this as fail!
+testword  wordfit -$8000
+          wordfit $ffff
+testbyte  bytefit -$80
+          bytefit $ff
+
+sepA long $aaaaaaaa
+
+' the following moved to their own exception files;
+  'rdlong 10,--pa ' but generates an exception
+  'rdlong 10,++pa ' but generates an exception

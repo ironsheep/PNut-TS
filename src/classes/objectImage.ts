@@ -25,7 +25,7 @@ export class ObjectImage {
     this.context = ctx;
     this._id = idString;
     //this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logResolver;
-    this.isLogging = true;
+    this.isLogging = false; // doesn't work! this.context.reportOptions.regressionTesting ? false : true;
   }
 
   public setLogging(enable: boolean) {

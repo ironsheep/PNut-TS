@@ -195,7 +195,8 @@ export class Spin2Parser {
               symbolType = `?? ${symbol.type} ??`;
               break;
           }
-          const symbolTypeFixed = `${symbolType.padEnd(15, ' ')}`;
+          const padWidth: number = this.context.compileOptions.v44FormatListing ? 17 : 15;
+          const symbolTypeFixed = `${symbolType.padEnd(padWidth, ' ')}`;
           const hexValue: string = float32ToHexString(BigInt(symbol.value)).replace('0x', '').padStart(8, '0');
           const symNameParts: string[] = symbol.name.split(ID_SEPARATOR_STRING);
           const nonUniqueName: string = symNameParts[0];
@@ -350,8 +351,12 @@ export class Spin2Parser {
   }
 
   private rightAlignedDecimalValue(value: number, width: number): string {
-    //const interpValue: string = `${value.toLocaleString().padStart(width).replace(/,/g, '_')}`;
-    const interpValue: string = `${value.toLocaleString().padStart(width)}`;
+    let interpValue: string = '';
+    if (this.context.compileOptions.v44FormatListing) {
+      interpValue = `${value.toLocaleString().padStart(width).replace(/,/g, '_')}`;
+    } else {
+      interpValue = `${value.toLocaleString().padStart(width)}`;
+    }
     return interpValue;
   }
 

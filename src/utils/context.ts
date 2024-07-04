@@ -52,6 +52,7 @@ export interface CompileOptions {
   enableDebug: boolean; // compile with debug
   outputFilename: string; // override output filename with this name
   writeListing: boolean; // write compile report (.lst file)
+  v44FormatListing: boolean; // write compile report (.lst file) use v44 style
   writeObj: boolean; // write object file (.obj file)
   writeBin: boolean; // write binary file (.bin file)
   listFilename: string; // write compile report to this file
@@ -141,6 +142,7 @@ export class Context {
       writeObj: false,
       writeBin: false,
       listFilename: '',
+      v44FormatListing: false,
       propPlug: ''
     };
     this.compileData = {

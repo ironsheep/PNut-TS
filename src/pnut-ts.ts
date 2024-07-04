@@ -82,6 +82,7 @@ export class PNutInTypeScript {
       })
       //      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
       //.option('-c, --compile', 'Compile file')
+      .option('-44, --ver44', 'Listings compatible with PNut_v44')
       .option('-d, --debug', 'Compile with DEBUG')
       //      .option('-f, --flash', 'Download to FLASH and run')
       .option('-f, --flash', 'Generate binary with incorporated flash loader')
@@ -188,6 +189,9 @@ export class PNutInTypeScript {
 
     if (this.options.list) {
       this.context.compileOptions.writeListing = true;
+    }
+    if (this.options.ver44) {
+      this.context.compileOptions.v44FormatListing = true;
     }
 
     //if (this.options.bin) {

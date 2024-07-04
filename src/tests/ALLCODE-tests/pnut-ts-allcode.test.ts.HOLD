@@ -178,10 +178,13 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
       removeExistingFile(elementsFSpec);
 
       // compile our file generating output files
+      const conditionalArgs: string[] = basename === 'coverage_001' ? ['-44'] : [];
       const testArguments: string[] = ['node', 'pnut-ts.js', '-l', '-O', '--regression', 'element', '--', `${file}`];
+      const adjustedArgs: string[] = [...testArguments.slice(0, 2), ...conditionalArgs, ...testArguments.slice(2)];
+
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
       try {
-        PNut_ts_compilerNO = new PNutInTypeScript(testArguments);
+        PNut_ts_compilerNO = new PNutInTypeScript(adjustedArgs);
         //PNut_ts_instance.setArgs(testArguments);
         await PNut_ts_compilerNO.run();
       } catch (error) {

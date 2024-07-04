@@ -1,0 +1,6 @@
+CON
+
+' testing not PTR[ab] exception: pre-decrement
+DAT
+
+    rdlong 10, --pa

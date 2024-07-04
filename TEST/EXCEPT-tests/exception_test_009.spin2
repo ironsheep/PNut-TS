@@ -1,0 +1,6 @@
+CON
+
+' testing not PTR[ab] exception: pre-increment
+DAT
+
+    rdlong 10, ++pb

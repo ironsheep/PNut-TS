@@ -1979,8 +1979,14 @@ export class SpinResolver {
       case eValueType.operand_asmclk:
         // asmclk
         if (this.clkMode & 0b10) {
-          const asmCondition = (this.instructionImage >> 28) & 0x0f;
-          const instructionCondition: number = (asmCondition == eValueType.if_ret ? eValueType.if_always : asmCondition) << 28;
+          let asmCondition = (this.instructionImage >> 28) & 0x0f;
+          const retAsmCondition = asmCondition;
+          // handle _RET_ in a special way, all but last two of six instructions use _ALWAYS_ while the last two use _RET_
+          if (retAsmCondition == 0) {
+            asmCondition = 0xf; // _ALWAYS_
+          }
+          //const instructionCondition: number = (asmCondition == eValueType.if_ret ? eValueType.if_always : asmCondition) << 28;
+          const instructionCondition: number = asmCondition << 28;
           // assemble 'hubset ##clkmode & $ffff_fffc'
           this.instructionImage = instructionCondition | 0x0d640000 | ((this.clkMode & 0x1fc) << 9);
           this.emitAugDS(eAugType.AT_D, this.clkMode);
@@ -1991,7 +1997,7 @@ export class SpinResolver {
           this.emitAugDS(eAugType.AT_D, waitTime);
           this.enterDataLong(BigInt(this.instructionImage));
           // assemble 'hubset ##clkmode'
-          this.instructionImage = instructionCondition | 0x0d640000 | ((this.clkMode & 0x1ff) << 9);
+          this.instructionImage = (retAsmCondition << 28) | 0x0d640000 | ((this.clkMode & 0x1ff) << 9);
           this.emitAugDS(eAugType.AT_D, this.clkMode);
         } else {
           // rcfast/rcslow, assemble 'hubset #0/1'
@@ -7938,6 +7944,7 @@ export class SpinResolver {
     return this.checkElementType(eElementType.type_comma);
   }
 
+  /*
   private checkMidstringComma(): boolean {
     let foundStatus: boolean = false;
     if (this.nextElementType() == eElementType.type_comma) {
@@ -7946,6 +7953,7 @@ export class SpinResolver {
     }
     return foundStatus;
   }
+  //*/
 
   private checkPound(): boolean {
     return this.checkElementType(eElementType.type_pound);
@@ -7975,21 +7983,27 @@ export class SpinResolver {
     return this.checkElementType(eElementType.type_at);
   }
 
+  /*
   private checkInc(): boolean {
     return this.checkElementType(eElementType.type_inc);
   }
+  //*/
 
-  private checkDec(): boolean {
+  /*
+private checkDec(): boolean {
     return this.checkElementType(eElementType.type_dec);
   }
+  //*/
 
   private checkBackslash(): boolean {
     return this.checkElementType(eElementType.type_back);
   }
 
+  /*
   private checkTick(): boolean {
     return this.checkElementType(eElementType.type_tick);
   }
+  //*/
 
   private checkEndOfLine(): boolean {
     return this.checkElementType(eElementType.type_end);
