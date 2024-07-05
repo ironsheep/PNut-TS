@@ -220,7 +220,6 @@ TEST/emptySpinFile.binf
 /jest-config/coverage
 *.elemold
 /out-jest
-/jest-coverage
 TEST/SHORT/tablesTESTs/dumpTables.tabl.txt
 TEST/SHORT/tablesTESTs/dumpTables.tabl.GOLD.txt
 *.HOLD
