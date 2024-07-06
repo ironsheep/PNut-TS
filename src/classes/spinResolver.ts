@@ -547,7 +547,7 @@ export class SpinResolver {
             let countResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
             if (countResult.value > BigInt(this.hubOrgLimit)) {
               // [error_tmvsid]
-              throw new Error('Too much variable space is declared');
+              throw new Error('Too much variable space is declared A');
             }
             count = Number(countResult.value);
             this.getRightBracket();
@@ -557,7 +557,7 @@ export class SpinResolver {
           this.varPtr += count << wordSize;
           if (this.varPtr > this.hubOrgLimit) {
             // [error_tmvsid]
-            throw new Error('Too much variable space is declared');
+            throw new Error('Too much variable space is declared B');
           }
           this.recordSymbol(newVarSymbol);
         } while (this.getCommaOrEndOfLine());
@@ -592,7 +592,7 @@ export class SpinResolver {
     }
     if (this.varPtr > this.hubOrgLimit) {
       // [error_tmvsid]
-      throw new Error('Too much variable space is declared');
+      throw new Error('Too much variable space is declared C');
     }
   }
 
@@ -4116,10 +4116,12 @@ export class SpinResolver {
         this.varPtr += objVar[fileNumber];
         if (this.varPtr > this.objs_limit) {
           // [error_tmvsid]
-          throw new Error('Too much variable space is declared');
+          throw new Error('Too much variable space is declared D');
         }
       }
       this.logMessage(`  -- compObjBlks() end of 2nd pass`);
+    } else {
+      this.logMessage('*==* COMPILE_obj_blocks() IGNORED (pasmMode == true)');
     }
   }
 
@@ -6534,55 +6536,6 @@ export class SpinResolver {
     return compiledParameterCount;
   }
 
-  private ct_constr() {
-    // Compile term - STRING("constantstring")
-    // PNut ct_constr:
-    this.getLeftParen();
-    this.objWrByte(eByteCode.bc_string);
-    const patchLocation: number = this.objImage.offset;
-    this.objWrByte(0); // emit placeholder
-    let stringLength: number = 1;
-    do {
-      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
-      if (valueReturn.value < 1n || valueReturn.value > 255n) {
-        // [error_scmrf]
-        throw new Error('STRING characters must range from 1 to 255');
-      }
-      this.objWrByte(Number(valueReturn.value));
-      if (++stringLength > 255) {
-        // [error_sdcx]
-        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
-      }
-    } while (this.getCommaOrRightParen());
-    this.objWrByte(0); // emit string terminator
-    this.objImage.replaceByte(stringLength, patchLocation);
-  }
-
-  private ct_conlstr() {
-    // Compile term - LSTRING("constantstring", zero_ok, zero_ok)
-    // PNut ct_conlstr:
-    this.getLeftParen();
-    this.objWrByte(eByteCode.bc_string);
-    const patchLocation: number = this.objImage.offset;
-    this.objWrByte(0); // emit placeholder - interpreter length
-    this.objWrByte(0); // emit placeholder - user length
-    let stringLength: number = 1;
-    do {
-      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
-      if (valueReturn.value > 255n) {
-        // [error_lscmrf]
-        throw new Error('LSTRING characters must range from 0 to 255');
-      }
-      this.objWrByte(Number(valueReturn.value));
-      if (++stringLength > 255) {
-        // [error_sdcx]
-        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
-      }
-    } while (this.getCommaOrRightParen());
-    this.objImage.replaceByte(stringLength, patchLocation);
-    this.objImage.replaceByte(stringLength - 1, patchLocation + 1);
-  }
-
   private ct_condata(wordSize: eWordSize) {
     // Compile term - BYTE/WORD/LONG(value, value, BYTE/WORD/LONG value)
     // PNut ct_condata:
@@ -7310,9 +7263,34 @@ export class SpinResolver {
     this.objImage.replaceByte(charCount + 1, offSetToLength);
   }
 
+  private ct_conlstr() {
+    // Compile term - LSTRING("constantstring", zero_ok, zero_ok)
+    // PNut ct_conlstr:
+    this.getLeftParen();
+    this.objWrByte(eByteCode.bc_string);
+    const patchLocation: number = this.objImage.offset;
+    this.objWrByte(0); // emit placeholder - interpreter length
+    this.objWrByte(0); // emit placeholder - user length
+    let stringLength: number = 1;
+    do {
+      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
+      if (valueReturn.value > 255n) {
+        // [error_lscmrf]
+        throw new Error('LSTRING characters must range from 0 to 255');
+      }
+      this.objWrByte(Number(valueReturn.value));
+      if (++stringLength > 255) {
+        // [error_sdcx]
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+      }
+    } while (this.getCommaOrRightParen());
+    this.objImage.replaceByte(stringLength, patchLocation);
+    this.objImage.replaceByte(stringLength - 1, patchLocation + 1);
+  }
+
   private compileConLString() {
-    // Compile term - STRING("constantstring")
-    // PNut ct_constr:
+    // Compile term - LSTRING("constantstring")
+    // PNut ct_conlstr:
     this.getLeftParen();
     this.objWrByte(eByteCode.bc_string);
     const offSetToLength = this.objImage.offset;
@@ -8258,12 +8236,13 @@ private checkDec(): boolean {
         this.objWrByte(eByteCode.bc_read_clkfreq);
       } else {
         // not a CLKFREQ read
+        this.logMessage(`  -- compileVariable() variable.wordSize=(${variable.wordSize})`);
         this.compileConstant(BigInt(variable.address));
         if (variable.indexFlag == true) {
           this.compileIndex();
           this.objWrByte(eByteCode.bc_setup_byte_pb_pi + variable.wordSize);
         } else {
-          this.objWrByte(eByteCode.bc_setup_byte_pa);
+          this.objWrByte(eByteCode.bc_setup_byte_pa + variable.wordSize);
         }
         this.compileVariableBitfield(variable);
         this.compileVariableReadWriteAssign(variable);
@@ -8657,6 +8636,7 @@ private checkDec(): boolean {
     let returnValueCount: number = 0;
     const variableResult: iVariableReturn = this.checkVariable();
     if (variableResult.isVariable) {
+      this.logMessage(`  -- checkVariableMethod() type=[${eElementType[variableResult.type]}], addr=(${hexLong(variableResult.address, '0x')})`);
       if (this.checkLeftParen()) {
         if (variableResult.type == eElementType.type_register && variableResult.address == this.mrecvReg) {
           // have RECV(), no parameters allowed, one return value
@@ -8680,6 +8660,8 @@ private checkDec(): boolean {
           }
         }
       }
+    } else {
+      this.logMessage(`  -- checkVariableMethod() isVariable=(${variableResult.isVariable})`);
     }
     return [foundMethodStatus, returnValueCount];
   }

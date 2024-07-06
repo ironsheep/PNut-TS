@@ -48,7 +48,6 @@ describe('PNut_ts builds our COV non-debug() test files correctly', () => {
 
   files.forEach((file) => {
     test(`Compile file: ${path.basename(file)}`, () => {
-      const options: string = '-v -l -O --regression element --';
       const basename = path.basename(file, '.spin2');
 
       const listingFSpec = path.join(testDirPath, `${basename}.lst`);
@@ -61,10 +60,13 @@ describe('PNut_ts builds our COV non-debug() test files correctly', () => {
       removeExistingFile(objectFSpec);
       removeExistingFile(binaryFSpec);
       removeExistingFile(elementsFSpec);
+      const conditionalArgs: string[] = basename === 'coverage_003_v44' ? ['-44'] : [];
+      const options: string[] = ['-v', '-l', '-O', '--regression', 'element', '--'];
+      const adjustedArgs: string[] = [...options.slice(0, 2), ...conditionalArgs, ...options.slice(2)];
 
       // compile our file generating output files
       try {
-        execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
+        execSync(`node ${toolPath}/pnut-ts.js ${adjustedArgs.join(' ')} ${file}`);
       } catch (error) {
         console.error(`ERROR: running PNut-ts: ${error}`);
         fail(`Execution failed for ${file}`);

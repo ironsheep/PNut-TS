@@ -77,17 +77,34 @@ export class ExternalFiles {
       this.logMessage(`flash_loader is ${tmpImage.length} bytes long`);
       this._flashLoaderImage = tmpImage;
     }
-    tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger.obj');
-    tmpImage = this.loadImage(tmpFSpec);
-    if (tmpImage) {
-      this.logMessage(`Spin2_debugger is ${tmpImage.length} bytes long`);
-      this._spinDebuggerImage = tmpImage;
-    }
-    tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_interpreter.obj');
-    tmpImage = this.loadImage(tmpFSpec);
-    if (tmpImage) {
-      this.logMessage(`Spin2_interpreter is ${tmpImage.length} bytes long`);
-      this._spinInterpreterImage = tmpImage;
+    if (this.context.compileOptions.v44FormatListing) {
+      // version v44 built-in files
+      tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger_v44.obj');
+      tmpImage = this.loadImage(tmpFSpec);
+      if (tmpImage) {
+        this.logMessage(`Spin2_debugger is v44 ${tmpImage.length} bytes long`);
+        this._spinDebuggerImage = tmpImage;
+      }
+      tmpFSpec = path.join(this.context.extensionFolder, 'spin2_interpreter_v44.obj');
+      tmpImage = this.loadImage(tmpFSpec);
+      if (tmpImage) {
+        this.logMessage(`Spin2_interpreter v44 is ${tmpImage.length} bytes long`);
+        this._spinInterpreterImage = tmpImage;
+      }
+    } else {
+      // version v43 built-in files
+      tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger.obj');
+      tmpImage = this.loadImage(tmpFSpec);
+      if (tmpImage) {
+        this.logMessage(`Spin2_debugger v43 is ${tmpImage.length} bytes long`);
+        this._spinDebuggerImage = tmpImage;
+      }
+      tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_interpreter.obj');
+      tmpImage = this.loadImage(tmpFSpec);
+      if (tmpImage) {
+        this.logMessage(`Spin2_interpreter v43 is ${tmpImage.length} bytes long`);
+        this._spinInterpreterImage = tmpImage;
+      }
     }
   }
 

@@ -1,0 +1,104 @@
+CON
+
+  _clkfreq = 100_000_00
+
+' this requires compilation w/v44
+
+PUB Go()
+'{
+DAT
+
+  org 0,100
+  ' cog mode
+  calld pa,#$
+  calld ptrb,#$3ff
+  jnct1 ##$3ff
+
+  orgh $400,$800
+  ' hub mode
+  long 0
+  long fvars -$10000000, -1
+
+  long word 5[10]
+
+  alti 1,2
+  alti 1,#2
+
+  calld pa,1
+  calld pa,#1
+  calld pa,#$
+  calld ptra,#$+1
+  calld ptra,#$8000
+
+  jnse1 #$-4
+
+  getrnd 0
+  getrnd wc
+  getrnd wz
+
+  modcz 1,2 wcz
+  modc 3 wc
+  modz 4 wz
+
+  pushb #4
+  pushb 4
+  popb	5
+  popb	5
+
+  reta
+  retb
+  reti0
+  reti1
+  reti2
+  reti3
+  resi0
+  resi1
+  resi2
+  resi3
+  xstop
+
+sep8 long $88888888
+  asmclk
+if_z asmclk
+_RET_ asmclk
+sep5 long $55555555
+  debug
+  debug()
+blah
+  djnz 6,##blah
+  djnz 7,8
+
+  rdlong 10,ptra--
+  rdlong 11,ptra++
+
+  ' testing ##
+  rdlong 0,ptra[##$8000]
+  rdlong 0,++ptra[##$8000]
+  rdlong 0,--ptra[##$8000]
+
+
+  ' testing non-##
+  rdlong 0,--ptra[1]
+  rdlong 0,++ptra[1]
+
+  sca 0,0
+  scas 0,0
+
+  waitatn
+
+sep3 long $33333333
+
+'testword  word wordfit 345  ' ERROR!  spin2 extension needs to mark this as fail!
+'testbyte  byte bytefit 345  ' ERROR!  spin2 extension needs to mark this as fail!
+testword  wordfit -$8000
+          wordfit $ffff
+testbyte  bytefit -$80
+          bytefit $ff
+
+sepA long $aaaaaaaa
+
+' the following moved to their own exception files;
+  'rdlong 10,--pa ' but generates an exception
+  'rdlong 10,++pa ' but generates an exception
+
+'}
