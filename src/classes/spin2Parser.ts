@@ -89,7 +89,10 @@ export class Spin2Parser {
   }
 
   public P2Compile2(isTopLevel: boolean) {
-    this.logMessage('* P2Compile2() - ENTRY');
+    this.logMessage(`* P2Compile2(isTopLevel=(${isTopLevel})) - ENTRY`);
+    this.logMessage(
+      `  -- OPTS elem(${this.context.logOptions.logElementizer}), parse(${this.context.logOptions.logParser}), comp(${this.context.logOptions.logCompile}), resolv(${this.context.logOptions.logResolver}), preproc(${this.context.logOptions.logPreprocessor})`
+    );
     //this.spinResolver.compile2();
     try {
       this.spinResolver.compile2(isTopLevel);
@@ -101,6 +104,7 @@ export class Spin2Parser {
       }
       throw error;
     }
+    this.logMessage(`* P2Compile2(isTopLevel=(${isTopLevel})) - EXIT`);
   }
 
   public P2List() {
@@ -119,7 +123,7 @@ export class Spin2Parser {
         stream.write(`userSymbol: NAME:[${userSymbol.name}] TYPE:[${eElementType[userSymbol.type]}]\n`);
       }
       stream.write(`* ----------------------\n\n`);
-*/
+      */
       // emit: symbol list,  if we have symbols place them at top of report
       if (userSymbols.length > 0) {
         // EX: TYPE: CON             VALUE: 13F7B1C0          NAME: CLK_FREQ

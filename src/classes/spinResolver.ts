@@ -174,9 +174,9 @@ export class SpinResolver {
   private levelSymbols: SymbolTable = new SymbolTable(); // based on language level
 
   private mainSymbols: SymbolTable = new SymbolTable(); // var, dat, pub, pri, con, obj
-  private parameterSymbols: SymbolTable = new SymbolTable(); // constants from parent object
+  //private parameterSymbols: SymbolTable = new SymbolTable(); // constants from parent object
   private localSymbols: SymbolTable = new SymbolTable(); // parameters, return variables and locals for PUB/PRI scope
-  private lifetimeLocalSymbols: SymbolTable = new SymbolTable(); // PRESERVED parameters, return variables and locals for PUB/PRI scope
+  private listingLocalSymbols: SymbolTable = new SymbolTable(); // PRESERVED parameters, return variables and locals for PUB/PRI scope
   private inlineSymbols: SymbolTable = new SymbolTable(); // for inline code sections
   private activeSymbolTable: eSymbolTableId = eSymbolTableId.STI_MAIN;
 
@@ -218,7 +218,7 @@ export class SpinResolver {
   private readonly objs_limit: number = 1024; // max object count
   private readonly distiller_limit: number = 0x4000; // max distiller limit
   private readonly locals_limit: number = 0x10000 + this.params_limit * 4 + this.results_limit * 4;
-
+  private readonly obj_limit = 0x100000;
   // VAR processing support data
   private varPtr: number = 4;
 
@@ -274,7 +274,7 @@ export class SpinResolver {
     this.debug_record = new DebugRecord(this.context);
     this.debug_data = new DebugData(this.context);
     this.isLogging = this.context.logOptions.logResolver;
-    // get refereces to the single global data
+    // get references to the single global data
     this.objImage = ctx.compileData.objImage;
     this.datFileData = ctx.compileData.datFileData;
     this.objectData = ctx.compileData.objectData;
@@ -311,7 +311,7 @@ export class SpinResolver {
   // for lister  vvv
   get userSymbolTable(): SymbolEntry[] {
     const allMain: SymbolEntry[] = this.mainSymbols.allSymbols;
-    const allLocal: SymbolEntry[] = this.lifetimeLocalSymbols.allSymbols;
+    const allLocal: SymbolEntry[] = this.listingLocalSymbols.allSymbols;
     const allInline: SymbolEntry[] = this.inlineSymbols.allSymbols;
     const allSymbols: SymbolEntry[] = [...allMain, ...allLocal, ...allInline];
     allSymbols.sort((a, b) => a.instanceNumber - b.instanceNumber);
@@ -400,10 +400,11 @@ export class SpinResolver {
     this.mainSymbols.reset();
     this.localSymbols.reset();
     this.inlineSymbols.reset();
+    this.listingLocalSymbols.reset();
     this.activeSymbolTable = eSymbolTableId.STI_MAIN;
+    this.pubConList.reset();
     this.asmLocal = 0;
     this.objImage.reset();
-    this.pubConList.reset();
     this.distillPtr = 0;
     this.distiller = [];
     this.pasmMode = this.determinePasmMode();
@@ -417,7 +418,11 @@ export class SpinResolver {
   }
 
   public compile2(isTopLevel: boolean) {
-    this.logMessage(`*==* compile2()`);
+    //this.isLogging = true;
+    this.logMessage(`*==* compile2(isTopLevel=(${isTopLevel}))`);
+    this.logMessage(
+      `  -- OPTS elem(${this.context.logOptions.logElementizer}), parse(${this.context.logOptions.logParser}), comp(${this.context.logOptions.logCompile}), resolv(${this.context.logOptions.logResolver}), preproc(${this.context.logOptions.logPreprocessor})`
+    );
     this.compile_obj_symbols();
     this.determine_clock();
     this.compile_con_blocks_2nd();
@@ -490,7 +495,7 @@ export class SpinResolver {
       }
     } while (element.type != eElementType.type_end_file);
     this.isLogging = savedLogState;
-    this.logMessage(`* determinePasmMode() = (${pasmModeStatus})`);
+    this.logMessage(`* determinePasmMode() => (${pasmModeStatus})`);
     return pasmModeStatus;
   }
 
@@ -653,7 +658,7 @@ export class SpinResolver {
         // [error_ftl]
         throw new Error('Filename too long');
       }
-      this.isLogging = false; // disable again for checkComma()
+      //this.isLogging = false; // disable again for checkComma()
     } while (this.checkComma());
     //this.isLogging = savedLogState;
     this.logMessage(`* getFilename() - EXIT`);
@@ -2983,12 +2988,14 @@ export class SpinResolver {
   private cb_if() {
     // Compile block - 'if' / 'ifnot'
     // PNut cb_if:
+    this.logMessage(`*==* cb_if() ENTRY`);
     let optimizerMethod: eOptimizerMethod;
     optimizerMethod = this.currElement.type == eElementType.type_if ? eOptimizerMethod.OM_If : eOptimizerMethod.OM_IfNot;
     this.setScopeColumn(this.lineColumn);
     this.new_bnest(eElementType.type_if, this.if_limit + 1);
     this.optimizeBlock(optimizerMethod);
     this.end_bnest();
+    this.logMessage(`*==* cb_if() EXIT`);
   }
 
   private blockIfnIfNot(byteCode: eByteCode) {
@@ -3049,11 +3056,13 @@ export class SpinResolver {
   private cb_case() {
     // Compile block - 'case'
     // PNut cb_case:
+    this.logMessage(`*==* cb_case() ENTRY`);
     this.setScopeColumn(this.lineColumn); // column offset to 'case' PNut [ebp]
     // reserve room for max cases and the other case
     this.new_bnest(eElementType.type_case, this.case_limit + 1); // max case + other
     this.optimizeBlock(eOptimizerMethod.OM_Case);
     this.end_bnest();
+    this.logMessage(`*==* cb_case() EXIT`);
   }
 
   private blockCase() {
@@ -3204,10 +3213,12 @@ export class SpinResolver {
   private cb_case_fast() {
     // Compile block - 'case_fast'
     // PNut cb_case_fast:
+    this.logMessage(`*==* cb_case_fast() ENTRY`);
     this.setScopeColumn(this.lineColumn);
     this.new_bnest(eElementType.type_case_fast, this.case_fast_limit + 6 + 1); // 6 enum value
     this.optimizeBlock(eOptimizerMethod.OM_CaseFast);
     this.end_bnest();
+    this.logMessage(`*==* cb_case_fast() EXIT`);
   }
 
   private blockCaseFast() {
@@ -3796,7 +3807,7 @@ export class SpinResolver {
         break;
       case eSymbolTableId.STI_LOCAL:
         this.localSymbols.add(newSymbol.name, newSymbol.type, newSymbol.value);
-        this.lifetimeLocalSymbols.addAllowDupe(newSymbol.name, newSymbol.type, newSymbol.value);
+        this.listingLocalSymbols.addAllowDupe(newSymbol.name, newSymbol.type, newSymbol.value);
         symbolNumber = this.localSymbols.length;
         tableName = 'localSymbols';
         break;
@@ -4065,6 +4076,7 @@ export class SpinResolver {
       let objVar: number[] = [];
       // here is @@file:
       const objFileRanges: iFileDetails[] = this.objectData.objectFileRanges;
+      this.logMessage(`  -- fileRangeCt=(${objFileRanges.length})`);
       for (let objFileIndex = 0; objFileIndex < objFileRanges.length; objFileIndex++) {
         // this fileRange is offset,length
         //   length is + 8 (two longs) more than the length of the obj data we move
@@ -4113,8 +4125,9 @@ export class SpinResolver {
         // write var offset to index
         this.objImage.replaceLong(this.varPtr, objOffset + 4);
         // update var pointer, check limit
+        this.logMessage(`  -- varPtr=(${this.varPtr}) += objVar[fileNumber](${objVar[fileNumber]})`);
         this.varPtr += objVar[fileNumber];
-        if (this.varPtr > this.objs_limit) {
+        if (this.varPtr > this.obj_limit) {
           // [error_tmvsid]
           throw new Error('Too much variable space is declared D');
         }
@@ -6477,7 +6490,7 @@ export class SpinResolver {
     //  var({params,...}):2+
     //
     // PNut compile_parameter:
-    this.logMessage(` -- compileParameter() elem=[${this.currElement.toString()}]`);
+    this.logMessage(`*--* compileParameter() elem=[${this.currElement.toString()}]`);
     let compiledParameterCount: number = -1; // flag saying we need to compile expression
     const savedElementIndex: number = this.saveElementLocation();
     this.getElement();

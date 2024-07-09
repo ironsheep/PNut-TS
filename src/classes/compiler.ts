@@ -40,7 +40,7 @@ export class Compiler {
     this.context = ctx;
     this.isLogging = ctx.logOptions.logCompile;
     this.spin2Parser = new Spin2Parser(ctx);
-    // get refereces to the single global data
+    // get references to the single global data
     this.objectData = ctx.compileData.objectData;
     this.datFileData = ctx.compileData.datFileData;
     this.objImage = ctx.compileData.objImage;
@@ -227,6 +227,7 @@ export class Compiler {
           // DEBUG dump into .obj file for inspection
           //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child'); // REMOVE BEFORE FLIGHT
           //dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
+          this.logMessage(`  -- compRecur(${depth}) - compile2 END ------------------------------------`);
         }
       }
     }
