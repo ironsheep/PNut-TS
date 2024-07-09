@@ -77,7 +77,9 @@ export class ExternalFiles {
       this.logMessage(`flash_loader is ${tmpImage.length} bytes long`);
       this._flashLoaderImage = tmpImage;
     }
+    //const ignore_v44: boolean = false;
     if (this.context.compileOptions.v44FormatListing) {
+      //if (ignore_v44) {
       // version v44 built-in files
       tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger_v44.obj');
       tmpImage = this.loadImage(tmpFSpec);

@@ -106,3 +106,34 @@ PRI Flash() : x
 PRI SetLED(x)
  PINWRITE(56 ADDPINS 7, !x)
  WAITMS(125)
+
+
+PRI testINLINESymbols()
+
+   ORG
+x  NOP
+Y  NOP
+   RET
+z   long
+   END
+
+PUB testUNARYEQU() | x, y
+
+  Y :=  != X
+  pinh(!= X)
+
+  _,y := polxy(1, 2)
+
+
+PUB testCompInstru()  | z
+
+   \calledTest()
+   --z
+   ++z
+   ??z
+   cogspin(NEWCOG, calledTest(), 0)
+   abs= z
+   z!!
+   z!
+
+PRI calledTest()

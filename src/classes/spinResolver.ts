@@ -3781,7 +3781,7 @@ export class SpinResolver {
     } else if (this.localSymbols.exists(name)) {
       containingTable = this.localSymbols;
     } else if (this.inlineSymbols.exists(name)) {
-      containingTable = this.localSymbols;
+      containingTable = this.inlineSymbols;
     }
     if (containingTable !== undefined) {
       const tmpSymbolFound = containingTable.get(name);
