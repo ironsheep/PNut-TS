@@ -45,6 +45,12 @@ describe('Directory existence tests', () => {
 const TIMEOUT_7_SECONDS: number = 7000;
 
 describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
+  // Variable to store stderr output
+  let stderrOutput: string[] = [];
+  let stdErrOutFile: string;
+  // Store the original process.stderr.write function
+  const originalStderrWrite = process.stderr.write;
+  // get our list of files to compile
   let files: string[] = [];
   try {
     files = globSync(`${testDirPath}/{debug_,isp_,coverage_debug_}*.spin2`);
@@ -55,6 +61,30 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
     files.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }
   //console.log(`* files=[${files.join(', ')}]`); // no extra file coming in here
+
+  if (files.length > 0) {
+    beforeEach(() => {
+      // Override process.stderr.write
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
+        // Store the stderr output
+        stderrOutput.push(chunk.toString());
+        // Call the original function to ensure any other behaviors are preserved
+        return originalStderrWrite.call(process.stderr, chunk, encoding, callback);
+      };
+    });
+
+    afterEach(() => {
+      // Restore the original process.stderr.write function
+      process.stderr.write = originalStderrWrite;
+
+      // Write the stderr output to a file
+      fs.writeFileSync(stdErrOutFile, stderrOutput.join('\n'));
+
+      // Clear the stderrOutput array for the next test
+      stderrOutput = [];
+    });
+  }
 
   let PNut_ts_compiler: PNutInTypeScript;
 
@@ -68,12 +98,15 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
         const objectFSpec = path.join(testDirPath, `${basename}.obj`);
         const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
         const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
+        const errorFSpec = path.join(testDirPath, `${basename}.errout`);
+        stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
         // Remove existing files
         removeExistingFile(listingFSpec);
         removeExistingFile(objectFSpec);
         removeExistingFile(binaryFSpec);
         removeExistingFile(elementsFSpec);
+        stderrOutput = [];
 
         // compile our file generating output files
         const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '-l', '-O', '--regression', 'element', '--', `${file}`];
@@ -83,8 +116,15 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
           //PNut_ts_instance.setArgs(testArguments);
           await PNut_ts_compiler.run();
         } catch (error) {
-          console.error(`ERROR: running PNut-ts (instance): ${error}`);
+          // Write the error message to a .errout file
           console.error(`Execution failed for ${file}`);
+          if (error instanceof Error) {
+            console.error(error.toString());
+          } else {
+            // Handle the case where error is not an Error object
+            console.error(`Non-error thrown: ${JSON.stringify(error)}`);
+          } // Re-throw the error if you want the test to fail
+          throw error;
         }
 
         const allFilesExist: boolean = await waitForFiles([listingFSpec, objectFSpec, binaryFSpec]);
@@ -155,6 +195,12 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
 });
 
 describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
+  // Variable to store stderr output
+  let stderrOutput: string[] = [];
+  let stdErrOutFile: string;
+  // Store the original process.stderr.write function
+  const originalStderrWrite = process.stderr.write;
+  // get our list of files to compile
   let files: string[] = [];
   try {
     files = globSync(`${testDirPath}/!(debug_|isp_|coverage_debug_)*.spin2`);
@@ -165,6 +211,30 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
     files.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }
   //console.log(`* files=[${files.join(', ')}]`); // no extra file coming in here
+
+  if (files.length > 0) {
+    beforeEach(() => {
+      // Override process.stderr.write
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
+        // Store the stderr output
+        stderrOutput.push(chunk.toString());
+        // Call the original function to ensure any other behaviors are preserved
+        return originalStderrWrite.call(process.stderr, chunk, encoding, callback);
+      };
+    });
+
+    afterEach(() => {
+      // Restore the original process.stderr.write function
+      process.stderr.write = originalStderrWrite;
+
+      // Write the stderr output to a file
+      fs.writeFileSync(stdErrOutFile, stderrOutput.join('\n'));
+
+      // Clear the stderrOutput array for the next test
+      stderrOutput = [];
+    });
+  }
 
   let PNut_ts_compilerNO: PNutInTypeScript;
 
@@ -178,6 +248,8 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
         const objectFSpec = path.join(testDirPath, `${basename}.obj`);
         const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
         const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
+        const errorFSpec = path.join(testDirPath, `${basename}.errout`);
+        stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
         // Remove existing files
         removeExistingFile(listingFSpec);
@@ -196,8 +268,15 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
           //PNut_ts_instance.setArgs(testArguments);
           await PNut_ts_compilerNO.run();
         } catch (error) {
-          console.error(`ERROR: running PNut-ts (instance): ${error}`);
+          // Write the error message to a .errout file
           console.error(`Execution failed for ${file}`);
+          if (error instanceof Error) {
+            console.error(error.toString());
+          } else {
+            // Handle the case where error is not an Error object
+            console.error(`Non-error thrown: ${JSON.stringify(error)}`);
+          } // Re-throw the error if you want the test to fail
+          throw error;
         }
 
         const allFilesExist: boolean = await waitForFiles([listingFSpec, objectFSpec, binaryFSpec]);

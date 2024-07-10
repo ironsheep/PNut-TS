@@ -263,13 +263,7 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
       // Restore the original process.stderr.write function
       process.stderr.write = originalStderrWrite;
 
-      // remove color escape sequences from text
-      // Regular expression to match ANSI color escape sequences
-      const ansiEscapeSeqRegex = /\\x1b\[[0-9;]*m/g;
-
-      // Remove color escape sequences from each string in stderrOutput
-      const noColorStderrOutput = stderrOutput.map((line) => line.replace(ansiEscapeSeqRegex, '')); // Write the stderr output to a file
-      fs.writeFileSync(stdErrOutFile, noColorStderrOutput.join('\n'));
+      fs.writeFileSync(stdErrOutFile, stderrOutput.join('\n'));
 
       // Clear the stderrOutput array for the next test
       stderrOutput = [];
