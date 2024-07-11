@@ -1,0 +1,315 @@
+PNut TS Dev NOTEs:
+	Work USB Issues:
+		- How to locate devices:
+				- Windows, 
+				- macOS, 
+				- Linux
+			- Need to code this, NOT using serialPort.list()
+		- How to connect and toggle DTR to enter boot mode?
+			- SCOPE this to see if working!!!
+		- How to connect/interact with device for programming
+			- explicite platform-specific device name from settings?
+			- node serialPort?  does it work everwhere?
+				- NEED TO TEST THIS ON Windows/Linux (working on macOS)
+		- How to connect/interact with device for DEBUG
+		- - explicite platform-specific device name from settings?
+	
+	NPM Packaging:
+		- See SerialPort command line tools packages!
+		
+	Packaging NOTEs:
+			STATUS:
+				- failed to get various USB forms build into stand alone node.js executable
+				- failed to get node SerialPort to build into pnut-ts and run within VSCode
+				- TRIED:
+					- node usb (possible but need to get DTR working before can say yes!)
+					- node Serial Port - worked on all three platforms under VSCode (but failed to build into PNut)
+					- BAD node HID
+					- ts-node failed as it does NOT provide node (node in VSCode is not avail to the extension.)
+				NODE SerialPort:
+					- Proven on all three platforms (but NOT on parallels/Windows/on macOS)
+					- Failed to build into standalone executable
+				NODE USB:
+					- need to prove this on all platforms
+					- need to prove that we can control DTR
+					- need to prove that it can be packaged for all platforms
+				
+			ALTERNATE DEVELOPMENT/RESEARCH PATHS:
+				- does Node USB make packaging easier? (rather than Node SerialPort?)
+			
+			DEVELOPMENT/RESEARCH PATHS:
+				For JUNE toolchain RELEASE:
+					- Complete final keyboard testing on all 3 platforms
+					- Complete final build testing on Windows - all 3 compilers
+					- Complete final build testing - all 3 platforms
+					- MACOS keymap works
+					- Windows keymap works
+					- Linux keymap works
+					
+				Talk with Eric 18 Jun 12:45-13:15L: serial loader approaches:
+					Use my loader when?     all the time, no care about using proploder or loadp2
+					Does compress need loader or will work with mine?    yes it will work for us
+					Is there help I can provide    yes, i will do a local build and feed back results to Eric
+				- ID cause of failure to download or flash with loadp2
+				
+				For JULY PNut_ts RELEASE:
+					- Implement dependsOn of CompileTopP2 before download!
+					- Get flasher to listen to serial port after download (to show debug output) 
+					- PNUT_TS: Add the missing preprocessor abilties!  (nested #ifdefs)
+				
+				PREP for Initial ToolChain support release:
+					- Disable discovery of pnut_ts
+					- Remove setting for pnut_ts compiler path
+				
+				DOCUMENT Migrate to new build env.:
+				- Replace user-tasks file
+				- Check for keyboard overrides
+				- Review keyboard mapping (remove overrides) / (how to add own overrides)
+				
+				CAN'T FIX:
+					- Auto-generate user tasks? - NO, research into taskProvider
+					- TECH ISSUE: can't get flasher to read checksum verify response... P2 too quick or?
+						- code commented out for now, in download mech.
+				
+				DONE:
+						- Get interacting with pnut-ts working in VSCode build @done(2024-05-21)
+							- NOTE: ts-node was NOT a solution for this... @done(2024-05-19)
+							- Maybe require external install of pnut-ts? @done(2024-05-21)
+					- Ensure that startup scan removes selection when NONE plugs found @done(2024-05-19)
+					- FIX startup on spin2 file to show new DEBUG/FLASH controls @done(2024-05-19)
+					- FIX behavior of DEBUG/FLASH controls they should toggle when tapped @done(2024-05-19)
+					- Add discovery of flexprop flash loader binary @done(2024-05-20)
+					- Make a .dmg for macOS install and adjust vscode spin2 to look in installed location for it @done(2024-05-21)
+					- Get flasher working in VSCode build @done(2024-05-17)
+					- Get search for PropPlugs working in spin2 and recording to workspace settings @done(2024-05-18)
+					- Get search for Tools working in spin2 and recording to workspace settings @done(2024-05-18)
+					- Specify VSCode settings interface for built-in flash capability @done(2024-05-19)
+					- HMMMMM.... head down user tasks path but fed compiler fspec and options @done(2024-05-24)
+					- PROVE that toolset discovery works on RPi @done(2024-05-24)
+					- PROVE that PropPlug discovery works on RPi @done(2024-05-24)
+					- Add dicovery of PNut v4x on Windows, too! @done(2024-05-25)
+					- PROVE that toolset discovery works on Windows 10 @done(2024-05-25)
+					- PROVE that PropPlug discovery works on Windows 10 @done(2024-05-25)
+					- REMOVE enable .bin output setting!   Not needed!!! @done(2024-05-25)
+					- TOGGLE Debug() or FLASH removes binary name?! @done(2024-05-25)
+					- RESOLVE KEYBOARD mapping issues @done(2024-05-25)
+					- show COMn:S/N in status bar for Windows! @done(2024-05-25)
+					- Missing some cases of switch .spin2 editor windows @done(2024-05-27)
+					- Fix Spin2 built-in ram loader @done(2024-05-31)
+					- Why P2 check not seeing P2 at startup? @done(2024-06-03)
+					- P2 loader - not repeatable detection at startup. @done(2024-06-03)
+						- fixed timings and added retry loop as other extensions seem to affect our timing and we miss the p2 boot window @done(2024-06-03)
+					- Seeing extra byte on small file download in base64... is problem? @done(2024-06-03)
+						- compiler?  NOPE @done(2024-06-03)
+						- loader? YEP, fixed @done(2024-06-03)
+						- let's dump in hex too @done(2024-06-03)
+						- let's compare with PNUT output @done(2024-06-03)
+					- Fix Spin2 built-in flasher to FLASH @done(2024-06-04)
+						- flash loader appears to work. is flash image correct? @done(2024-06-04)
+					- Occasionally now still not setting up download bin due to current editor... @done(2024-06-04)
+					- Why not updating plug from N/A when found (VSC Status Bar) ?? @done(2024-06-09)
+					- Add filtering for compile and download: .spin2 only for pnut and pnut-Ts, spin1 and spin2 for flexspin @done(2024-06-09)
+					- Do option caescelance when more than 4 options @done(2024-06-11)
+					- FlexSpin make sure option combining works! @done(2024-06-11)
+					- Fix flasher flexspin (doesn't seem to be working?!) - or does work? @done(2024-06-11)
+						- BAD - PROVE that toolset discovery works on Windows 11 (parallels)  NOPE @done(2024-06-12)
+						- BAD - PROVE that PropPlug discovery works on Windows 11 (parallels)  NOPE @done(2024-06-12)
+					DOC UPDATES NEEDED:
+						- Spin2-settings.md @done(2024-06-12)
+							- section on toolchain with screen capture @done(2024-06-12)
+							- replace 2 keymaps with 3 new @done(2024-06-12)
+						- Spin2-Keymap.md @done(2024-06-12)
+							- replace 2 keymaps link to three in Spin2-settings.md @done(2024-06-12)
+						- TASKS-user-macOS.md @done(2024-06-12)
+							- rewrite key bindings section @done(2024-06-12)
+						- TASKS-user-RPi.md @done(2024-06-12)
+							- rewrite key bindings section @done(2024-06-12)
+						- TASKS-user-win.md @done(2024-06-12)
+							- rewrite key bindings section @done(2024-06-12)
+						- README.md @done(2024-06-12)
+							- update TOC @done(2024-06-12)
+							- add? new features (build system description) @done(2024-06-12)
+						- InsertMode.md @done(2024-06-12)
+							- fix keystrokes per platform @done(2024-06-12)
+					Options From ADA:
+						- (-1) Well, the most important one is -1bc, which compiles to Spin bytecodes that are executed by the ROM interpreter (just like Propeller Tool). This is quite important in that the 32K RAM on the P1 get filled up concerningly quickly when compiling to native code. @done(2024-06-14)
+						-  (BOTH) Also, there the --charset=xxx option, which is rather important. This affects the format of any strings in the program. By default UTF-8 is used, but for compatibility with PropTool/PNut, it should be --charset=parallax (you will notice this especially when a program tries to use the P1 ROM font). There's also --charset=latin1, which is the same as parallax but without the box drawing characters and --charset=shiftjis, which is Shift-JIS (duh). @done(2024-06-14)
+						- (-2) There's also a -2nu mode that can be used on P2, but IME that one's a bit half-baked. Those backend selections are the most important thing. @done(2024-06-14)
+						- (-2) Oh, and there's also --compress, which will reduce the size of the binary file by compressing it and prepending some code that decompresses it. Aside from the obvious benefit, when loading the chip, the decompression takes less time than is saved by transferring less data, so iteration time is improved by this. Only works for P2. @done(2024-06-14)
+					- DEMO Video for general population ( or just do working demo ) @done(2024-06-12)
+				
+				- NOTE: Ctrl+super+c -> Ctrl+CmdR+c !!!
+				
+				KEYBOARD MAPPING TROUBLES:
+					- Trying to get Windows to use Win key.
+					- Win key mentioned in "windows": "Ctrl+Win+A" for example doesn't show correctly.
+					- Win key mentioned in "key" shows up correctly only if "linux" directive is not present
+					- FILED: https://github.com/microsoft/vscode-discussions/discussions/1200
+					- "key": "Ctrl+Win+h",
+						"mac": "Ctrl+Alt+h",
+						"linux": "Ctrl+Alt+h",
+					NOTE: this causes Ctrl+Alt+h on Windows and for underlying command to be not found! when executed (or is it the Win version are failing?)
+				
+				Simplifying User Tasks:
+						RESEARCH, EXPERIMENTATION NEEDED:
+					Can an extension write to user tasks?  NO!
+					However, an extension can provide task definitions that the user can then use to create tasks. This is done by contributing a taskDefinitions contribution point in the extension's package.json file.
+					- https://code.visualstudio.com/api/extension-guides/task-provider
+				
+				Pkg POSSIBILTIES:
+					- ea. platform .exe is in assests on each Release
+					- Spin2 VSCExt downloads the needed binary from the releases page
+						-  -OR- User installs each release and Spin2 VSCExt just informs of newer being available
+						- Ship in Folder for platforms
+							- folder contents:
+								- README w/links to repo, issue reporting
+								- AUTHOR
+								- LICENSE
+								- EXE
+				
+				UI Changes:
+					- command to toggle debug - show state in bottom bar @done(2024-05-18)
+					- command to toggle download to flash - show state in bottom bar @done(2024-05-18)
+					- command to serach for plugs and show list if more than one found (so user can choose which to use) @done(2024-05-20)
+						-  if one, sets it and informs @done(2024-05-20)
+						- if NONE, just informs and clears selection @done(2024-05-20)
+					- ?? show the selected comm device on the status bar ?? @done(2024-05-20)
+				
+				VSCode Compile Settings:
+						- enable debug @done(2024-05-18)
+						- enable .lst @done(2024-05-18)
+						- enable .bin @done(2024-05-18)
+				
+				VSCode FLASHer Settings:
+						- list[...] of ports found @done(2024-05-24)
+						- Project Settings: Selected port @done(2024-05-18)
+						- download to ram -OR- flash @done(2024-05-18)
+						- load using built-in or loadp2 @done(2024-05-24)
+						- Project Settings: load command for this project @done(2024-05-24)
+						- Maybe suggest that loadp2 from flexspin be used in more complex cases (such as multiple files, or load at address)
+						LoadP2 has:
+							- user baud
+							- loader baud
+							- clock freq
+							- clock mode
+							- starting address
+							- enter terminal after download
+							- load multiple files with address for each
+						
+		
+		TODOs:
+			CLEAN UP TS-NODE experiment:
+				- remove ts_node @done(2024-05-17)
+				- comment out code using ts_node @done(2024-05-17)
+				- clean up .vscodeignore (remove ts_node/.bin support) @done(2024-05-17)
+			Get Flasher working experiment:
+				- install Node SerialPort in client @done(2024-05-17)
+				- add three .ts files from usbWork branch @done(2024-05-17)
+				- add command support in extension.ts / package.json @done(2024-05-17)
+		
+		
+	TESTS:
+		- New Task
+		
+	COMMAND LINE EXAMPLES: LISTING DEVICES:
+		
+		MacOS:
+			$ ll /dev/tty.u*
+			crw-rw-rw-  1 root  wheel  0x9000000 Apr 25 21:41 /dev/tty.usbserial-P9whu7bn
+			stephen@ev3studio ~ [] $ 
+			
+		LINUX :
+			ll /dev/ttyU*
+			crw-rw---- 1 root dialout 188, 0 Apr 25 19:07 /dev/ttyUSB0
+			pi@pi4blue:~ $ 
+			
+			LINUX Device TREE:
+				pi@pi4blue:~ $ ll /sys/bus/usb/devices/
+				total 0
+				lrwxrwxrwx 1 root root 0 Apr 27 16:05 1-0:1.0 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-0:1.0
+				lrwxrwxrwx 1 root root 0 Apr 27 16:05 1-1 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1
+				lrwxrwxrwx 1 root root 0 Apr 27 16:05 1-1:1.0 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1:1.0
+				lrwxrwxrwx 1 root root 0 Apr 25 19:07 1-1.4 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.4
+				lrwxrwxrwx 1 root root 0 Apr 25 19:07 1-1.4:1.0 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.4/1-1.4:1.0
+				lrwxrwxrwx 1 root root 0 Apr 27 16:05 2-0:1.0 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2/2-0:1.0
+				lrwxrwxrwx 1 root root 0 Apr 27 16:05 usb1 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1
+				lrwxrwxrwx 1 root root 0 Apr 27 16:05 usb2 -> ../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2
+				
+				pi@pi4blue:~ $ ll /sys/bus/usb/drivers/usbserial_generic/
+				total 0
+				--w------- 1 root root 4096 Apr 27 16:10 bind
+				lrwxrwxrwx 1 root root    0 Apr 27 16:10 module -> ../../../../module/usbserial
+				--w------- 1 root root 4096 Apr 27 16:10 uevent
+				--w------- 1 root root 4096 Apr 27 16:10 unbind
+				
+				/sys/bus/usb/drivers/ftdi_sio:
+				total 0
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 1-1.4:1.0 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.4/1-1.4:1.0
+				--w------- 1 root root 4096 Apr 27 16:13 bind
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 module -> ../../../../module/usbserial
+				--w------- 1 root root 4096 Apr 27 16:13 uevent
+				--w------- 1 root root 4096 Apr 27 16:13 unbind
+				
+				/sys/bus/usb/drivers/usb:
+				total 0
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 1-1 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 1-1.4 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1.4
+				--w------- 1 root root 4096 Apr 27 16:13 bind
+				--w------- 1 root root 4096 Apr 27 16:13 uevent
+				--w------- 1 root root 4096 Apr 27 16:13 unbind
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 usb1 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 usb2 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2
+				
+				/sys/bus/usb/drivers/hub:
+				total 0
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 1-0:1.0 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-0:1.0
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 1-1:1.0 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb1/1-1/1-1:1.0
+				lrwxrwxrwx 1 root root    0 Apr 27 16:13 2-0:1.0 -> ../../../../devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2/2-0:1.0
+				--w------- 1 root root 4096 Apr 27 16:13 bind
+				-rw-r--r-- 1 root root 4096 Apr 27 16:13 new_id
+				-rw-r--r-- 1 root root 4096 Apr 27 16:13 remove_id
+				--w------- 1 root root 4096 Apr 27 16:13 uevent
+				--w------- 1 root root 4096 Apr 27 16:13 unbind
+				
+				/sys/bus/usb/drivers/usbserial_generic:
+				total 0
+				--w------- 1 root root 4096 Apr 27 16:10 bind
+				lrwxrwxrwx 1 root root    0 Apr 27 16:10 module -> ../../../../module/usbserial
+				--w------- 1 root root 4096 Apr 27 16:10 uevent
+				--w------- 1 root root 4096 Apr 27 16:10 unbind
+			
+			$ udevadm info -a -p $(udevadm info -q path -n /dev/ttyUSB0) >udevadm.lst
+			- give detailed info about driver hierarchy... serail number can be found by back tracing
+			- "PropPlug" can also be found!
+			
+			
+		Windows:
+		- two diff commands....
+		C:\Users\stephen>chgport
+		COM3 = \Device\VCP0
+		
+		C:\Users\stephen>mode
+		
+		Status for device COM3
+		-----------------------
+			Baud:            1200
+			Parity:          Even
+			Data Bits:       7
+			Stop Bits:       1
+			Timeout:         OFF
+			XON/XOFF:        OFF
+			CTS handshaking: OFF
+			DSR handshaking: OFF
+			DSR sensitivity: OFF
+			DTR circuit:     ON
+			RTS circuit:     ON
+		
+		
+		Status for device CON
+		----------------------
+			Lines:          30
+			Columns:        120
+			Keyboard rate:  31
+			Keyboard delay: 1
+			Code page:      437
+
