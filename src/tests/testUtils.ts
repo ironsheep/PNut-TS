@@ -50,6 +50,15 @@ export function generateFileHash(filePath: string): string {
   return hashSum.digest('hex');
 }
 
+export function removeFileIfEmpty(fileSpec: string) {
+  if (fileExists(fileSpec)) {
+    const stats = fs.statSync(fileSpec);
+    if (stats.size == 0) {
+      removeExistingFile(fileSpec);
+    }
+  }
+}
+
 export function fileExists(fileSpec: string): boolean {
   const fileFoundStatus: boolean = fs.existsSync(fileSpec);
   //console.log(`testUtils: fileExists([${fileSpec}]) -> (${fileFoundStatus})`);

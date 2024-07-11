@@ -122,7 +122,7 @@ PUB testUNARYEQU() | x, y
   Y :=  != X
   pinh(!= X)
 
-  _,y := polxy(1, 2)
+  _,y := polxy(1, 2) ' <-- PNut_ts fails here (file only and OBJ include generates wrong filename
 
 
 PUB testCompInstru()  | z
