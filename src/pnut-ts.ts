@@ -148,6 +148,9 @@ export class PNutInTypeScript {
     }
     //*/
     //this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
+    if (!foundJest && runningCoverageTesting) {
+      this.context.reportOptions.coverageTesting = true;
+    }
 
     try {
       this.program.parse(combinedArgs);

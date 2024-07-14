@@ -693,7 +693,7 @@ export class SpinElementizer {
         throw new Error(`Packed ascii must be 1-4 characters - [${asciiStr}] is too ${explainStr}`);
       }
     } else {
-      // [error_  NEW not in Pnut]
+      // [error_NEW not in Pnut]
       throw new Error(`Missing 2nd " on packed ascii`);
       // FIXME: TODO: move this to 2nd quote check before calling this method
     }

@@ -37,6 +37,7 @@ export interface ReportOptions {
   writePreprocessReport: boolean;
   writeResolverReport: boolean;
   regressionTesting: boolean;
+  coverageTesting: boolean;
 }
 
 export interface PreProcessorOptions {
@@ -127,7 +128,8 @@ export class Context {
       writeElementsReport: false,
       writePreprocessReport: false,
       writeResolverReport: false,
-      regressionTesting: false
+      regressionTesting: false,
+      coverageTesting: false
     };
     this.preProcessorOptions = { defSymbols: [], undefSymbols: [], includeFolders: [] };
     this.runEnvironment = { serialPortDevices: [] };

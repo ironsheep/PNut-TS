@@ -420,7 +420,7 @@ export class Spin2Parser {
       objSize += this.externalFiles.spinInterpreterLength + this.spinResolver.variableSize + 0x400;
     }
     if (objSize > this.HubLimit) {
-      // [error_]
+      // [error_PASCAL]
       throw new Error(`Program requirement exceeds ${this.HubLimit / 1024}KB hub RAM by ${objSize - this.HubLimit} bytes`);
     }
     // insert debugger?
@@ -435,7 +435,7 @@ export class Spin2Parser {
     if (programFlash) {
       const codeAndLoaderSize: number = objSize + this.externalFiles.flashLoaderLength;
       if (codeAndLoaderSize > this.HubLimit) {
-        // [error_]
+        // [error_PASCAL]
         throw new Error(`Need to reduce program by ${codeAndLoaderSize - this.HubLimit} bytes, in order to fit flash loader into hub RAM download`);
       }
       this.P2InsertFlashLoader();

@@ -1,0 +1,262 @@
+[error_INTERNAL], ./classes/parseUtils.ts:
+[error_INTERNAL], ./classes/spinFiles.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_INTERNAL], ./classes/spinResolver.ts:
+[error_NEW, ./classes/spinElementizer.ts:
+[error_NEW, ./classes/spinResolver.ts:
+[error_NEW, ./classes/spinResolver.ts:
+[error_NEW, ./classes/spinResolver.ts:
+[error_NEW], ./classes/spinResolver.ts:
+[error_NEW], ./classes/spinResolver.ts:
+[error_NEW], ./classes/spinResolver.ts:
+[error_PASCAL], ./classes/spin2Parser.ts:
+[error_PASCAL], ./classes/spin2Parser.ts:
+[error_aanawiac], ./classes/spinResolver.ts:
+[error_ainafbf], ./classes/spinResolver.ts:
+[error_amnex], ./classes/spinResolver.ts: 000
+[error_amnex], ./classes/spinResolver.ts: 001
+[error_arina], ./classes/spinResolver.ts:
+[error_bdmbifc], ./classes/spinResolver.ts:
+[error_bmbft], ./classes/spinResolver.ts:
+[error_bmbpbb], ./classes/spinElementizer.ts:
+[error_bwldcx], ./classes/spinResolver.ts: 010
+[error_bwldcx], ./classes/spinResolver.ts: 011
+[error_caefl], ./classes/spinResolver.ts:
+[error_cael], ./classes/spinResolver.ts: 020
+[error_cael], ./classes/spinResolver.ts: 021
+[error_cael], ./classes/spinResolver.ts: 022
+[error_caexl], ./classes/spinResolver.ts: 030
+[error_caexl], ./classes/spinResolver.ts: 031
+[error_cccbd], ./classes/spinResolver.ts:
+[error_ce32b], ./classes/spinElementizer.ts:
+[error_cfbex], ./classes/spinResolver.ts:
+[error_cfcobd], ./classes/spinResolver.ts:
+[error_cfiinu], ./classes/spinResolver.ts:
+[error_cfvmbw], ./classes/spinResolver.ts:
+[error_cmbf0t255], ./classes/spinResolver.ts:
+[error_cmbf0t511], ./classes/spinResolver.ts: 040
+[error_cmbf0t511], ./classes/spinResolver.ts: 041
+[error_codcssf], ./classes/spinResolver.ts:
+[error_csmbla], ./classes/spinResolver.ts:
+[error_dbz], ./classes/spinResolver.ts: 050
+[error_dbz], ./classes/spinResolver.ts: 051
+[error_dbz], ./classes/spinResolver.ts: 052
+[error_dbz], ./classes/spinResolver.ts: 053
+[error_dbz], ./classes/spinResolver.ts: 054
+[error_dcbpbac], ./classes/spinResolver.ts:
+[error_dditl], ./classes/debugData.ts: 060
+[error_dditl], ./classes/debugData.ts: 061
+[error_dditl], ./classes/spinResolver.ts: 062
+[error_dditl], ./classes/spinResolver.ts: 063
+[error_debugbaud], ./classes/spinResolver.ts:
+[error_debugclk], ./classes/spin2Parser.ts:
+[error_debugcog], ./classes/spin2Parser.ts:
+[error_debugdly], ./classes/spin2Parser.ts:
+[error_debugpin], ./classes/spinResolver.ts:
+[error_debugprx], ./classes/spinResolver.ts:
+[error_debugptx], ./classes/spinResolver.ts:
+[error_divo], ./classes/spinResolver.ts:
+[error_downbaud], ./classes/spinResolver.ts:
+[error_drmbpppp], ./classes/spinResolver.ts: 070
+[error_drmbpppp], ./classes/spinResolver.ts: 071
+[error_drmbpppp], ./classes/spinResolver.ts: 072
+[error_drmbpppp], ./classes/spinResolver.ts: 073
+[error_drmbpppp], ./classes/spinResolver.ts: 074
+[error_eaaeoeol], ./classes/spinResolver.ts:
+[error_eaasmi], ./classes/spinResolver.ts:
+[error_eacn], ./classes/spinResolver.ts: 080
+[error_eacn], ./classes/spinResolver.ts: 081
+[error_eacuool], ./classes/spinResolver.ts:
+[error_eads], ./classes/spinResolver.ts:
+[error_eaenop], ./classes/spinResolver.ts:
+[error_eaet], ./classes/spinResolver.ts: 090
+[error_eaet], ./classes/spinResolver.ts: 091
+[error_eaet], ./classes/spinResolver.ts: 092
+[error_eaiov], ./classes/spinResolver.ts:
+[error_eals], ./classes/spinResolver.ts:
+[error_eamn], ./classes/spinResolver.ts: 0A0
+[error_eamn], ./classes/spinResolver.ts: 0A1
+[error_eamn], ./classes/spinResolver.ts: 0A2
+[error_eamomp], ./classes/spinResolver.ts:
+[error_eamoov], ./classes/spinResolver.ts:
+[error_eaocom], ./classes/spinResolver.ts:
+[error_eas], ./classes/spinResolver.ts:
+[error_eassign], ./classes/spinResolver.ts:
+[error_easvmoo], ./classes/spinResolver.ts:
+[error_eatq], ./classes/spinElementizer.ts:
+[error_eaucnop], ./classes/spinResolver.ts: 0B0
+[error_eaucnop], ./classes/spinResolver.ts: 0B1
+[error_eaumn], ./classes/spinResolver.ts:
+[error_eaunbwlo], ./classes/spinResolver.ts:
+[error_eauon], ./classes/spinResolver.ts:
+[error_eaupn], ./classes/spinResolver.ts: 0C0
+[error_eaupn], ./classes/spinResolver.ts: 0C1
+[error_eaurn], ./classes/spinResolver.ts: 0D0
+[error_eaurn], ./classes/spinResolver.ts: 0D1
+[error_eauvn], ./classes/spinResolver.ts:
+[error_eauvnsa], ./classes/spinResolver.ts: 0E0
+[error_eauvnsa], ./classes/spinResolver.ts: 0E1
+[error_eauvnsa], ./classes/spinResolver.ts: 0E2
+[error_eav], ./classes/spinResolver.ts: 0F0
+[error_eav], ./classes/spinResolver.ts: 0F1
+[error_ebwl], ./classes/spinResolver.ts:
+[error_ecoeol], ./classes/spinResolver.ts:
+[error_ecolon], ./classes/spinResolver.ts:
+[error_ecomma], ./classes/spinResolver.ts:
+[error_ecor], ./classes/spinResolver.ts:
+[error_edot], ./classes/spinResolver.ts:
+[error_edotdot], ./classes/spinResolver.ts:
+[error_eelcoeol], ./classes/spinResolver.ts:
+[error_eend], ./classes/spinResolver.ts:
+[error_eeol], ./classes/spinResolver.ts: 100
+[error_eeol], ./classes/spinResolver.ts: 101
+[error_eequal], ./classes/spinResolver.ts:
+[error_efrom], ./classes/spinResolver.ts:
+[error_eicon], ./classes/spinResolver.ts: 110
+[error_eicon], ./classes/spinResolver.ts: 111
+[error_eicon], ./classes/spinResolver.ts: 112
+[error_eidbwloe], ./classes/spinResolver.ts:
+[error_eldppodc], ./classes/spinResolver.ts:
+[error_eleft], ./classes/spinResolver.ts:
+[error_eleftb], ./classes/spinResolver.ts:
+[error_enope], ./classes/spinResolver.ts:
+[error_epoeol], ./classes/spinResolver.ts:
+[error_epound], ./classes/spinResolver.ts:
+[error_erb], ./classes/spinElementizer.ts:
+[error_erbb], ./classes/spinElementizer.ts:
+[error_eregsym], ./classes/spinResolver.ts:
+[error_eright], ./classes/spinResolver.ts: 120
+[error_eright], ./classes/spinResolver.ts: 121
+[error_erightb], ./classes/spinResolver.ts: 130
+[error_erightb], ./classes/spinResolver.ts: 131
+[error_es], ./classes/spinElementizer.ts:
+[error_esendd], ./classes/spinResolver.ts: 140
+[error_esendd], ./classes/spinResolver.ts: 141
+[error_esoeol], ./classes/spinResolver.ts:
+[error_etmrasr], ./classes/spinResolver.ts:
+[error_eto], ./classes/spinResolver.ts:
+[error_ewaox], ./classes/spinResolver.ts:
+[error_ewcwzwcz], ./classes/spinResolver.ts:
+[error_ewith], ./classes/spinResolver.ts:
+[error_fpcmbp], ./classes/spinResolver.ts:
+[error_fpcmbw], ./classes/spinElementizer.ts:
+[error_fpnaiie], ./classes/spinResolver.ts:
+[error_fpo], ./classes/spinResolver.ts: 150
+[error_fpo], ./classes/spinResolver.ts: 151
+[error_fpo], ./classes/spinResolver.ts: 152
+[error_ftl], ./classes/spinResolver.ts:
+[error_fvar], ./classes/spinResolver.ts: 160
+[error_fvar], ./classes/spinResolver.ts: 161
+[error_habxl], ./classes/spinResolver.ts:
+[error_hacd], ./classes/spinResolver.ts:
+[error_haec], ./classes/spinResolver.ts: 170
+[error_haec], ./classes/spinResolver.ts: 171
+[error_haefl], ./classes/spinResolver.ts:
+[error_hael], ./classes/spinResolver.ts: 180
+[error_hael], ./classes/spinResolver.ts: 181
+[error_icaexl], ./classes/spinResolver.ts: 190
+[error_icaexl], ./classes/spinResolver.ts: 191
+[error_ifc], ./classes/spinResolver.ts:
+[error_ifufiq], ./classes/spinResolver.ts:
+[error_inaifpe], ./classes/spinResolver.ts:
+[error_internal], ./classes/spinResolver.ts:
+[error_ionaifpe], ./classes/spinResolver.ts:
+[error_isie], ./classes/spinResolver.ts:
+[error_loxcase], ./classes/spinResolver.ts:
+[error_loxcasef], ./classes/spinResolver.ts:
+[error_loxdse], ./classes/spinResolver.ts:
+[error_loxee], ./classes/spinResolver.ts:
+[error_loxlve], ./classes/spinResolver.ts:
+[error_loxoie], ./classes/spinResolver.ts:
+[error_loxpe], ./classes/spinResolver.ts: 1A0
+[error_loxpe], ./classes/spinResolver.ts: 1A1
+[error_loxppme], ./classes/spinResolver.ts:
+[error_loxre], ./classes/spinResolver.ts: 1B0
+[error_loxre], ./classes/spinResolver.ts: 1B1
+[error_loxre], ./classes/spinResolver.ts: 1B2
+[error_loxuoe], ./classes/spinFiles.ts:
+[error_lscmrf], ./classes/spinResolver.ts: 1C0
+[error_lscmrf], ./classes/spinResolver.ts: 1C1
+[error_lvmb], ./classes/spinResolver.ts: 1D0
+[error_lvmb], ./classes/spinResolver.ts: 1D1
+[error_mpmblv], ./classes/spinResolver.ts:
+[error_nce], ./classes/spinResolver.ts: 1E0
+[error_nce], ./classes/spinResolver.ts: 1E1
+[error_nchcor], ./classes/spinResolver.ts:
+[error_nmt4c], ./classes/spinElementizer.ts:
+[error_npmf], ./classes/spinResolver.ts:
+[error_oaet], ./classes/spinResolver.ts:
+[error_ocmbf1tx], ./classes/spinResolver.ts:
+[error_odo], ./classes/distillerList.ts: 1F0
+[error_odo], ./classes/spinResolver.ts: 1F1
+[error_ohnawiac], ./classes/spinResolver.ts:
+[error_oinah], ./classes/spinResolver.ts:
+[error_oinaiom], ./classes/spinResolver.ts:
+[error_omblc], ./classes/spinResolver.ts: 200
+[error_omblc], ./classes/spinResolver.ts: 201
+[error_onawiac], ./classes/spinResolver.ts:
+[error_pclo], ./classes/objectSymbols.ts:
+[error_pex], ./classes/objectImage.ts: 210
+[error_pex], ./classes/spin2Parser.ts: 211
+[error_pex], ./classes/spin2Parser.ts: 212
+[error_picmr116], ./classes/spinResolver.ts:
+[error_picmr6b], ./classes/spinResolver.ts:
+[error_pllscnba], ./classes/spinResolver.ts:
+[error_pmbttsp], ./classes/spinResolver.ts:
+[error_racc], ./classes/spinResolver.ts:
+[error_rainawi], ./classes/spinResolver.ts: 220
+[error_rainawi], ./classes/spinResolver.ts: 221
+[error_raioor], ./classes/spinResolver.ts:
+[error_rbeiooa], ./classes/spinResolver.ts:
+[error_rbeioor], ./classes/spinResolver.ts:
+[error_rcex], ./classes/spinResolver.ts:
+[error_recvcbu], ./classes/spinResolver.ts:
+[error_rinah], ./classes/spinResolver.ts:
+[error_rinaiom], ./classes/spinResolver.ts:
+[error_rpcx], ./classes/spinResolver.ts:
+[error_scmrf], ./classes/spinResolver.ts: 230
+[error_scmrf], ./classes/spinResolver.ts: 231
+[error_sdcx], ./classes/spinResolver.ts: 240
+[error_sdcx], ./classes/spinResolver.ts: 241
+[error_sdcx], ./classes/spinResolver.ts: 242
+[error_sdcx], ./classes/spinResolver.ts: 243
+[error_sendcbu], ./classes/spinResolver.ts:
+[error_siad], ./classes/spinResolver.ts: 250
+[error_siad], ./classes/spinResolver.ts: 251
+[error_smb0t1], ./classes/spinResolver.ts: 260
+[error_smb0t1], ./classes/spinResolver.ts: 261
+[error_smb0t3], ./classes/spinResolver.ts: 270
+[error_smb0t3], ./classes/spinResolver.ts: 271
+[error_smb0t7], ./classes/spinResolver.ts: 280
+[error_smb0t7], ./classes/spinResolver.ts: 281
+[error_spmcrmv], ./classes/spinResolver.ts: 290
+[error_spmcrmv], ./classes/spinResolver.ts: 291
+[error_spmcrmv], ./classes/spinResolver.ts: 292
+[error_tdcbpbas], ./classes/spinResolver.ts:
+[error_teinafti], ./classes/spinResolver.ts:
+[error_ticobu], ./classes/spinResolver.ts:
+[error_tioawarb], ./classes/spinResolver.ts:
+[error_tmop], ./classes/spinFiles.ts:
+[error_tmrmr], ./classes/spinResolver.ts:
+[error_tmrnr], ./classes/spinResolver.ts:
+[error_tmvsid], ./classes/spinResolver.ts: 2A0
+[error_tmvsid], ./classes/spinResolver.ts: 2A1
+[error_tmvsid], ./classes/spinResolver.ts: 2A2
+[error_tmvsid], ./classes/spinResolver.ts: 2A3
+[error_tocbufa], ./classes/spinResolver.ts: 2B0
+[error_tocbufa], ./classes/spinResolver.ts: 2B1
+[error_tocbufa], ./classes/spinResolver.ts: 2B2
+[error_uc], ./classes/spinElementizer.ts:
+[error_us], ./classes/spinResolver.ts:
+[error_vnao], ./classes/spinResolver.ts:
+[error_wmbft], ./classes/spinResolver.ts:
