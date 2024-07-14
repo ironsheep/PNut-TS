@@ -5720,10 +5720,10 @@ export class SpinResolver {
               this.compileExpression();
               this.incStack();
             } else {
-              //this.logMessage(`  -- processNonTicDbg() hand off to compParamPasm() elem=[${this.currElement.toString()}]`);
+              this.logMessage(`  -- processNonTicDbg() hand off to compParamPasm() elem=[${this.currElement.toString()}]`);
               //this.compileParameter();
               this.compileParameterAsm(); // new TESTING
-              //this.logMessage(`  -- processNonTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
+              this.logMessage(`  -- processNonTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
             }
             this.debug_first = true;
           }
@@ -5792,12 +5792,12 @@ export class SpinResolver {
         }
       }
     } else {
-      brkCode = this.tickCmdAsm(cmdValue);
+      brkCode = this.tickCmdAsm(cmdValue, skipWrapupOnLast);
     }
     return brkCode;
   }
 
-  private tickCmdAsm(cmdValue: number): number {
+  private tickCmdAsm(cmdValue: number, skipWrapupOnLast: boolean = false): number {
     //Here is @@tickCmd:
     let brkCode: number = 0;
     const pasmMode: boolean = true;
@@ -5809,6 +5809,9 @@ export class SpinResolver {
       this.singleParam(cmdValue, pasmMode);
       this.getRightParen();
       brkCode = this.enterDebugAsm();
+      if (skipWrapupOnLast) {
+        this.backElement();
+      }
     } else {
       // here is ci_debug:@@notdkm
       this.getLeftParen();
