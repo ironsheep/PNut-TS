@@ -1,0 +1,4 @@
+'' continuing our spin2 coverage code
+
+PUB testABORT()
+   abort

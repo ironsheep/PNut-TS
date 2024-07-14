@@ -24,8 +24,8 @@ export class ObjectImage {
   constructor(ctx: Context, idString: string) {
     this.context = ctx;
     this._id = idString;
-    //this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logResolver;
-    this.isLogging = false; // doesn't work! this.context.reportOptions.regressionTesting ? false : true;
+    this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logResolver;
+    //this.isLogging = this.context.reportOptions.coverageTesting ? false : true;
   }
 
   public setLogging(enable: boolean) {

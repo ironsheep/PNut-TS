@@ -25,7 +25,7 @@ pub testIF()
    ELSE
      pinl(0 addpins 1)
 
-pub testREPEAT() | index
+pub testREPEAT() | index, work
 
   Repeat   ' Repeat forever (useful for putting atend of program if you don't want the cog to stop and cease driving its I/O's)
        pint(1)
@@ -73,6 +73,18 @@ pub testREPEAT() | index
     QUIT
    pint(5)
 
+
+  REPEAT 4
+    if index < 3
+      quit
+
+  REPEAT
+    CASE_FAST index
+      3:
+          quit
+      4:
+          next
+
 PUB testCALL() | x
  REPEAT
    CALL(@random)
@@ -119,14 +131,15 @@ z   long
 
 PUB testUNARYEQU() | x, y
 
-  Y :=  != X
+  Y := != X
   pinh(!= X)
 
-  _,y := polxy(1, 2) ' <-- PNut_ts fails here (file only and OBJ include generates wrong filename
+  _,y := polxy(1, 2)
+
+  y,_ := polxy(3, 40)
 
 
 PUB testCompInstru()  | z
-
    \calledTest()
    --z
    ++z

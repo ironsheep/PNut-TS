@@ -129,3 +129,9 @@ PRI newline()
 pri lastPrivate()
   if(0)
     pinh(0)
+
+PUB testINLINE()
+
+   ORG 0,3
+   byte 1
+   END
