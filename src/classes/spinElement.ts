@@ -491,7 +491,9 @@ export class SpinElement {
     const flagInterp: string = this.isMidStringComma ? `, midString` : '';
     const valueInterp: string = this.valueString().length != 0 ? `, ${this.valueString()}` : '';
     const opInterp: string = this.isOperation ? ` ${this.operationString()}` : '';
-    const offsetInterp: string = this._expandedColumn != 0 ? ` COL(${this._expandedColumn})` : '';
+    const endColumn: number = this._symbolLength > 1 ? this._expandedColumn + this._symbolLength - 1 : 0;
+    const endCOlumnInterp: string = endColumn > 0 ? `-${endColumn}` : '';
+    const offsetInterp: string = this._expandedColumn != 0 ? ` COL(${this._expandedColumn}${endCOlumnInterp})` : '';
     return `Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}${offsetInterp}`;
   }
 

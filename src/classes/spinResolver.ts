@@ -5539,6 +5539,7 @@ export class SpinResolver {
     this.debug_first = true; // assure first at start of new debug() line
     this.debug_record.clear(); // each debug() line, start with empty record
     this.debug_stack_depth = 0;
+    const notPasmMode: boolean = false;
 
     if (this.context.compileOptions.enableDebug == false) {
       // remove all but end of line
@@ -5559,17 +5560,17 @@ export class SpinResolver {
         if (this.checkRightParen()) {
           // consumes right paren if next is right paren
           // we found 'debug()'
-          this.enterDebug();
+          this.enterDebug(notPasmMode);
         } else {
           // we are at '('
           this.getElement(); // move to next after '('
           // here is ci_debug:@@tickcommand
           if (this.currElement.type == eElementType.type_tick) {
             //
-            this.processBackTickDebug(false); // this always sets debug_first
+            this.processBackTickDebug(notPasmMode); // this always sets debug_first
           } else {
             // here is ci_debug:@@nottick
-            this.processNonTickDebug(false);
+            this.processNonTickDebug(notPasmMode);
           }
         }
       }
@@ -5582,16 +5583,12 @@ export class SpinResolver {
     // enter string, returning indication if end of line
     // NOTE: the following method always sets debug_first
     let brkCode: number = 0;
-    this.logMessage(` -- processBackTickDebug(${this.currElement.toString()})`);
+    this.logMessage(` -- processBackTickDbg(${this.currElement.toString()})`);
     const anotherTickFollows: boolean = this.debugTickString();
     if (anotherTickFollows == false) {
       // found ')' and end of line, enter debug data
       this.skipToEnd(); // syncronize our element list position
-      if (isPasmMode == false) {
-        this.enterDebug();
-      } else {
-        brkCode = this.enterDebugAsm();
-      }
+      brkCode = this.enterDebug(isPasmMode);
     } else {
       // we know another tick is coming but our element list is not positioned correctly
       // syncronize our element list position
@@ -5604,7 +5601,7 @@ export class SpinResolver {
           // here is @@tickcmd
           // this handles commands of dual and single parameters
           const skipEndOfLineBypass: boolean = true;
-          brkCode = this.tickCmd(this.currElement.numberValue, isPasmMode, skipEndOfLineBypass); // UBIN()
+          this.tickCmd(this.currElement.numberValue, isPasmMode, skipEndOfLineBypass); // UBIN()
         } else if (this.currElement.type == eElementType.type_if) {
           // here is @@isif
           this.singleParam(eValueType.dc_if, isPasmMode);
@@ -5620,13 +5617,13 @@ export class SpinResolver {
         } else if (this.currElement.type == eElementType.type_left) {
           // here is @@tickdec
           this.backElement(); // backup so we start with paren immediately after the tic of "`(...)"
-          brkCode = this.tickCmd(0b01100011, isPasmMode); // '(', back up and do SDEC_
+          this.tickCmd(0b01100011, isPasmMode); // '(', back up and do SDEC_
         } else if (this.currElement.type == eElementType.type_dollar) {
           // here is @@tickhex
-          brkCode = this.tickCmd(0b10100011, isPasmMode); // '$', do UHEX_
+          this.tickCmd(0b10100011, isPasmMode); // '$', do UHEX_
         } else if (this.currElement.type == eElementType.type_percent) {
           // here is @@tickbin
-          brkCode = this.tickCmd(0b11000011, isPasmMode); // '%', do UBIN_
+          this.tickCmd(0b11000011, isPasmMode); // '%', do UBIN_
         } else if (this.currElement.type == eElementType.type_pound) {
           // here is @@tickchr
           this.getLeftParen();
@@ -5644,6 +5641,7 @@ export class SpinResolver {
               this.compileParameterAsm(); // new TESTING
               //this.logMessage(`  -- processBackTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
             }
+            this.debug_first = true; // reset to first
             // call	 get_comma_or_right
             // je	   @@tickchrlp
           } while (this.getCommaOrRightParen());
@@ -5655,21 +5653,14 @@ export class SpinResolver {
         // UNGH! back up, go forward to allow compile of the following if!
         this.backElement();
         this.currElement = this.getElement();
-        this.logMessage(`* ProcessBackTickDebug() at tickCmd rightParen? elem=[${this.currElement.toString()}]`);
+        this.logMessage(`* ProcessBackTickDbg() at tickCmd rightParen? elem=[${this.currElement.toString()}]`);
         if (this.currElement.type == eElementType.type_right) {
           this.debugWhiteSpaceString();
         }
       }
       this.logMessage(`  -- prcssBackTicDbg() dbgRcdLen=(${this.debug_record.length})`);
       // all tick commands processed, now record the new debug records
-      if (this.debug_record.length > 0) {
-        // BUGFIX: handle pasm mode behavior
-        if (isPasmMode) {
-          brkCode = this.debugEnterRecord(); // enter record into debug data, returning brk code
-        } else {
-          this.enterDebug();
-        }
-      }
+      brkCode = this.enterDebug(isPasmMode);
       this.logMessage(`  -- back to top of loop`);
     }
     return brkCode;
@@ -5681,7 +5672,7 @@ export class SpinResolver {
     //        but THIS: debug("...) or e.g., debug(uhex_long()) is nonTickDebug
     let brkCode: number = 0;
     let didFirstPass: boolean = false;
-    this.logMessage(` -- processNonTickDebug(${this.currElement.toString()})`);
+    this.logMessage(` -- processNonTickDbg(${this.currElement.toString()})`);
     // here for 1st occurrence of if()/ifnot()
     if (this.currElement.type == eElementType.type_if) {
       this.singleParam(eValueType.dc_if, isPasmMode); // compile single-parameter command
@@ -5700,7 +5691,7 @@ export class SpinResolver {
       } else {
         // here is @@next:
         this.getElement();
-        this.logMessage(` -- processNonTickDebug() @@next elem=[${this.currElement.toString()}]`);
+        this.logMessage(` -- processNonTickDbg() @@next elem=[${this.currElement.toString()}]`);
         // here for 2nd or more occurrence of if()/ifnot()
         if (this.currElement.type == eElementType.type_if) {
           this.singleParam(eValueType.dc_if, isPasmMode);
@@ -5710,7 +5701,7 @@ export class SpinResolver {
           // line above is @@notif3:
           // this handles commands of dual and single parameters
           const skipEndOfLineBypass: boolean = true;
-          brkCode = this.tickCmd(this.currElement.numberValue, isPasmMode, skipEndOfLineBypass);
+          this.tickCmd(this.currElement.numberValue, isPasmMode, skipEndOfLineBypass);
         } else {
           // here is @@notcmd:
           const foundString: boolean = this.debugCheckString();
@@ -5725,34 +5716,31 @@ export class SpinResolver {
               this.compileParameterAsm(); // new TESTING
               this.logMessage(`  -- processNonTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
             }
-            this.debug_first = true;
+            this.debug_first = true; // reset to first
           }
         }
         this.logMessage(`  -- end of do...while`);
       }
       // PNut here is @@checknext
     } while (this.getCommaOrRightParen());
-    if (isPasmMode == false) {
-      this.enterDebug();
-    } else {
-      brkCode = this.enterDebugAsm();
-    }
+    brkCode = this.enterDebug(isPasmMode);
     return brkCode;
   }
 
-  private enterDebug() {
+  private enterDebug(isPasmMode: boolean): number {
     // here is ci_debug:@@enterdebug
-    this.logMessage(`  -- enterDebug() ENTRY`);
-    this.objWrByte(eByteCode.bc_debug); // end of DEBUG data/commands, enter DEBUG bytecode
-    this.objWrByte(this.debug_stack_depth); // enter rfvar value for stack popping
-    const brkCode: number = this.debugEnterRecord(); // enter record into debug data, returning brk code
-    this.objWrByte(brkCode); // enter BRK code
+    this.logMessage(`  -- enterDebug(isPasmMode=(${isPasmMode})) ENTRY`);
+    let brkCode: number = 0; // only useful if isPasmMode == true
+    if (isPasmMode == false) {
+      this.objWrByte(eByteCode.bc_debug); // end of DEBUG data/commands, enter DEBUG bytecode
+      this.objWrByte(this.debug_stack_depth); // enter rfvar value for stack popping
+      const brkCode: number = this.debugEnterRecord(); // enter record into debug data, returning brk code
+      this.objWrByte(brkCode); // enter BRK code
+    } else {
+      // here is ci_debug:@@enterdebug
+      brkCode = this.debugEnterRecord(); // enter record into debug data, returning brk code
+    }
     this.logMessage(`  -- enterDebug() EXIT`);
-  }
-
-  private enterDebugAsm(): number {
-    // here is ci_debug:@@enterdebug
-    const brkCode: number = this.debugEnterRecord(); // enter record into debug data, returning brk code
     return brkCode;
   }
 
@@ -5764,9 +5752,9 @@ export class SpinResolver {
     }
   }
 
-  private tickCmd(cmdValue: number, isPasmMode: boolean, skipWrapupOnLast: boolean = false): number {
+  private tickCmd(cmdValue: number, isPasmMode: boolean, skipWrapupOnLast: boolean = false) {
     //Here is @@tickCmd:
-    let brkCode: number = 0;
+    this.logMessage(`  -- tickCmd(cmd=(${cmdValue})) - ENTRY`);
     if (isPasmMode == false) {
       if (cmdValue == eValueType.dc_dly || cmdValue == eValueType.dc_pc_key || cmdValue == eValueType.dc_pc_mouse) {
         // NOTE any of these three MUST be the last tickcommand in a debug() statement
@@ -5775,10 +5763,8 @@ export class SpinResolver {
         this.getRightParen(); // remove debug(  --> close paren ')'
         // SPECIAL skipWrapupOnLast handling:
         //   when we are within a loop checking for ',' or ')'
-        //   skip the enterDebug() as we will do it at loop exit, and put our close paren back!
-        if (skipWrapupOnLast == false) {
-          this.enterDebug();
-        } else {
+        //    put our close paren back!
+        if (skipWrapupOnLast) {
           this.backElement(); // now put debug(  --> close paren ')' back in place
         }
       } else {
@@ -5792,14 +5778,13 @@ export class SpinResolver {
         }
       }
     } else {
-      brkCode = this.tickCmdAsm(cmdValue, skipWrapupOnLast);
+      this.tickCmdAsm(cmdValue, skipWrapupOnLast);
     }
-    return brkCode;
+    this.logMessage(`  -- tickCmd(cmd=(${cmdValue})) - EXIT`);
   }
 
-  private tickCmdAsm(cmdValue: number, skipWrapupOnLast: boolean = false): number {
+  private tickCmdAsm(cmdValue: number, skipWrapupOnLast: boolean = false) {
     //Here is @@tickCmd:
-    let brkCode: number = 0;
     const pasmMode: boolean = true;
     let currCmdValue: number = cmdValue;
     this.logMessage(`* tickCmdAsm(${hexByte(cmdValue, '0x')}) ENTRY elem=[${this.currElement.toString()}]`);
@@ -5808,9 +5793,11 @@ export class SpinResolver {
       // here is ci_debug:@@dkm
       this.singleParam(cmdValue, pasmMode);
       this.getRightParen();
-      brkCode = this.enterDebugAsm();
+      // SPECIAL skipWrapupOnLast handling:
+      //   when we are within a loop checking for ',' or ')'
+      //    put our close paren back!
       if (skipWrapupOnLast) {
-        this.backElement();
+        this.backElement(); // now put debug(  --> close paren ')' back in place
       }
     } else {
       // here is ci_debug:@@notdkm
@@ -5833,12 +5820,11 @@ export class SpinResolver {
         this.compileParameterAsm();
       } while (this.getCommaOrRightParen());
     }
-    this.logMessage(`* tickCmdAsm(${hexByte(cmdValue, '0x')}) EXIT -> brkCode=(${brkCode})`);
-    return brkCode;
+    this.logMessage(`* tickCmdAsm(${hexByte(cmdValue, '0x')}) EXIT`);
   }
 
   private dualParamCheck(cmdValue: number) {
-    this.logMessage(`* dualParamCheck(${hexByte(cmdValue, '0x')}) curElem=${this.currElement.toString()}`);
+    this.logMessage(`* dualParamChk(${hexByte(cmdValue & 0xff, '0x')}) curElem=${this.currElement.toString()} - ENTRY`);
     if (cmdValue & 0x02) {
       // here is @@dpsimple
       this.dualParamSimple(cmdValue);
@@ -5847,18 +5833,7 @@ export class SpinResolver {
       // here is @@dpverbose
       this.dualParamVerbose(cmdValue);
     }
-  }
-
-  private singleParamCheck(cmdValue: number) {
-    this.logMessage(`* singleParamChk(${hexByte(cmdValue, '0x')})`);
-    if (cmdValue & 0x02) {
-      // here is @@spsimple
-      this.singleParamSimple(cmdValue);
-    } else {
-      this.getLeftParen();
-      // here is @@spverbose
-      this.singleParamVerbose(cmdValue);
-    }
+    this.logMessage(`* dualParamChk(${hexByte(cmdValue & 0xff, '0x')}) - EXIT`);
   }
 
   private dualParamSimple(cmdValue: number) {
@@ -5872,6 +5847,7 @@ export class SpinResolver {
       // [error_eaenop]
       throw new Error('Expected an even number of parameters');
     }
+    // PNut here is @@dpsmulti
     while ((parameterCount -= 2) >= 0) {
       currCmdValue = this.debugEnterByteFlag(currCmdValue);
       this.incStack();
@@ -5893,6 +5869,18 @@ export class SpinResolver {
       this.incStack();
       this.debugVerboseString(startCharOffset, endCharOffset);
     } while (this.getCommaOrRightParen());
+  }
+
+  private singleParamCheck(cmdValue: number) {
+    this.logMessage(`* singleParamChk(${hexByte(cmdValue, '0x')})`);
+    if (cmdValue & 0x02) {
+      // here is @@spsimple
+      this.singleParamSimple(cmdValue);
+    } else {
+      this.getLeftParen();
+      // here is @@spverbose
+      this.singleParamVerbose(cmdValue);
+    }
   }
 
   private singleParamSimple(cmdValue: number) {
@@ -5954,6 +5942,9 @@ export class SpinResolver {
     this.logMessage(
       `* debugExpSource() elem=[${this.currElement.toString()}](${this.currElement.sourceCharacterOffset},${this.currElement.sourceCharacterEndOffset})`
     );
+    //if (this.currElement.type == eElementType.type_con) {
+    //  this.getElement
+    //}
     const endoffset: number = this.currElement.sourceCharacterEndOffset;
     this.logMessage(`* debugExpSource() - EXIT srt=(${startOffset}), end=(${endoffset})`);
     this.restoreElementLocation(savedElementIndex); // restore to left paren
@@ -5975,7 +5966,7 @@ export class SpinResolver {
 
   private debugEnterByteFlag(cmdValue: number): number {
     // PNut debug_enter_byte_flag:
-    this.logMessage(`* debugEnterByteFlag(${hexByte(cmdValue, '0x')}) debug_first=(${this.debug_first})`);
+    this.logMessage(`* debugEnterByteFlg(${hexByte(cmdValue, '0x')}) debug_first=(${this.debug_first})`);
     this.debugEnterByte(cmdValue | (this.debug_first ? 1 : 0));
     this.debug_first = false; // we marked the first, remaining are not first
     return cmdValue & 0xfe;
@@ -5983,8 +5974,10 @@ export class SpinResolver {
 
   private singleParam(cmdValue: number, isPasmMode: boolean = false) {
     // PNut ci_debug:@@singleparam:
+    this.logMessage(`  -- singleParam(cmd=(${cmdValue})) - ENTRY`);
     this.debugEnterByte(cmdValue);
     if (isPasmMode == false) {
+      // spin mode
       this.compileParameters(1);
       this.incStack();
     } else {
@@ -5993,6 +5986,7 @@ export class SpinResolver {
       this.compileParameterAsm();
       this.getRightParen();
     }
+    this.logMessage(`  -- singleParam(cmd=(${cmdValue})) - EXIT`);
   }
 
   private compileParameterAsm() {
@@ -6058,6 +6052,7 @@ export class SpinResolver {
         }
       }
       this.debugEnterByte(0); // zero terminate our string
+      this.debug_first = true; // reset to first
     }
     this.logMessage(` -- debugCheckString(${this.currElement.toString()})  stringLength=(${stringLength}) -> foundString=(${foundStringStatus})`);
     return foundStringStatus;
@@ -6150,7 +6145,7 @@ export class SpinResolver {
 
   private debugEnterByte(byteValue: number) {
     // PNut debug_enter_byte:
-    this.logMessage(` -- debugEnterByte(${hexByte(byteValue, '0x')})`);
+    this.logMessage(` -- debugEnterByte(${hexByte(byteValue & 0xff, '0x')})`);
     this.debug_record.append(byteValue);
   }
 
@@ -6203,7 +6198,7 @@ export class SpinResolver {
     if (this.checkRightParen()) {
       // consumes right paren if next is right paren
       // we found 'debug()'
-      brkCode = this.enterDebugAsm();
+      brkCode = this.enterDebug(isPasmMode);
     } else {
       this.debugEnterByte(eValueType.dc_asm); // asm mode debug
       // we are at '('

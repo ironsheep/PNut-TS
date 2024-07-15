@@ -286,12 +286,14 @@ export class SpinElementizer {
       const [isFloat, charsUsed, value] = this.decimalConversion(this.unprocessedLine);
       typeFound = isFloat ? eElementType.type_con_float : eElementType.type_con;
       valueFound = value;
+      symbolLengthFound = charsUsed;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '$' && this.isHexStartChar(this.unprocessedLine.charAt(1))) {
       // handle hexadecimal conversion Ex: $0f, $dead_f00d, etc.
       const [charsUsed, value] = this.hexadecimalConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
+      symbolLengthFound = charsUsed;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '$') {
       // standalone $ sign
@@ -302,18 +304,21 @@ export class SpinElementizer {
       const [charsUsed, value] = this.quaternaryConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
+      symbolLengthFound = charsUsed;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '%' && this.isBinStartChar(this.unprocessedLine.charAt(1))) {
       // handle base-two numbers of the form %0100_0111, %01111010, etc
       const [charsUsed, value] = this.binaryConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
+      symbolLengthFound = charsUsed;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.startsWith('%"') && this.unprocessedLine.substring(2).includes('"')) {
       // handle %"abcd" one to four chars packed into long
       const [charsUsed, value] = this.packedAsciiConversion(this.unprocessedLine);
       typeFound = eElementType.type_con;
       valueFound = value;
+      symbolLengthFound = charsUsed;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
     } else if (this.unprocessedLine.charAt(0) == '%') {
       // standalone % (percent) sign
