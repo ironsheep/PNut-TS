@@ -953,6 +953,10 @@ enum SYMBOLS {
   EVENT_QMT = 'EVENT_QMT'
 }
 
+enum SYMBOLS_V43 {
+  LSTRING = 'LSTRING'
+}
+
 function setAsmcodeValue(v1: number, v2: number, v3: number): number {
   // calculate the actual asm code value from given parts
   //
@@ -1002,6 +1006,7 @@ export class SpinSymbolTables {
   private context: Context;
   private isLogging: boolean = false;
   private automatic_symbols = new Map<string, iBaseSymbolInfo>();
+  private automatic_symbols_v43 = new Map<string, iBaseSymbolInfo>();
   private flexcodeValues = new Map<eFlexcode, number>();
   private asmcodeValues = new Map<eAsmcode, number>();
   private opcodeValues = new Map<eOpcode, number>();
@@ -1009,6 +1014,8 @@ export class SpinSymbolTables {
   private find_symbol_s1: iSpinSymbol[] = [];
   private find_symbol_s2: iSpinSymbol[] = [];
   private find_symbol_s3: iSpinSymbol[] = [];
+
+  private currSpinVersion: number = 0;
 
   public readonly ternaryPrecedence = 14;
   public readonly lowestPrecedence = this.ternaryPrecedence + 1;
@@ -2743,6 +2750,11 @@ export class SpinSymbolTables {
     this.automatic_symbols.set(SYMBOLS.EVENT_ATN, { type: eElementType.type_con, value: 14 });
     this.automatic_symbols.set(SYMBOLS.EVENT_QMT, { type: eElementType.type_con, value: 15 });
 
+    //
+    // HAND generated Automatic symbols table load v43
+    // ---------------------------------------------------------------------------------------
+    this.automatic_symbols_v43.set(SYMBOLS_V43.LSTRING, { type: eElementType.type_conlstr, value: 0 });
+
     // Populate the reverse map
     for (const [fcValue, value] of this.flexcodeValues) {
       const bcValue: number = value & 0xff;
@@ -2790,10 +2802,26 @@ export class SpinSymbolTables {
     }
   }
 
+  public setLangaugeVersion(currVersion: number) {
+    this.logMessage(`- setLangaugeVersion() (${this.currSpinVersion}) -> (${currVersion})`);
+    this.currSpinVersion = currVersion;
+  }
+
   public builtInSymbol(symbolName: string): iSpinSymbol | undefined {
     let findResult: iSpinSymbol | undefined = undefined;
+
+    if (this.currSpinVersion >= 43) {
+      if (this.automatic_symbols_v43.has(symbolName)) {
+        const symbolInfo: iBaseSymbolInfo | undefined = this.automatic_symbols_v43.get(symbolName);
+        if (symbolInfo !== undefined) {
+          this.logMessage(`- builtInSymbolV43(${symbolName}) = (${symbolInfo.value})`);
+          findResult = { symbol: symbolName, type: symbolInfo.type, value: symbolInfo.value };
+        }
+      }
+    }
+
     //const desiredName: string = symbolName.toUpperCase(); // the caller has already done this
-    if (this.automatic_symbols.has(symbolName)) {
+    if (findResult === undefined && this.automatic_symbols.has(symbolName)) {
       const symbolInfo: iBaseSymbolInfo | undefined = this.automatic_symbols.get(symbolName);
       if (symbolInfo !== undefined) {
         this.logMessage(`- builtInSymbol(${symbolName}) = (${symbolInfo.value})`);

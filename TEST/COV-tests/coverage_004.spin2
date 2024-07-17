@@ -6,7 +6,7 @@ PUB testABORT()
 
 PUB testLString() | strPtr, miscPtr, value
 
-    'strPtr := lstring("hello")
+    strPtr := lstring("hello")
     miscPtr := byte(1,3,5,7)
     value := float(100)
     value := round(100.6)

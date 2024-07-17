@@ -89,6 +89,8 @@ export class SpinElementizer {
     this.resetForNewFile();
     //this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     this.loadNextLine();
+    // configure our tabes with version for this spin2 source file
+    this.symbol_tables.setLangaugeVersion(spinCode.versionNumber);
   }
 
   get sourceLineNumber(): number {
