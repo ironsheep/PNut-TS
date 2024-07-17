@@ -1,4 +1,13 @@
 '' continuing our spin2 coverage code
+' {Spin2_v43}
 
 PUB testABORT()
    abort
+
+PUB testLString() | strPtr, miscPtr, value
+
+    'strPtr := lstring("hello")
+    miscPtr := byte(1,3,5,7)
+    value := float(100)
+    value := round(100.6)
+    value := trunc(100.9)

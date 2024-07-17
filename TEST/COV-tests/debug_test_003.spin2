@@ -1,27 +1,36 @@
 _clkfreq = 10_000_000
 
-dat	org
 
+'{
+
+dat	org
 loop	debug(uhex_long(i))
 	add	i,#1
   debug(` `$(i) `#(i))
   debug(` `$(i))
-  debug(if(i), udec(i), dly(#250)) ' <-- FAILS
-  'debug(ifnot(i), udec(i), dly(#250)) ' <-- FAILS
+  debug(if(i), udec(i), udec(#84677), 0, dly(#250))
+  debug(ifnot(i), udec(i), dly(#250))
   debug(` `if(i), `(i), `dly(#250))
-  debug(` `ifnot(i), `(i), `dly(#250))
+  debug(` `ifnot(i), `UHEX_LONG_ARRAY_(i,2) `udec(i,i,i) `(i), `dly(#250)) ' FAIL
+  debug(` `UHEX_REG_ARRAY(#i,#2) `uhex_word(i,i,i) `(i), `dly(#250))
+  debug(` `udec(i,i,i) `(i), `dly(#250)) '' GOOD
+  debug()
 	jmp	#loop
 
-i	res	1
+i	long	3,5,7
+'}
 '{
-PUB main() | var1, var2
+PUB main() | var1, var2, x
 
     debug
     debug()
+    var1 := 5
+    var2 := 7
 
-    debug(if(var1 & 1), udec(var1), dly(250))
-    debug(ifnot(var1 & $02), udec_(var2), dly(250))
-    debug(` `if(var1 & 1), `$(var1), `dly(250)) ' <-- FAILS
-    debug(` `ifnot(var1 & $02), `$(var2), `dly(250)) ' <-- FAILS
+    debug(` `UHEX_LONG_ARRAY(@var1,2) `uhex_word(x,x,x) `(i), `dly(250))
+    debug(if(var1 & 1), udec(var1), if(var2), 0, dly(250))
+    debug(ifnot(var1 & $02), udec_(var2), ifnot(var1), dly(250))
+    debug(` `if(var1 & 1), `$(var2), `udec(polxy(0,0), var2) `dly(250))
+    debug(` `ifnot(var1 & $02), `$(var2), `dly(250))
     debug(` `ifnot(0) `$(var1)  `%(var2))
 '}

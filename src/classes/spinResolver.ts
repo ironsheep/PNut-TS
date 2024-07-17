@@ -5536,7 +5536,7 @@ export class SpinResolver {
   private ci_debug() {
     // Compile DEBUG for Spin2
     // PNut ci_debug:
-    this.debug_first = true; // assure first at start of new debug() line
+    this.nextDebugIsFirst(); // assure first at start of new debug() line
     this.debug_record.clear(); // each debug() line, start with empty record
     this.debug_stack_depth = 0;
     const notPasmMode: boolean = false;
@@ -5546,7 +5546,7 @@ export class SpinResolver {
       this.logMessage(`*--* ci_debug(${this.currElement.toString()}) - Debug() processing disabled`);
       this.skipToEnd();
     } else {
-      this.logMessage(`*--* ci_debug(${this.currElement.toString()})`);
+      this.logMessage(`*--* ci_debug(${this.currElement.toString()}) ENTRY`);
       if (!this.checkLeftParen()) {
         // consumes left paren if next is left paren
         // we found 'debug' without parens
@@ -5574,6 +5574,7 @@ export class SpinResolver {
           }
         }
       }
+      this.logMessage(`*--* ci_debug(${this.currElement.toString()}) EXIT`);
     }
   }
 
@@ -5583,7 +5584,7 @@ export class SpinResolver {
     // enter string, returning indication if end of line
     // NOTE: the following method always sets debug_first
     let brkCode: number = 0;
-    this.logMessage(` -- processBackTickDbg(${this.currElement.toString()})`);
+    this.logMessage(` -- processBackTickDbg(${this.currElement.toString()}) - ENTRY`);
     const anotherTickFollows: boolean = this.debugTickString();
     if (anotherTickFollows == false) {
       // found ')' and end of line, enter debug data
@@ -5641,7 +5642,7 @@ export class SpinResolver {
               this.compileParameterAsm(); // new TESTING
               //this.logMessage(`  -- processBackTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
             }
-            this.debug_first = true; // reset to first
+            this.nextDebugIsFirst(); // reset to first
             // call	 get_comma_or_right
             // je	   @@tickchrlp
           } while (this.getCommaOrRightParen());
@@ -5663,6 +5664,7 @@ export class SpinResolver {
       brkCode = this.enterDebug(isPasmMode);
       this.logMessage(`  -- back to top of loop`);
     }
+    this.logMessage(` -- processBackTickDbg(${this.currElement.toString()}) - EXIT w/(${brkCode})`);
     return brkCode;
   }
 
@@ -5672,7 +5674,7 @@ export class SpinResolver {
     //        but THIS: debug("...) or e.g., debug(uhex_long()) is nonTickDebug
     let brkCode: number = 0;
     let didFirstPass: boolean = false;
-    this.logMessage(` -- processNonTickDbg(${this.currElement.toString()})`);
+    this.logMessage(` -- processNonTickDbg(${this.currElement.toString()}) - ENTRY`);
     // here for 1st occurrence of if()/ifnot()
     if (this.currElement.type == eElementType.type_if) {
       this.singleParam(eValueType.dc_if, isPasmMode); // compile single-parameter command
@@ -5711,12 +5713,12 @@ export class SpinResolver {
               this.compileExpression();
               this.incStack();
             } else {
-              this.logMessage(`  -- processNonTicDbg() hand off to compParamPasm() elem=[${this.currElement.toString()}]`);
+              //this.logMessage(`  -- processNonTicDbg() hand off to compParamPasm() elem=[${this.currElement.toString()}]`);
               //this.compileParameter();
               this.compileParameterAsm(); // new TESTING
-              this.logMessage(`  -- processNonTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
+              //this.logMessage(`  -- processNonTicDbg() back from compParamPasm() elem=[${this.currElement.toString()}]`);
             }
-            this.debug_first = true; // reset to first
+            this.nextDebugIsFirst(); // reset to first
           }
         }
         this.logMessage(`  -- end of do...while`);
@@ -5724,6 +5726,7 @@ export class SpinResolver {
       // PNut here is @@checknext
     } while (this.getCommaOrRightParen());
     brkCode = this.enterDebug(isPasmMode);
+    this.logMessage(` -- processNonTickDbg(${this.currElement.toString()}) - EXIT w/(${brkCode})`);
     return brkCode;
   }
 
@@ -5968,7 +5971,7 @@ export class SpinResolver {
     // PNut debug_enter_byte_flag:
     this.logMessage(`* debugEnterByteFlg(${hexByte(cmdValue, '0x')}) debug_first=(${this.debug_first})`);
     this.debugEnterByte(cmdValue | (this.debug_first ? 1 : 0));
-    this.debug_first = false; // we marked the first, remaining are not first
+    this.nextDebugIsFirst(false); // we marked the first, remaining are not first
     return cmdValue & 0xfe;
   }
 
@@ -6052,7 +6055,7 @@ export class SpinResolver {
         }
       }
       this.debugEnterByte(0); // zero terminate our string
-      this.debug_first = true; // reset to first
+      this.nextDebugIsFirst(); // reset to first after string
     }
     this.logMessage(` -- debugCheckString(${this.currElement.toString()})  stringLength=(${stringLength}) -> foundString=(${foundStringStatus})`);
     return foundStringStatus;
@@ -6060,7 +6063,7 @@ export class SpinResolver {
 
   private debugWhiteSpaceString() {
     this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()})`);
-    // PNut debug_check_string:
+    // PNut ...
     // If chrs expressed in source, enter string
     let foundStringStatus = true;
     let stringLength: number = 0;
@@ -6093,6 +6096,7 @@ export class SpinResolver {
         }
       }
       this.debugEnterByte(0); // zero terminate our string
+      this.nextDebugIsFirst(); // reset to first after string
     }
     this.logMessage(` -- debugWhiteSpaceString(${this.currElement.toString()}) charCount=(${stringLength})`);
   }
@@ -6137,6 +6141,7 @@ export class SpinResolver {
         this.debugEnterByte(currCharCode);
       }
       this.debugEnterByte(0); // zero-terminate string
+      this.nextDebugIsFirst(); // reset to first after string
     }
     this.logMessage(` -- debugTickString(${this.currElement.toString()}) charCount=(${charCount}) --> endWithTic=(${foundEndWithTickStatus})`);
 
@@ -6189,11 +6194,11 @@ export class SpinResolver {
     // Compile DEBUG for assembler
     // PNut ci_debug_asm:
     // NOTE: only here if we have debug(...) or debug()
+    this.logMessage(`*--* ci_debug_asm(${this.currElement.toString()}) - ENTRY`);
     let brkCode: number = 0;
-    this.debug_first = true; // assure first at start of new debug() line
+    this.nextDebugIsFirst(); // assure first at start of new debug() line
     this.debug_record.clear(); // each debug() line, start with empty record
     const isPasmMode: boolean = true;
-    this.logMessage(`*--* ci_debug_asm(${this.currElement.toString()})`);
     // here is @@left
     if (this.checkRightParen()) {
       // consumes right paren if next is right paren
@@ -6212,7 +6217,18 @@ export class SpinResolver {
         brkCode = this.processNonTickDebug(isPasmMode);
       }
     }
+    this.logMessage(`*--* ci_debug_asm(${this.currElement.toString()}) - EXIT`);
     return brkCode;
+  }
+
+  private nextDebugIsFirst(isFirst: boolean = true) {
+    const changed: boolean = isFirst == this.debug_first;
+    if (changed) {
+      this.logMessage(`  -- debug_first=(${this.debug_first}) -> (${isFirst})`);
+    } else {
+      this.logMessage(`  -- debug_first=(${this.debug_first})`);
+    }
+    this.debug_first = isFirst;
   }
 
   private compileTerm() {

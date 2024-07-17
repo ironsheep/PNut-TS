@@ -32,6 +32,9 @@ PUB testCOGSPIN() | cog, methodPtr
   cogspin(1, methodPtr(), @myStack)
   'cog := cogspin(NEWCOG, fakeChild.testIF(), @myStack)
 
+PUB testObjCall()
+  fakeChild.testIF()
+
 PUB testCheckVariableMethod() | methodPtr, rslt, a, b, myString
 
   myString := @"this is a string"
