@@ -33,7 +33,7 @@ PUB testCOGSPIN() | cog, methodPtr
   cogspin(1, methodPtr(), @myStack)
   cog := cogspin(NEWCOG, fakeChild.testIF(), @myStack)
 
-PUB testObjCall() | methodPtr
+PUB testObjCall() | methodPtr,  floatValue
   fakeChild.testIF()
 
   ' ct_at coverage
@@ -45,6 +45,8 @@ PUB testObjCall() | methodPtr
 
   send(methodPtr():0)
   send(methodPtr():1)
+
+  floatValue := fakeChild.MISC_FLOAT
 
 PUB testCheckVariableMethod() | methodPtr, rslt, a, b, myString
 

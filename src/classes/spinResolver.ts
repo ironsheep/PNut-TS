@@ -7443,6 +7443,7 @@ export class SpinResolver {
 
         if (this.currElement.isUnary) {
           // our element is a unary operation
+          this.logMessage(`  -- resolvExp() currElement.isUnary!`);
           this.checkDualModeOp(activeFloatCompatibility, mode); // (this IS in good place...)
           this.resolveExp(mode, resolve, activePrecedence);
           // Perform Unary
@@ -7567,20 +7568,21 @@ export class SpinResolver {
 
     if (mode == eMode.BM_Spin2) {
       // trying to resolve spin2 constant
+      this.logMessage(`  -- in Spin2, not PASM`);
       if (this.SubToNeg()) {
         this.getElement(); // get element following the minus sign
         if (this.currElement.isConstantInt) {
           resultStatus.value = this.currElement.negateBigIntValue();
         } else if (this.currElement.isConstantFloat) {
+          //this.logMessage(`  -- have con_float`);
           resultStatus.value = BigInt(this.currElement.bigintValue) ^ BigInt(0x80000000);
+          //this.logMessage(`  -- new value = ${float32ToHexString(resultStatus.value)}`);
         } else {
           this.backElement(); // return this element
           this.backElement(); // return the minus sign
           resultStatus.foundConstant = false;
         }
-      }
-
-      if (this.currElement.isConstantInt) {
+      } else if (this.currElement.isConstantInt) {
         resultStatus.value = this.currElement.bigintValue;
       } else if (this.currElement.isConstantFloat) {
         resultStatus.value = this.currElement.bigintValue;
@@ -7612,6 +7614,7 @@ export class SpinResolver {
     } else {
       // in PASM
       // replace our currElement with an oc_neg [sub-to-neg] if it was sub!
+      this.logMessage(`  -- in PASM, not Spin2`);
       this.SubToNeg();
       if (this.currElement.operation == eOperationType.op_neg) {
         // if the next element is a constant we can negate it
@@ -8852,12 +8855,15 @@ private checkDec(): boolean {
 
   private SubToNeg(): boolean {
     // replace our element with a better element
+    this.logMessage(`  -- SubToNeg() at elem=[${this.currElement.toString()}]`);
     let elementAdjustedStatus: boolean = false;
     if (this.currElement.operation == eOperationType.op_sub) {
       // replace our element with an oc_neg [sub-to-neg]
       this.currElement.setValue(BigInt(this.spinSymbolTables.opcodeValue(eOpcode.oc_neg)) & BigInt(0xffffffff));
       elementAdjustedStatus = true;
     }
+    const actionInterp: string = elementAdjustedStatus ? 'ADJUSTED' : 'left-alone';
+    this.logMessage(`  -- SubToNeg() ${actionInterp} elem=[${this.currElement.toString()}]`);
     return elementAdjustedStatus;
   }
 

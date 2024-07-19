@@ -2,6 +2,7 @@
 CON
 
   UPPER_LIMIT = 5
+  MISC_FLOAT = 3.55
 
 pub testIF()
 
