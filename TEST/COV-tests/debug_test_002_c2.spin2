@@ -1,0 +1,18 @@
+con _clkfreq = 20_000_000
+
+con
+
+  j = 1
+
+obj
+
+  subobj2a : "debug_test_002_c3"
+  subobj2b : "debug_test_002_c3"
+
+pub go2()
+
+  repeat j
+    subobj2a.go3()
+    subobj2b.go3()
+    debug("child2")
+

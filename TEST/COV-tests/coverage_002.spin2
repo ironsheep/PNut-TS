@@ -1,4 +1,7 @@
 '' covering if cases
+CON
+
+  UPPER_LIMIT = 5
 
 pub testIF()
 
@@ -101,7 +104,8 @@ PUB testRECV()
    PINWRITE(56 ADDPINS 7, !RECV())
    WAITMS(125)
 VAR i
-PRI GetPattern() : Pattern
+
+PUB GetPattern() : Pattern
  RETURN DECOD(i++ & 7)
 
 

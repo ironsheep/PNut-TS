@@ -1,0 +1,18 @@
+con _clkfreq = 20_000_000
+
+obj
+
+  subobj1 : "debug_test_002_c1"
+  subobj2 : "debug_test_002_c2"
+  subobj3 : "debug_test_002_c3"
+
+pub go() | readVal
+
+  subobj1.go1()
+  subobj2.go2()
+  subobj3.go3()
+  debug("TopFile")
+
+  readVal := pinr(subobj1.INPUT_PIN)
+
+  pinl(subobj1.getPin())

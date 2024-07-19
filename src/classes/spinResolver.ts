@@ -5399,7 +5399,7 @@ export class SpinResolver {
       do {
         // here is @@trybytes
         this.getElement();
-        if (this.currElement.type != eElementType.type_con && this.currElement.bigintValue > 255n) {
+        if (this.currElement.type != eElementType.type_con || this.currElement.bigintValue > 255n) {
           break;
         }
         byteCount++;
@@ -6499,6 +6499,7 @@ export class SpinResolver {
         throw new Error('Expected "]"');
       }
       if (this.currElement.type == eElementType.type_leftb) {
+        // NOTE: this may be extra capability which SPIN2 doesn't support
         nestingCount++;
       }
       if (this.currElement.type == eElementType.type_rightb) {
@@ -6607,53 +6608,6 @@ export class SpinResolver {
       compiledParameterCount = 1;
     }
     return compiledParameterCount;
-  }
-
-  private ct_condata(wordSize: eWordSize) {
-    // Compile term - BYTE/WORD/LONG(value, value, BYTE/WORD/LONG value)
-    // PNut ct_condata:
-    this.objWrByte(eByteCode.bc_string);
-    const patchLocation: number = this.objImage.offset;
-    this.objWrByte(0); // emit placeholder
-    let dataLength: number = 0;
-    do {
-      let currWordSize: eWordSize = wordSize;
-      this.getElement();
-      if (this.currElement.type == eElementType.type_size) {
-        currWordSize = Number(this.currElement.bigintValue);
-      } else {
-        this.backElement();
-      }
-      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOrFloat, eResolve.BR_Must);
-      const data: number = Number(this.signExtendFrom32Bit(valueReturn.value));
-      switch (currWordSize) {
-        case eWordSize.WS_Byte:
-          if (data < -0x80 || data > 0xff) {
-            // [error_NEW]
-            throw new Error('BYTE data must be from -$80 to $FF');
-          }
-          this.objWrByte(data);
-          dataLength += 1;
-          break;
-        case eWordSize.WS_Word:
-          if (data < -0x8000 || data > 0xffff) {
-            // [error_NEW]
-            throw new Error('WORD data must be from -$8000 to $FFFF');
-          }
-          this.objWrWord(data);
-          dataLength += 2;
-          break;
-        case eWordSize.WS_Long:
-          this.objWrLong(data);
-          dataLength += 4;
-          break;
-      }
-      if (dataLength > 255) {
-        // [error_bwldcx]
-        throw new Error('BYTE/WORD/LONG data cannot exceed 255 bytes (m010)');
-      }
-    } while (this.getCommaOrRightParen());
-    this.objImage.replaceByte(dataLength, patchLocation);
   }
 
   private ct_try(resultsNeeded: eResultRequirements, byteCode: eByteCode) {
@@ -7116,59 +7070,6 @@ export class SpinResolver {
     return parameterCount;
   }
 
-  /*
-  private compileInstructionSend() {
-    // Compile instruction - SEND()
-    // PNut ci_sexnd DUPE:
-    this.logMessage(`*==* compileInstructionSend()`);
-    this.getLeftParen();
-    if (this.checkRightParen()) {
-      // [error_esendd]
-      throw new Error('Expected SEND data');
-    }
-    do {
-      // this is @@trynext:
-      let byteCount: number = 0;
-      const savedElementIndex: number = this.saveElementLocation();
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        // this is @@trybytes:
-        this.getElement();
-        if (this.currElement.type != eElementType.type_con || this.currElement.bigintValue > 255n) {
-          break;
-        }
-        byteCount++;
-        if (this.checkComma() == false) {
-          break;
-        }
-      }
-      // this is @@notbyte:
-      this.restoreElementLocation(savedElementIndex);
-      if (byteCount >= 2) {
-        this.objWrByte(eByteCode.bc_call_send_bytes);
-        this.compileRfvar(BigInt(byteCount));
-        do {
-          // this is @@enterbytes:
-          this.getElement();
-          this.objWrByte(Number(this.currElement.bigintValue));
-          if (byteCount == 1) {
-            this.getComma();
-          }
-        } while (--byteCount);
-      } else {
-        // this is @@tryother:
-        // byteCount < 2
-        const valueIsOnStack: boolean = this.compileParameterSend();
-        if (valueIsOnStack) {
-          this.objWrByte(eByteCode.bc_call_send);
-        }
-        break;
-      }
-      // this is @@checkmore:
-    } while (this.getCommaOrRightParen());
-  }
-  */
-
   private compileParameterSend(): boolean {
     // Compile a parameter for SEND - accommodates methods with no return value
     // PNut compile_parameter_send:
@@ -7334,31 +7235,6 @@ export class SpinResolver {
     this.objWrByte(0); // place zero terminator
     // and place final string length just before string in object
     this.objImage.replaceByte(charCount + 1, offSetToLength);
-  }
-
-  private ct_conlstr() {
-    // Compile term - LSTRING("constantstring", zero_ok, zero_ok)
-    // PNut ct_conlstr:
-    this.getLeftParen();
-    this.objWrByte(eByteCode.bc_string);
-    const patchLocation: number = this.objImage.offset;
-    this.objWrByte(0); // emit placeholder - interpreter length
-    this.objWrByte(0); // emit placeholder - user length
-    let stringLength: number = 1;
-    do {
-      const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
-      if (valueReturn.value > 255n) {
-        // [error_lscmrf]
-        throw new Error('LSTRING characters must range from 0 to 255');
-      }
-      this.objWrByte(Number(valueReturn.value));
-      if (++stringLength > 255) {
-        // [error_sdcx]
-        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
-      }
-    } while (this.getCommaOrRightParen());
-    this.objImage.replaceByte(stringLength, patchLocation);
-    this.objImage.replaceByte(stringLength - 1, patchLocation + 1);
   }
 
   private compileConLString() {
@@ -7734,6 +7610,7 @@ export class SpinResolver {
         resultStatus.foundConstant = false;
       }
     } else {
+      // in PASM
       // replace our currElement with an oc_neg [sub-to-neg] if it was sub!
       this.SubToNeg();
       if (this.currElement.operation == eOperationType.op_neg) {

@@ -1,0 +1,18 @@
+con _clkfreq = 20_000_000
+
+  INPUT_PIN = 7
+
+obj
+
+  subobj2 : "debug_test_002_c2"
+  subobj3 : "debug_test_002_c3"
+
+pub go1()
+
+  subobj2.go2()
+  subobj3.go3()
+  debug("child1")
+
+pub getPin() : pinNumber
+
+  pinNumber := 5

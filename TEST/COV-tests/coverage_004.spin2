@@ -1,13 +1,78 @@
 '' continuing our spin2 coverage code
 ' {Spin2_v43}
 
+CON
+
 PUB testABORT()
    abort
 
-PUB testLString() | strPtr, miscPtr, value
+PUB testLString() | strPtr, miscPtr, value, startPin, endPin, pinCount
 
     strPtr := lstring("hello")
     miscPtr := byte(1,3,5,7)
     value := float(100)
     value := round(100.6)
     value := trunc(100.9)
+
+    pinh(3..0)
+    pinh(startPin..endPin)
+    pinh(7..endPin)
+    pinh(startPin..0)
+    pinh(4 addpins 2)
+    pinh(startPin addpins 2)
+    pinh(4 addpins pinCount)
+    pinw(4 .. 2, 1)
+    pinw(startPin .. 2, 1)
+    pinw(4 .. pinCount, 1)
+    pinw(getPinfieldAndValue())
+    pinstart(4 addpins 2, 0,0,0)
+    pinstart(startPin addpins 2, 0,0,0)
+    pinstart(4 addpins pinCount, 0,0,0)
+
+PRI getPinfieldAndValue(): pinField, value
+  pinField := 3 addpins 4
+  value := $1f ' all pins set high
+
+PUB testCOGINIT() | result
+    coginit(COGEXEC_NEW, @pasm1,0)
+    result := coginit(COGEXEC_NEW, @pasm1,0)
+
+PUB testPrefixOps() | result, in1, rndSeed
+  result := ++in1
+  result := ??rndSeed
+  result := in1--
+  result := in1!!
+  result := in1!
+  result := in1\3
+  result := in1~~
+
+PRI testMethodParams() | methodPtr, value
+
+   pinw(1, methodPtr(5,(1)):1)
+   pinw(1, recv())
+   sndReceivingMthd(1,2)
+   send(0,(1))
+   send(0, value + -value, value + -1, value + -1.0) ' testing negConToCon
+   send(-2, $ffff0001, $efffffff, $c0000000) ' testing compileConstant(), constantWasDecoded()
+   send(-1.0, -value, #pasm1) ' testing getConstant()
+
+PRI sndReceivingMthd(parm1, parm2)
+
+PRI testFloatHubOps() | fvariable
+
+   fvariable := fvariable +. 1.0 ' testing enterExpOp()
+
+PRI testCONDATA() | valuePtr
+
+  valuePtr := WORD(4,5,6)
+  valuePtr := LONG(4,5,6.0, byte 7)
+
+
+
+DAT
+   org
+   mov reg1,#-reg2 & $1ff  ' testing getConstant() fourth "resultStatus.foundConstant = false;" case
+pasm1 nop
+
+reg1  res 1
+reg2  res 1

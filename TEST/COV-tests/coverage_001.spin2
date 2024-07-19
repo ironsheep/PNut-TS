@@ -8,6 +8,7 @@ CON
 OBJ
 
   fakeChild: "coverage_002"
+  fakeChildren[2]: "coverage_002"
 
 
 PUB Go() | alignw word localWord[3]
@@ -30,10 +31,20 @@ PUB testCOGSPIN() | cog, methodPtr
 
   cog := cogspin(NEWCOG, testCheckVariableMethod(), 0)
   cogspin(1, methodPtr(), @myStack)
-  'cog := cogspin(NEWCOG, fakeChild.testIF(), @myStack)
+  cog := cogspin(NEWCOG, fakeChild.testIF(), @myStack)
 
-PUB testObjCall()
+PUB testObjCall() | methodPtr
   fakeChild.testIF()
+
+  ' ct_at coverage
+  methodPtr := @fakeChild.testIF
+  methodPtr := @fakeChildren[0].testIF
+
+  send(fakeChild.GetPattern()) ' does return a value
+  send(fakeChild.testSEND()) ' no return value (does its' own send)
+
+  send(methodPtr():0)
+  send(methodPtr():1)
 
 PUB testCheckVariableMethod() | methodPtr, rslt, a, b, myString
 
@@ -138,3 +149,11 @@ PUB testINLINE()
    ORG 0,3
    byte 1
    END
+
+DAT
+
+   ORG
+   mov  testArg, #fakeChild.UPPER_LIMIT ' testing getConstant()
+   ret
+
+testArg long 0
