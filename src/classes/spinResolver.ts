@@ -2431,11 +2431,13 @@ export class SpinResolver {
 
   private tryValueCon(): number {
     // return value [0-511]
+    this.logMessage(`* tryValueCon() - ENTRY`);
     const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
     if (valueResult.value > 511n) {
       // [error_cmbf0t511]
       throw new Error('Constant must be from 0 to 511 (m040)');
     }
+    this.logMessage(`* tryValueCon() - EXIT`);
     return Number(valueResult.value);
   }
 
@@ -4963,10 +4965,12 @@ export class SpinResolver {
 
   private getValue(mode: eMode, resolve: eResolve): iValueReturn {
     // in this one case we force integer math
+    this.logMessage(`* getvalue() ENTRY`);
     this.mathMode = mode == eMode.BM_IntOnly ? eMathMode.MM_IntMode : eMathMode.MM_Unknown;
     this.numberStack.reset(); // empty our stack
     this.resolveExp(mode, resolve, this.lowestPrecedence);
     const value: bigint = this.numberStack.pop();
+    this.logMessage(`* getvalue() EXIT`);
     return { value: value, isResolved: this.numberStack.isResolved, isFloat: this.isResultFloat() };
   }
 
@@ -7275,6 +7279,7 @@ export class SpinResolver {
   }
 
   private negConToCon() {
+    // NOTE: this does not leave op_neg in current element like SubToNeg() does!
     if (this.currElement.type == eElementType.type_op && this.currElement.operation == eOperationType.op_sub) {
       this.getElement();
       if (this.currElement.isConstantInt) {
@@ -7411,10 +7416,10 @@ export class SpinResolver {
   private resolveExp(mode: eMode, resolve: eResolve, precedence: number) {
     // leaves answer on stack
     let currPrecedence: number = precedence;
-    this.logMessage(`resolveExp(${precedence}) - ENTRY`);
+    this.logMessage(`* resolveExp(${precedence}) - ENTRY w/Elem=[${this.currElement.toString()}]`);
     if (--currPrecedence < 0) {
       // we need to resove the term!
-
+      this.logMessage(`* MUST resolve!`);
       // skip leading pluses
       do {
         this.getElement();
@@ -7422,9 +7427,9 @@ export class SpinResolver {
           this.logMessage(`* skipping + operator`);
         }
       } while (this.currElement.isPlus);
-      const activeOperation: eOperationType = this.currElement.operation;
-      const activePrecedence: number = this.currElement.precedence;
-      const activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
+      let activeOperation: eOperationType = this.currElement.operation;
+      let activePrecedence: number = this.currElement.precedence;
+      let activeFloatCompatibility: boolean = this.currElement.isFloatCompatible;
       this.logMessage(`* resolvExp() currElement=[${this.currElement.toString()}]`);
 
       // NOTE: we could move negation handling to here from within getConstant()
@@ -7440,6 +7445,9 @@ export class SpinResolver {
         // no constant found, currElement is not a constant
         this.SubToNeg(); // these do NOT affect the element list! only the global currElement copy
         this.FSubToFNeg();
+        activeOperation = this.currElement.operation;
+        activePrecedence = this.currElement.precedence;
+        activeFloatCompatibility = this.currElement.isFloatCompatible;
 
         if (this.currElement.isUnary) {
           // our element is a unary operation
@@ -7546,7 +7554,7 @@ export class SpinResolver {
         }
       }
     }
-    //this.logMessage(`resolveExp(${precedence}) - EXIT`);
+    this.logMessage(`resolveExp(${precedence}) - EXIT`);
   }
 
   private checkDualModeOp(isElementFloatCompatible: boolean, mode: eMode) {
@@ -7562,9 +7570,10 @@ export class SpinResolver {
   }
 
   private getConstant(mode: eMode, resolve: eResolve): iConstantReturn {
+    // PNut check_constant:
+    //  this 'check_constant', now 'get_constant' in Pnut v44 and later
     const resultStatus: iConstantReturn = { value: 0n, foundConstant: true };
     this.logMessage(`* getCon mode=(${eMode[mode]}), resolve=(${eResolve[resolve]}), ele=[${(this, this.currElement.toString())}]`);
-    // this 'check_constant', now 'try_constant' in Pnut
 
     if (mode == eMode.BM_Spin2) {
       // trying to resolve spin2 constant
@@ -7582,9 +7591,8 @@ export class SpinResolver {
           this.backElement(); // return the minus sign
           resultStatus.foundConstant = false;
         }
-      } else if (this.currElement.isConstantInt) {
-        resultStatus.value = this.currElement.bigintValue;
-      } else if (this.currElement.isConstantFloat) {
+      } else if (this.currElement.isConstantInt || this.currElement.isConstantFloat) {
+        // this is a constant
         resultStatus.value = this.currElement.bigintValue;
       } else if (this.currElement.type == eElementType.type_pound) {
         this.getElement();
@@ -7596,7 +7604,7 @@ export class SpinResolver {
           throw new Error('Expected a register symbol');
         }
       } else if (this.currElement.type == eElementType.type_obj) {
-        // TODO: handle Spin2 object-instance reference
+        // Handle Spin2 object-instance reference
         const savedElement: SpinElement = this.currElement;
         if (this.checkDot() == false) {
           // [error_NEW for Pnut-ts] (BEING CAPTURED)
@@ -7614,15 +7622,16 @@ export class SpinResolver {
     } else {
       // in PASM
       // replace our currElement with an oc_neg [sub-to-neg] if it was sub!
-      this.logMessage(`  -- in PASM, not Spin2`);
-      this.SubToNeg();
+      this.logMessage(`  -- in PASM, not Spin2 w/elem=[${this.currElement.toString()}]`);
+      // TODO: replace this with other form from spin2 side of things
+      this.SubToNeg(); // makes currentElem op_neg if was op_sub!
       if (this.currElement.operation == eOperationType.op_neg) {
         // if the next element is a constant we can negate it
         if (this.nextElementType() == eElementType.type_con) {
           // coerce element to negative value
           this.getElement();
           this.logMessage(`* type_con e=[${this.currElement.toString()}]`);
-          resultStatus.value = ((this.currElement.bigintValue ^ BigInt(0xffffffff)) + 1n) & BigInt(0xffffffff);
+          resultStatus.value = this.currElement.negateBigIntValue();
           this.checkIntMode(); // throw if we were float
           // if not set then set else
         } else if (this.nextElementType() == eElementType.type_con_float) {
@@ -7717,6 +7726,7 @@ export class SpinResolver {
               this.checkIntMode();
               resultStatus.value = BigInt(this.hubMode ? this.hubOrg : this.cogOrg >> 2);
             } else if (this.currElement.type == eElementType.type_register) {
+              // PNut here is @@notorg:
               this.logMessage(`* getCON type_register`);
               // HANDLE a cog register
               if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
@@ -7761,6 +7771,7 @@ export class SpinResolver {
               this.currElement = this.getElement();
               if (this.checkDat(mode) || this.currElement.type == eElementType.type_hub_long) {
                 // we have DAT variable address
+                // here is @@trim:
                 resultStatus.value = this.currElement.bigintValue & BigInt(0xfffff);
                 this.logMessage(`* getConstant() have @ e=[${this.currElement.toString()}, value=(${hexString(resultStatus.value)})]`);
               } else {
@@ -7770,22 +7781,27 @@ export class SpinResolver {
                 }
               }
             } else if (this.checkDat(mode)) {
+              // above line is @@notat:
               // HANDLE DAT symbol itself
               this.checkIntMode();
               if (mode == eMode.BM_OperandIntOnly || mode == eMode.BM_OperandIntOrFloat) {
                 // within pasm instruction
                 this.logMessage(`* getCON DAT symbol currElement=[${this.currElement.toString()}]`);
                 if (this.currElement.bigintValue >= BigInt(0xfff00000)) {
+                  // here is @@orghsymbol:
                   this.logMessage(`* getCON DAT symbol have hub address this.pasmMode=(${this.pasmMode})`);
                   this.locOrghSymbolFlag = true;
-                  resultStatus.value = (this.currElement.bigintValue + BigInt(this.pasmMode ? 0 : this.orghOffset)) & BigInt(0xfffff);
+                  resultStatus.value = this.currElement.bigintValue + BigInt(this.pasmMode ? 0 : this.orghOffset);
                 } else {
-                  resultStatus.value = (this.currElement.bigintValue >> (32n - 12n)) & BigInt(0xfffff);
+                  resultStatus.value = this.currElement.bigintValue >> (32n - 12n);
                 }
               } else {
                 // outside of pasm instruction - address of DAT variable
-                resultStatus.value = this.currElement.bigintValue & BigInt(0xfffff);
+                this.logMessage(`  -- outside of PASM instru.`);
+                resultStatus.value = this.currElement.bigintValue;
               }
+              // here is @@trim: (again)
+              resultStatus.value &= BigInt(0xfffff);
               this.logMessage(`* getCON DAT symbol elem=[${this.currElement.toString()}] value=0x${resultStatus.value.toString(16)}`);
             } else {
               // we didn't find a constant
@@ -8997,7 +9013,7 @@ private checkDec(): boolean {
     const false32Bit: bigint = 0n;
 
     this.logMessage(
-      `resolveOperation(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConBlock})`
+      `* resolveOperation(${float32ToHexString(parmA)}, ${float32ToHexString(parmB)}) ${eOperationType[operation]} isFloat=(${isFloatInConBlock})`
     );
 
     // conditioning the incoming params

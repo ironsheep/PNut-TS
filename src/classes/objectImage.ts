@@ -25,8 +25,8 @@ export class ObjectImage {
     this.context = ctx;
     this._id = idString;
     this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logResolver;
-    //this.isLogging = true; // this.context.logOptions.logCompile || this.context.logOptions.logResolver;
-    //this.isLogging = this.context.reportOptions.coverageTesting ? false : true;
+    // this.isLogging = true; // this.context.logOptions.logCompile || this.context.logOptions.logResolver;
+    // this.isLogging = this.context.reportOptions.coverageTesting ? false : true;
   }
 
   public setLogging(enable: boolean) {

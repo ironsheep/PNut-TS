@@ -459,9 +459,9 @@ export class SpinElement {
     let valueInterp: string = `${this.value}`;
     if (this.isEndOfLine) {
       valueInterp = '';
-    } else if (this._type == eElementType.type_method) {
+    } else if (this._type == eElementType.type_method || this._type == eElementType.type_dat_long_res) {
       const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
-      valueInterp = `(${this.hexLong(valueBigInt)})`;
+      valueInterp = `(${this.hexLong(valueBigInt, '0x')})`;
     } else if (this._type == eElementType.type_block) {
       valueInterp = `${eBlockType[this.numberValue]}`;
     } else if (this.isConstantFloat) {
@@ -497,7 +497,8 @@ export class SpinElement {
     return `Ln#${this.sourceLineNumber}(${this.sourceCharacterOffset}) ${elemTypeStr}${valueInterp}${flagInterp}${opInterp}${offsetInterp}`;
   }
 
-  private hexLong(biUint32: bigint): string {
-    return `$${biUint32.toString(16).toUpperCase().padStart(8, '0')}`;
+  private hexLong(biUint32: bigint, prefixString: string = ''): string {
+    const prefixInterp: string = prefixString === '' ? '$' : prefixString;
+    return `${prefixInterp}${biUint32.toString(16).toUpperCase().padStart(8, '0')}`;
   }
 }

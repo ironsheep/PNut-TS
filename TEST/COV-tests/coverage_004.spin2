@@ -67,12 +67,43 @@ PRI testCONDATA() | valuePtr
   valuePtr := WORD(4,5,6)
   valuePtr := LONG(4,5,6.0, byte 7)
 
+PRI testCompileVariable() | argument, offsetLeft, bits3Field, offsetRight
+
+' bitfield testing
+  'pinh(argument.byte[0].[3..0]) ' no coverage change
+  pinh(argument.byte[0].[offsetLeft..0])
+  pinh(argument.byte.[offsetLeft..0])
+  pinh(byte[0][0].[offsetLeft..0])
+  pinh(byte[0][0].[0..offsetRight]) ' testing checkVariableBitfield()
+
+  ' field coverage
+  bits3Field := ^@argument.[23..21]
+  pinh(field[bits3Field])
+
+  ' register coverage
+  pinh(reg[0][0].[offsetLeft..0]) ' non-fi with index
+  pinh(reg[0][argument].[offsetLeft..0]) ' else case ??
+
+  pinh(reg[$1f8].[offsetLeft..0]) ' if case
+  pinh(reg[pr0].[offsetLeft..0]) ' 2nd if case
+
+  ' handle hub byte/word/long with index but NOT CLKFREQ read
+  pinh(clkmode[1])
+
+  pinh(-. 5.0)
+
+pri testSENDoddly()
+
+   send(send(0)) ' testing checkVariableMethod()
 
 
 DAT
    org
    mov reg1,#-reg2 & $1ff  ' testing getConstant() fourth "resultStatus.foundConstant = false;" case
+   'mov reg1,#-3 & $1ff  ' testing getConstant() fourth "resultStatus.foundConstant = false;" case
 pasm1 nop
 
 reg1  res 1
 reg2  res 1
+
+testRFVar long  fvars -10000 ' testing compileDatRfvars()
