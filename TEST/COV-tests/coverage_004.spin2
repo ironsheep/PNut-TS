@@ -4,17 +4,32 @@
 CON
 
    ' testing resolveOperation()
-   NEG_FLOAT_VALUE = -2.5
+   NEG_FLOAT_VALUE = - (2.5)
+   SUB_FLOAT_VALUE = 1.0 - 2.5
+   ADD_FLOAT_VALUE = 1.0 + 2.5
    ABS_FLOAT_VALUE = abs 2.5
    MUL_FLOAT_VALUE = 1.5 * 2.5
    ADD_INT_VALUE = 1 + 5
    SUB_INT_VALUE = 1 - 5
-   TEST_FLOAT_VALUE = 1.0 < 5.4
-   TEST_LE_FLOAT_VALUE = 1.0 <= 5.4
+   TEST_FLOAT_VALUE_NLT = 10.0 < 5.4
+   TEST_FLOAT_VALUE_LT = 1.0 < 5.4
+   TEST_FLOAT_VALUE_NGT = 10.0 > 5.4
+   TEST_FLOAT_VALUE_GT = 1.0 > 5.4
+   TEST_LE_FLOAT_VALUE_NLT = 10.0 <= 5.4
+   TEST_LE_FLOAT_VALUE_LT = 1.0 <= 5.4
+   TEST_GE_FLOAT_VALUE_NLT = 10.0 >= 5.4
+   TEST_GE_FLOAT_VALUE_LT = 1.0 >= 5.4
    TEST_DEQ_EQ_FLOAT_VALUE = 1.0 == 1.0
    TEST_DEQ_NE_FLOAT_VALUE = 1.0 == 5.4
    TEST_GTLT_EQ_FLOAT_VALUE = 1.0 <> 1.0
    TEST_GTLT_NE_FLOAT_VALUE = 1.0 <> 5.4
+   TEST_MAX_FLOAT_GOOD = 5.0 #> 12.0
+   TEST_MAX_FLOAT_LIMIT = 24.0 #> 12.0
+   TEST_MIN_FLOAT_GOOD = 5.0 <# 12.0
+   TEST_MIN_FLOAT_LIMIT = 24.0 <# 12.0
+   COMPARE_FLOAT_GT = 50.0 <=> 12.0
+   COMPARE_FLOAT_EQ = 12.0 <=> 12.0
+   COMPARE_FLOAT_LT = 6.0 <=> 12.0
 
 PUB testABORT()
    abort
@@ -26,7 +41,10 @@ PUB testLString() | strPtr, miscPtr, value, startPin, endPin, pinCount
     value := float(100)
     value := round(100.6)
     value := trunc(100.9)
+
+    ' testing resolveOperation()
     value := abs -100
+    value := abs 100
     value := fabs -100.9
     value := encod 45
     value := decod 45
@@ -40,10 +58,12 @@ PUB testLString() | strPtr, miscPtr, value, startPin, endPin, pinCount
     'value := qexp $e6c6723e ' ==> $1cc72f24:
     value := qexp $f73d41fd ' ==> $77d5e078:
     value := -10000 sar 2
+    value := 10000 sar 2
     value := 10000 ror 2
     value := -10000 rol 2
     value := -10000 zerox 20
     value := -10000 signx 4
+    value := 10016 signx 4
     value := -10000 ^ 4
     value := 32.0 *. 4.0
     value := 32.0 /. 4.0
@@ -56,18 +76,52 @@ PUB testLString() | strPtr, miscPtr, value, startPin, endPin, pinCount
     value := -32 scas 4
     value := 32 frac 40
     value := 32 #> 12
+    value := 5 #> 12
     value := 5 <# 12
+    value := 30 <# 12
     value := 5 < 12
+    value := 50 < 12
     value := 5.4 <. 12.7
+    value := 50.4 <. 12.7
+    value := 5.4 >. 12.7
+    value := 50.4 >. 12.7
     value := 32 +< 12
+    value := 3 +< 12
+    value := 32 +> 12
+    value := 3 +> 12
     value := 32 <= 12
+    value := 3 <= 12
     value := 32 +<= 12
+    value := 3 +<= 12
     value := 32.4 <=. 12.2
+    value := 3.4 <=. 12.2
     value := 32 == 34
+    value := 32 == 32
     value := 32.0 ==. 32.0
     value := 32.0 ==. 34.5
     value := 32 <> 32
     value := 32 <> 34
+    value := 32.0 <>. 32.0
+    value := 32.0 <>. 34.0
+    value := 32 >= 12
+    value := 3 >= 12
+    value := 32.0 >=. 12.0
+    value := 3.0 >=. 12.0
+    value := 32 +>= 12
+    value := 3 +>= 12
+    value := 5 > 12
+    value := 50 > 12
+    value := 50 <=> 12
+    value := 12 <=> 12
+    value := 5 <=> 12
+    value := !!0
+    value := !!5
+    value := 0 && 5
+    value := 5 && 5
+    value := 0 ^^ 5
+    value := 5 ^^ 5
+    value := 0 || 0
+    value := 5 || 0
 
     pinh(3..0)
     pinh(startPin..endPin)
@@ -83,6 +137,10 @@ PUB testLString() | strPtr, miscPtr, value, startPin, endPin, pinCount
     pinstart(4 addpins 2, 0,0,0)
     pinstart(startPin addpins 2, 0,0,0)
     pinstart(4 addpins pinCount, 0,0,0)
+
+    ' test blockRepeatCount() zero count case
+    repeat 0
+      pinh(1)
 
 PRI getPinfieldAndValue(): pinField, value
   pinField := 3 addpins 4

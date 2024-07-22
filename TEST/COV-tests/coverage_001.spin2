@@ -7,7 +7,7 @@ CON
 
 OBJ
 
-  fakeChild: "coverage_002"
+  fakeChild: "coverage_002" | MISC_FLOAT = 5.0
   fakeChildren[2]: "coverage_002"
 
 

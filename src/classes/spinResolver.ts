@@ -3777,6 +3777,7 @@ export class SpinResolver {
   private findSymbol(name: string): iSymbol {
     let symbolFound: iSymbol = { name: '', type: eElementType.type_undefined, value: 0n };
     let containingTable: SymbolTable | undefined = undefined;
+    // TODO: COVERAGE test me
     if (this.autoSymbols.exists(name)) {
       containingTable = this.autoSymbols;
     } else if (this.levelSymbols.exists(name)) {
@@ -4479,6 +4480,7 @@ export class SpinResolver {
       }
       if (recordMatched) {
         // do sub-object counts match?
+        // TODO: COVERAGE test me
         matchSubObjectCount = this.distiller[matchRecordOffset + 2];
         if (matchSubObjectCount != searchSubObjectCount) {
           // NOT a match, abort search
@@ -4704,6 +4706,7 @@ export class SpinResolver {
               if (resultReturn.isResolved) {
                 enumStep = resultReturn.value;
               } else {
+                // TODO: COVERAGE test me
                 enumValid = false;
               }
               this.getRightBracket();
@@ -4785,6 +4788,7 @@ export class SpinResolver {
                 this.recordCONSymbolValue(backupSymbolName, symbolResult);
               } else {
                 // missing new step value... invalidate enum and bail
+                // TODO: COVERAGE test me
                 enumValid = false;
               }
             } else if (this.currElement.type == eElementType.type_comma || this.currElement.type == eElementType.type_end) {
@@ -4803,10 +4807,12 @@ export class SpinResolver {
             }
           } else if (this.currElement.type == eElementType.type_block) {
             // let our outermost loop decide if we should process this next block
+            // TODO: COVERAGE test me
             this.backElement();
             break;
           } else {
             // let's show some debug
+            // TODO: COVERAGE test me
             this.backElement(); // so we can re-discover the comma or EOL at while()
             this.getElement();
             this.logMessage(`EEEE: Element at fail: [${this.currElement.toString()}]`);
@@ -5016,6 +5022,7 @@ export class SpinResolver {
       do {
         this.getElement();
         if (this.currElement.isPlus) {
+          // TODO: COVERAGE test me
           this.logMessage(`* skipping + operator`);
         }
       } while (this.currElement.isPlus);
@@ -6504,6 +6511,7 @@ export class SpinResolver {
       }
       if (this.currElement.type == eElementType.type_leftb) {
         // NOTE: this may be extra capability which SPIN2 doesn't support
+        //  So let's NOT worry about coverage
         nestingCount++;
       }
       if (this.currElement.type == eElementType.type_rightb) {
@@ -7860,6 +7868,7 @@ export class SpinResolver {
       // do we have a '.' preceeding a user name?
       if (this.checkDot()) {
         // is the next element a user undefined symbol?
+        // TODO: COVERAGE test me
         this.getElement(); // position to bad element! so "throw" line-number is correct -OR- caller doesn't see this again
         if (!(this.currElement.isTypeUndefined || this.currElement.sourceElementWasUndefined)) {
           // [error_eacn]
