@@ -8408,6 +8408,7 @@ private checkDec(): boolean {
       this.objWrByte(Number((workingValue >> 14n) & BigInt(0x7f)));
     } else {
       // 4 BYTE value
+      // NOTE: unable to figure out, so far, how to coverage test this
       this.objWrByte(Number(workingValue | BigInt(0x80)));
       this.objWrByte(Number((workingValue >> 7n) | BigInt(0x80)));
       this.objWrByte(Number((workingValue >> 14n) | BigInt(0x80)));
@@ -8426,6 +8427,7 @@ private checkDec(): boolean {
         return;
       }
     }
+    // NOTE: unable to figure out, so far, how to coverage test this
     this.objImage.append((Number(value) >> 21) & 0xff);
   }
 
@@ -8538,6 +8540,7 @@ private checkDec(): boolean {
         this.checkVariableBitfield(resultVariable);
         break;
 
+      // NOTE: the _byte and _word cases really don't occur, can't coverage test
       case eElementType.type_hub_byte:
       case eElementType.type_hub_word:
       case eElementType.type_hub_long:
@@ -8582,6 +8585,7 @@ private checkDec(): boolean {
         {
           const [foundIndex, nextElementIndex] = this.checkIndex();
           if (foundIndex == false) {
+            // NOTE coverage: this appears to be an exception case...
             resultVariable.isVariable = false;
           } else {
             resultVariable.type = eElementType.type_size;
@@ -8914,8 +8918,6 @@ private checkDec(): boolean {
     this.nextElementIndex = savedLocation;
   }
 
-  private saveScopeColumn() {}
-
   private setScopeColumn(newScopeColumn: number) {
     this.logMessage(`* LINE_SCOPE scopeColumn SET (${this.scopeColumn}) -> (${newScopeColumn})`);
     this.scopeColumn = newScopeColumn;
@@ -9114,8 +9116,12 @@ private checkDec(): boolean {
 
       case eOperationType.op_qlog: //  QLOG
         // if a is non-zero... then calculate else leave it at zero
+        //
+        // WARNING this result MAY cause binary differences in our output file! WARNING
+        //  consider this code if we see problems in our regression tests
+        //  it's all a matter of precision...
         if (a) {
-          a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
+          a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27))); // +/- 2 bits
         }
         break;
 
@@ -9123,7 +9129,7 @@ private checkDec(): boolean {
         // WARNING this result MAY cause binary differences in our output file! WARNING
         //  consider this code if we see problems in our regression tests
         //  it's all a matter of precision...
-        a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)))); // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
+        a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)))); //  +/- 3 bits  // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
         break;
 
       case eOperationType.op_shr: //  >>

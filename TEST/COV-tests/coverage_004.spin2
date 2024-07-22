@@ -3,6 +3,19 @@
 
 CON
 
+   ' testing resolveOperation()
+   NEG_FLOAT_VALUE = -2.5
+   ABS_FLOAT_VALUE = abs 2.5
+   MUL_FLOAT_VALUE = 1.5 * 2.5
+   ADD_INT_VALUE = 1 + 5
+   SUB_INT_VALUE = 1 - 5
+   TEST_FLOAT_VALUE = 1.0 < 5.4
+   TEST_LE_FLOAT_VALUE = 1.0 <= 5.4
+   TEST_DEQ_EQ_FLOAT_VALUE = 1.0 == 1.0
+   TEST_DEQ_NE_FLOAT_VALUE = 1.0 == 5.4
+   TEST_GTLT_EQ_FLOAT_VALUE = 1.0 <> 1.0
+   TEST_GTLT_NE_FLOAT_VALUE = 1.0 <> 5.4
+
 PUB testABORT()
    abort
 
@@ -13,6 +26,48 @@ PUB testLString() | strPtr, miscPtr, value, startPin, endPin, pinCount
     value := float(100)
     value := round(100.6)
     value := trunc(100.9)
+    value := abs -100
+    value := fabs -100.9
+    value := encod 45
+    value := decod 45
+    value := bmask 24
+    value := ones 24
+    value := sqrt 24
+    value := fsqrt 24.0
+    'value := qlog $d83790b2 ' ==> $fe0cfa26
+    'value := qexp $e3a3b5b6 ' ==> $15ee7a9e
+    value := qlog $439eb72f ' ==> $f0a290cc:  found possibility of LSBIT(s) differences, test setup to not cause this.
+    'value := qexp $e6c6723e ' ==> $1cc72f24:
+    value := qexp $f73d41fd ' ==> $77d5e078:
+    value := -10000 sar 2
+    value := 10000 ror 2
+    value := -10000 rol 2
+    value := -10000 zerox 20
+    value := -10000 signx 4
+    value := -10000 ^ 4
+    value := 32.0 *. 4.0
+    value := 32.0 /. 4.0
+    value := 32.0 +. 4.0
+    value := 32.0 -. 4.0
+    value := 32 +/ 4
+    value := 32 // 4
+    value := 32 +// 4
+    value := 32 sca 4
+    value := -32 scas 4
+    value := 32 frac 40
+    value := 32 #> 12
+    value := 5 <# 12
+    value := 5 < 12
+    value := 5.4 <. 12.7
+    value := 32 +< 12
+    value := 32 <= 12
+    value := 32 +<= 12
+    value := 32.4 <=. 12.2
+    value := 32 == 34
+    value := 32.0 ==. 32.0
+    value := 32.0 ==. 34.5
+    value := 32 <> 32
+    value := 32 <> 34
 
     pinh(3..0)
     pinh(startPin..endPin)

@@ -109,6 +109,8 @@ VAR i
 PUB GetPattern() : Pattern
  RETURN DECOD(i++ & 7)
 
+PUB testMethodTwoResults(): result1, result2
+
 
 PUB testSEND()
  SEND := @SetLED

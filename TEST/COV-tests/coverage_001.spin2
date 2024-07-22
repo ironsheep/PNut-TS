@@ -42,11 +42,16 @@ PUB testObjCall() | methodPtr,  floatValue
 
   send(fakeChild.GetPattern()) ' does return a value
   send(fakeChild.testSEND()) ' no return value (does its' own send)
+  send(\fakeChild.testSEND()) ' no return value (does its' own send) - testing ct_try()
+
+  pinh(fakeChildren[0].GetPattern()) ' testing ct_objpubcon()
 
   send(methodPtr():0)
+  send(\methodPtr():0) ' testing ct_try()
   send(methodPtr():1)
 
   floatValue := fakeChild.MISC_FLOAT
+  floatValue := floatValue +. fakeChild.MISC_FLOAT ' testing ct_objpubcon()
 
 PUB testCheckVariableMethod() | methodPtr, rslt, a, b, myString
 
@@ -69,6 +74,10 @@ PRI test2Rets():x,y
 PRI testNoRet(byteVar)
 
 PRI test1Ret() : byteVal
+
+pub testCompileParameter() | coordX, coordY
+
+   coordX, coordY := polxy(fakeChild.testMethodTwoResults())
 
 PUB testLOCByteWord() | byte var1, word var2
 
