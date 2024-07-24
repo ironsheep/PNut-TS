@@ -1,0 +1,13 @@
+'' --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+'' Included file content
+
+PUB methodOne(fstParm)
+
+PUB methodTwo(fstParm)
+
+
+CON { license }
+{{
+  End of included content
+  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+}}

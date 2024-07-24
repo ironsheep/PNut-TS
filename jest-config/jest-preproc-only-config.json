@@ -1,0 +1,6 @@
+{
+  "displayName": "PREPROC only suite of tests",
+  "roots": ["<rootDir>/../dist/tests/PREPROC-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

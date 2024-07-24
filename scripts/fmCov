@@ -21,6 +21,7 @@ rm -f "${NEW_TEST_DIR}"/*
 # Find and rename all *.test.ts.HOLD files in src/tests back to *.test.ts
 find src/tests -type f -name "*.test.ts.HOLD" -exec bash -c 'mv "$0" "${0%.test.ts.HOLD}.test.ts"' {} \;
 
+# this one should move to .HOLD
 mv src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.HOLD
 
 echo "${SCRIPT}: Undo actions completed."

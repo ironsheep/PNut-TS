@@ -1,0 +1,25 @@
+'' =================================================================================================
+''   Purpose.... Regression TEST: include mechanism
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Jan 2024
+'' =================================================================================================
+
+
+PUB main()
+
+#include "included"
+
+CON { license }
+{{
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2024 Iron Sheep Productions, LLC
+
+  Permission is hereby granted... dummy license block for test purposes
+ =================================================================================================
+}}

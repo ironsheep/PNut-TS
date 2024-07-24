@@ -19,9 +19,9 @@ import {
   waitForFiles
 } from '../testUtils';
 
-// test lives in <rootDir>/src/tests/FULL
 const testDirPath = path.resolve(__dirname, '../../../TEST/EXCEPT-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
+
 const directories = [
   {
     name: 'Test directory',
@@ -105,6 +105,7 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
       // compile our file generating output files
       const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '-l', '-O', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
+
       try {
         PNut_ts_compiler = new PNutInTypeScript(testArguments);
         await PNut_ts_compiler.run();

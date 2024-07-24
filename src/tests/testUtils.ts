@@ -129,11 +129,15 @@ export function compareListingFiles(reportFSpec: string, goldenFSpec: string, st
   } else {
     console.error(`ERROR: missing GOLDEN output [${goldenFSpec}]`);
   }
+  const isPreprocessorReport: boolean = reportFSpec.endsWith('.pre');
   if (inputFileCount == 2) {
     // Read the report file and split into lines
     const reportContentLines = fs.readFileSync(reportFSpec, 'utf8').split(/\s*\r?\n/);
     // Read the golden file and split into lines
-    const goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s*\r\n|\s*\r/);
+    let goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s*\r?\n/);
+    if (goldenContentLines.length == 1) {
+      goldenContentLines = fs.readFileSync(goldenFSpec, 'utf8').split(/\s*\r\n|\s*\r/);
+    }
 
     // Strings to exclude from comparison
     const filterStrings: string[] = stringsToExlude !== undefined ? stringsToExlude : ['Redundant OBJ bytes removed'];
@@ -147,22 +151,45 @@ export function compareListingFiles(reportFSpec: string, goldenFSpec: string, st
     filesMatchStatus = reportFiltered.length == goldenFiltered.length;
     if (filesMatchStatus == true) {
       // line count is SAME, now do more detaile match
-      filesMatchStatus = compareConFloatValues(reportFiltered, goldenFiltered);
-    }
-    //if (filesMatchStatus == false) {
-    //const listingFName = path.basename(reportFSpec);
-    //const goldFName = path.basename(goldenFSpec);
-    //console.error(`ERROR: don't match: [${listingFName}](${reportFiltered.length}) <=> [${goldFName}](${goldenFiltered.length})`);
-    /*
-      for (let index = 0; index < 5; index++) {
-        const lhs: string = reportContentLines[index];
-        const rhs: string = goldenContentLines[index];
-        console.log(`lhs=[${lhs}](${lhs.length}), rhs[${rhs}](${rhs.length})`);
+      if (isPreprocessorReport) {
+        filesMatchStatus = comparePreprocessOutput(reportFiltered, goldenFiltered);
+      } else {
+        filesMatchStatus = compareConFloatValues(reportFiltered, goldenFiltered);
       }
+    }
+    if (filesMatchStatus == false) {
+      const listingFName = path.basename(reportFSpec);
+      const goldFName = path.basename(goldenFSpec);
+      console.error(`ERROR: don't match: [${listingFName}](${reportFiltered.length}) <=> [${goldFName}](${goldenFiltered.length})`);
+      /*
+        for (let index = 0; index < 5; index++) {
+          const lhs: string = reportContentLines[index];
+          const rhs: string = goldenContentLines[index];
+          console.log(`lhs=[${lhs}](${lhs.length}), rhs[${rhs}](${rhs.length})`);
+        }
+
       */
-    //}
+    }
   }
   return filesMatchStatus;
+}
+
+function comparePreprocessOutput(compileLines: string[], goldenLines: string[]): boolean {
+  let matchStatus: boolean = false;
+  if (compileLines.length == goldenLines.length) {
+    for (let index = 0; index < compileLines.length; index++) {
+      const compLine: string = compileLines[index];
+      const goldLine: string = goldenLines[index];
+      matchStatus = compLine === goldLine;
+      if (matchStatus == false) {
+        // on first non-match, break! we have answer
+        console.error(`ERROR: rprt: [${compLine}](${compLine.length}) <=> `);
+        console.error(`ERROR: GOLD: [${goldLine}](${goldLine.length})`);
+        break;
+      }
+    }
+  }
+  return matchStatus;
 }
 
 function compareConFloatValues(compileLines: string[], goldenLines: string[]): boolean {

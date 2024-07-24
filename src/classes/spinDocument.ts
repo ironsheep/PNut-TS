@@ -33,6 +33,63 @@ export interface iError {
   message: string;
 }
 
+class PreProcState {
+  private ifSideEmits: boolean = false;
+  private elseSideEmits: boolean = false;
+  private inIfSide: boolean = false;
+  private foundElse: boolean = false; // T/F where T means the endif can be emitted even if side not emitting
+  private skipThisIfDef: boolean = false; // T/F where T means all sides of IFDEF...ENDIF don't emit code
+
+  constructor() {
+    this.clear();
+  }
+
+  public clear() {
+    this.ifSideEmits = false;
+    this.elseSideEmits = false;
+    this.inIfSide = false;
+    this.foundElse = false;
+    this.skipThisIfDef = false;
+  }
+
+  public setIgnoreIfdef() {
+    this.skipThisIfDef = true;
+  }
+
+  public setInIf() {
+    this.inIfSide = true;
+  }
+
+  public setInElse() {
+    this.inIfSide = false;
+    this.foundElse = true;
+  }
+
+  public setIfEmits(doesEmit: boolean = true) {
+    this.ifSideEmits = doesEmit;
+    this.elseSideEmits = !doesEmit;
+  }
+
+  public setElseEmits(doesEmit: boolean = true) {
+    this.ifSideEmits = !doesEmit;
+    this.elseSideEmits = doesEmit;
+  }
+
+  get thisSideEmits(): boolean {
+    let shouldEmit: boolean = false;
+    if (this.skipThisIfDef == false) {
+      if (this.inIfSide) {
+        shouldEmit = this.ifSideEmits;
+      } else if (this.inIfSide == false) {
+        shouldEmit = this.elseSideEmits;
+      } else {
+        shouldEmit = this.foundElse;
+      }
+    }
+    return shouldEmit;
+  }
+}
+
 /**
  * The SpinDocument class represents a Spin document, providing methods to analyze and manipulate the document's content.
  */
@@ -55,7 +112,10 @@ export class SpinDocument {
   // preprocessor data
   private incFolders: string[] = [];
   private preProcSymbols: SymbolTable = new SymbolTable();
+  private preProcNestingState: PreProcState[] = [];
   // preprocess state information
+  private cmdLineDefines: string[] = [];
+  private cmdLineUndefines: string[] = [];
   private headerComments: string[] = [];
   private trailerComments: string[] = [];
   private gatheringHeaderComment: boolean = true;
@@ -63,7 +123,7 @@ export class SpinDocument {
   private inDocComment: boolean = false;
   private inNonDocComment: boolean = false;
   // PNut-ts version number handling for this .spin2 file
-  private defualtVersion: number = 41;
+  private defaultVersion: number = 41;
   private legalVersions: number[] = [41, 43];
   private requiredVersion: number = 0;
   // errors reported while processing file
@@ -113,10 +173,13 @@ export class SpinDocument {
       for (let index = 0; index < cliDefinedSymbols.length; index++) {
         const newSymbolName = cliDefinedSymbols[index];
         this.defineSymbol(newSymbolName, 1);
+        // record external symbol for quick check
+        this.cmdLineDefines.push(newSymbolName);
       }
     }
 
     if (this.rawLines.length > 0) {
+      this.logMessage(`CODE-PP: file=[${this.fileBaseName}], id=(${this.fileId})`);
       this.preProcess();
     }
   }
@@ -155,7 +218,7 @@ export class SpinDocument {
   }
 
   public setIncludePath(includeDir: string): void {
-    //this.logMessage(`CODE: setIncludePath(${includeDir})`);
+    this.logMessage(`CODE: setIncludePath(${includeDir})`);
     // is inc-folder
     if (!this.dirName.endsWith(includeDir)) {
       const newIncludePath: string = path.join(this.dirName, includeDir);
@@ -167,26 +230,26 @@ export class SpinDocument {
         this.logMessage(`CODE: ERROR: failed locate incFolder [${newIncludePath}]`);
       }
     } else {
-      this.logMessage(`CODE: INFO: skip add of INC from our current dir inc=[${includeDir}], curr=[${this.dirName}]`);
+      this.logMessage(`CODE: INFO: skip add of INC, IS our current dir inc=[${includeDir}], curr=[${this.dirName}]`);
     }
   }
 
   get versionNumber(): number {
     // return the Spin language version required by this file
-    return this.requiredVersion == 0 ? this.defualtVersion : this.requiredVersion;
+    return this.requiredVersion == 0 ? this.defaultVersion : this.requiredVersion;
   }
 
   public preProcess(): void {
     // Gather header (doc-only and non-doc) comments and trailer (doc-only) comments
     // From header (doc-only and non-doc) comments identify required version if any version
     // Process raw-lines into file content lines w/original line numbers based on #ifdef/#ifndef, etc. directives
-    this.logMessage('CODE: preProcess()');
-    let inPreProcIForIFNOT: boolean = false;
-    let thisSideKeepsCode: boolean = false;
-    let insertTextLines: TextLine[] = [];
-    for (let index = 0; index < this.rawLines.length; index++) {
+    this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- ENTRY`);
+    let replaceCurrent: string = ``;
+    for (let lineIdx = 0; lineIdx < this.rawLines.length; lineIdx++) {
       let skipThisline: boolean = false;
-      const currLine = this.rawLines[index];
+      let forceKeepThisline: boolean = false;
+      let insertTextLines: TextLine[] = [];
+      let currLine = this.rawLines[lineIdx];
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
         this.recordComment(currLine);
@@ -206,134 +269,178 @@ export class SpinDocument {
           // parse #define {symbol} {value}
           const [symbol, value] = this.getSymbolValue(currLine);
           if (symbol) {
-            const canAdd: boolean = this.context.preProcessorOptions.undefSymbols.includes(symbol) ? false : true;
+            const foundUndefine: boolean = this.context.preProcessorOptions.undefSymbols.includes(symbol);
+            const canAdd = (this.thisSideKeepsCode() || !this.inIfDef()) && !foundUndefine;
+            replaceCurrent = this.commentOut(currLine);
             if (canAdd) {
               this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
               this.defineSymbol(symbol, value);
-            } else {
+            } else if (foundUndefine) {
               this.logMessage(`#define of [${symbol}] prevented by "-U ${symbol}" on command line`);
+              insertTextLines = [new TextLine(this.fileId, `' NOTE: #define of ${symbol} prevented by command line "-U ${symbol}"`, lineIdx)];
             }
           } else {
             // ERROR bad statement
-            this.reportError(`#define is missing symbol name`, index, 0);
+            this.reportError(`#define is missing symbol name`, lineIdx, 0);
           }
         } else if (currLine.startsWith('#undef')) {
           // parse #undef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            // this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIFNOT=(${inPreProcIForIFNOT}), thisSideKeepsCode=(${thisSideKeepsCode})`);
-            if ((inPreProcIForIFNOT && thisSideKeepsCode) || !inPreProcIForIFNOT) {
+            // this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIxFNOT=(${inPreProcIForIxFNOT}), thisSidxeKeepsCode=(${thisSideKexepsCode})`);
+            if (this.thisSideKeepsCode() || !this.inIfDef()) {
               if (!this.undefineSymbol(symbol)) {
                 // ERROR no such symbol
-                this.reportError(`#undef symbol [${symbol}] not found`, index, 0);
+                this.reportError(`#undef symbol [${symbol}] not found`, lineIdx, 0);
               } else {
                 this.logMessage(`CODE: removed symbol [${symbol}]`);
+                replaceCurrent = this.commentOut(currLine);
               }
             } else {
               // ignore this code since in conditional code
               this.logMessage(`CODE: NOT keeping code SKIP [${currLine}]`);
             }
           } else {
-            this.reportError(`#undef is missing symbol name`, index, 0);
+            this.reportError(`#undef is missing symbol name`, lineIdx, 0);
           }
         } else if (currLine.startsWith('#ifdef') || currLine.startsWith('#elseifdef')) {
           // parse #ifdef {symbol}
           // parse #elseifdef {symbol}
           const isElseForm: boolean = currLine.startsWith('#elseifdef');
-          if (isElseForm == false || (isElseForm == true && inPreProcIForIFNOT == true)) {
-            inPreProcIForIFNOT = true;
-            // this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
-            const symbol = this.getSymbolName(currLine);
-            if (symbol) {
-              if (this.preProcSymbols.exists(symbol)) {
-                this.logMessage(`CODE: have symbol [${symbol}]`);
-                // found symbol... we are keeping code from IF side
-                thisSideKeepsCode = true;
-              } else {
-                // symbol doesn't exist keep code from ELSE side
-                this.logMessage(`CODE: don't have symbol [${symbol}]`);
-                thisSideKeepsCode = false;
-              }
-              // this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
-            } else {
-              // ERROR bad statement
-              this.reportError(`#directive is missing symbol name`, index, 0);
-            }
+          const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
+          const ifState = isElseForm ? this.currIfDef() : this.enterIf();
+          if (ifState === undefined) {
+            this.reportError(`#elseifdef found before #ifdef/#ifndef`, lineIdx, 0);
           } else {
-            // ERROR missing preceeding #if*...
-            this.reportError(`#elseifdef without earlier #if*...`, index, 0);
+            ifState.setInIf();
+            if (wasEmitting == false) {
+              // we were in ifdef and not emitting so ignore this whole ifdef
+              ifState.setIgnoreIfdef();
+            }
+            if (isElseForm == false || (isElseForm == true && this.inIfDef())) {
+              // this.logMessage(`CODE: (DBG) inPreProcIxForIFNOT=(${inPrePxrocIForIFNOT})`);
+              const symbol = this.getSymbolName(currLine);
+              if (symbol !== undefined) {
+                if (this.cmdLineDefines.includes(symbol)) {
+                  insertTextLines = [new TextLine(this.fileId, `' NOTE: ${symbol} provided on command line using -D ${symbol}`, lineIdx)];
+                  this.logMessage(`#define of [${symbol}] caused by "-D ${symbol}" on command line`);
+                }
+                if (this.preProcSymbols.exists(symbol)) {
+                  this.logMessage(`CODE: has symbol [${symbol}]`);
+                  // found symbol... we are keeping code from IF side
+                  ifState.setIfEmits(true); // if symbol is defined this side emits code
+                } else {
+                  // symbol doesn't exist keep code from ELSE side
+                  this.logMessage(`CODE: don't have symbol [${symbol}]`);
+                  ifState.setIfEmits(false); // if symbol is defined this side emits code
+                }
+                forceKeepThisline = true;
+                // this.logMessage(`CODE: (DBG) thisSideKeexpsCode=(${thisSideKxeepsCode})`);
+                replaceCurrent = this.commentOut(currLine);
+              } else {
+                // ERROR bad statement
+                this.reportError(`#directive is missing symbol name`, lineIdx, 0);
+              }
+            } else {
+              // ERROR missing preceeding #if*...
+              this.reportError(`#elseifdef without earlier #if*...`, lineIdx, 0);
+            }
           }
         } else if (currLine.startsWith('#ifndef') || currLine.startsWith('#elseifndef')) {
           // parse #ifndef {symbol}
           // parse #elseifndef {symbol}
           const isElseForm: boolean = currLine.startsWith('#elseifndef');
-          if (isElseForm == false || (isElseForm == true && inPreProcIForIFNOT == true)) {
-            inPreProcIForIFNOT = true;
-            // this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
-            const symbol = this.getSymbolName(currLine);
-            if (symbol) {
-              if (this.preProcSymbols.exists(symbol)) {
-                // found symbol... we are keeping code from ELSE side
-                this.logMessage(`CODE: don't have symbol [${symbol}]`);
-                thisSideKeepsCode = false;
-              } else {
-                // symbol doesn't exist keep code from IF side
-                this.logMessage(`CODE: have symbol [${symbol}]`);
-                thisSideKeepsCode = true;
-              }
-              // this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
-            } else {
-              // ERROR bad statement
-              this.reportError(`#directive is missing symbol name`, index, 0);
-            }
+          const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
+          const ifState = isElseForm ? this.currIfDef() : this.enterIf();
+          if (ifState === undefined) {
+            this.reportError(`#elseifndef found before #ifdef/#ifndef`, lineIdx, 0);
           } else {
-            // ERROR missing preceeding #if*...
-            this.reportError(`#elseifndef without earlier #if*...`, index, 0);
+            ifState.setInIf();
+            if (wasEmitting == false) {
+              // we were in ifdef and not emitting so ignore this whole ifdef
+              ifState.setIgnoreIfdef();
+            }
+            if (isElseForm == false || (isElseForm == true && this.inIfDef())) {
+              // this.logMessage(`CODE: (DBG) inPreProcIxForIFNOT=(${inPreProcIFxorIFNOT})`);
+              const symbol = this.getSymbolName(currLine);
+              if (symbol) {
+                if (this.cmdLineDefines.includes(symbol)) {
+                  insertTextLines = [new TextLine(this.fileId, `' NOTE: ${symbol} provided on command line using -D ${symbol}`, lineIdx)];
+                }
+                if (this.preProcSymbols.exists(symbol)) {
+                  // found symbol... we are keeping code from ELSE side
+                  this.logMessage(`CODE: don't have symbol [${symbol}]`);
+                  ifState.setIfEmits(false); // if symbol is NOT defined this side emits code
+                } else {
+                  // symbol doesn't exist keep code from IF side
+                  this.logMessage(`CODE: has symbol [${symbol}]`);
+                  ifState.setIfEmits(true); // if symbol is NOT defined this side emits code
+                }
+                replaceCurrent = this.commentOut(currLine);
+                // this.logMessage(`CODE: (DBG) thisSideKeexpsCode=(${thisSideKexepsCode})`);
+              } else {
+                // ERROR bad statement
+                this.reportError(`#directive is missing symbol name`, lineIdx, 0);
+              }
+            } else {
+              // ERROR missing preceeding #if*...
+              this.reportError(`#elseifndef without earlier #if*...`, lineIdx, 0);
+            }
           }
         } else if (currLine.startsWith('#else')) {
           // parse #else
-          if (inPreProcIForIFNOT) {
-            thisSideKeepsCode = !thisSideKeepsCode;
-            // this.logMessage(`CODE: (DBG) thisSideKeepsCode=(${thisSideKeepsCode})`);
-          } else {
+          const ifState = this.currIfDef();
+          if (ifState === undefined) {
             // ERROR missing preceeding #if*...
-            this.reportError(`#else without earlier #if*...`, index, 0);
+            this.reportError(`#else found before #ifdef/#ifndef`, lineIdx, 0);
+          } else {
+            replaceCurrent = this.commentOut(currLine);
+            ifState.setInElse();
           }
         } else if (currLine.startsWith('#endif')) {
           // parse #endif
-          if (!inPreProcIForIFNOT) {
+          if (!this.inIfDef()) {
             // ERROR missing preceeding #if*...
-            this.reportError(`#endif without earlier #if*...`, index, 0);
+            this.reportError(`#endif without earlier #if*...`, lineIdx, 0);
+          } else {
+            replaceCurrent = this.commentOut(currLine);
+            this.exitIf();
           }
-          inPreProcIForIFNOT = false;
-          // this.logMessage(`CODE: (DBG) inPreProcIForIFNOT=(${inPreProcIForIFNOT})`);
+          // this.logMessage(`CODE: (DBG) inPrePrxocIForIFNOT=(${inPreProcIFoxrIFNOT})`);
         } else if (currLine.startsWith('#error')) {
           // parse #error
+          replaceCurrent = this.commentOut(currLine);
           const message: string = currLine.substring(7);
-          this.reportError(`ERROR: ${message}`, index, 0);
+          this.reportError(`ERROR: ${message}`, lineIdx, 0);
         } else if (currLine.startsWith('#warn')) {
           // parse #warn
+          replaceCurrent = this.commentOut(currLine);
           const message: string = currLine.substring(7);
-          this.reportError(`WARNING: ${message}`, index, 0);
+          this.reportError(`WARNING: ${message}`, lineIdx, 0);
         } else if (currLine.startsWith('#include')) {
+          this.logMessage(`CODE-PP: have #include [${currLine}]`);
           // handle #include "filename"
           //  ensure suffix not present or must be ".spin2"
-          const filename = this.isolateFilename(currLine, index);
+          const filename = this.isolateFilename(currLine, lineIdx);
           if (filename) {
             const filespec = locateIncludeFile(this.incFolders, this.dirName, filename);
             if (filespec) {
+              replaceCurrent = this.commentOut(currLine);
+              currLine = '';
               // load file into spinDoc
               const incSpinDocument = new SpinDocument(this.context, filespec);
               // record this new file in our master list of files we compiled to buid the binary
               this.context.sourceFiles.addFile(incSpinDocument);
-              incSpinDocument.preProcess();
-              // get parsed content from spinDoc inserting into current content in place of this line
+              // get parsed content from spinDoc inserting into current content after / -or / in-place-of this line
               insertTextLines = incSpinDocument.allTextLines;
             } else {
-              this.reportError(`File [${filename}] not found!`, index, 0);
+              this.reportError(`File [${filename}] not found!`, lineIdx, 0);
             }
+          } else {
+            this.reportError(`Filename missing from #include statement!`, lineIdx, 0);
           }
-        } else if (currLine.match(/^#[0-9%$]/)) {
+        } else if (currLine.match(/^#-*[0-9%$]+\s*,*|^#_*[A-Za-z_]+\s*,*/)) {
+          // ADD LOOK FOR ENUMERATION START WITH SYMBOL NAME
           // ignore these enumeration starts, they are not meant to be directives
         } else {
           // generate error! vs. throwing exception
@@ -341,7 +448,7 @@ export class SpinDocument {
           if (lineParts.length == 0) {
             lineParts = [currLine];
           }
-          this.reportError(`Unknown #directive: [${lineParts[0]}]`, index, 0);
+          this.reportError(`Unknown #directive: [${lineParts[0]}]`, lineIdx, 0);
           skipThisline = true;
         }
       } else if (currLine.startsWith('{{')) {
@@ -369,22 +476,31 @@ export class SpinDocument {
       //     false            false    skip = false
       //     false            true     skip = true
       if (!skipThisline) {
-        if (inPreProcIForIFNOT) {
-          skipThisline = thisSideKeepsCode ? false : true;
+        if (this.inIfDef()) {
+          skipThisline = this.thisSideKeepsCode() ? false : true;
+          if (forceKeepThisline) {
+            skipThisline = false;
+          }
         }
       }
 
       if (!skipThisline) {
-        //this.logMessage(`CODE: Line KEEP [${currLine}]`);
-        this.preprocessedLines.push(new TextLine(this.fileId, currLine, index));
+        currLine = replaceCurrent.length > 0 ? replaceCurrent : currLine;
+        this.preprocessedLines.push(new TextLine(this.fileId, currLine, lineIdx));
+        if (replaceCurrent.length > 0) {
+          this.logMessage(`CODE-PP: EMIT replacement Line [${currLine}]`);
+        }
+        replaceCurrent = ''; // used, empty it so no dupes
       } else {
         //this.logMessage(`CODE: Line SKIP [${currLine}]`);
       }
+
       if (insertTextLines.length > 0) {
+        this.logMessage(`CODE-PP: INSERT #${insertTextLines.length} line(s)`);
         for (const newTextLine of insertTextLines) {
           this.preprocessedLines.push(newTextLine);
         }
-        insertTextLines = [];
+        //insertTextLines = []; // included new lines, empty list
       }
     }
     this.getVersionFromHeader(this.headerComments);
@@ -393,10 +509,15 @@ export class SpinDocument {
 
     // if regression testing the emit our preprocessing result
     if (this.context?.reportOptions.writePreprocessReport) {
-      this.logMessage('CODE: writePreprocessReport()');
+      this.logMessage('CODE-PP: writePreprocessReport()');
       const reporter: RegressionReporter = new RegressionReporter(this.context);
       reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
     }
+    this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- EXIT`);
+  }
+
+  private commentOut(line: string): string {
+    return `' ${line}`;
   }
 
   private isolateFilename(currLine: string, index: number): string | undefined {
@@ -578,5 +699,55 @@ export class SpinDocument {
       const value = baseSymbols[symbolKey];
       this.defineSymbol(symbolKey, value);
     }
+  }
+
+  // #ifdef/#ifndef support routines
+
+  private enterIf(): PreProcState {
+    const newProcLevel = new PreProcState();
+    newProcLevel.setInIf();
+    this.preProcNestingState.push(newProcLevel);
+    return newProcLevel;
+  }
+
+  private flipToElse(): PreProcState {
+    if (!this.inIfDef()) {
+      throw new Error(`[PREPROCESSOR] error found #else without #ifdef or #ifndef`);
+    }
+    const procLevel = this.preProcNestingState[this.preProcNestingState.length - 1];
+    procLevel.setInElse();
+    return procLevel;
+  }
+
+  private exitIf(): PreProcState {
+    if (!this.inIfDef()) {
+      throw new Error(`[PREPROCESSOR] error found #endif without #ifdef or #ifndef`);
+    }
+    this.preProcNestingState.pop(); // remove top most
+    const procLevel = this.preProcNestingState[this.preProcNestingState.length - 1];
+    return procLevel;
+  }
+
+  private inIfDef(): boolean {
+    return this.preProcNestingState.length > 0;
+  }
+
+  private currIfDef(): PreProcState | undefined {
+    let desiredLevel: PreProcState | undefined = undefined;
+    if (this.preProcNestingState.length > 0) {
+      desiredLevel = this.preProcNestingState[this.preProcNestingState.length - 1];
+    }
+    return desiredLevel;
+  }
+
+  private thisSideKeepsCode(): boolean {
+    let emitCode: boolean = false;
+    if (this.inIfDef()) {
+      const ifState = this.currIfDef();
+      if (ifState !== undefined) {
+        emitCode = ifState.thisSideEmits;
+      }
+    }
+    return emitCode;
   }
 }

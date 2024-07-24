@@ -1,4 +1,51 @@
 PNut TS Dev NOTEs:
+	NESTED PreProc work:
+		- ifSideEmits = false
+		- elseSideEmits = false
+		- inIfSide = false
+	
+		#ifdef USE_PSRAM16
+			- ifSideEmits = if(USE_PSRAM16 is defined)
+			- inIfSide = true
+		#endif
+			- all are false!
+		
+		
+		
+		#ifdef USE_PSRAM8
+			- ifSideEmits = if(USE_PSRAM8 is defined)
+			- inIfSide = true
+		#endif
+			- all are false!
+		
+		#ifdef USE_PSRAM4
+			- ifSideEmits = if(USE_PSRAM8 is defined)
+			- inIfSide = true
+		#endif
+			- all are false!
+			
+		#ifdef USE_HYPER
+			- ifSideEmits = if(USE_HYPER is defined)
+			- inIfSide = true
+		#endif
+			- all are false!
+			
+		#ifdef USE_PSRAM_EITHER
+		
+		#ifdef USE_PSRAM_SLOW
+		MA_CLKDIV = 3
+		MA_CYMUL = 1
+		#define MA_SYSCLK3
+		#else
+		MA_CLKDIV = 2
+		MA_CYMUL = 2
+		#endif
+		
+		#elseifdef USE_HYPER
+		MA_CLKDIV = 2
+		MA_CYMUL = 1
+		#endif
+	
 	Work USB Issues:
 		- How to locate devices:
 				- Windows, 
@@ -38,7 +85,7 @@ PNut TS Dev NOTEs:
 				- does Node USB make packaging easier? (rather than Node SerialPort?)
 			
 			DEVELOPMENT/RESEARCH PATHS:
-				For JUNE toolchain RELEASE:
+				For AUG toolchain RELEASE:
 					- Complete final keyboard testing on all 3 platforms
 					- Complete final build testing on Windows - all 3 compilers
 					- Complete final build testing - all 3 platforms
@@ -46,6 +93,10 @@ PNut TS Dev NOTEs:
 					- Windows keymap works
 					- Linux keymap works
 					
+					
+
+				
+				
 				Talk with Eric 18 Jun 12:45-13:15L: serial loader approaches:
 					Use my loader when?     all the time, no care about using proploder or loadp2
 					Does compress need loader or will work with mine?    yes it will work for us

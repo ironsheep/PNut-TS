@@ -1,0 +1,76 @@
+' Report for regression testing
+' Run: 07/24/2024
+#
+' ---------------------------------------
+[000] 1: '' =================================================================================================
+[001] 2: ''   Purpose.... Regression TEST: nested ifdef'd code test
+[002] 3: ''   Authors.... Stephen M Moraco, Ada (provided these examples)
+[003] 4: ''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
+[004] 5: ''               -- see below for terms of use
+[005] 6: ''   E-mail..... stephen@ironsheep.biz
+[006] 7: ''   Started.... Jul 2024
+[007] 8: '' =================================================================================================
+[008] 9: ' NOTE: this file is processed twice once with no directives and once with -DCLOCK_300MHZ directive
+[009] 10: ' {Spin2_v43}
+[010] 11: 
+[011] 12: CON ' Memory arbiter constants
+[012] 13: 
+[013] 14: ' #define USE_PSRAM16
+[014] 15: ' #define USE_PSRAM_SLOW
+[015] 16: 
+[016] 17: ' #ifdef USE_PSRAM16
+[017] 18: MA_CHAR_ASHIFT = 1
+[018] 19: MA_CHAR_CYCLES = 4
+[019] 20: MA_PCM_ASHIFT = 2
+[020] 21: MA_PCM_CYCLES = 8
+[021] 22: MA_PROGCYSHL = 1
+[022] 23: MA_PAGESIZE = 0 addbits 9
+[023] 24: MA_BANKSHIFT = 23
+[024] 25: ' #endif
+[025] 26: 
+[026] 27: ' #ifdef USE_PSRAM8
+[027] 35: ' #endif
+[028] 36: 
+[029] 37: ' #ifdef USE_PSRAM4
+[030] 45: ' #endif
+[031] 46: 
+[032] 47: ' #ifdef USE_HYPER
+[033] 55: ' #endif
+[034] 56: 
+[035] 57: ' #ifdef USE_PSRAM_EITHER
+[036] 59: ' #ifdef USE_PSRAM_SLOW
+[037] 68: ' #else
+[038] 69: 
+[039] 70: ' #ifdef USE_PSRAM_FAST
+[040] 74: ' #else
+[041] 75: MA_CLKDIV = 2
+[042] 76: MA_CYMUL = 2
+[043] 77: ' #endif
+[044] 78: 
+[045] 79: ' #endif
+[046] 80: 
+[047] 81: ' #ifndef USE_PSRAM_EITHER
+[048] 82: 
+[049] 83: ' #ifdef USE_PSRAM_SLOW
+[050] 84: MA_CLKDIV = 3
+[051] 85: MA_CYMUL = 1
+[052] 86: ' #define MA_SYSCLK3
+[053] 90: ' #endif
+[054] 91: 
+[055] 92: ' #elseifdef USE_HYPER
+[056] 95: ' #endif
+[057] 96: 
+[058] 97: 
+[059] 98: CON { license }
+[060] 99: {{
+[061] 100: 
+[062] 101:  -------------------------------------------------------------------------------------------------
+[063] 102:   MIT License
+[064] 103: 
+[065] 104:   Copyright (c) 2024 Iron Sheep Productions, LLC
+[066] 105: 
+[067] 106:   Permission is hereby granted... dummy license block for test purposes
+[068] 107:  =================================================================================================
+[069] 108: }}
+[070] 109: 
+' ---------------------------------------
