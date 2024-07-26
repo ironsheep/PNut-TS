@@ -226,3 +226,5 @@ TEST/SHORT/tablesTESTs/dumpTables.tabl.GOLD.txt
 /TEST/ALLCODE-tests
 src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.ORIG
 *.errout
+*-pre.spin2
+

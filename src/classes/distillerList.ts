@@ -79,10 +79,6 @@ export class DistillerList {
   }
 
   public addrecord(newRecord: DistillerRecord) {
-    //if (this.distillPtr >= this.distiller_limit) {
-    // [error_odo]
-    //  throw new Error('Object distiller overflow');
-    //}
     this._recordList.push(newRecord);
     this.logMessage(`* distiller ADD #${this.recordCount}[${this.recordCount - 1}]: ${newRecord.toString()}`);
   }

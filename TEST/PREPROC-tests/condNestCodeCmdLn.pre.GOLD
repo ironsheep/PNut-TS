@@ -1,0 +1,90 @@
+' Report for regression testing
+' Run: 07/24/2024
+#
+' ---------------------------------------
+[000] 1: '' =================================================================================================
+[001] 2: ''   Purpose.... Regression TEST: nested ifdef'd code test
+[002] 3: ''   Authors.... Stephen M Moraco, Ada (provided these examples)
+[003] 4: ''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
+[004] 5: ''               -- see below for terms of use
+[005] 6: ''   E-mail..... stephen@ironsheep.biz
+[006] 7: ''   Started.... Jul 2024
+[007] 8: '' =================================================================================================
+[008] 9: ' NOTE: this file is processed twice once with no directives and once with -DCLOCK_300MHZ directive
+[009] 10: ' {Spin2_v43}
+[010] 11: 
+[011] 12: CON ' Memory arbiter constants
+[012] 13: 
+[013] 14: ' ENUMS test if we skip these correctly
+[014] 15: #0, VALUE0, VALUE1
+[015] 16: #0[-2], VALUE3, VALUE4
+[016] 17: 
+[017] 18: CMD_BASE = 5
+[018] 19: CMD_OFFSET = 5
+[019] 20: 
+[020] 21: #CMD_BASE[CMD_OFFSET], CMD1, CMD2
+[021] 22: 
+[022] 23: #-5[-3], TEST1, TEST2
+[023] 24: 
+[024] 25: ' #ifdef #endif testing
+[025] 26: ' #define USE_PSRAM16
+[026] 26: ' NOTE: #define of USE_PSRAM16 prevented by command line "-U USE_PSRAM16"
+[027] 27: ' #define USE_PSRAM_SLOW
+[028] 28: 
+[029] 29: ' #ifdef USE_PSRAM16
+[030] 37: ' #endif
+[031] 38: 
+[032] 39: ' #ifdef USE_PSRAM8
+[033] 39: ' NOTE: USE_PSRAM8 provided on command line using -D USE_PSRAM8
+[034] 40: MA_CHAR_ASHIFT = 2
+[035] 41: MA_CHAR_CYCLES = 8
+[036] 42: MA_PCM_ASHIFT = 3
+[037] 43: MA_PCM_CYCLES = 16
+[038] 44: MA_PROGCYSHL = 2
+[039] 45: MA_PAGESIZE = 0 addbits 8
+[040] 46: MA_BANKSHIFT = 23
+[041] 47: ' #endif
+[042] 48: 
+[043] 49: ' #ifdef USE_PSRAM4
+[044] 57: ' #endif
+[045] 58: 
+[046] 59: ' #ifdef USE_HYPER
+[047] 67: ' #endif
+[048] 68: 
+[049] 69: ' #ifdef USE_PSRAM_EITHER
+[050] 71: ' #ifdef USE_PSRAM_SLOW
+[051] 80: ' #else
+[052] 81: 
+[053] 82: ' #ifdef USE_PSRAM_FAST
+[054] 86: ' #else
+[055] 87: MA_CLKDIVX = 2
+[056] 88: MA_CYMULX = 2
+[057] 89: ' #endif
+[058] 90: 
+[059] 91: ' #endif
+[060] 92: 
+[061] 93: ' #ifndef USE_PSRAM_EITHER
+[062] 94: 
+[063] 95: ' #ifdef USE_PSRAM_SLOW
+[064] 96: MA_CLKDIV = 3
+[065] 97: MA_CYMUL = 1
+[066] 98: ' #define MA_SYSCLK3
+[067] 102: ' #endif
+[068] 103: 
+[069] 104: ' #elseifdef USE_HYPER
+[070] 107: ' #endif
+[071] 108: 
+[072] 109: 
+[073] 110: CON { license }
+[074] 111: {{
+[075] 112: 
+[076] 113:  -------------------------------------------------------------------------------------------------
+[077] 114:   MIT License
+[078] 115: 
+[079] 116:   Copyright (c) 2024 Iron Sheep Productions, LLC
+[080] 117: 
+[081] 118:   Permission is hereby granted... dummy license block for test purposes
+[082] 119:  =================================================================================================
+[083] 120: }}
+[084] 121: 
+' ---------------------------------------

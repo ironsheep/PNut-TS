@@ -6,6 +6,7 @@
 'use strict';
 // src/classes/spinDocument.ts
 
+import fs from 'fs';
 import * as path from 'path';
 
 import { isSpin1File, isSpin2File, fileExists, dirExists, fileSpecFromURI, loadFileAsString, locateIncludeFile } from '../utils/files';
@@ -56,6 +57,10 @@ class PreProcState {
     this.skipThisIfDef = true;
   }
 
+  get ignoreIfdef(): boolean {
+    return this.skipThisIfDef;
+  }
+
   public setInIf() {
     this.inIfSide = true;
   }
@@ -68,11 +73,6 @@ class PreProcState {
   public setIfEmits(doesEmit: boolean = true) {
     this.ifSideEmits = doesEmit;
     this.elseSideEmits = !doesEmit;
-  }
-
-  public setElseEmits(doesEmit: boolean = true) {
-    this.ifSideEmits = !doesEmit;
-    this.elseSideEmits = doesEmit;
   }
 
   get thisSideEmits(): boolean {
@@ -181,7 +181,25 @@ export class SpinDocument {
     if (this.rawLines.length > 0) {
       this.logMessage(`CODE-PP: file=[${this.fileBaseName}], id=(${this.fileId})`);
       this.preProcess();
+      if (this.context.preProcessorOptions.writeIntermediateSpin2) {
+        this.writeProprocessedSrc(this.dirName, this.fileName, this.preprocessedLines);
+      }
     }
+  }
+
+  public writeProprocessedSrc(dirName: string, fileName: string, lines: TextLine[]) {
+    const fileBasename = path.basename(fileName, '.spin2');
+    const outFilename = path.join(dirName, `${fileBasename}-pre.spin2`);
+    // Create a write stream
+    this.logMessage(`* writing preprocessed source to ${outFilename}`);
+    const stream = fs.createWriteStream(outFilename);
+
+    for (const testLine of lines) {
+      stream.write(`${testLine.text}\n`);
+    }
+
+    // Close the stream
+    stream.end();
   }
 
   get fileId(): number {
@@ -276,7 +294,7 @@ export class SpinDocument {
               this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
               this.defineSymbol(symbol, value);
             } else if (foundUndefine) {
-              this.logMessage(`#define of [${symbol}] prevented by "-U ${symbol}" on command line`);
+              this.logMessage(`CODE-PP: #define of [${symbol}] prevented by "-U ${symbol}" on command line`);
               insertTextLines = [new TextLine(this.fileId, `' NOTE: #define of ${symbol} prevented by command line "-U ${symbol}"`, lineIdx)];
             }
           } else {
@@ -323,16 +341,16 @@ export class SpinDocument {
               if (symbol !== undefined) {
                 if (this.cmdLineDefines.includes(symbol)) {
                   insertTextLines = [new TextLine(this.fileId, `' NOTE: ${symbol} provided on command line using -D ${symbol}`, lineIdx)];
-                  this.logMessage(`#define of [${symbol}] caused by "-D ${symbol}" on command line`);
+                  this.logMessage(`CODE-PP: #define of [${symbol}] caused by "-D ${symbol}" on command line`);
                 }
-                if (this.preProcSymbols.exists(symbol)) {
-                  this.logMessage(`CODE: has symbol [${symbol}]`);
+                const symbolDefined: boolean = this.preProcSymbols.exists(symbol);
+                ifState.setIfEmits(symbolDefined === true);
+                if (symbolDefined) {
+                  this.logMessage(`CODE: ifdef - symbol defined [${symbol}]`);
                   // found symbol... we are keeping code from IF side
-                  ifState.setIfEmits(true); // if symbol is defined this side emits code
                 } else {
                   // symbol doesn't exist keep code from ELSE side
-                  this.logMessage(`CODE: don't have symbol [${symbol}]`);
-                  ifState.setIfEmits(false); // if symbol is defined this side emits code
+                  this.logMessage(`CODE: ifdef - NOT symbol defined [${symbol}]`);
                 }
                 forceKeepThisline = true;
                 // this.logMessage(`CODE: (DBG) thisSideKeexpsCode=(${thisSideKxeepsCode})`);
@@ -363,18 +381,18 @@ export class SpinDocument {
             if (isElseForm == false || (isElseForm == true && this.inIfDef())) {
               // this.logMessage(`CODE: (DBG) inPreProcIxForIFNOT=(${inPreProcIFxorIFNOT})`);
               const symbol = this.getSymbolName(currLine);
-              if (symbol) {
+              if (symbol !== undefined) {
                 if (this.cmdLineDefines.includes(symbol)) {
                   insertTextLines = [new TextLine(this.fileId, `' NOTE: ${symbol} provided on command line using -D ${symbol}`, lineIdx)];
                 }
-                if (this.preProcSymbols.exists(symbol)) {
+                const symbolDefined: boolean = this.preProcSymbols.exists(symbol);
+                ifState.setIfEmits(symbolDefined === false);
+                if (symbolDefined === false) {
                   // found symbol... we are keeping code from ELSE side
-                  this.logMessage(`CODE: don't have symbol [${symbol}]`);
-                  ifState.setIfEmits(false); // if symbol is NOT defined this side emits code
+                  this.logMessage(`CODE: ifndef - symbol NOT defined [${symbol}]`);
                 } else {
                   // symbol doesn't exist keep code from IF side
-                  this.logMessage(`CODE: has symbol [${symbol}]`);
-                  ifState.setIfEmits(true); // if symbol is NOT defined this side emits code
+                  this.logMessage(`CODE: ifndef - symbol defined [${symbol}]`);
                 }
                 replaceCurrent = this.commentOut(currLine);
                 // this.logMessage(`CODE: (DBG) thisSideKeexpsCode=(${thisSideKexepsCode})`);
@@ -440,8 +458,8 @@ export class SpinDocument {
             this.reportError(`Filename missing from #include statement!`, lineIdx, 0);
           }
         } else if (currLine.match(/^#-*[0-9%$]+\s*,*|^#_*[A-Za-z_]+\s*,*/)) {
-          // ADD LOOK FOR ENUMERATION START WITH SYMBOL NAME
           // ignore these enumeration starts, they are not meant to be directives
+          this.logMessage(`CODE-PP: SKIP ENUM [${currLine}]`);
         } else {
           // generate error! vs. throwing exception
           let lineParts = this.splitLineOnWhiteSpace(currLine);

@@ -553,7 +553,7 @@ export class SpinResolver {
             let countResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
             if (countResult.value > BigInt(this.hubOrgLimit)) {
               // [error_tmvsid]
-              throw new Error('Too much variable space is declared A');
+              throw new Error('Too much variable space is declared (m280)');
             }
             count = Number(countResult.value);
             this.getRightBracket();
@@ -563,7 +563,7 @@ export class SpinResolver {
           this.varPtr += count << wordSize;
           if (this.varPtr > this.hubOrgLimit) {
             // [error_tmvsid]
-            throw new Error('Too much variable space is declared B');
+            throw new Error('Too much variable space is declared (m281)');
           }
           this.recordSymbol(newVarSymbol);
         } while (this.getCommaOrEndOfLine());
@@ -598,7 +598,7 @@ export class SpinResolver {
     }
     if (this.varPtr > this.hubOrgLimit) {
       // [error_tmvsid]
-      throw new Error('Too much variable space is declared C');
+      throw new Error('Too much variable space is declared (m282)');
     }
   }
 
@@ -1077,7 +1077,7 @@ export class SpinResolver {
           }
           if (isDatStorage && pass == 0) {
             // [error_siad]
-            throw new Error('Symbol is already defined');
+            throw new Error('Symbol is already defined (m230)');
           }
           const tmpSymbolName: string = didFindLocal ? String(symbol.value) : this.currElement.stringValue;
           this.symbolName = this.weHaveASymbol ? tmpSymbolName : '';
@@ -1126,13 +1126,13 @@ export class SpinResolver {
                 if (isSigned) {
                   if ((BigInt(fvarResult.value) & BigInt(0xf0000000)) != BigInt(0xf0000000)) {
                     // [error_fvar]
-                    throw new Error('FVAR/FVARS data is too big');
+                    throw new Error('FVAR/FVARS data is too big (m160)');
                   }
                   this.compileDatRfvars(fvarResult.value);
                 } else {
                   if ((BigInt(fvarResult.value) & BigInt(0xe0000000)) != 0n) {
                     // [error_fvar]
-                    throw new Error('FVAR/FVARS data is too big');
+                    throw new Error('FVAR/FVARS data is too big (m161)');
                   }
                   this.compileDatRfvar(fvarResult.value);
                 }
@@ -1267,7 +1267,7 @@ export class SpinResolver {
                 }
                 if (Number(hubAddressResult.value) > ObjectImage.MAX_SIZE_IN_BYTES) {
                   // [error_haec]
-                  throw new Error('Hub address exceeds $100000 ceiling');
+                  throw new Error('Hub address exceeds $100000 ceiling (m170)');
                 }
                 this.hubOrg = Number(hubAddressResult.value);
                 this.orghOffset = this.hubOrg - this.objImage.offset;
@@ -1278,11 +1278,11 @@ export class SpinResolver {
                   this.hubOrgLimit = Number(hubLimitResult.value);
                   if (this.hubOrgLimit < this.hubOrg) {
                     // [error_hael]
-                    throw new Error('Hub address exceeds limit');
+                    throw new Error('Hub address exceeds limit (m180)');
                   }
                   if (this.hubOrgLimit > ObjectImage.MAX_SIZE_IN_BYTES) {
                     // [error_haec]
-                    throw new Error('Hub address exceeds $100000 ceiling');
+                    throw new Error('Hub address exceeds $100000 ceiling (m171)');
                   }
                 }
                 // if in pasmMode ...
@@ -1527,7 +1527,7 @@ export class SpinResolver {
             const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b111) {
               // [error_smb0t7]
-              throw new Error('Selector must be 0 to 7');
+              throw new Error('Selector must be 0 to 7 (m260)');
             }
             this.instructionImage |= Number(valueResult.value) << 19;
           }
@@ -1543,7 +1543,7 @@ export class SpinResolver {
           const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b111) {
             // [error_smb0t7]
-            throw new Error('Selector must be 0 to 7');
+            throw new Error('Selector must be 0 to 7 (m261)');
           }
           this.instructionImage |= Number(valueResult.value) << 19;
         }
@@ -1564,7 +1564,7 @@ export class SpinResolver {
             const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b11) {
               // [error_smb0t3]
-              throw new Error('Selector must be 0 to 3');
+              throw new Error('Selector must be 0 to 3 (m250)');
             }
             this.instructionImage |= Number(valueResult.value) << 19;
           }
@@ -1580,7 +1580,7 @@ export class SpinResolver {
           const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b11) {
             // [error_smb0t3]
-            throw new Error('Selector must be 0 to 3');
+            throw new Error('Selector must be 0 to 3 (m251)');
           }
           this.instructionImage |= Number(valueResult.value) << 19;
         }
@@ -1601,7 +1601,7 @@ export class SpinResolver {
             const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
             if (Number(valueResult.value) > 0b1) {
               // [error_smb0t1]
-              throw new Error('Selector must be 0 to 1');
+              throw new Error('Selector must be 0 to 1 (m240)');
             }
             this.instructionImage |= Number(valueResult.value) << 19;
           }
@@ -1617,7 +1617,7 @@ export class SpinResolver {
           const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           if (Number(valueResult.value) > 0b1) {
             // [error_smb0t1]
-            throw new Error('Selector must be 0 to 1');
+            throw new Error('Selector must be 0 to 1 (m241)');
           }
           this.instructionImage |= Number(valueResult.value) << 19;
         }
@@ -2172,7 +2172,7 @@ export class SpinResolver {
           branchAddress -= orgAddress + 8;
           if (branchAddress & 0b11) {
             // [error_rainawi]
-            throw new Error('Relative address is not aligned with instruction');
+            throw new Error('Relative address is not aligned with instruction (m200)');
           }
           branchAddress = (branchAddress >> 2) & (0xfffff >> 2);
         }
@@ -2187,7 +2187,7 @@ export class SpinResolver {
           this.logMessage(`* trySRel() hubMode=(${this.hubMode}) value=${hexString(valueResult.value)}, branchAddress=${hexString(branchAddress)}`);
           if (branchAddress & 0b11) {
             // [error_rainawi]
-            throw new Error('Relative address is not aligned with instruction');
+            throw new Error('Relative address is not aligned with instruction (m201)');
           }
           // check signed number
           // TODO: watch that this doesn't do weird stuff! (fix math if does!)
@@ -2658,7 +2658,7 @@ export class SpinResolver {
             this.hubOrg++;
             if (this.hubOrg > this.hubOrgLimit) {
               // [error_hael]
-              throw new Error('Hub address exceeds limit');
+              throw new Error('Hub address exceeds limit (m181)');
             }
           } else {
             // in COG mode
@@ -3105,7 +3105,7 @@ export class SpinResolver {
       // if any match after 'other', error
       if (haveOtherCase) {
         // [error_omblc]
-        throw new Error('OTHER must be last case');
+        throw new Error('OTHER must be last case (m1E0)');
       }
       if (matchIsOtherCase) {
         haveOtherCase = true;
@@ -3134,7 +3134,7 @@ export class SpinResolver {
 
     if (caseCount < 1) {
       // [error_nce]
-      throw new Error('No cases encountered');
+      throw new Error('No cases encountered (m1D0)');
     }
     if (haveOtherCase) {
       this.restoreElementLocation(otherCaseElementIndex);
@@ -3263,7 +3263,7 @@ export class SpinResolver {
       // if any match after 'other', error
       if (haveOtherCase) {
         // [error_omblc]
-        throw new Error('OTHER must be last case');
+        throw new Error('OTHER must be last case (m1E1)');
       }
       const savedCaseColumn: number = this.scopeColumn;
       this.setScopeColumn(this.lineColumn);
@@ -3292,7 +3292,7 @@ export class SpinResolver {
     // here is @@done1:
     if (caseCount < 1) {
       // [error_nce]
-      throw new Error('No cases encountered');
+      throw new Error('No cases encountered (m1D1)');
     }
     const tablePtr: number = this.read_bstack(eCaseFast.CF_TablePtr);
     const minValue: number = this.read_bstack(eCaseFast.CF_MinValue);
@@ -4136,7 +4136,7 @@ export class SpinResolver {
         this.varPtr += objVar[fileNumber];
         if (this.varPtr > this.obj_limit) {
           // [error_tmvsid]
-          throw new Error('Too much variable space is declared D');
+          throw new Error('Too much variable space is declared (m283)');
         }
       }
       this.logMessage(`  -- compObjBlks() end of 2nd pass`);
@@ -4717,7 +4717,7 @@ export class SpinResolver {
             //   name = value, name = value, name = name = value, #0[4], name1, name2
             if (firstPass) {
               // [error_eaucnop]
-              throw new Error('1st Expected a unique constant name or "#" (m0B0)');
+              throw new Error('Expected a unique constant name or "#" (m0B0)');
             }
             backupSymbolName = this.replacedName; // stashed by getElement()
             this.logMessage(`* BACKUP SYMBOL name for use in set/verify name=[${backupSymbolName}]`);
@@ -4817,7 +4817,7 @@ export class SpinResolver {
             this.getElement();
             this.logMessage(`EEEE: Element at fail: [${this.currElement.toString()}]`);
             // [error_eaucnop]
-            throw new Error('case Expected a unique constant name or "#" (m0B1)');
+            throw new Error('Expected a unique constant name or "#" (m0B1)');
           }
         } while (this.getCommaOrEndOfLine());
         // if we hit end of file, we're done
@@ -4891,7 +4891,7 @@ export class SpinResolver {
 
     if (currentValue.type !== adjustedExpected.type || currentValue.value !== adjustedExpected.value) {
       // [error_siad]
-      throw new Error('Symbol is already defined');
+      throw new Error('Symbol is already defined (m231)');
     }
   }
 
@@ -5039,7 +5039,7 @@ export class SpinResolver {
           // we are now doing an assignment of some sort
           if (savedElement.isAssignable == false) {
             // [error_tocbufa]
-            throw new Error('This operator cannot be used for assignment');
+            throw new Error('This operator cannot be used for assignment (m290)');
           }
           const bytecode: eByteCode = savedElement.byteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write_push);
           this.compileVariablePre(bytecode);
@@ -5191,7 +5191,7 @@ export class SpinResolver {
             // var binary op assign (w/push)?
             if (this.currElement.isAssignable == false) {
               // [error_tocbufa]
-              throw new Error('This operator cannot be used for assignment');
+              throw new Error('This operator cannot be used for assignment (m291)');
             }
             this.logMessage(`* compileInstruction() type_equal`);
             const baseByteCode: eByteCode = this.currElement.byteCode;
@@ -5264,7 +5264,7 @@ export class SpinResolver {
       if (startValueReturn.value > BigInt(inlineLimit)) {
         // [error_icaexl]
         //throw new Error('Inline cog address exceeds $120 limit');
-        throw new Error(`Inline cog address exceeds $${this.inlineLimit.toString(16)} limit`);
+        throw new Error(`Inline cog address exceeds $${this.inlineLimit.toString(16)} limit (m190)`);
       }
       inlineOrigin = Number(startValueReturn.value);
       if (this.checkComma()) {
@@ -5272,7 +5272,7 @@ export class SpinResolver {
         if (limitValueReturn.value > BigInt(inlineLimit)) {
           // [error_icaexl]
           //throw new Error('Inline cog address exceeds $120 limit');
-          throw new Error(`Inline cog address exceeds $${this.inlineLimit.toString(16)} limit`);
+          throw new Error(`Inline cog address exceeds $${this.inlineLimit.toString(16)} limit (m191)`);
         }
         inlineLimit = Number(limitValueReturn.value);
       }
@@ -5398,7 +5398,7 @@ export class SpinResolver {
     this.getLeftParen();
     if (this.checkRightParen()) {
       // [error_esendd]
-      throw new Error('Expected SEND data');
+      throw new Error('Expected SEND data (m140)');
     }
     // check for string of bytes
     do {
@@ -5449,7 +5449,7 @@ export class SpinResolver {
     // PNut ci_unary:
     if (this.currElement.isAssignable == false) {
       // [error_tocbufa]
-      throw new Error('This operator cannot be used for assignment');
+      throw new Error('This operator cannot be used for assignment (m292)');
     }
     const byteCode: eByteCode = Number(this.currElement.byteCode);
     const adjustedByteCode: number = byteCode - (eByteCode.bc_lognot - eByteCode.bc_lognot_write);
@@ -6484,7 +6484,7 @@ export class SpinResolver {
       this.getElement();
       if (this.currElement.type == eElementType.type_end) {
         // [error_eright]
-        throw new Error('Expected ")"');
+        throw new Error('Expected ")" (m120)');
       }
       if (this.currElement.type == eElementType.type_left) {
         nestingCount++;
@@ -6507,7 +6507,7 @@ export class SpinResolver {
       this.getElement();
       if (this.currElement.type == eElementType.type_end) {
         // [error_erightb]
-        throw new Error('Expected "]"');
+        throw new Error('Expected "]" (m130)');
       }
       if (this.currElement.type == eElementType.type_leftb) {
         // NOTE: this may be extra capability which SPIN2 doesn't support
@@ -6880,12 +6880,12 @@ export class SpinResolver {
         const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
         if (valueReturn.value < 1n || valueReturn.value > 255n) {
           // [error_scmrf]
-          throw new Error('STRING characters must range from 1 to 255');
+          throw new Error('STRING characters must range from 1 to 255 (m210)');
         }
         this.objWrByte(Number(valueReturn.value));
         if (++stringLength > 255) {
           // [error_sdcx]
-          throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+          throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes (m220)');
         }
         this.logMessage(`* ct_at() post getValue elem=[${this.currElement.toString()}]`);
         this.getElement();
@@ -7104,7 +7104,7 @@ export class SpinResolver {
         // PNut @@checkmult2:
         if (returnValueCount > 1) {
           // [error_spmcrmv]
-          throw new Error('SEND parameter methods cannot return multiple values');
+          throw new Error('SEND parameter methods cannot return multiple values (m270)');
         } else if (returnValueCount == 0) {
           //no return value
           this.getElement();
@@ -7124,7 +7124,7 @@ export class SpinResolver {
       // this is @@checkmult2:
       if (returnValueCount > 1) {
         // [error_spmcrmv]
-        throw new Error('SEND parameter methods cannot return multiple values');
+        throw new Error('SEND parameter methods cannot return multiple values (m271)');
       } else if (returnValueCount == 1) {
         // this is @@exp:
         this.logMessage(`* compileParameterSend() type_method, retValCt==1`);
@@ -7145,7 +7145,7 @@ export class SpinResolver {
         // this is @@checkmult2:
         if (returnCount > 1) {
           // [error_spmcrmv]
-          throw new Error('SEND parameter methods cannot return multiple values');
+          throw new Error('SEND parameter methods cannot return multiple values (m272)');
         } else if (returnCount == 0) {
           //no return value
           this.getElement();
@@ -7236,12 +7236,12 @@ export class SpinResolver {
       let charReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
       if (BigInt(charReturn.value) < 1n || BigInt(charReturn.value) > 255n) {
         // [error_scmrf]
-        throw new Error('STRING characters must range from 1 to 255');
+        throw new Error('STRING characters must range from 1 to 255 (m211)');
       }
       this.objWrByte(Number(charReturn.value));
       if (++charCount > 254) {
         // [error_sdcx]
-        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes (m221)');
       }
     } while (this.getCommaOrRightParen());
     this.objWrByte(0); // place zero terminator
@@ -7267,7 +7267,7 @@ export class SpinResolver {
       this.objWrByte(Number(charReturn.value));
       if (++charCount > 254) {
         // [error_sdcx]
-        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes');
+        throw new Error('@"string"/STRING/LSTRING data cannot exceed 254 bytes (m222)');
       }
     } while (this.getCommaOrRightParen());
     // and place interpreter string length just before length and string in object
@@ -7749,13 +7749,13 @@ export class SpinResolver {
               if (this.currElement.type == eElementType.type_loc_byte || this.currElement.type == eElementType.type_loc_word) {
                 // [error_lvmb]
                 // We don't quite like this message (so we adjusted to not match PNut)
-                throw new Error('Local variable must be LONG and within first 16 longs');
+                throw new Error('Local variable must be LONG and within first 16 longs (m1C0)');
               }
               if (this.currElement.type == eElementType.type_loc_long) {
                 if (this.currElement.bigintValue & BigInt(0b11) || this.currElement.bigintValue >= BigInt(0x10 << 2)) {
                   // [error_lvmb]
                   // We don't quite like this message (so we adjusted to not match PNut)
-                  throw new Error('Local variable must be LONG and within first 16 longs');
+                  throw new Error('Local variable must be LONG and within first 16 longs (m1C1)');
                 }
               }
               // return address of local var
@@ -8756,7 +8756,7 @@ private checkDec(): boolean {
     this.getElement();
     if (this.currElement.type != eElementType.type_right) {
       // [error_eright]
-      throw new Error('get Expected ")"');
+      throw new Error('Expected ")" (m121)');
     }
   }
 
@@ -8772,7 +8772,7 @@ private checkDec(): boolean {
     this.getElement();
     if (this.currElement.type != eElementType.type_rightb) {
       // [error_erightb]
-      throw new Error('Expected "]"');
+      throw new Error('Expected "]" (m131)');
     }
   }
 
@@ -9246,7 +9246,7 @@ private checkDec(): boolean {
             if ((b & mask31Bit) == 0n) {
               // [error_fpo]
               // (technically this is divide-by-zero attempted)
-              throw new Error(`Floating-point overflow`);
+              throw new Error(`Floating-point overflow (m150)`);
             }
             let aInternalFloat64: number = bigIntFloat32ToNumber(a);
             const bInternalFloat64: number = bigIntFloat32ToNumber(b);
@@ -9270,7 +9270,7 @@ private checkDec(): boolean {
           if ((b & mask31Bit) == 0n) {
             // [error_fpo]
             // (technically this is divide-by-zero attempted)
-            throw new Error(`Floating-point overflow`);
+            throw new Error(`Floating-point overflow (m151)`);
           }
           let aInternalFloat64: number = bigIntFloat32ToNumber(a);
           const bInternalFloat64: number = bigIntFloat32ToNumber(b);
@@ -9600,7 +9600,7 @@ private checkDec(): boolean {
   private checkOverflow(value: bigint) {
     if ((value & BigInt(0x7fffffff)) == BigInt(0x7f800000)) {
       // [error_fpo]
-      throw new Error('Floating-point overflow');
+      throw new Error('Floating-point overflow (m152)');
     }
   }
 

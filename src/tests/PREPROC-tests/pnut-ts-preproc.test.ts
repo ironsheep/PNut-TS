@@ -11,6 +11,7 @@ import { PNutInTypeScript } from '../../pnut-ts';
 import {
   appendDiagnosticString,
   compareListingFiles,
+  compareObjOrBinFiles,
   fileExists,
   removeExistingFiles,
   removeFileIfEmpty,
@@ -47,6 +48,10 @@ describe('PNut_ts preprocesses files correctly', () => {
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
+  // Filter out files with the debug extensions
+  files = files.filter((file) => !file.endsWith('.byHandPre.spin2'));
+  files = files.filter((file) => !file.endsWith('-pre.spin2'));
+
   if (files.length > 1) {
     files.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }
@@ -84,10 +89,12 @@ describe('PNut_ts preprocesses files correctly', () => {
       const errorFSpec = path.join(testDirPath, `${basename}.errout`);
 
       const preprocessFSpec = path.join(testDirPath, `${basename}.pre`);
+      const listingFSpec = path.join(testDirPath, `${basename}.lst`);
+      const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
       stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
       // Remove existing files
-      const existingFiles: string[] = [preprocessFSpec, errorFSpec];
+      const existingFiles: string[] = [preprocessFSpec, listingFSpec, binaryFSpec, errorFSpec];
       removeExistingFiles(existingFiles);
 
       // compile our file generating output files
@@ -97,8 +104,11 @@ describe('PNut_ts preprocesses files correctly', () => {
         conditionalArgs = ['-D', 'CLOCK_300MHZ'];
       } else if (basename === 'condNestCodeCmdLn') {
         conditionalArgs = ['-D', 'USE_PSRAM8', '-U', 'USE_PSRAM16'];
+      } else if (basename === 'include') {
+        conditionalArgs = ['-I', 'inc', '--pass', 'preprocess'];
       }
-      const testArguments: string[] = ['node', 'pnut-ts.js', '-v', '--log', 'preproc', '--regression', 'preproc', '--', `${file}`];
+
+      const testArguments: string[] = ['node', 'pnut-ts.js', '-v', '-l', '-i', '--log', 'preproc', '--regression', 'preproc', '--', `${file}`];
       // const testArguments: string[] = ['node', 'pnut-ts.js', '-v', '--regression', 'preproc', '--', `${file}`];
       const adjustedArgs: string[] = [...testArguments.slice(0, 2), ...conditionalArgs, ...testArguments.slice(2)];
       console.log(`* TEST sending testArguments=[${adjustedArgs}]`);
@@ -119,10 +129,15 @@ describe('PNut_ts preprocesses files correctly', () => {
 
       // my wait list...
       const outFilesList: string[] = [preprocessFSpec];
+      if (basename !== 'include') {
+        outFilesList.push(listingFSpec);
+        outFilesList.push(binaryFSpec);
+      }
       const compileProducesFiles: boolean = outFilesList.length > 0;
       let whatFailed: string = '';
       if (compileProducesFiles) {
         const allFilesExist: boolean = await waitForFiles(outFilesList);
+        removeFileIfEmpty(errorFSpec);
         // ensure all output files were generated!
         if (!allFilesExist) {
           // some files missing
@@ -134,10 +149,19 @@ describe('PNut_ts preprocesses files correctly', () => {
               whatFailed = appendDiagnosticString(whatFailed, '.pre', ', ');
               allFilesPresent = false;
             }
+            fileGenerated = fileExists(listingFSpec);
+            if (!fileGenerated) {
+              whatFailed = appendDiagnosticString(whatFailed, '.lst', ', ');
+              allFilesPresent = false;
+            }
+            fileGenerated = fileExists(binaryFSpec);
+            if (!fileGenerated) {
+              whatFailed = appendDiagnosticString(whatFailed, '.bin', ', ');
+              allFilesPresent = false;
+            }
           }
 
           // detect exception output
-          removeFileIfEmpty(errorFSpec);
           if (fileExists(errorFSpec)) {
             whatFailed = appendDiagnosticString(whatFailed, 'Exception Generated', ', ');
           }
@@ -150,14 +174,33 @@ describe('PNut_ts preprocesses files correctly', () => {
           // ID the golden listing file
           const goldenFSpec = path.join(testDirPath, `${basename}.pre.GOLD`);
           // Compare listing files
-          const noFilter: string[] = ["' Run:"];
-          const filesMatch: boolean = compareListingFiles(preprocessFSpec, goldenFSpec, noFilter);
+          const filterHeaders: string[] = ["' Run:"];
+          let filesMatch: boolean = compareListingFiles(preprocessFSpec, goldenFSpec, filterHeaders);
           if (!filesMatch) {
-            whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
+            whatFailed = appendDiagnosticString(whatFailed, 'Preprocess Files', ', ');
+          }
+
+          // ID the golden listing file (optional for some tests)
+          const goldenListFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
+          if (fileExists(goldenListFSpec)) {
+            // Compare listing files
+            filesMatch = compareListingFiles(listingFSpec, goldenListFSpec);
+            if (!filesMatch) {
+              whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
+            }
+          }
+
+          // ID the golden .bin file (optional for some tests)
+          const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
+          // Compare binary files
+          if (fileExists(goldenBinFSpec)) {
+            filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
+            if (!filesMatch) {
+              whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
+            }
           }
 
           // detect exception output
-          removeFileIfEmpty(errorFSpec);
           if (fileExists(errorFSpec)) {
             whatFailed = appendDiagnosticString(whatFailed, 'Exception Generated', ', ');
           }

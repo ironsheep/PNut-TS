@@ -5,7 +5,7 @@
 // src/pnut-ts.ts
 'use strict';
 import { Command, Option, CommanderError, type OptionValues } from 'commander';
-import { Context } from './utils/context';
+import { Context, PreProcessorOptions } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
 import path from 'path';
@@ -93,11 +93,11 @@ export class PNutInTypeScript {
       .option('-O, --obj', 'Generate object files (.obj) from compilation')
       //.option('-B, --bin', 'Generate binary files (.bin) suitable for download')
       .option('-o, --output <name>', 'Specify output file basename')
-      .option('-i, --interface', 'Generate interface document files (.txt) during compilation')
+      .option('-i, --intermediate', 'Generate *-pre.spin2 after preprocessing')
       .option('-q, --quiet', 'Quiet mode (suppress banner and non-error text)')
-      .option('-I, --Include <dir...>', 'Add preprocessor include directories')
-      .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
+      .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
+      .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .addOption(new Option('--log <objectName...>', 'objectName').choices(['all', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver']))
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
@@ -189,7 +189,9 @@ export class PNutInTypeScript {
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
     }
-
+    if (this.options.intermediate) {
+      this.context.preProcessorOptions.writeIntermediateSpin2 = true;
+    }
     if (this.options.list) {
       this.context.compileOptions.writeListing = true;
     }
@@ -462,7 +464,7 @@ export class PNutInTypeScript {
 
     if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
-      if (!this.context.reportOptions.writePreprocessReport) {
+      if (!this.context.passOptions.afterPreprocess) {
         const theCompiler = new Compiler(this.context);
         try {
           await theCompiler.Compile();

@@ -44,6 +44,7 @@ export interface PreProcessorOptions {
   defSymbols: string[]; // symbols from -Dsymbol
   undefSymbols: string[]; // symbols from -Usymbol
   includeFolders: string[]; // paths from -Ipath
+  writeIntermediateSpin2: boolean;
 }
 
 export interface CompileOptions {
@@ -131,7 +132,7 @@ export class Context {
       regressionTesting: false,
       coverageTesting: false
     };
-    this.preProcessorOptions = { defSymbols: [], undefSymbols: [], includeFolders: [] };
+    this.preProcessorOptions = { defSymbols: [], undefSymbols: [], includeFolders: [], writeIntermediateSpin2: false };
     this.runEnvironment = { serialPortDevices: [] };
     this.passOptions = { afterPreprocess: false, afterElementize: false, afterConBlock: false };
     this.compileOptions = {

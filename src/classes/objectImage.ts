@@ -88,7 +88,7 @@ export class ObjectImage {
       this.updateMax();
     } else {
       // [error_pex]
-      throw new Error('Program exceeds 1024KB');
+      throw new Error('Program exceeds 1024KB (m1F0)');
     }
   }
 

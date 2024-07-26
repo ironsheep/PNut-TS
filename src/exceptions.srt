@@ -185,37 +185,35 @@
 [error_loxre], ./classes/spinResolver.ts: 1B1
 [error_loxre], ./classes/spinResolver.ts: 1B2
 [error_loxuoe], ./classes/spinFiles.ts:
-[error_lscmrf], ./classes/spinResolver.ts: 1C0
-[error_lscmrf], ./classes/spinResolver.ts: 1C1
-[error_lvmb], ./classes/spinResolver.ts: 1D0
-[error_lvmb], ./classes/spinResolver.ts: 1D1
+[error_lscmrf], ./classes/spinResolver.ts:
+[error_lvmb], ./classes/spinResolver.ts: 1C0
+[error_lvmb], ./classes/spinResolver.ts: 1C1
 [error_mpmblv], ./classes/spinResolver.ts:
-[error_nce], ./classes/spinResolver.ts: 1E0
-[error_nce], ./classes/spinResolver.ts: 1E1
+[error_nce], ./classes/spinResolver.ts: 1D0
+[error_nce], ./classes/spinResolver.ts: 1D1
 [error_nchcor], ./classes/spinResolver.ts:
 [error_nmt4c], ./classes/spinElementizer.ts:
 [error_npmf], ./classes/spinResolver.ts:
 [error_oaet], ./classes/spinResolver.ts:
 [error_ocmbf1tx], ./classes/spinResolver.ts:
-[error_odo], ./classes/distillerList.ts: 1F0
-[error_odo], ./classes/spinResolver.ts: 1F1
+[error_odo], ./classes/spinResolver.ts:
 [error_ohnawiac], ./classes/spinResolver.ts:
 [error_oinah], ./classes/spinResolver.ts:
 [error_oinaiom], ./classes/spinResolver.ts:
-[error_omblc], ./classes/spinResolver.ts: 200
-[error_omblc], ./classes/spinResolver.ts: 201
+[error_omblc], ./classes/spinResolver.ts: 1E0
+[error_omblc], ./classes/spinResolver.ts: 1E1
 [error_onawiac], ./classes/spinResolver.ts:
 [error_pclo], ./classes/objectSymbols.ts:
-[error_pex], ./classes/objectImage.ts: 210
-[error_pex], ./classes/spin2Parser.ts: 211
-[error_pex], ./classes/spin2Parser.ts: 212
+[error_pex], ./classes/objectImage.ts: 1F0
+[error_pex], ./classes/spin2Parser.ts: 1F1
+[error_pex], ./classes/spin2Parser.ts: 1F2
 [error_picmr116], ./classes/spinResolver.ts:
 [error_picmr6b], ./classes/spinResolver.ts:
 [error_pllscnba], ./classes/spinResolver.ts:
 [error_pmbttsp], ./classes/spinResolver.ts:
 [error_racc], ./classes/spinResolver.ts:
-[error_rainawi], ./classes/spinResolver.ts: 220
-[error_rainawi], ./classes/spinResolver.ts: 221
+[error_rainawi], ./classes/spinResolver.ts: 200
+[error_rainawi], ./classes/spinResolver.ts: 201
 [error_raioor], ./classes/spinResolver.ts:
 [error_rbeiooa], ./classes/spinResolver.ts:
 [error_rbeioor], ./classes/spinResolver.ts:
@@ -224,24 +222,23 @@
 [error_rinah], ./classes/spinResolver.ts:
 [error_rinaiom], ./classes/spinResolver.ts:
 [error_rpcx], ./classes/spinResolver.ts:
-[error_scmrf], ./classes/spinResolver.ts: 230
-[error_scmrf], ./classes/spinResolver.ts: 231
-[error_sdcx], ./classes/spinResolver.ts: 240
-[error_sdcx], ./classes/spinResolver.ts: 241
-[error_sdcx], ./classes/spinResolver.ts: 242
-[error_sdcx], ./classes/spinResolver.ts: 243
+[error_scmrf], ./classes/spinResolver.ts: 210
+[error_scmrf], ./classes/spinResolver.ts: 211
+[error_sdcx], ./classes/spinResolver.ts: 220
+[error_sdcx], ./classes/spinResolver.ts: 221
+[error_sdcx], ./classes/spinResolver.ts: 222
 [error_sendcbu], ./classes/spinResolver.ts:
-[error_siad], ./classes/spinResolver.ts: 250
-[error_siad], ./classes/spinResolver.ts: 251
-[error_smb0t1], ./classes/spinResolver.ts: 260
-[error_smb0t1], ./classes/spinResolver.ts: 261
-[error_smb0t3], ./classes/spinResolver.ts: 270
-[error_smb0t3], ./classes/spinResolver.ts: 271
-[error_smb0t7], ./classes/spinResolver.ts: 280
-[error_smb0t7], ./classes/spinResolver.ts: 281
-[error_spmcrmv], ./classes/spinResolver.ts: 290
-[error_spmcrmv], ./classes/spinResolver.ts: 291
-[error_spmcrmv], ./classes/spinResolver.ts: 292
+[error_siad], ./classes/spinResolver.ts: 230
+[error_siad], ./classes/spinResolver.ts: 231
+[error_smb0t1], ./classes/spinResolver.ts: 240
+[error_smb0t1], ./classes/spinResolver.ts: 241
+[error_smb0t3], ./classes/spinResolver.ts: 250
+[error_smb0t3], ./classes/spinResolver.ts: 251
+[error_smb0t7], ./classes/spinResolver.ts: 260
+[error_smb0t7], ./classes/spinResolver.ts: 261
+[error_spmcrmv], ./classes/spinResolver.ts: 270
+[error_spmcrmv], ./classes/spinResolver.ts: 271
+[error_spmcrmv], ./classes/spinResolver.ts: 272
 [error_tdcbpbas], ./classes/spinResolver.ts:
 [error_teinafti], ./classes/spinResolver.ts:
 [error_ticobu], ./classes/spinResolver.ts:
@@ -249,13 +246,13 @@
 [error_tmop], ./classes/spinFiles.ts:
 [error_tmrmr], ./classes/spinResolver.ts:
 [error_tmrnr], ./classes/spinResolver.ts:
-[error_tmvsid], ./classes/spinResolver.ts: 2A0
-[error_tmvsid], ./classes/spinResolver.ts: 2A1
-[error_tmvsid], ./classes/spinResolver.ts: 2A2
-[error_tmvsid], ./classes/spinResolver.ts: 2A3
-[error_tocbufa], ./classes/spinResolver.ts: 2B0
-[error_tocbufa], ./classes/spinResolver.ts: 2B1
-[error_tocbufa], ./classes/spinResolver.ts: 2B2
+[error_tmvsid], ./classes/spinResolver.ts: 280
+[error_tmvsid], ./classes/spinResolver.ts: 281
+[error_tmvsid], ./classes/spinResolver.ts: 282
+[error_tmvsid], ./classes/spinResolver.ts: 283
+[error_tocbufa], ./classes/spinResolver.ts: 290
+[error_tocbufa], ./classes/spinResolver.ts: 291
+[error_tocbufa], ./classes/spinResolver.ts: 292
 [error_uc], ./classes/spinElementizer.ts:
 [error_us], ./classes/spinResolver.ts:
 [error_vnao], ./classes/spinResolver.ts:
