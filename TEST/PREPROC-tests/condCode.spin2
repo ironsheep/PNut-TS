@@ -28,6 +28,7 @@ CON { timing }
 
   _clkfreq = CLK_FREQ                                           ' set system clock
 
+DAT
 
 CON { license }
 {{

@@ -106,6 +106,7 @@ MA_CLKDIV = 2
 MA_CYMUL = 1
 #endif
 
+DAT
 
 CON { license }
 {{
