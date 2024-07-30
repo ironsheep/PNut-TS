@@ -1,0 +1,3410 @@
+'' =================================================================================================
+''
+''   File....... flash_fs.spin2
+''   Purpose.... This object is the full flash file system driver for the P2
+''               it manages all but the first 512KB of the flash chip (where the boot image is stored)
+''               it provides a standard (ANSI C like) file system interface to the flash chip
+''   Author..... Chip Gracey
+''   Conrtributions..... Jon McPhalen, Stephen M Moraco
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... AUG 2023
+''   Updated.... 22 DEC 2023
+''
+'' =================================================================================================
+'' v1.2.0 - initial release of flash_fs with full API
+'' v1.2.1 - revised seek() method parameters - can now seek relative to current position in file
+'' v1.3.0 - update for flexspin compatibility, seek() returns file position, write() returns bytes written
+'' v1.3.1 - more update for flexspin compatibility, adjusted seek(), read() and write() add file_size_for_handle()
+'' v1.4.0 - Adjustments allowing multi-cog support
+'' v2.0.0 - Add read/modify/write, non-destructive mount check can_mount(), and create_file()
+'' -------------------------------------------------------------------------------------------------
+
+
+CON { version }
+
+  LIB_VERSION = 200                                     ' 2.0.0
+
+  #true,  ON, OFF
+  #false, NO, YES
+
+  ' file open mode equivalents (the values match the %"r+", %"w+" value encodings!)
+  ' for extended-mode use these constants when the %"..." syntax is not supported by your compiler
+  FILEMODE_READ = $72                                   ' "r"
+  FILEMODE_WRITE = $77                                  ' "w"
+  FILEMODE_APPEND = $61                                 ' "a"
+  FILEMODE_READ_EXTENDED = $2B72                        ' "r+"
+  FILEMODE_WRITE_EXTENDED = $2B77                       ' "w+"
+
+CON { fixed io pins }
+
+  PGM_RX   = 63  { I }                                  ' programming / debug
+  PGM_TX   = 62  { O }
+
+  SF_CS    = 61  { O }                                  ' flash chip select
+  SF_SCLK  = 60  { O }                                  ' flash clock
+  SF_MOSI  = 59  { O }                                  ' flash data in
+  SF_MISO  = 58  { I }                                  ' flash data out
+
+  LED2     = 57  { O }                                  ' Eval and Edge LEDs
+  LED1     = 56  { O }
+
+
+CON { PUBLIC driver constants }
+
+  ' Return Codes
+
+  OKAY             = 0                                  ' No error / Success
+  SUCCESS          = OKAY                               ' No error / Success
+
+' SK_* ENUM values (parameter to seek() method)
+' SK_FILE_START: seek using position from start of file
+' SK_CURRENT_POSN: seek where position is relative to current seek location in file
+  #0, SK_Unknown, SK_FILE_START, SK_CURRENT_POSN
+
+  E_BAD_HANDLE     = -1                                         ' Error: Handle in invalid
+  E_NO_HANDLE      = -2                                         ' Error: Out of available handles
+  E_FILE_NOT_FOUND = -3                                         ' Error: File not present
+  E_DRIVE_FULL     = -4                                         ' Error: Out of space on flash chip
+  E_FILE_WRITING   = -5                                         ' Error: File is open for writing
+  E_FILE_READING   = -6                                         ' Error: File is open for reading
+  E_FILE_OPEN      = -7                                         ' Error: File is open
+  E_FILE_EXISTS    = -8                                         ' Error: the File exists
+  E_END_OF_FILE    = -9                                         ' Error: no more data available, at end of file
+  E_FILE_MODE      = -10                                        ' Error: file not opened in desired mode
+  E_FILE_SEEK      = -11                                        ' Error: Attempted seek past either end of file
+  E_BAD_BLOCKS_REMOVED = -12                                    ' Error: Block bit failure detetected, bad blocks removed
+  E_NO_LOCK_AVAIL  = -13                                        ' Error: Unable to obtain a LOCK for driver use
+  E_TRUNCATED_STRING = -14                                      ' Error: Buffer full, before reaching string terminator
+  E_INCOMPLETE_STRING = -15                                     ' Error: End of file reached before string terminator
+  E_SHORT_TRANSER = -16                                         ' Error: Too few bytes read or written
+  E_NOT_MOUNTED = -17                                           ' Error: Filesystem NOT mounted (not yet accessible)
+  E_BAD_FILE_LENGTH = -18                                       ' Error: File length given is negative or zero
+  E_BAD_SEEK_ARG = -19                                          ' Error: Invalid seek argument
+
+  BYTES_IN_HEAD_BLOCK = 3956                                    ' first block in file contains 3956 bytes, 140 bytes overhead
+  WORDS_IN_HEAD_BLOCK = BYTES_IN_HEAD_BLOCK/2
+  LONGS_IN_HEAD_BLOCK = BYTES_IN_HEAD_BLOCK/4
+
+  BYTES_IN_BODY_BLOCK = 4088                                    ' all other blocks in file contain 4088 bytes, 8 bytes overhead
+  WORD_IN_BODY_BLOCK = BYTES_IN_BODY_BLOCK/2
+  LONGS_IN_BODY_BLOCK = BYTES_IN_BODY_BLOCK/4
+
+CON { PRIVATE driver constants }
+
+  ' optionally customizable
+
+  FIRST_BLOCK      = $080                                       ' Physical address of first block in this flash file system
+  LAST_BLOCK       = $FFF                                       ' Physical address of last block in this flash file system
+  MAX_FILES_OPEN   = 2                                          ' Maximum number of files that can be open at one time
+
+
+  ' ------------------------------
+  '  NOT customizable! below here
+  ' ------------------------------
+  BLOCKS           = LAST_BLOCK - FIRST_BLOCK+1                 ' Number of blocks in flash allocated to this file system
+
+  BLOCK_SIZE       = $1000                                      ' Size in bytes: 4KB block (4096 bytes)
+  BLOCK_SIZE_EXP   = encod BLOCK_SIZE
+
+  ADDR_HEAD_FN_CRC  = $004                                      ' Offset in head block of filename CRC
+  ADDR_HEAD_SONAME  = $008                                      ' Offset in head block of first filename byte
+  ADDR_HEAD_DATA    = $088                                      ' Offset in head block of first data byte
+  ADDR_BODY_DATA    = $004                                      ' Offset in body block of first data byte
+
+  FILENAME_SIZE    = $088-$008                                  ' File name string length: 127 characters plus 0 terminator
+  FILENAME_SIZE_EXP   = encod FILENAME_SIZE
+
+  ID_TO_BLOCKS_SZ  = (BLOCKS * 12 + 15) / 16                    ' 12-bit fields in WORD array (rounded to full WORD)
+  FLAGS_SIZE       = (BLOCKS * 1 + 7) / 8                       ' 1-bit fields in BYTE array (rounded to full BYTE)
+  STATES_SIZE      = (BLOCKS * 2 + 7) / 8                       ' 2-bit fields in BYTE array (rounded to full BYTE)
+
+
+  B_FREE           = %00                                        ' Block is not in use (free)
+  B_TEMP           = %01                                        ' Block is being put to use
+  B_HEAD           = %10                                        ' Block is head of a file (contains filename)
+  B_BODY           = %11                                        ' BLock is body of file (any blocks after head)
+
+  H_READ           = %0001                                       ' Existing file is being read
+  H_WRITE          = %0010                                       ' New file is being written
+  H_FORK           = %0100                                       ' Existing file is being written and forked at some block (rewrite/append)
+  H_MODIFY         = %1000                                       ' Existing file is being modified
+
+  H_APPEND = H_WRITE | H_FORK                                    ' New file is being written or existing is being rewritten
+  H_READWRITE = H_WRITE | H_MODIFY                               ' New file is being written or existing is being rewritten
+
+  H_READ_WRITE     = H_READ | H_WRITE                           ' (Any) File is open for reading and/or writing
+  H_READ_ONLY      = H_READ                                     ' Existing File is open for reading only
+
+  NOT_ENABLED      = -1                                         ' this feature is NOT enabled (e.g., seeking)
+  NOT_VALID        = -30                                        ' this value is not initialized
+
+DAT { pre-initialized: driver state tracking tables }
+
+'-------+-----+---------+-------+---------------+-------+-----------------------+
+errorCode     LONG      0[8]                                                    'most recent error code
+fsLock        LONG      -1                                                      'flash lock semaphore for driver use
+fsFreeHndlCt  LONG      MAX_FILES_OPEN
+fsCogCts      LONG      $7fff_ffff[8]                                           'cog counts: one for each cog that is attempting to start the filesystem
+showRTdebug   LONG      false
+fsMounted     LONG      false                                                   ' T/F where T means the filesystem is mounted
+
+' physically: 3/4 of a word (12 bits) for every valid block ID, 12 bits per ID
+' logically: a "BLOCKS"-sized array of 12-bit variables, 1 for ea. block ID - indexed by block ID
+' contains block_address in ea. 12 bit field
+IDToBlocks    WORD      0[ID_TO_BLOCKS_SZ]                                      'ID-to-block translation table
+IDToBlock     LONG      0                                                       '(field pointer to 12-bit variables)
+
+' physically: 1 byte for every 8 valid block IDs, 1 bit per block ID
+' logically: a "BLOCKS"-sized array of single bit variables, 1 for ea. block ID - indexed by block ID
+' contains [0,1] in ea. 1 bit field, where 1 means ID is valid
+IDValids      BYTE      0[FLAGS_SIZE]                                           'ID-valid flags
+IDValid       LONG      0                                                       '(field pointer to 1-bit variables)
+
+' physically: 1 byte for every 4 valid block IDs, 2 bits per block ID
+' logically: a "BLOCKS"-sized array of 2-bit variables, 1 for ea. block ID - indexed by block ID
+' contains a Block-State value in ea. 2 bit field [B_FREE, B_TEMP, B_HEAD, B_BODY]
+BlockStates   BYTE      0[STATES_SIZE]                                          'block states
+BlockState    LONG      0                                                       '(field pointer to 2-bit variables)
+
+' handle-related variables and buffers
+'   handle is index into each of the arrays below
+
+hStatus         BYTE    0[MAX_FILES_OPEN]                                       'handle: status [H_READ, H_WRITE, H_REPLACE]
+hHeadBlockID    WORD    NOT_VALID[MAX_FILES_OPEN]                               'handle: first blockID of file chain
+hChainBlockID   WORD    0[MAX_FILES_OPEN]                                       'handle: first blockID of commit chain
+hChainBlockAddr WORD    0[MAX_FILES_OPEN]                                       'handle: first block_address of commit chain
+hChainLifeCycle BYTE    0[MAX_FILES_OPEN]                                       'handle: first block lifecycle (cycle value for replacement first block of chain)
+hModified       BYTE    0[MAX_FILES_OPEN]                                       'handle: current block is modified
+hEndPtr         WORD    0[MAX_FILES_OPEN]                                       'handle: pointer to next byte in block
+hSeekPtr        LONG    NOT_ENABLED[MAX_FILES_OPEN]                             'handle: seek endptr within file
+hSeekFileOffset LONG    0[MAX_FILES_OPEN]                                       'handle: seek offset within entire file
+hCircularLength LONG    0[MAX_FILES_OPEN]                                       'handle: circular buffer length in byt
+hFilename       BYTE    0[MAX_FILES_OPEN * FILENAME_SIZE]                       'handle: 59+1 byte buffer for filename
+hBlockBuff      BYTE    0[MAX_FILES_OPEN * BLOCK_SIZE]                          'handle: 4KB buffer for file data
+
+tmpBlockBuffer  BYTE     0[BLOCK_SIZE]                                          'buffer used for copying blocks
+
+
+CON ' --- Public Methods ---
+
+PUB null()
+
+'' This is not an application
+'' -- (invoke format() or mount() to use the flash file system)
+
+PUB version() : result
+
+'' Returns flash file system library version as integer
+'' -- e.g., version 120 is 1.2.0 (major, minor, bugfix)
+
+  LONG[@errorCode][cogid()] := SUCCESS
+  return LIB_VERSION
+
+{$flexspin
+VAR
+   long m_sn_hi, m_sn_lo        ' temporary storage for serial number read
+}
+
+PUB serial_number() : sn_hi, sn_lo
+
+'' Returns 64-bit unique id of flash chip
+''
+'' @returns sn_hi - high 32 bits of 64-bit unique id of flash chip (0 when error return)
+'' @returns sn_lo - low 32 bits of 64-bit unique id of flash chip (0 when error return)
+'' (sets error() to E_NOT_MOUNTED and returns 0,0 if filesystem has not been mounted)
+
+  ifnot fsMounted
+    LONG[@errorCode][cogid()] := E_NOT_MOUNTED
+  else
+
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    LONG[@errorCode][cogid()] := SUCCESS
+
+    flash_command($4B, 1)
+    flash_send($00, 4)
+{$flexspin
+#ifdef __FLEXSPIN__
+    ' flexspin does not like using HUB variables (@) in inline assembly
+    ' so do the read into a class member in HUB, then copy to the local
+    ' variables in registers
+    flash_receive(@m_sn_hi, 8)
+    sn_hi := m_sn_hi
+    sn_lo := m_sn_lo
+#else
+}
+    flash_receive(@sn_hi, 8)
+{$flexspin #endif}
+
+    ' UID values are stored Big Endian
+    ' -- swap ends to correct LE reads from flash
+
+    org
+                movbyts     sn_hi, #%%0123
+                movbyts     sn_lo, #%%0123
+    end
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+PUB format() : status | block_address, cycleBits
+
+'' Format the file system blocks and (re)mount it
+''
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_BAD_BLOCKS_REMOVED if BAD blocks were found and fixed,
+'' .. E_NO_LOCK_AVAIL if all 16 LOCKs are in use,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted
+
+' Local Variables:
+' @local block_address - the block offset within the file system
+' @local cycleBits - lifeCycle bit-pattern found in block
+
+  'debug("* format()")
+  ' ensure we have a lock first!  Abort if we can't get one
+
+    if fsLock == -1                                                             ' don't acquire lock if already have it
+        if setup_semaphore() < 0
+            return LONG[@errorCode][cogid()]
+
+    'debug("* format()")
+
+    'debug("- have lock, trying...")
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    LONG[@errorCode][cogid()] := SUCCESS
+
+    'debug("- formatting...")
+    repeat BLOCKS with block_address                                            'cancel all active blocks
+        flash_read_block_addr(block_address, @cycleBits, $000, $000)
+        'if block_address // 128 == 0
+        '  debug(" -- block ", uhex_word_(block_address),", cycle...", ubin_byte(cycleBits))
+        if lookdown(cycleBits.[7..5] : %011, %101, %110)
+            'debug(" -- clearing...")
+            flash_cancel_block(block_address)
+
+    'debug("- formatting done")
+    fsMounted := false                                                          ' clear "mounted" indcation so it will mount the scan structures
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+    'debug("- lock released")
+    return Mount()                                                              '(re)mount flash
+
+
+PUB mount() : status | block_address, blockTypeBits, signature, blockCount, fileCount
+
+'' Mount the filesystem so it is ready to use after scanning all blocks and initilizing internal tables and buffers
+''
+'' @returns status - E_BAD_BLOCKS_REMOVED if BAD blocks were found and fixed,
+'' .. E_NO_LOCK_AVAIL if all 16 LOCKs are in use, otherwise 0 for success
+
+' Local Variables:
+' @local block_address - the block offset within the file system
+' @local blockTypeBits - block type and lifeCycle bits of block being checked
+' @local signature - block state bits of block being checked
+
+    if fsMounted
+        'debug("- already mounted ", sdec(fsMounted))
+        return (LONG[@errorCode][cogid()] := SUCCESS)                           ' don't mount if already mounted
+
+    if fsLock == -1                                                             ' don't acquire lock if already have it
+        if setup_semaphore() < 0
+            return LONG[@errorCode][cogid()]
+
+    'debug("* mount()")
+    LONG[@errorCode][cogid()] := SUCCESS                                        ' preset to success
+
+    'debug("- have lock, trying...")
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+   'debug("- locked")
+    fsMounted := true                                                           ' set "mounted" inidcation
+
+    'debug("- mounting...")
+    bytefill(@hStatus, 0, MAX_FILES_OPEN)                                       'clear handles
+
+    bytefill(@IDToBlocks,0,ID_TO_BLOCKS_SZ)                                     'clear ID-to-block translation table
+    bytefill(@IDValids, 0, FLAGS_SIZE)                                          'clear ID flags
+    bytefill(@BlockStates, 0, STATES_SIZE)                                      'clear block states to B_FREE
+
+    IDToBlock  := ^@IDToBlocks.[11..0]                                          'set field pointers
+    IDValid    := ^@IDValids.[0]
+    BlockState := ^@BlockStates.[1..0]
+
+    'debug("mnt: - fixing power-out leftovers...")
+    repeat BLOCKS with block_address                                            'check each block and fix any duplicate IDs
+        check_block_fix_dupe_id(block_address)                                  '(recovers from incomplete block switchover due to power loss)
+        ' returns table set with B_TEMP for each good CRC block
+
+    'debug("mnt: - locating files...")
+    ' fall all marked with B_TEMP locate any file heads!
+    repeat BLOCKS with block_address                                            'trace head blocks and cancel any broken files
+        if field[BlockState][block_address] == B_TEMP                           'is this a valid block?
+            flash_read_block_addr(block_address, @blockTypeBits, $000, $000)    'yes, read first byte of block
+            ifnot blockTypeBits.[1]                                             'is this a head block?
+                'debug("mnt: - head block ", uhex_word(block_address))
+                ifnot trace_file_set_flags(block_address, true)                 'yes, trace file, set block states to B_HEAD/B_BODY
+                    trace_file_set_flags(block_address, false)                  'if error, retrace file, return block states to B_TEMP
+        ' actual files are now marked as B_HEAD/B_BODY while rest are now B_TEMP
+
+    'debug("mnt: - clearing dead blocks...")
+    ' clear remaining B_TEMP blocks
+    repeat BLOCKS with block_address                                            'cancel B_TEMP blocks that didn't become B_HEAD/B_BODY blocks
+        if field[BlockState][block_address] == B_TEMP                           'is this an B_TEMP block?
+            flash_read_block_addr(block_address, @signature, $000, $003)        'if so, read first long of block to get ID
+            field[IDValid][signature.[19..8]]~                                  '..cancel ID flag (bit := 0)
+            field[BlockState][block_address] := B_FREE                          '..return block state to B_FREE (zero)
+            flash_cancel_block(block_address)                                   '..cancel block to inhibit future CRC checks
+            'debug(" -- found dead block...")
+            status :=  (LONG[@errorCode][cogid()] := E_BAD_BLOCKS_REMOVED)
+
+
+    repeat BLOCKS with block_address                                            'cancel B_TEMP blocks that didn't become B_HEAD/B_BODY blocks
+        if field[BlockState][block_address] <> B_FREE                           'is this an file block?
+          blockCount++
+          if field[BlockState][block_address] == B_HEAD                         'is this an file block?
+            fileCount++
+          'elseif field[BlockState][block_address] == B_TEMP                     'wait!! what this??
+          '  debug("* MNT: ERR bad marking found B_TEMP at", uhex_word(block_address))
+
+    'debug("mnt: - mount ", udec(fileCount, blockCount))
+
+    lockrel(fsLock)              ' release the lock, we're done with it
+    'debug("- lock released")
+
+
+PUB can_mount() : bool | block_address, signature, BYTE blockTypeBits, dupeIdCount, fileCount, badBlockCount, bad_count, dupe_count
+
+'' Check entire flash - to see if it would mount without modifying any blocks
+''
+'' @returns bool - True/False where True means no blocks would be changed by mount
+
+' Local Variables:
+' @local block_address - the block offset within the file system
+' @local signature - temporary block state bits
+' @local blockTypeBits - temporary block type bits
+' @local dupeIdCount - count of duplicate ID blocks found
+' @local fileCount - count of files found
+' @local badBlockCount - count of bad blocks found
+' @local bad_count - count of bad blocks found
+
+    if fsMounted
+        return (LONG[@errorCode][cogid()] := SUCCESS)                           ' return T if already mounted
+
+    if fsLock == -1                                                             ' don't acquire lock if already have it
+        if setup_semaphore() < 0
+            return LONG[@errorCode][cogid()]
+
+    'debug("* mntCk: can_mount()?")
+    LONG[@errorCode][cogid()] := SUCCESS                                        ' preset to success
+
+    'debug("- have lock, trying...")
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    'debug("- mounting...")
+    bytefill(@hStatus, 0, MAX_FILES_OPEN)                                       'clear handles
+
+    bytefill(@IDToBlocks,0,ID_TO_BLOCKS_SZ)                                     'clear ID-to-block translation table
+    bytefill(@IDValids, 0, FLAGS_SIZE)                                          'clear ID flags
+    bytefill(@BlockStates, 0, STATES_SIZE)                                      'clear block states to B_FREE
+
+    IDToBlock  := ^@IDToBlocks.[11..0]                                          'set field pointers
+    IDValid    := ^@IDValids.[0]
+    BlockState := ^@BlockStates.[1..0]
+
+    'debug("mntCk: - fixing power-out leftovers...")
+    repeat BLOCKS with block_address                                            'check each block and fix any duplicate IDs
+        bad_count, dupe_count := check_block_read_only(block_address)
+        badBlockCount += bad_count
+        dupeIdCount += dupe_count
+
+    'debug("mntCk: - locating files...")
+    repeat BLOCKS with block_address                                            'trace head blocks and cancel any broken files
+        if field[BlockState][block_address] == B_TEMP                           'is this a valid block?
+            flash_read_block_addr(block_address, @blockTypeBits, $000, $000)    'yes, read first byte of block
+            ifnot blockTypeBits.[1]                                             'is this a head block?
+                'debug("mnt: - head block ", uhex_word(block_address))
+                ifnot trace_file_set_flags(block_address, true)                 'yes, trace file, set block states to B_HEAD/B_BODY
+                    trace_file_set_flags(block_address, false)                  'if error, retrace file, return block states to B_TEMP
+                else
+                    fileCount++
+
+    'debug("mntCk: - clearing dead blocks...")
+    repeat BLOCKS with block_address                                            'cancel sTEMP blocks that didn't become sHEAD/sBODY blocks
+        if field[BlockState][block_address] == B_TEMP                           'is this an B_TEMP block?
+            flash_read_block_addr(block_address, @signature, $000, $003)        'if so, read first long of block to get ID
+            field[IDValid][signature.[19..8]]~                                  '..cancel ID flag (bit := 0)
+            field[BlockState][block_address] := B_FREE                          '..return block state to B_FREE
+            badBlockCount++                                                     '..would cancel block to inhibit future CRC checks
+            'debug(" -- found dead block...")
+            bool :=  (LONG[@errorCode][cogid()] := E_BAD_BLOCKS_REMOVED)
+
+    'debug("mntCk: - mount test done")
+    bool := badBlockCount == 0 ? true :false
+    'debug("mntCk: - ", udec(badBlockCount, dupeIdCount, fileCount))
+
+    lockrel(fsLock)              ' release the lock, we're done with it
+    'debug("- lock released")
+
+
+PUB mounted() : bool
+
+'' Returns the mounted status of the filesystem
+'' -- (saves us from having to find creative ways to get an error code telling us this)
+''
+'' @returns bool - True/False where True means the filesystem has already been successfully mounted
+
+  return fsMounted
+
+
+PUB unmount() : status | handle, tmpFsLock, tmpStatus
+
+'' Prepare for shutdown / power-off by closing any open files
+'' -- (no further access allowed until a subsequent mount())
+''
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem had not been mounted
+
+' Local Variables:
+' @local handle - temporary handle to use when closing files
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  status := LONG[@errorCode][cogid()] := SUCCESS
+
+  'debug("* unmount()")
+  repeat MAX_FILES_OPEN with handle                                             ' for each handle
+    if hStatus[handle]~                                                         ' if handle is open... (post reset)
+        tmpStatus := close_no_lock(handle)                                      ' ..close it!
+        if tmpStatus < 0
+            status := tmpStatus
+        hCircularLength[handle] := 0                                            'clear prior length
+
+  fsFreeHndlCt := MAX_FILES_OPEN
+  tmpFsLock := fsLock
+  fsLock := -1
+  fsMounted := false                                                            ' clear "mounted" indication
+  lockrel(tmpFsLock)                                                            ' release the lock, we're done with it
+  lockret(tmpFsLock)
+
+
+
+PUB error() : status
+
+'' Returns the error code from most recent operation
+''
+'' @returns result - latest error code (SUCCESS, for no error)
+
+  return LONG[@errorCode][cogid()]
+
+
+PUB open(p_filename, mode) : handle | findings, bFileExists
+
+'' Open file in mode; return handle (0..MAX_FILES_OPEN-1) if successful
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @param mode - the mode in which to open the file:
+'' -- mode "r", "R" to read from an existing file
+'' -- mode "w", "W" to write to a new file (overwrites existing file)
+'' -- mode "a", "A" to append to the end of an existing file (file is created if doesn't exist)
+'' -- mode "r+", "R+" to read/modify/write within an existing file
+'' -- mode "w+", "W+" to read/modify/write within a new file (overwrites existing file)
+'' @returns handle - handle to open file if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_NO_HANDLE if no handle is available,
+'' .. E_FILE_MODE if mode letter(s) is/are invalid,
+'' .. E_DRIVE_FULL if flash filesystem is full (write/append mode),
+'' .. E_FILE_OPEN if file is already open,
+'' .. E_FILE_NOT_FOUND if file does not exist (read mode)
+
+{
+    ANSI C file info
+    REF: https://www.tutorialspoint.com/cprogramming/c_file_io.htm
+    REF: https://en.wikipedia.org/wiki/C_file_input/output
+        "r"  (read-only) Open a file for reading.  The file must exist.
+        "w"  (write-only) Create an empty file for writing.  If a file with the same name already exists,
+             its contents are discarded and the file is treated as a new empty file.
+        "a"  (write-only) Append to a file.  Writing operations append data at the end of the file.
+             The file is created if it does not exist.
+        "r+" (read-write) Open a file for update both reading and writing.  The file must exist.
+        "w+" (read-write) Create an empty file for both reading and writing.  If a file with the same name
+             already exists its contents are discarded and the file is treated as a new empty file.
+        "a+" (read-write) Opens a text file for both reading and writing. It creates the file if it does not exist.
+             The reading will start from the beginning but writing can only be appended.
+}
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+  elseif fsFreeHndlCt == 0
+    return (LONG[@errorCode][cogid()] := E_NO_HANDLE)
+  ' mode-specific checks
+  case mode
+    "r", "R":
+    "a", "A", "w", "W", FILEMODE_READ_EXTENDED, FILEMODE_WRITE_EXTENDED:
+      ifnot blocks_free()                                                       'if no free block exists, abort with error
+        return (LONG[@errorCode][cogid()] := E_DRIVE_FULL)
+    other: return (LONG[@errorCode][cogid()] := E_FILE_MODE)
+
+  'debug("open(", udec_(handle), ") ENTRY get sem #", udec_(fsLock))
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          'new operation clear any prior error code
+  handle := NOT_VALID
+
+  ' determine if our file exists, once
+  bFileExists := exists_no_lock(p_filename)
+
+  ' do checks that require the lock
+  case mode
+    "r", "R", FILEMODE_READ_EXTENDED:
+      ifnot bFileExists                                                         'if no free block exists, abort with error
+        'debug("open(", sdec_(handle), ") filename=[", zstr_(p_filename), "]")
+        handle := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+  if handle == NOT_VALID and is_file_open(p_filename, H_READ_WRITE)             'if file is already open, abort
+    handle := (LONG[@errorCode][cogid()] := E_FILE_OPEN)
+
+  elseif handle == NOT_VALID and fsFreeHndlCt == 0                              'yep, check this again since we have the lock
+    handle := (LONG[@errorCode][cogid()] := E_NO_HANDLE)
+
+  if LONG[@errorCode][cogid()] <> SUCCESS
+    lockrel(fsLock)                                                             ' aborting, release the lock
+    'debug("open(", sdec_(handle), ") ABORT freed sem #", udec_(fsLock), " err=", sdec_(LONG[@errorCode][cogid()]))
+    return
+
+  ' the following calls release the lock
+  case mode
+    "r", "R"  : handle := finish_open_read(p_filename, 0)                       ' read
+    "w", "W"  : handle := finish_open_write(p_filename, 0)                      ' replace
+    "a", "A"  :
+      if bFileExists
+          handle := finish_open_append(p_filename, 0)                           ' append
+      else
+          handle := finish_open_write(p_filename, 0)                            ' create new
+    FILEMODE_READ_EXTENDED : handle := finish_open_readwrite(p_filename)        ' read/write/modify
+    FILEMODE_WRITE_EXTENDED: handle := finish_open_readwrite(p_filename)        ' read/write/modify
+
+  if handle < 0
+    LONG[@errorCode][cogid()] := handle
+
+  'debug("open(", sdec_(handle), ") EXIT freed sem #", udec_(fsLock))
+
+
+PUB open_circular(p_filename, mode, max_file_length) : handle | bFileExists
+
+'' Open circular file of max_file_length in mode; return handle (0..MAX_FILES_OPEN-1) if successful
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @param mode - the mode in which to open the file:
+'' -- mode "a", "A" to append to the end of an existing circular file (file created if doesn't exist)
+'' -- mode "r", "R" to read from an existing circular file
+'' @param max_file_length - constrain the file to this length (in bytes)
+'' @returns handle - handle to open file if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_NO_HANDLE if no handle is available,
+'' .. E_BAD_FILE_LENGTH if file length is negative or zero,
+'' .. E_FILE_MODE if mode letter(s) is/are invalid,
+'' .. E_FILE_NOT_FOUND if file does not exist (read mode),
+'' .. E_DRIVE_FULL if flash filesystem is full (write/append mode),
+'' .. E_FILE_OPEN if file is already open
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+  elseif fsFreeHndlCt == 0
+    return (LONG[@errorCode][cogid()] := E_NO_HANDLE)
+  elseif max_file_length < 1
+    return (LONG[@errorCode][cogid()] := E_BAD_FILE_LENGTH)
+
+  ' do we have a legal mode?
+  case mode
+    "r", "R":
+    "a", "A":
+    other: return (LONG[@errorCode][cogid()] := E_FILE_MODE)
+
+  ' acquire lock
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          'new operation clear any prior error code
+  handle := NOT_VALID
+
+  ' determine if our file exists, once
+  bFileExists := exists_no_lock(p_filename)
+
+  ' do checks that require the lock
+  case mode
+    "r", "R":
+      ifnot bFileExists                                                         'if no free block exists, abort with error
+        handle := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+    "a", "A":
+      ifnot blocks_free()                                                       'if no free block exists, abort with error
+        handle := (LONG[@errorCode][cogid()] := E_DRIVE_FULL)
+
+  if handle == NOT_VALID and is_file_open(p_filename, H_READ_WRITE)             'if file is already open, abort
+    handle := (LONG[@errorCode][cogid()] := E_FILE_OPEN)
+
+  if LONG[@errorCode][cogid()] <> SUCCESS
+    lockrel(fsLock)                                                             ' aborting, release the lock
+    return
+
+  ' the following calls release the lock
+  case mode
+    "a", "A":
+      if bFileExists
+        handle := finish_open_append(p_filename, max_file_length)               ' append CIRC
+      else
+        handle := finish_open_write(p_filename, max_file_length)                ' write CIRC
+    "r", "R": handle := finish_open_read(p_filename, max_file_length)           ' read CIRC
+
+  if handle < 0
+    LONG[@errorCode][cogid()] := handle
+
+
+PUB flush(handle) : status
+
+'' Logically, "close", then "reopen file in same mode" (but you don't lose the file handle)
+'' -- (forces any pending writes to be completed)
+'' @param handle - a handle to an open file
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_FILE_MODE if close doesn't recognize this file mode (internal error),
+'' .. E_BAD_HANDLE if the handle is not valid
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+  elseif handle < 0 or handle > MAX_FILES_OPEN - 1
+    return (LONG[@errorCode][cogid()] := E_BAD_HANDLE)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          'new operation clear any prior error code
+
+'' Flush write buffer, completes any write operation, but leaves file open
+  'debug("* flush() ", udec(handle))
+
+  case hStatus[handle]
+
+    H_WRITE, H_APPEND:                                                          'write/rewrite/append mode?
+      close_no_lock(handle)                                                     'close file
+      start_modify(handle, H_APPEND, hHeadBlockID[handle], $FFFFFF, true)       'reopen file in append mode
+
+    H_READWRITE:                                                                'modify mode?
+      if hModified[handle]                                                      'if block was modified...
+        rewrite_block(handle)                                                   '..rewrite block
+
+    other:                                                                      'other mode?
+      LONG[@errorCode][cogid()] := E_FILE_MODE                                  'flush not allowed, abort
+
+  hModified[handle]~                                                            'clear modified flag
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB close(handle) : status
+
+'' Close an open file, completes any pending writes then frees the handle
+''
+'' @param handle - a handle to an open file
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_FILE_MODE if close doesn't recognize this file mode (internal error),
+'' .. E_BAD_HANDLE if the handle is not valid
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+  elseif handle < 0 or handle > MAX_FILES_OPEN - 1
+    return (LONG[@errorCode][cogid()] := E_BAD_HANDLE)
+
+  'debug("close(", udec_(handle), ") ENTRY get sem #", udec_(fsLock))
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  status := close_no_lock(handle)                                               'commit our file changes
+  hCircularLength[handle] := 0                                                  'clear prior length
+  hHeadBlockID[handle] := NOT_VALID                                             'clear association with external file
+
+  fsFreeHndlCt++                                                                'show that handle is now avail
+  hStatus[handle]~                                                              'show no file-mode associated
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+  'debug("close(", sdec_(handle), ") EXIT freed sem #", udec_(fsLock))
+
+
+PUB rename(p_cur_filename, p_new_filename) : status | signature, new_block_address, cur_block_address, next_cycle_bits
+
+'' Rename a file named {p_cur_filename} to {p_new_filename}
+''
+'' @param p_cur_filename - address of a zstring containing the existing filename
+'' @param p_new_filename - address of a zstring containing the new filename
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_FILE_NOT_FOUND if old file doesn't exist,
+'' .. E_FILE_OPEN if either file is open,
+'' .. E_FILE_EXISTS if new file already exists,
+'' .. E_DRIVE_FULL if no available space left in filesystem
+
+' Local Variables:
+' @local signature - block state bits of block being renamed
+' @local new_block_address - the block offset within the file system for the new block
+' @local cur_block_address - the block offset within the file system for the old block
+' @local next_cycle_bits - active lifecycle bits for new block indicating block is newer than block containing the old filename
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                            ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if is_file_open(p_cur_filename, H_READ_WRITE)                                 'if old file is open, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_OPEN)
+
+  elseif is_file_open(p_new_filename, H_READ_WRITE)                             'if new file is open, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_OPEN)
+
+  elseifnot available_blocks()                                                  ' if no more blocks , abort
+    status :=  (LONG[@errorCode][cogid()] := E_DRIVE_FULL)
+
+  elseif get_file_head_signature(p_new_filename)                                'if new file exists, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_EXISTS)
+
+  elseifnot signature := get_file_head_signature(p_cur_filename)                'if old file doesn't exist, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+  else
+    ' a file rename consists of replacing the current head block of the file with a new head block containing the new filename
+    ' then cancelling the old head block
+    new_block_address := next_block_address()                                   'get a new block to use for renaming (may move head block)
+    cur_block_address := field[IDToBlock][signature.[19..8]]                    'get head block of file to rename (AddressOfNextBlock may have changed lookup)
+
+    flash_read_block_addr(cur_block_address, @tmpBlockBuffer, $000, $FFF)       'read head block of file to rename
+    LONG[@tmpBlockBuffer][1].[31..12] := filename_crc(p_new_filename)           'install new filename CRC
+    bytefill(@tmpBlockBuffer + $008, $E5, FILENAME_SIZE)                        'clear filename space to prevent old trailing chrs
+    strcopy(@tmpBlockBuffer + $008, p_new_filename, FILENAME_SIZE - 1)          'copy new filename into filename space
+    flash_activate_updated_block(new_block_address, @tmpBlockBuffer)            'program updated block
+    flash_cancel_block(cur_block_address)                                       'cancel old block
+
+    field[IDToBlock][signature.[19..8]] := new_block_address                    'update IDToBlock
+    field[BlockState][new_block_address] := B_HEAD                              'make new block HEAD
+    field[BlockState][cur_block_address] := B_FREE                              'make old block FREE
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB delete(p_filename) : status | signature
+
+'' Delete a named file
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_FILE_NOT_FOUND if file doesn't exist,
+'' .. E_FILE_OPEN if file is open
+
+' Local Variables:
+' @local signature - block state bits of block being removed
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  status := LONG[@errorCode][cogid()] := SUCCESS                                ' new operation clear any prior error code
+
+  if is_file_open(p_filename, H_READ_WRITE)                                     'if file open in any mode, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_OPEN)
+
+  elseifnot signature := get_file_head_signature(p_filename)                    'if file doesn't exist, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+  else
+    ' a file delete consists of cancelling all blocks in the file chain
+    delete_chain_from_id(signature.[19..8], 0, 0, False)                        'cancel and free all blocks in file, don't keep first ID valid
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB create_file(p_filename, fill_value, byte_count) : status | signature, head_block_id, block_id, block_address, notHead, dataOffset, isLast, currOffset, NextID_EndPtr
+
+'' Make a file of a byte_count size filled with fill_value bytes - "open read/write extended" to rewrite contents
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @param fill_value - initial value for all bytes in the new file
+'' @param byte_count - desired length of file in bytes
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_FILE_OPEN if file is open,
+'' .. E_DRIVE_FULL if no available space left in filesystem,
+'' .. E_FILE_EXISTS if the file already exists
+
+' Local Variables:
+' @local signature - temporary block state bits
+' @local head_block_id - the head block id for this new file
+' @local block_id - temporary block id
+' @local block_address - the block offset within the file system
+' @local notHead - T/F where T means is not first block in file
+' @local dataOffset - temp integer containing the initial data offset
+' @local isLast - T/F where T means this is last block
+' @local currOffset - temporary block offset
+' @local NextID_EndPtr - temporary nextID/EndPtr value
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if is_File_Open(p_filename, H_READ_WRITE)                                     'if file is open, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_OPEN)
+
+  elseifnot available_blocks()                                                  ' if no more blocks , abort
+    status :=  (LONG[@errorCode][cogid()] := E_DRIVE_FULL)
+
+  elseif signature := get_file_head_signature(p_filename)                       'if file exists, abort
+    status := (LONG[@errorCode][cogid()] := E_FILE_EXISTS)
+
+  else
+
+    block_id := head_block_id := next_available_block_id()                      'get initial ID
+
+    repeat
+      block_address := next_block_address()                                     'get a new block now (may alter BlockBuff and IDToBlock)
+      ifnot notHead                                                             'if HEAD block..
+        build_head_block(@tmpBlockBuffer, p_filename, 0)                        '..build head block in buffer
+        dataOffset := $088                                                      '..set data start for head block
+      else                                                                      'if BODY block..
+        dataOffset := $004                                                      '..set data start for body block
+      bytefill(@tmpBlockBuffer + dataOffset, fill_value, BLOCK_SIZE - dataOffset) '..clear buffer for body block
+      if isLast := byte_count <= (currOffset += $FFC - dataOffset)              'if last block.. (update position and check if last block)
+        NextID_EndPtr := byte_count - currOffset + $FFC                         '..get EndPtr
+      else                                                                      'if not last block..
+        NextID_EndPtr := next_available_block_id()                              '..get NextID
+      LONG[@tmpBlockBuffer].[0] := !isLast                                      'set more/last bit
+      LONG[@tmpBlockBuffer].[1] := notHead                                      'set head/body bit
+      LONG[@tmpBlockBuffer].[19..8] := block_id                                 'set ThisID
+      LONG[@tmpBlockBuffer].[31..20] := NextID_EndPtr                           'set NextID or EndPtr
+      flash_program_block(block_address, @tmpBlockBuffer, %011)                 'program block
+      if notHead                                                                'if not head block..
+        flash_activate_block(block_address, %011)                               '..activate body block
+      field[IDToBlock][block_id] := block_address                               'set IDToBlock
+      field[BlockState][block_address] := notHead ? B_BODY : B_HEAD             'set block state to head/body, set notHead
+      block_id := NextID_EndPtr                                                 'switch to next ID
+      notHead := true
+    until isLast                                                                'loop until last block done
+
+    flash_activate_block(field[IDToBlock][head_block_id], %011)                 'now activate head block to activate file
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB exists(p_filename) : bool
+
+'' Determine if named file is present in the file system
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns bool - True/False where True means the file exists
+'' (sets error() to E_NOT_MOUNTED and returns false if filesystem has not been mounted)
+
+  bool := false
+  ifnot fsMounted
+    LONG[@errorCode][cogid()] := E_NOT_MOUNTED
+  else
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    LONG[@errorCode][cogid()] := SUCCESS                                        ' new operation clear any prior error code
+
+    bool := exists_no_lock(p_filename)
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB file_size(p_filename) : size_in_bytes | signature
+
+'' Return size of file in bytes
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns size_in_bytes - either the count of bytes contained in the file or
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_FILE_NOT_FOUND if the file doesn't exist
+
+' Local Variables:
+' @local signature - block state bits of block being checked
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if signature := get_file_head_signature(p_filename)                           'does file exist?
+    size_in_bytes, _, _ := count_file_bytes(field[IDToBlock][signature.[19..8]])
+  else
+    size_in_bytes := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB file_size_for_handle(handle) : size_in_bytes
+
+'' Return size of file in bytes
+''
+'' @param handle - a handle to an open file
+'' @returns size_in_bytes - either the count of bytes contained in the file or
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_FILE_NOT_FOUND if the file doesn't exist
+
+' Local Variables:
+' @local signature - block state bits of block being checked
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if hHeadBlockID[handle] <> NOT_VALID                                          'should we not know the current file lenght..
+    size_in_bytes, _, _ := count_file_bytes(field[IDToBlock][hHeadBlockID[handle]])
+  else
+    size_in_bytes := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB file_size_unused(p_filename) : size_in_bytes_unused | signature
+
+'' Return the number of bytes not yet written in the last allocated block
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns size_in_bytes_unused - either the count of unwritten bytes of the file or
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_FILE_NOT_FOUND if the file doesn't exist
+
+' Local Variables:
+' @local signature - block state bits of block being checked
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if signature := get_file_head_signature(p_filename)                           'does file exist?
+    _, size_in_bytes_unused, _ := count_file_bytes(field[IDToBlock][signature.[19..8]])
+  else
+    size_in_bytes_unused := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+  'debug("file_size_unused(", zstr_(p_filename), ") = (", sdec_(size_in_bytes_unused), ")")
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB seek(handle, position, whence) : end_position | file_length, file_position, block_id, pBuff
+
+'' Postion seek file pointer to position within the file or at the end of the file
+'' -- use 0, SK_FILE_START for position to seek to the START of the file
+'' -- use POSX, SK_FILE_START (largest positive LONG value) for position to seek to the current END of the file
+'' -- use +/- value, SK_CURRENT_POSN to move RELATIVE to the current position within the file
+''
+'' @param handle - a handle to an open file
+'' @param position - position (in bytes) within the file (0 to length-1, posx)
+''  use  seek(handle, POSX, SK_FILE_START) to seek to end of the file
+'' @param whence - meaning of position: [SK_FILE_START, SK_CURRENT_POSN]
+'' @returns end_position - within the file to which the file pointer was set, or
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_BAD_SEEK_ARG if invalid whence value,
+'' .. E_FILE_MODE if the file is not open in a mode supporting seeks,
+'' .. E_FILE_SEEK if attempted seek past either end of file (and didn't use POSX for tail)
+
+' Local Variables:
+' @local file_length - temporary for calculated file length
+' @local file_position - temporary for calculated seek position
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+  elseif handle < 0 or handle > MAX_FILES_OPEN - 1
+    return (LONG[@errorCode][cogid()] := E_BAD_HANDLE)
+  elseif whence <> SK_FILE_START and whence <> SK_CURRENT_POSN
+    return (LONG[@errorCode][cogid()] := E_BAD_SEEK_ARG)
+  elseif whence == SK_FILE_START and position < 0
+    'debug("seek() early out")
+    return (LONG[@errorCode][cogid()] := E_FILE_SEEK)
+
+  case hStatus[handle]                                                          'get handle
+    H_READ:                                                                     'READ?
+      {okay, direct access allowed}
+    H_READWRITE:                                                                'WRITE and MODIFY?
+      {okay, direct access allowed}
+    other:
+      return (LONG[@errorCode][cogid()] := E_FILE_MODE)                         ' no, abort with error (open mode does not support seeking)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+      ' for SK_FILE_START
+
+  if whence == SK_FILE_START                                                    ' if seeking from current position
+      ' for SK_FILE_START
+    file_position := position
+  else
+    ' for SK_CURRENT_POSN, we need to calculate the adjusted position
+    file_position := hSeekPtr[handle] <> NOT_ENABLED ? hSeekFileOffset[handle] : hEndPtr[handle] ' if seek mode enabled, use seek pointer, else use 0
+    file_position += position                                                   ' calculate the adjusted position
+
+  file_length, _, _ := count_file_bytes(field[IDToBlock][hHeadBlockID[handle]]) ' get the file length
+
+  if file_length > 0 and position == POSX                                       ' if have file length and attempting to seek beyond, limit to end of file
+    file_position := file_length
+
+  'debug("seek(", sdec_(position), "), ", sdec(file_position), udec(file_length))
+
+  if file_length < 0
+    end_position := (LONG[@errorCode][cogid()] := file_length)                  ' error, return the error code instead of a SUCCESS status
+  elseif hCircularLength[handle] > 0 and (file_position < 0 or file_position > hCircularLength[handle]) ' if circular file and position is out of range
+   'debug("seek() circular out")
+   end_position := (LONG[@errorCode][cogid()] := E_FILE_SEEK)                   ' abort with error
+  elseif file_position >= 0 and file_position <= file_length                    ' is position within file? ( allow length + 1 for append )
+    'debug("seek(", udec_(file_position), "), FSize=(", udec_(file_length), ") going to location, offset=(", sdec_(position), ")")
+    seek_no_locks(handle, file_position)
+    end_position := file_position                                               ' no, return SUCCESS
+  else
+   'debug("seek() file-range out")
+   end_position := (LONG[@errorCode][cogid()] := E_FILE_SEEK)                   ' no, abort with error
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB write(handle, p_buffer, count) : bytes_written | checkValue, byteIndex, wr_value, wr_status
+
+'' Write count bytes from p_buffer to the file (open for write/append) associated with the handle
+''
+'' @param handle - the handle to the file to which to write byte(s)
+'' @param p_buffer - the address of the buffer containing the users' data to write
+'' @param count - the number of bytes to write to the file
+'' @returns bytes_written - the count of bytes written to the file or,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for writing,
+
+' Local Variables:
+' @local checkValue - a temporary variable to hold the status returned from checking the handle
+' @local byteIndex - the index into the users' buffer for the next byte to write
+' @local wr_value - the next value to be written to the file
+' @local wr_status - the status returned from the wr_byte() function
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  'debug("write(", udec_(handle), ") ENTRY get sem #", udec_(fsLock))
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  'debug("write(", udec(handle), uhex_long(p_buffer), udec(count) ,")")
+
+  if (checkValue := ensure_handle_mode(handle, H_WRITE)) < 0                    ' is handle valid and open for writing?
+     bytes_written := (LONG[@errorCode][cogid()] := checkValue)                 ' no, return error code
+  else
+    'debug("write() [",zstr_(p_buffer),"](",udec_(count),")")
+    bytes_written := 0
+    repeat count with byteIndex                                                 ' for the max length of the buffer
+        wr_value := BYTE[p_buffer][byteIndex]
+        if (wr_status := wr_byte_no_locks(handle, wr_value)) < 0                ' write a byte to the file (or to seek location in file)
+            LONG[@errorCode][cogid()] := wr_status                              ' an error occured, set the error code
+            if bytes_written == 0                                               ' if no bytes written, return error
+                bytes_written := errorCode
+            quit
+        else
+            bytes_written++                                                     ' keep track of bytes written
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+  'debug("write(", udec_(handle), ") EXIT freed sem #", udec_(fsLock))
+
+
+PUB wr_byte(handle, byte_value) : status | checkValue
+
+'' Write a byte to the file (open for write/append) associated with the handle
+''
+'' @param handle - handle to a file that is open for write or rewrite
+'' @param byte_value - value to write to the file
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for writing
+
+' Local Variables:
+' @local checkValue - a temporary variable to hold the status returned from checking the handle
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  'debug("wr_byte(", udec_(handle), ") ENTRY get sem #", udec_(fsLock))
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if (checkValue := ensure_handle_mode(handle, H_WRITE)) < 0                    ' is handle valid and open for writing?
+    status := (LONG[@errorCode][cogid()] := checkValue)                         ' no, return error code
+  else
+    status := wr_byte_no_locks(handle, byte_value)
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+  'debug("wr_byte(", udec_(handle), ") EXIT freed sem #", udec_(fsLock))
+
+
+PUB wr_word(handle, word_value) : status | writeLength
+
+'' Write WORD (16-bits) to the file (open for write/append) associated with the handle
+'' -- order is Little Endian
+''
+'' @param handle - the handle of the file to which to write the WORD
+'' @param word_value - the 16 bit WORD to write to the file
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for writing
+
+  writeLength := write(handle, @word_value, 2)
+  status := (writeLength < 0) ? writeLength : SUCCESS
+
+
+PUB wr_long(handle, long_value) : status | writeLength
+
+'' Write LONG (32-bits) to the file (open for write/append) associated with the handle
+'' -- order is Little Endian
+''
+'' @param handle - the handle of the file to which to write the LONG
+'' @param long_value - the 32 bit LONG to write to the file
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for writing
+
+  writeLength := write(handle, @long_value, 4)
+  status := (writeLength < 0) ? writeLength : SUCCESS
+
+
+PUB wr_str(handle, p_str) : status | writeLength
+
+'' Write string (including the terminator) from p_str to the file (open for write/append) associated with the handle
+''
+'' @param handle - the handle of the file to which to write the zString
+'' @param p_str - the address of the zString to write to the file
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for writing
+
+  'debug("write_str() [",zstr_(p_str),"](",udec_(strsize(p_str)+1),")")
+  writeLength := write(handle, p_str, strsize(p_str)+1)                 ' include string terminator
+  status := (writeLength < 0) ? writeLength : SUCCESS
+
+
+PUB read(handle, p_buffer, count) : bytes_read | byteIndex, readValue, checkValue
+
+'' Read count bytes from the file associated with handle into p_buffer
+'' -- returns count of bytes read (may be less than requested if reached end of file)
+'' -- check for error() == SUCCESS before using contents of p_buffer
+'' -- if error() <> SUCCESS then bytes_read is number of bytes read before error occurred
+'' -- "bytes_read < expected" indicates an E_END_OF_FILE or another non-SUCCESS value in error()
+''
+'' @param handle - the handle to the file from which to read bytes
+'' @param p_buffer - address of the buffer into which to place the bytes read
+'' @param count - the maximum number of bytes to place into the buffer
+'' @returns bytes_read - the number of bytes actually read from the file
+'' --> If error() <> SUCCESS then it will be one of the following reasons:
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for reading,
+'' .. E_END_OF_FILE if attempted read beyond written data
+
+' Local Variables:
+' @local byteIndex - the index into the users' buffer for the next byte to be read
+' @local readValue - a temporary variable to hold the byte read from the file (or the returned error code)
+' @local checkValue - a temporary variable to hold the status returned from checking the handle
+
+  ifnot fsMounted
+    LONG[@errorCode][cogid()] := E_NOT_MOUNTED
+    return
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if (checkValue := ensure_handle_mode(handle, H_READ | H_MODIFY)) < 0          ' is handle valid and open for reading?
+     LONG[@errorCode][cogid()] := checkValue                                    ' no, set system error
+     bytes_read := 0                                                            ' no, 0 bytes read
+  else
+    bytes_read := 0
+    repeat count with byteIndex                                                 ' for the max length of the buffer
+      if (readValue := rd_byte_no_locks(handle)) < 0                            ' read a byte from the file (or seek location)
+          LONG[@errorCode][cogid()] := readValue                                ' another error occured, set system error
+          quit
+      else
+        BYTE[p_buffer][byteIndex] := readValue                                  ' no error, place byte in the users buffer
+        bytes_read++                                                            ' update count of bytes read
+
+  'debug("read(", udec_(count),") = (", sdec_(bytes_read),")")
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB rd_byte(handle) : byte_value | ptr, signature, checkValue
+
+'' Read next byte from file associated with handle
+'' -- negative value indicates error or end of file
+''
+'' @param handle - the handle to the file from which to read a byte
+'' @returns byte_value - the next byte [0-255] from the file, or
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for reading,
+'' .. E_END_OF_FILE if no more data
+
+' Local Variables:
+' @local ptr - the address of the 4KB buffer for the file associated with this handle
+' @local signature - the block state bits of the block being checked
+' @local checkValue - a temporary variable to hold the status returned from checking the handle
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  if (checkValue := ensure_handle_mode(handle, H_READ)) < 0                     ' is handle valid and open for reading?
+    byte_value := (LONG[@errorCode][cogid()] := checkValue)                     ' no, return error code
+  else
+    byte_value := rd_byte_no_locks(handle)                                      ' read a byte from the file (or seek location)
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB rd_word(handle) : word_value | readLength
+
+'' Read next WORD from file associated with the handle
+'' -- negative value indicates error or end of file
+''
+'' @param handle - the handle to the file from which to read a WORD
+'' @returns result - the WORD value read from the file, or:
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_WRITING if the file is not open for reading,
+'' .. E_END_OF_FILE if attempted read beyond written data
+
+  if (readLength := read(handle, @word_value, 2)) <> 2
+    return LONG[@errorCode][cogid()]
+
+
+PUB rd_long(handle) : long_value | status, readCount
+
+'' Read next LONG from file associated with the handle
+'' -- NOTE: negative values can be legitimate values, so
+'' -- check for error() == SUCCESS before using value
+''
+'' @param handle - the handle to the file from which to read a LONG
+'' @returns value - the LONG value read from the file
+''  error() when not SUCCESS could be:
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_WRITING if the file is not open for reading,
+'' .. E_END_OF_FILE if attempted read beyond written data
+
+  read(handle, @long_value, 4)
+
+
+PUB rd_str(handle, p_str, count) : bytes_read | byteIndex, readValue, checkValue
+
+'' Read zstring from file at handle into buffer at p_str (count is max length of string + terminator)
+'' -- check for error() == SUCCESS before using value
+''
+'' @param handle - the handle to the file from which to read a zstring
+'' @param p_str - the address of the buffer into which to place the zstring
+'' @param count - the maximum number of bytes to place into the buffer (including the terminator)
+'' @returns bytes_read - the number of bytes placed into the buffer (strsize() of the string read)
+''  error() when not SUCCESS could be:
+'' .. E_NOT_MOUNTED if filesystem has not been mounted,
+'' .. E_BAD_HANDLE if the handle is not valid,
+'' .. E_FILE_MODE if the file is not open for reading,
+'' .. E_END_OF_FILE if attempted read beyond written data
+
+' Local Variables:
+' @local byteIndex - the index into the users' buffer for the next byte to be read
+' @local readValue - a temporary variable to hold the byte read from the file (or the returned error code)
+' @local checkValue - a temporary variable to hold the status returned from checking the handle
+
+  ifnot fsMounted
+    LONG[@errorCode][cogid()] := E_NOT_MOUNTED
+    return
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  bytefill(p_str, 0, count)                                                     ' clear the users buffer
+  bytes_read := 0
+  if (checkValue := ensure_handle_mode(handle, H_READ)) < 0                     ' is handle valid and open for reading?
+     LONG[@errorCode][cogid()] := checkValue                                    ' no, set error code
+  else
+    repeat count with byteIndex                                                 ' for the max length of the buffer
+      if (readValue := rd_byte(handle)) < 0                                     ' read a byte from the file, have error?
+        'debug("EEE: ", sdec(readValue))
+        if readValue == E_END_OF_FILE                                           ' yes, if we've reached end of file return the number of bytes read
+          if byteIndex == 0                                                     ' if we've not read any bytes
+            LONG[@errorCode][cogid()] := readValue                              ' ..abort with end of file
+          else                                                                  ' else
+            BYTE[p_str][byteIndex] := 0                                         ' place a 0 terminator in the users buffer
+            LONG[@errorCode][cogid()] := E_INCOMPLETE_STRING                    ' return error saying file ended without string terminator
+        else
+          LONG[@errorCode][cogid()] := readValue                                ' another error occured, return the error code
+        quit  ' have one of the above errors, end loop
+      else
+        'debug("ok: ", uhex_byte(readValue))
+        if byteIndex == count - 1 and readValue <> 0                            ' no error, if we've reached the end of the buffer and the byte read is not a 0 terminator
+          BYTE[p_str][byteIndex] := 0                                           ' ..place a 0 terminator in the users buffer
+          LONG[@errorCode][cogid()] := E_TRUNCATED_STRING                       ' ..abort with error
+          quit  ' have error end loop
+        else
+            BYTE[p_str][byteIndex] := readValue                                 ' no error, place byte in the users buffer (could be terminator)
+            if readValue == 0                                                   ' if this is a string terminator...
+              quit                                                              '  found terminator, end loop
+            else
+              bytes_read++                                                      ' count this byte received
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB directory(p_block_id, p_filename, p_file_size) : status | blockID, block_address, signature
+
+'' Get next file's filename and size in bytes via current blockID
+'' -- NOTE: p_filename must be address of a 128 byte buffer!
+''
+'' @param p_block_id - the next block ID to check for a file head. (Initialize to 0, will be auto-advanced by each call to this method)
+'' @param p_filename - the filename of the file found (or a zero length string if no more files, must be address of 128 byte buffer!)
+'' @param p_file_size - the number of bytes in the file found (or 0 when no more files)
+'' @returns status - 0 (SUCCESS) if successful,
+'' .. E_NOT_MOUNTED if filesystem has not been mounted
+
+' Local Variables:
+' @local blockID - the id of the block being checked
+' @local block_address - the offset within the file system of the block being checked
+' @local signature - temporary storage for the block state bits of the block being checked
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED)
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  BYTE[p_filename][0] := 0                                                      'reset filename
+
+  repeat while LONG[p_block_id] < BLOCKS                                        'scan any remaining blockID's for file heads
+        blockID := LONG[p_block_id]++                                           'get current blockID and post-increment it
+        if field[IDValid][blockID]                                              'block ID valid?
+          block_address := field[IDToBlock][blockID]                            'yes, get block addr from block ID
+          if field[BlockState][block_address] == B_HEAD                         'is this a HEAD block?
+            flash_read_block_addr(block_address, p_filename, $008, $088)        'yes, read filename
+            LONG[p_file_size], _, _ := count_file_bytes(block_address)          'get file size
+            quit
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB stats() : used_blocks, free_blocks, file_count | block_address
+
+'' Get filesystem status: used/free block counts and file count
+''
+'' @returns used_blocks - the number of blocks in use (or E_NOT_MOUNTED if the file system is NOT mounted)
+'' @returns free_blocks - the number of free blocks (or 0 if there is an error)
+'' @returns file_count - the number of files recorded in filesystem (or 0 if there is an error)
+
+' Local Variables:
+' @local block_address - the block offset within the file system
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED), 0, 0
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          ' new operation clear any prior error code
+
+  used_blocks := 0
+  free_blocks := 0
+  file_count := 0
+
+  repeat BLOCKS with block_address
+    case field[BlockState][block_address]
+      B_FREE: free_blocks++
+      B_TEMP: used_blocks++
+      B_HEAD: used_blocks++
+              file_count++
+      B_BODY: used_blocks++
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB string_for_error(status) : p_interpretation
+
+'' Return an address of a zstring describing the error code
+''
+'' @param status - the error code to translate
+'' @returns p_interpretation - interpretation of the errcode
+
+    case status
+        SUCCESS:                p_interpretation := @"SUCCESS: No error"
+        E_BAD_HANDLE:           p_interpretation := @"E_BAD_HANDLE: Handle is invalid"
+        E_NO_HANDLE:            p_interpretation := @"E_NO_HANDLE: Out of available handles"
+        E_FILE_NOT_FOUND:       p_interpretation := @"E_FILE_NOT_FOUND: File not present"
+        E_DRIVE_FULL:           p_interpretation := @"E_DRIVE_FULL: Out of space on flash chip"
+        E_FILE_WRITING:         p_interpretation := @"E_FILE_WRITING: File is open for writing"
+        E_FILE_READING:         p_interpretation := @"E_FILE_READING: File is open for reading"
+        E_FILE_OPEN:            p_interpretation := @"E_FILE_OPEN: File is open"
+        E_FILE_EXISTS:          p_interpretation := @"E_FILE_EXISTS: the File exists"
+        E_END_OF_FILE:          p_interpretation := @"E_END_OF_FILE: no more data available, at end of file"
+        E_FILE_MODE:            p_interpretation := @"E_FILE_MODE: file not opened in desired mode"
+        E_FILE_SEEK:            p_interpretation := @"E_FILE_SEEK: Attempted seek past either end of file"
+        E_BAD_BLOCKS_REMOVED:   p_interpretation := @"E_BAD_BLOCKS_REMOVED: Block bit failure detected, bad blocks removed"
+        E_NO_LOCK_AVAIL:        p_interpretation := @"E_NO_LOCK_AVAIL: Unable to obtain a LOCK for driver use"
+        E_TRUNCATED_STRING:     p_interpretation := @"E_TRUNCATED_STRING: Buffer full, before reaching string terminator"
+        E_INCOMPLETE_STRING:    p_interpretation := @"E_INCOMPLETE_STRING: End of file reached before string terminator"
+        E_SHORT_TRANSER:        p_interpretation := @"E_SHORT_TRANSER: Too few bytes read or written"
+        E_NOT_MOUNTED:          p_interpretation := @"E_NOT_MOUNTED: Filesystem NOT yet accessible"
+        E_BAD_FILE_LENGTH:      p_interpretation := @"E_BAD_FILE_LENGTH: File length is negative or zero"
+        E_BAD_SEEK_ARG:         p_interpretation := @"E_BAD_SEEK_ARG: Invalid seek argument"
+        other:                  p_interpretation := @"???: Unknown error code ???"
+
+
+
+CON ' --- Private Methods ---
+
+CON ' >>>  parameter type (p_filename)  <<<
+
+PRI finish_open_read(p_filename, max_file_length) : handle | signature, block_id, lenInBytes, offsetInBytes, bNeedSeek
+
+' Open a file for reading, returning handle if success
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns handle - handle to open file if successful,
+' .. or E_FILE_NOT_FOUND if file doesn't exist,
+
+' Local Variables:
+' @local signature - the block state bits of the block being checked
+
+  'debug("* finish_open_read([", zstr_(p_filename), "], bytes=", udec_(max_file_length), ") - ENTRY")
+  ifnot signature := get_file_head_signature(p_filename)                        'if file doesn't exist, abort
+    handle := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+  else
+    bNeedSeek := true
+    handle := new_handle(p_filename)                                            'get new handle, aborts if no handle available
+    hCircularLength[handle] := max_file_length                                  'set size limit if non-zero
+    hStatus[handle] := H_READ                                                   'set handle status to READ
+    block_id := signature.[19..8]                                               'get head ID for use by Seek()
+    hHeadBlockID[handle] := block_id                                            'get head ID for use by Seek()
+    ' respond to special internal use isOldFormat (v1.4) file!
+    if max_file_length > 0 and signature.[2] == 0
+    ' calculate file offset the v1.4 way...
+    '  we don't have data offset in file head block so calculate it
+      lenInBytes := count_file_bytes_id(block_id)                               'get file length in bytes
+      if showRTdebug
+        debug("*** OLD format circular read! ", udec(lenInBytes, max_file_length))
+      if lenInBytes > max_file_length
+        bNeedSeek := false                                                      'is file longer than requested length?
+        offsetInBytes := lenInBytes - max_file_length                           'get offset to start of data in file
+        block_id, hEndPtr[handle], _ := locate_file_byte(block_id, offsetInBytes) 'reqest position beyond end to get last byte/block in file
+        flash_read_block_id(block_id, buffer_pointer(handle), $000, $FFF)       'read new block into buffer
+            'debug(" open_read() ", udec(offsetInBytes, block_address, endPtr))
+    if bNeedSeek
+      seek_no_locks(handle, 0)                                                  'seek to start of file
+
+  'debug(" -- open_read() freed sem #", udec_(fsLock))
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PRI finish_open_write(p_filename, max_file_length) : handle | signature, ptr
+
+' Open a file for (re)writing, returning handle if success
+' -- (overwrites existing file, if you wish to prevent overwrite, use exists() to check!)
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns handle - handle to open file if successful,
+' .. or E_NO_HANDLE if no handle is available
+
+' Local Variables:
+' @local signature - the block state bits of the block being checked
+' @local ptr - the address of the 4KB buffer for the file associated with this handle
+    'debug("* finish_open_write(", zstr_(p_filename), ", bytes=", udec_(max_file_length), ") - ENTRY")
+
+  handle := new_handle(p_filename)            'get new handle, abort if no handle available
+  hCircularLength[handle] := max_file_length           'set size limit if non-zero
+
+  if signature := get_file_head_signature(p_filename)
+    'file already exists, overwrite it
+    start_write(handle, H_APPEND, signature.[19..8], next_active_cycle(signature.[7..5]))
+  else                          'else, write it
+    start_write(handle, H_WRITE, next_available_block_id(), %011)
+    ' NO, we don't write empty files!
+    ' hModified[handle]~~                 'force first block to be written in case no data
+    'debug("open() WRITE ", uhex_word(hEndPtr[handle], handle))
+
+  'debug(" -- open_write() freed sem #", udec_(fsLock))
+  lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PRI finish_open_append(p_filename, max_file_length) : handle | signature, end_block_address, endPtr, bytes_used, ptr
+
+' Open for append, returning handle if success
+' -- NOTE: this is called only if file already exists
+' -- (if it didn't exist finish_open_write() would have been called instead)
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns handle - handle to open file if successful,
+' .. or E_NO_HANDLE if no handle is available
+
+  'debug("* finish_open_append(", zstr_(p_filename), ", bytes=", udec_(max_file_length), ") - ENTRY")
+
+  'debug("finish_open_append() get handle")
+
+  handle := new_handle(p_filename)                                              'get new handle, set error() if no handle available
+  hCircularLength[handle] := max_file_length                                    'set size limit if non-zero
+
+  if signature := get_file_head_signature(p_filename)                           'if file already exists, append it
+    start_modify(handle, H_APPEND, signature.[19..8], $FFFFFF, true)
+  else                          'else, write it
+    start_write(handle, H_WRITE, next_available_block_id(), %011)
+    ' NO, we don't write empty files!
+    'hModified[handle]~~                                                        'force first block to be written in case no data
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PRI finish_open_readwrite(p_filename) : handle | signature, head_block_id
+' Open an existing file for reading and writing within current file boundaries, returns handle
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns handle - handle to open file
+
+' Local Variables:
+' @local signature - the block state bits of the block being checked
+' @local head_block_id - id of block being checked
+
+handle := new_handle(p_filename)                                                'get new handle, abort if no handle available
+if signature := get_file_head_signature(p_filename)                             'if file already exists
+  ' file exists, allow modification and append-only extension (no gaps)
+  start_modify(handle, H_READWRITE, signature.[19..8], 0, true)
+else
+  ' file DOES NOT exist, create it, allow modification after append-only extension (no gaps)
+  ' no starting block-id means create new head!
+  head_block_id := next_available_block_id()                                    'get initial ID
+  build_head_block(buffer_pointer(handle), filename_pointer(handle), head_block_id) 'build head block in buffer
+  start_modify(handle, H_READWRITE, head_block_id, 0, false)                    'go to start of file
+
+lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PRI exists_no_lock(p_filename) : bool
+
+' Determine if named file is present in the file system
+' -- (internal version - for use when caller has already grabbed lock)
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns bool - True/False where True means the file exists
+
+  bool := get_file_head_signature(p_filename) ? true : false
+
+
+PRI get_file_head_signature(p_filename) : foundSignature | tmpFilenameCRC, block_address, signature[2], bIsOldFmt
+
+' Look up file by name and return the block state bits of the files' head block (or 0 if file not found)
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns foundSignature - the block state bits of the head block (or 0 if file not found)
+
+' Local Variables:
+' @local tmpFilenameCRC - a temp integer holding a CRC19 filename CRC
+' @local block_address - the block offset within the file system
+' @local signature[2] - a temp buffer for the block's signature and filename CRC
+' @local bIsOldFmt - a temp boolean indicating we have an old format header block (filename CRC is CRC32)
+
+' NOTE: !!! INTERNAL USE !!!   signature.[4..2] are unused - we use .[2] herein to indicate old format!
+
+  tmpFilenameCRC := filename_crc(p_filename)                                    'get CRC of filename
+
+  repeat BLOCKS with block_address                                              'scan head blocks for filename
+    if field[BlockState][block_address] == B_HEAD                               'if this is a head block..
+      flash_read_block_addr(block_address, @signature, $000, $007)              '..read first two longs of block
+      if signature[1].[31..12] == tmpFilenameCRC                                'if the filename CRC matches..
+        ' have new format file head
+        flash_read_block_addr(block_address, @tmpBlockBuffer, $008, $087)       '..read whole filename for comparison
+        if strcomp(p_filename, @tmpBlockBuffer)                                 'if filename matches..
+          foundSignature := signature                                           '..return first long of block (always non-zero or logically TRUE)
+          'debug("- GOOD crc19 and strcomp!")
+          quit
+        'else
+          'debug("- bad crc19 filename ", uhex_word(block_address))
+      else
+        ' see if old format (crc32 vs crc19)
+        'debug("- bad CRC19 is CRC32? ", uhex_word(block_address))
+        bIsOldFmt := is_old_format_file_head(block_address, @tmpBlockBuffer)
+        if bIsOldFmt
+          if strcomp(p_filename, @tmpBlockBuffer)                               'if filename matches..
+            foundSignature := signature                                         '..return first long of block (always non-zero or logically TRUE)
+            'debug("- GOOD crc32 and strcomp!")
+            quit
+          'else
+          '  debug("- bad crc32 filename ", uhex_word(block_address))
+        'else
+        '  debug("- bad crc19 and not OLD Fmt ", uhex_word(block_address))
+
+  ' communicate is-old-format to caller
+  if foundSignature <> 0
+    foundSignature.[2] := bIsOldFmt ? 0 : 1                                     ' special FLAG for this routine (block is old format)
+
+
+PRI build_head_block(pBuff, p_filename, head_block_id)
+
+' initialize empty block with control information
+'
+' @param pBuff - address of block in RAM
+' @param p_filename - address of a zstring containing the filename
+' @param head_block_id - the head block id for this new file
+
+  bytefill(pBuff, $FF, BLOCK_SIZE)                                              'erase block buffer to build new head block
+  long[pBuff].[1..0] := %00                                                     'set head/last
+  long[pBuff].[19..8] := head_block_id                                          'set head block ID
+  long[pBuff][1].[11..0] := $000                                                'clear data offset
+  long[pBuff][1].[31..12] := filename_crc(p_filename)                           'set filename CRC
+  bytefill(pBuff + $008, $E5, FILENAME_SIZE)                                    'erase filename portion of block
+  strcopy(pBuff + $008, p_filename, FILENAME_SIZE - 1)                          'set filename
+
+
+PRI is_file_open(p_filename, open_mode_bits) : result | handle
+
+' Return true if named file is open
+'
+' @param p_filename - address of a zstring containing the filename
+' @param open_mode_bits - some combiantion of H_READ, H_WRITE, and H_REPLACE
+' @returns status - True/False where True means the file is open
+
+' Local Variables:
+' @local handle - temporary handle to check for availability
+
+  repeat MAX_FILES_OPEN with handle                                             'for each handle is already open?
+    if hStatus[handle] & open_mode_bits
+      if strcomp(@hFilename + handle * FILENAME_SIZE, p_filename)
+        return true
+{
+      else
+        debug("is_open() no filename match ", zstr_(p_filename), " vs ", zstr_(@hFilename + handle * FILENAME_SIZE))
+    else
+      debug("is_open() no mode match ", uhex_byte(hStatus[handle], open_mode_bits))
+'}
+
+PRI new_handle(p_filename) : handle | possible_handle
+
+' Calculate and return next available handle
+'
+' @returns handle - the next available handle, or
+' .. E_NO_HANDLE if no handle is available
+
+' Local Variables:
+' @local possible_handle - temporary handle to check for availability
+
+  handle := E_NO_HANDLE                                                         'if no handle is available... return this
+  repeat MAX_FILES_OPEN with possible_handle                                    'find first free handle
+    ifnot hStatus[possible_handle]                                              'if handle not in use
+      handle := possible_handle                                                 '..select as handle to use
+      fsFreeHndlCt--
+      quit                                                                      '..exit loop, we have our answer
+
+  'debug("new_handle() = ", sdec(handle))
+  if handle < 0                                                                 'if error, set error code
+    LONG[@errorCode][cogid()] := handle
+  else
+    'record the filename for this handle
+    ' NOTE this buffer is $00-filled while in our blocks they are $FF-filled
+    bytefill(@hFilename + handle * FILENAME_SIZE, 0, FILENAME_SIZE)             ' empty filename buffer
+    strcopy(@hFilename + handle * FILENAME_SIZE, p_filename, FILENAME_SIZE - 1) ' copy new filename into buffer
+
+
+PRI filename_crc(p_filename) : filenameCRC
+
+' Return the CRC19 value calculated for the filename zstring
+'
+' @param p_filename - address of a zstring containing the filename
+' @returns filenameCRC - the calculated CRC value
+
+  filenameCRC := getcrc(p_filename, $B5827 rev 19, strsize(p_filename))         'compute CRC of filename
+
+
+
+CON ' >>>  parameter type (handle)  <<<
+
+PRI start_write(handle, open_mode, head_block_id, head_cycle) | block_address
+
+' configure file for H_WRITE or H_APPEND
+'
+' @param handle - a handle to an open file
+' @param open_mode - desired open mode
+' @param head_block_id - the head block id for this new file
+' @param head_cycle -
+
+  build_head_block(buffer_pointer(handle), filename_pointer(handle), head_block_id) 'build head block in buffer
+
+  hStatus[handle] := open_mode                                                  'set status
+  hHeadBlockID[handle] := head_block_id                                         'set head block ID
+  hChainBlockID[handle] := head_block_id                                        'set fork block ID to head block ID
+  hChainLifeCycle[handle] := head_cycle                                         'set fork cycle to head cycle
+  hEndPtr[handle] := $088                                                       'point to first byte in head block
+
+
+PRI start_modify(handle, open_mode, head_block_id, file_position, bFileExists) | block_id, pBuff
+
+' configure file for H_APPEND or H_READWRITE
+'
+' @param handle - a handle to an open file
+' @param open_mode - desired open mode
+' @param head_block_id - the head block id for this new file
+' @param file_position -
+' @param bFileExists -
+
+' Local Variables:
+' @local block_id - temporary block id
+' @local pBuff - a temporary pointer to the handles block buffer
+
+    'debug("* srt_modify() ", udec(handle, head_block_id, file_position))
+
+    pBuff := buffer_pointer(handle)                                             'get block buffer pointer
+    if bFileExists                                                              'if file exists... (new file block is already in buffer)
+      block_id, hEndPtr[handle], hSeekFileOffset[handle] := locate_file_byte(head_block_id, file_position)    'locate block and block pointer by file_position
+      flash_read_block_id(block_id, pBuff, $000, $FFF)                          '.. read located block into buffer
+      if open_mode == H_READWRITE                                               '.. if read/modify/write
+        hSeekPtr[handle] := hEndPtr[handle]                                     '.... enable seek
+    else
+      hSeekPtr[handle] := hEndPtr[handle] := $088                               'new file, seek is enabled and
+      hSeekFileOffset[handle] := 0                                              'file offset starts at zero
+
+    hStatus[handle] := open_mode                                                'set status
+    hHeadBlockID[handle] := head_block_id                                       'set head block ID
+    hChainBlockID[handle] := block_id                                           'set fork block ID to located block ID
+    hChainLifeCycle[handle] := next_active_cycle(long[pBuff].[7..5])            'set fork cycle to next cycle of located block
+    'debug(" -- ", uhex_word(hChainBlockAddr[handle]), udec(block_id), uhex_word(hEndPtr[handle]), udec(hSeekFileOffset[handle]))
+
+
+PRI rd_byte_no_locks(handle) : byte_value | pBuff, signature, isSeeking, endPtr
+
+' Read next BYTE from file associated with handle
+'  -- negative value indicates error or end of file
+
+' @param handle - the handle to the file from which to read a byte
+' @returns value - the next byte [0-255] from the file, or:
+' .. E_END_OF_FILE if no more data,
+' .. E_FILE_MODE if read not allowed for this file,
+
+' Local Variables:
+' @local ptr - the address of the 4KB buffer for the file associated with this handle
+' @local signature - the block state bits of the block being checked
+' @local isSeeking - temporary variable T/F where T we use hSeekPtr vs hEndPtr
+' @local endPtr - temporary variable value of whichever Ptr we are using
+
+  isSeeking := (hSeekPtr[handle] <> NOT_ENABLED) ? true : false                 ' is seek pointer in use?
+  endPtr := isSeeking ? hSeekPtr[handle] : hEndPtr[handle]
+
+  pBuff := buffer_pointer(handle)                                               ' get buffer pointer
+  signature := LONG[pBuff]                                                      ' get first long
+
+  case hStatus[handle]
+
+    H_READ, H_READWRITE:                                                        'read/modify mode?
+      ifnot signature.[0]                                                       ' if last block ...
+        if endPtr == LONG[pBuff].[31..20]                                       ' ..if no more data, return error code
+          'debug("* rdByte EOF")
+          return  (LONG[@errorCode][cogid()] := E_END_OF_FILE)
+      else                                                                      ' not last block...
+        if endPtr == $FFC                                                       ' else, if no more data...
+          if hStatus[handle] & H_MODIFY                                         '..and if modify mode..
+            if hModified[handle]~                                               '..and if block was modified (post-clears)..
+              rewrite_block(handle)                                             '..then rewrite block (might move a block)
+          flash_read_block_addr(field[IDToBlock][signature.[31..20]], pBuff, $000, $FFF) ' load next block
+          endPtr := $004                                                        ' point to first data byte
+
+    other:                      'other mode?
+      'debug("* rdByte FILE MODE ERR")
+      return (LONG[@errorCode][cogid()] := E_FILE_MODE)                         'read not allowed, abort
+
+  byte_value := BYTE[pBuff][endPtr++]                                           ' get data byte to return and increment pointer
+  if isSeeking
+    hSeekPtr[handle] := endPtr                                                  ' point to start of data in body block
+    hSeekFileOffset[handle]++                                                   ' we moved keep track
+  else
+    hEndPtr[handle] := endPtr                                                   ' point to start of data in body block
+    'debug("+ rd_byte() ", uhex_word(hEndPtr[handle], handle))
+  'debug("rd_byte() [",uhex_byte_(byte_value),"]")
+
+
+PRI wr_byte_no_locks(handle, byte_value) : status | pBuff, nextBlockID, isSeeking, endPtr
+
+' Write a byte to a file that is open for write or rewrite
+'
+' @param handle - handle to a file that is open for write or rewrite
+' @param byte_value - value to write to the file
+' @returns status - 0 (SUCCESS) if successful,
+' .. E_BAD_HANDLE if the handle is not valid
+
+' Local Variables:
+' @local ptr - the address of the 4KB buffer for the file associated with this handle
+' @local nextBlockID - block ID of the next block to write to the file
+
+  isSeeking := (hSeekPtr[handle] <> NOT_ENABLED) ? true : false                 ' is seek pointer in use?
+  endPtr := isSeeking ? hSeekPtr[handle] : hEndPtr[handle]
+
+  pBuff := buffer_pointer(handle)                                               'get buffer pointer
+  status:= SUCCESS
+
+  case hStatus[handle]
+    H_WRITE, H_APPEND:                                                          'write/rewrite/append mode?
+      if endPtr == $FFC                                                         'if current block full..
+        long[pBuff].[0]~~                                                       '..make more block
+        nextBlockID := next_available_block_id()                                '..get next ID to link to
+        write_block(handle, nextBlockID)                                        '..write current full body block with NextID link
+        bytefill(pBuff, $FF, BLOCK_SIZE)                                        '..erase block buffer to build new body block
+        long[pBuff].[0]~                                                        '..make last block
+        long[pBuff].[19..8] := nextBlockID                                      '..set ID
+        endPtr := $004                                                          '..point to start of data in new block
+
+    H_READWRITE:                                                                'modify mode?
+      if endPtr == $FFC                                                         '..and if block full
+        if hModified[handle]~                                                   '..and if block was modified
+          rewrite_block(handle)                                                 '..then rewrite block (might move a block)
+        flash_read_block_id(long[pBuff].[31..20], pBuff, $000, $FFF)            '..read next block
+        endPtr := $004                                                          '..point to start of data in next block
+
+    other:                                                                      'other mode?
+      status := E_FILE_MODE                                                     'write not allowed, abort
+
+  if status == SUCCESS
+    hModified[handle]~~                                                         'set modified flag
+    byte[pBuff][endPtr++] := byte_value                                         'write byte into block buffer, post-increment pointer
+    if isSeeking
+        hSeekPtr[handle] := endPtr                                              ' point to start of data in body block
+        hSeekFileOffset[handle]++                                               ' we moved keep track
+    else
+        hEndPtr[handle] := endPtr                                               ' point to start of data in body block
+        'if (hEndPtr[handle] +// 32) == 8
+        '    debug("+ wr_byte() ", uhex_word(hEndPtr[handle], handle))
+
+
+PRI seek_no_locks(handle, file_position) | pBuff, block_id, endPtr, fileOffset
+
+' seek file associted with handle to new position
+'
+' @param handle - handle to open file
+' @param file_position - desired file postion
+
+' Local Variables:
+' @local pBuff - a temporary pointer to the handles block buffer
+' @local block_id - temporary block id
+
+    pBuff := buffer_pointer(handle)                                             'get block buffer pointer
+    block_id, endPtr, fileOffset := locate_file_byte(hHeadBlockID[handle], file_position) 'locate byte in file
+    'debug("seek_no_locks() ", udec(block_id, file_position, fileOffset), uhex_word(endPtr))
+    if hStatus[handle] & H_MODIFY                                               'if modify mode..
+      if block_id <> long[pBuff].[19..8]                                        '..and if different block block ID
+        if hModified[handle]~                                                   '..and if block was modified (post-clears)
+          rewrite_block(handle)                                                 '..then rewrite block (might move a block)
+
+    hSeekFileOffset[handle] := fileOffset                                      ' we moved keep track
+    hSeekPtr[handle] := hEndPtr[handle] := endPtr                               ' point to start of data in body block
+    flash_read_block_id(block_id, pBuff, $000, $FFF)                            'read new block into buffer
+
+
+PRI close_no_lock(handle) : status | open_mode, chain_block_address, head_block_id, chain_block_id, chainState
+
+' Close an open file, completes the file write, rewrite, or read-modify-write then frees handle
+' . (do all the close operations, caller has locked and will release)
+'
+' @param handle - a handle to an open file
+' @returns status - 0 (SUCCESS) if successful,
+' .. E_FILE_MODE if close doesn't recognize this file mode (internal error),
+' .. E_BAD_HANDLE if the handle is not valid
+
+  LONG[@errorCode][cogid()] := SUCCESS                                          'new operation clear any prior error code
+
+  if hModified[handle]                                                          ' if modified
+    open_mode := hStatus[handle]                                                'get file open mode for handle
+    case open_mode
+      H_WRITE, H_APPEND:                                                        'write/rewrite/append mode?
+        write_block(handle, hEndPtr[handle])                                    'write updated last block with EndPtr
+
+        head_block_id := hHeadBlockID[handle]                                   'get head ID
+        chain_block_id := hChainBlockID[handle]                                 'get fork ID
+        chain_block_address := hChainBlockAddr[handle]                          'get fork block
+        chainState := chain_block_id == head_block_id ? B_HEAD : B_BODY         'get fork block state
+
+        flash_activate_block(chain_block_address, hChainLifeCycle[handle])      'replace old head block if rewrite or old last block if append
+
+        if open_mode & H_FORK                                                   'if append..
+          delete_chain_from_id(chain_block_id, 0, 0, True)                      '..delete old fork block through end of file, keeping first ID valid
+
+        field[BlockState][chain_block_address] := chainState                    'change new fork block status from sTEMP to sHEAD/sBODY
+        field[IDToBlock][chain_block_id] := chain_block_address                 'update IDToBlock to point to new fork block
+
+        if hCircularLength[handle]                                              'if size limit non-zero..
+          froncate_file(head_block_id, hCircularLength[handle])                 '..froncate file to size limit
+
+      H_READWRITE:                                                              'modify mode?
+        if hModified[handle]~                                                   '..and if block was modified (post-clears)
+          rewrite_block(handle)                                                 '..rewrite block
+
+  hEndPtr[handle] := 0                                                          ' no valid end pointer any more
+  hSeekPtr[handle] := NOT_ENABLED                                               ' Ensure seek mode is disabled for this handle
+  hSeekFileOffset[handle] := 0                                                  ' reset user requested postion within file
+  hChainBlockID[handle] := 0                                                    ' Clear commit-chain info
+  hChainBlockAddr[handle] := 0
+  hChainLifeCycle[handle] := 0
+  hModified[handle]~                                                            ' clear modified flag
+
+PRI write_block(handle, NextID_EndPtr) | pBuff, block_id, block_address
+
+' Write current block in buffer to next avail. block address
+'
+' @param handle - a reference to a file open for write
+' @param NextID_EndPtr - the next block id, -OR- the pointer to end of data in last block
+
+' Local Variables:
+' @local pBuff - a temporary pointer to the handles block buffer
+' @local block_id - temporary block id
+' @local block_address - the block offset within the file system
+
+  pBuff := buffer_pointer(handle)                                               'get block buffer pointer
+  long[pBuff].[31..20] := NextID_EndPtr                                         'set NextID/EndPtr
+  block_id := long[pBuff].[19..8]                                               'get block ID of block
+
+  block_address := next_block_address()                                         'get a new block (may alter IDToBlock)
+
+  'if block_id == hHeadBlockID[handle]
+    ' FIXME: TODO: should this also mark B_HEAD?
+
+  if showRTdebug
+    debug("* wr_block() ", uhex_word(block_address), udec(block_id), uhex_word(NextID_EndPtr))
+
+  if block_id == hChainBlockID[handle]                                          'if this is the head of commit chain block
+    flash_program_block(block_address, pBuff, hChainLifeCycle[handle])          '..program block with chain head cycle
+    hChainBlockAddr[handle] := block_address          '..remember the block so that it can be activated on close
+  else                                                                          'else, this is a body block
+    flash_program_block(block_address, pBuff, %011)                             '..program body block with new cycle
+    flash_activate_block(block_address, %011)                                   '..activate block
+    field[BlockState][block_address] := B_BODY                                  '..change block state from sTEMP to sBODY
+    field[IDToBlock][block_id] := block_address                                 '..set IDToBlock
+
+
+PRI rewrite_block(handle) | pBuff, block_id, block_address, oldBlockAddress
+
+' Write block over existing (issed mew lifeCycle to make heigher priority
+'
+' @param handle - a reference to a file open for read/modify/write
+
+' Local Variables:
+' @local pBuff - a temporary pointer to the handles block buffer
+' @local block_id - temporary block id
+' @local block_address - the block offset within the file system
+' @local oldBlockAddress - original block address for this block
+
+  pBuff := buffer_pointer(handle)                                               'get block buffer pointer
+  block_id := long[pBuff].[19..8]                                               'get block ID
+
+  block_address := next_block_address()                                         'get a new block (may alter IDToBlock)
+  flash_activate_updated_block(block_address, pBuff)                            'program updated block
+
+  oldBlockAddress := field[IDToBlock][block_id]\block_address                   'get the old block -AND- update IDToBlock to new block
+  flash_cancel_block(oldBlockAddress)                                           'cancel the old block
+
+  field[BlockState][block_address] := field[BlockState][oldBlockAddress]\B_FREE 'copy old block state to new -AND- free old
+
+
+PRI filename_pointer(handle) : p_filename
+
+' Return pointer to filename for this handle
+'
+' @param handle - a handle to an open file
+' @returns p_filename - address of a zstring containing the filename
+
+  return @hFilename + handle << FILENAME_SIZE_EXP                               'get filename pointer by handle
+
+
+PRI buffer_pointer(handle) : p_buffer
+
+' Return a pointer to the block buffer for this handle
+'
+' @param handle - a handle to an open file
+' @returns p_buffer -  the address of the 4KB buffer associated with this handle
+
+  return @hBlockBuff + handle << BLOCK_SIZE_EXP
+
+
+PRI ensure_handle_mode(handle, open_mode_bits) : status
+
+' Determine if handle is open with dedired mode
+'
+' @param handle - handle to a file that might be open for read or read/write
+' @param open_mode_bits - some combiantion of H_READ, H_WRITE, and H_REPLACE
+' @returns status - 0 (SUCCESS) if successful,
+' .. E_BAD_HANDLE if the handle is not valid,
+' .. E_FILE_MODE if the file is not open in desired mode,
+
+  if handle < 0 or handle > MAX_FILES_OPEN - 1
+    status := E_BAD_HANDLE
+  elseif hStatus[handle] & open_mode_bits
+    status :=  SUCCESS
+  else
+    status :=  E_FILE_MODE
+
+
+CON ' >>>  parameter type (block_id)  <<<
+
+PRI froncate_file(head_block_id, limit_in_bytes) | size_in_bytes, block_address, new_head_block_id, block_offset, body_signature, delete_mode, prior_block_id, data_offset
+
+' Remove leading block(s) from file that exceeds the circular size limit
+'
+' @param head_block_id - block id of file
+' @param limit_in_bytes - the file size limit in bytes
+
+' Local Variables:
+' @local size_in_bytes - current length of file in bytes
+' @local block_address - the block offset within the file system
+' @local new_head_block_id - id of block about to become the file head
+' @local block_offset - temporary offset into block
+' @local body_signature - temporary signature bits for body block
+' @local delete_mode - desired delete mode for prior-file chain
+' @local prior_block_id - former head block id
+' @local data_offset - temporary offset in block
+
+  size_in_bytes := count_file_bytes_id(head_block_id)                                                   'get size of file
+
+  ' if have extra blocks beyond limit requested at open, then remove them
+  if size_in_bytes > limit_in_bytes                                                                     'if file is oversize..
+
+      block_address := next_block_address()                                                             'get a new block now (may alter tmpBlockBuffer and IDToBlock)
+
+      new_head_block_id, block_offset, _ := locate_file_byte(head_block_id, size_in_bytes - limit_in_bytes) 'find block with start of data (might be head block)
+      if showRTdebug
+        debug("* froncate(id=", udec_(head_block_id), ", ", udec_(limit_in_bytes), ") ", udec(size_in_bytes, new_head_block_id), uhex_word(block_offset), "(", udec_word_(block_offset), ")")
+
+      if block_offset > $88
+        ' make this block the new head
+        flash_read_block_id(new_head_block_id, @body_signature, $000, $003)                             'get data block signature
+        flash_read_block_id(new_head_block_id, @tmpBlockBuffer + $88, $088, $FFF)                       'load data bytes into head block buffer
+        data_offset := block_offset - $088                                                              '..set data offset to point within head block
+
+      else
+      ' locate prior block in chain to make it the new head with calc offset
+        ' locate prior block
+        prior_block_id := head_block_id
+        repeat
+          flash_read_block_id(prior_block_id, @body_signature, $000, $003)                              'get head block signature
+          if body_signature.[0] == 1                                                                    ' if more block
+            if body_signature.[31..20] <> new_head_block_id                                             ' ..if this block does NOT immediately preceed our data block
+              prior_block_id := body_signature.[31..20]                                                 ' ....get block id of next block
+            else
+              quit
+          else
+            quit
+        ' prior block is our new head
+        if showRTdebug
+          debug("* froncate(id=", udec_(head_block_id), ", ", udec_(limit_in_bytes), ") ", udec(size_in_bytes), ", AWAKEN PRIOR HEAD ", udec(prior_block_id))
+        flash_read_block_id(prior_block_id, @body_signature, $000, $003)                                'get data block signature
+        flash_read_block_id(prior_block_id, @tmpBlockBuffer + $88, $088, $FFF)                          'load data bytes into head block buffer
+        data_offset := block_offset + 3956 - 4                                                              '..set data offset to point within next data block
+
+      flash_read_block_id(head_block_id, @tmpBlockBuffer, $000, $087)                                   'overlay file-head data
+      LONG[@tmpBlockBuffer].[0] := body_signature.[0]                                                   '..copy more/last bit from data block
+      LONG[@tmpBlockBuffer].[31..20] := body_signature.[31..20]                                         '..copy NextID/EndPtr from data block
+      LONG[@tmpBlockBuffer][1].[11..0] := data_offset                                                   '..set data offset to point within next data block
+      if showRTdebug
+        if body_signature.[0]
+          debug("- header [", uhex_word_(block_address), "] thisID=", udec_(LONG[@tmpBlockBuffer].[19..8]), ", nextID=", udec_(LONG[@tmpBlockBuffer].[31..20]), ", sig=[", uhex_long_(LONG[@tmpBlockBuffer]), "]")
+        else
+          debug("- header [", uhex_word_(block_address), "] thisID=", udec_(LONG[@tmpBlockBuffer].[19..8]), ", endPtr=", uhex_word_(LONG[@tmpBlockBuffer].[31..20]), ", sig=[", uhex_long_(LONG[@tmpBlockBuffer]), "]")
+      delete_mode := 1                                                                                  '..delete old head block through data block
+
+      flash_activate_updated_block(block_address, @tmpBlockBuffer)                                      'program updated block
+
+      delete_chain_from_id(head_block_id, body_signature.[19..8], delete_mode, True)                    'delete old head block through or before data block, keep first block ID valid
+
+      field[IDToBlock][head_block_id] := block_address                                                  'point IDToBlock to new head block
+      field[BlockState][block_address] := B_HEAD                                                        'change state of new head block from sTEMP to sHEAD
+
+{
+PRI truncate_file(head_block_id, limit_in_bytes) | block_address, block_id, block_offset
+
+' Remove trailing block(s) of file leaving limit_in_bytes mstill in file
+'
+' @param head_block_id - the head block id for this new file
+' @param limit_in_bytes - the file size limit in bytes
+
+' Local Variables:
+' @local block_address - the block offset within the file system
+' @local block_id - temporary block id
+' @local block_offset - temporary offset into block
+
+  if count_file_bytes_id(head_block_id) > limit_in_bytes                        'if file is oversize..
+
+    block_address := next_block_address()                                       'get a new block now (may alter tmpBlockBuffer and IDToBlock)
+
+    block_id, block_offset, _ := locate_file_byte(head_block_id, limit_in_bytes) 'find block with new last byte (might be head block)
+    flash_read_block_id(block_id, @tmpBlockBuffer, $000, block_offset - 1)      'read block, minus excess data area
+    bytefill(@tmpBlockBuffer + block_offset, $FF, $FFC - block_offset)          'clear excess data area
+    LONG[@tmpBlockBuffer].[0] := 0                                              'make into last block
+    LONG[@tmpBlockBuffer].[31..20] := block_offset                              'set EndPtr
+    flash_activate_updated_block(block_address, @tmpBlockBuffer)               'program updated last block
+
+    delete_chain_from_id(block_id, 0, 0, True)                                  'delete old block through end of file, keep first block ID valid
+
+    field[IDToBlock][block_id] := block_address                                 'point IDToBlock to new last block
+    field[BlockState][block_address] := LONG[@tmpBlockBuffer].[1] ? B_BODY : B_HEAD    'change state of new last block from sTEMP to sHEAD/sBODY
+
+'}
+
+PRI count_file_bytes_id(block_id) : byteCount
+
+  _, _, byteCount := locate_file_byte(block_id, $FFFFFF)    'locate end-of-file by using impossibly large location (16MB)
+
+
+PRI locate_file_byte(block_id, file_position) : rID, rBlockOfs, rLocation | dataOffset, signature, currOfs, srtOfs, endOfs, fnmCrc32, bIsOldFmt
+
+' locate position (file_offset) within file list of blocks
+'
+' @param block_id - the block id of the file head
+' @param file_position - the byte offset from the beginning of the file
+' @returns rID - the block id of the block containing the desired location
+' @returns rBlockOfs - the offset into the block containing the desired location
+' @returns rLocation - the location within the entire file
+
+' Local Variables:
+' @local dataOffset - temp integer containing the initial data offset
+' @local signature - temp long containing the block signature bits
+' @local currOfs - temp integer containing offset as we work are way thru the file
+' @local srtOfs - start of data in block
+' @local endOfs - end of data in block
+' @local fnmCrc32 - old CRC32 value filename CRC
+' @local bIsOldFmt - temp boolean T/F where T means this is old style file head with crc32 NOT dataOffset
+
+  file_position := file_position #> 0 <# $FFFFFF                                'limit offset into file from 0 to 16MB
+
+  ' we are in HEAD block see if we are old format CRC32 block
+  bIsOldFmt := is_old_format_file_head(field[IDToBlock][block_id], @tmpBlockBuffer)
+  if not bIsOldFmt
+    ' have new format file head
+    flash_read_block_id(block_id, @dataOffset, $004, $005)                      'read the data offset in the head block
+    currOfs -= dataOffset.[11..0]                                               'subtract it from the initial position of zero
+
+  repeat                                                                        'trace blocks to count file bytes
+    flash_read_block_id(block_id, @signature, $000, $003)                       'read block header
+    srtOfs := signature.[1] ? $004 : $088         'body or head?
+    endOfs := signature.[0] ? $FFC : signature.[31..20]                         'more or last?
+    'debug("* size ", udec(block_id, Bot, Top, currOfs))
+    if file_position >= currOfs and file_position < currOfs + endOfs - srtOfs   'if location is within block..
+      'debug("  size ", udec(block_id, file_position - currOfs + Bot, file_position))
+      return block_id, file_position - currOfs + srtOfs, file_position          '..return block block ID, offset into block, and target location
+    currOfs += endOfs - srtOfs                                                  'not within block, advance position to next block
+    ifnot signature.[0]                                                         'if last block..
+      'debug("  size ", udec(block_id, Top, currOfs))
+      return block_id, endOfs, currOfs                                          '..return block ID, offset into block, and end-of-file location
+    block_id := signature.[31..20]                                              'get next block ID
+
+
+PRI delete_chain_from_id(block_id, EndID, delete_mode, KeepFirstIDValid) | block_address, signature
+
+' remove selected part of a file chain
+'
+' @param block_id - starting block id
+' @param EndID - ending block id
+' @param delete_mode - do we delete through end or up to EndID (or including EndID)
+' @param KeepFirstIDValid - T/F where T means don't invalidate first block
+
+' Local Variables:
+' @local block_address - temporary block address
+' @local signature - temporary block state bits
+
+' delete_mode  Deletes to...
+'---------------------------------
+' 0 last block, [EndID ignored] (all of chain - thru last block)
+' 1 block whose ThisID = EndID (end block too)
+' 2 block whose NextID = EndID (leave end block in place)
+
+  block_address := field[IDToBlock][block_id]           'translate block ID to block
+  if showRTdebug
+    debug("* delChnFmID() [", uhex_word_(block_address), "] ", udec(block_id, EndID, delete_mode), sdec(KeepFirstIDValid))
+
+  ' FIXME: TODO: :
+  '   - wipe field[IDValid][block_id] for all but first block? (first is conditional)
+  '   - reset field[IDToBlock][block_id] for all blocks?
+
+  repeat                                                                        'trace block chain and cancel IDs, block states, and blocks
+    ifnot KeepFirstIDValid~                                                     'keep first block block ID valid?
+      field[IDValid][block_id]~                                                 'clear block ID valid flag
+    block_address := field[IDToBlock][block_id]                                 'translate block ID to block
+    field[BlockState][block_address] := B_FREE                                  'set block state to sFREE
+    flash_cancel_block(block_address)                                           'cancel block
+    flash_read_block_addr(block_address, @signature, $000, $003)                'read block header
+    block_id := signature.[31..20]                                              'get block ID of next block
+  while lookupz(delete_mode: signature.[0], ...                                 'mode 0: delete to last block
+              signature.[19..8] <> EndID,  ...                                  'mode 1: delete to ThisID = EndID
+              block_id <> EndID)                                                'mode 2: delete to NextID = EndID
+
+
+CON ' >>>  parameter type (block_address)  <<<
+
+PRI is_old_format_file_head(block_address, pBlockBuffer): oldFormatStatus | fnmCrc32, possOldCRC
+  ' return T/F where T means we have an Old-Format crc32 file head block
+  '  NOTE: leaves filename in [pBlockBuffer]
+  flash_read_block_addr(block_address, @possOldCRC, $004, $007)                 '..read whole filename for comparison
+  flash_read_block_addr(block_address, pBlockBuffer, $008, $087)                '..read whole filename for comparison
+  ' this is the prior version 32-bit crc for filenames
+  fnmCrc32 := getcrc(pBlockBuffer, $AD0424F3 rev 31, strsize(pBlockBuffer)+1)   'compute CRC of filename
+  oldFormatStatus := possOldCRC == fnmCrc32
+
+
+PRI offset_head_block(start_block_address, offset_in_blocks) : head_block_address | signature, nextBlockId
+
+' locate the address of the block offset into the chain
+'  (of offset_in_blocks == 0 just return address of start_block_address)
+'
+' @param start_block_address - the block address of the first block in the chain
+' @param offset_in_blocks - the number of blocks to skip head block is first after skipped blocks
+' @returns head_block_address - return the block address of the proposed head block
+
+' Local Variables:
+' @local signature - the block state bits of the block being checked
+' @local nextBlockId - the id next possible head block
+
+' hrmf error conditions, (1) not a valid block, or (2) found a tail block
+'  both of these are unexpected, so we'll ???
+
+  'debug("offset_head_block(", uhex_word(start_block_address), ", ", sdec(offset_in_blocks), ")")
+
+  head_block_address := start_block_address
+  if offset_in_blocks > 0
+    repeat
+        flash_read_block_addr(head_block_address, @signature, $000, $003)       'read the block into the buffer
+        ifnot signature.[0]                                                     ' if last block, exit loop
+            quit
+        nextBlockId := signature.[31..20]                                       '..no, get ID of next block
+        head_block_address := field[IDToBlock][nextBlockId]                     'get address of block
+        'debug("  -- ", uhex_word(head_block_address), "( id#", udec_(nextBlockId), " )")
+        if --offset_in_blocks <= 0                                              'count this, abort loop if have answer
+            quit
+
+  'debug("offset_head_block() = ", uhex_word(head_block_address))
+
+
+PRI check_block_read_only(thisBlockAddress): bad_count, dupe_count | otherBlockAddress, thisCycleBits, otherCycleBits, thisBlockID
+
+' If there is more than one block with this blocks ID, cancel the older block
+'
+' @param thisBlockAddress - the block offset within the file system for "this" block
+
+' Local Variables:
+' @local otherBlockAddress -the block offset within the file system for the "other" block
+' @local thisCycleBits - the lifecycle bits of "this" block
+' @local otherCycleBits - the lifecycle bits of the "other" block
+' @local thisBlockID - the blockID of "this" block
+
+  ' --- Inactive block
+  flash_read_block_addr(thisBlockAddress, @thisCycleBits, $000, $000)           'read first byte of block
+
+  ifnot lookdown(thisCycleBits.[7..5]: %011, %101, %110)                        'is block canceled or inactive?
+    return                                                                      '..if so, block status remains B_FREE, done
+
+  ' --- Bad CRC block
+  flash_read_block_addr(thisBlockAddress, @tmpBlockBuffer, $000, $FFF)          'read entire block
+
+  if LONG[@tmpBlockBuffer + $FFC] <> block_crc(@tmpBlockBuffer)                 'is CRC bad?
+    bad_count++                                                                 '..if so, indicate we would modify a block
+    return                                                                      '..block status remains B_FREE, done
+
+  ' --- Good CRC NO Dupe
+  thisBlockID := LONG[@tmpBlockBuffer].[19..8]                                  'this block is good, get its ID
+
+  ifnot field[IDValid][thisBlockID]~~                                           'set ID flag and if it wasn't already set.. (after test, bit := 1)
+    field[IDToBlock][thisBlockID] := thisBlockAddress                           '..set IDToBlock to this block
+    field[BlockState][thisBlockAddress] := B_TEMP                               '..set B_TEMP status for this block
+    return                                                                      '..done
+
+  ' --- Good CRC YES Dupe, then one of these is bad!
+  otherBlockAddress := field[IDToBlock][thisBlockID]                            'ID flag was already set, get other block with same ID
+  dupe_count++
+
+  flash_read_block_addr(otherBlockAddress, @otherCycleBits, $000, $000)         'read first byte of other block
+
+  if lookdown(thisCycleBits.[7..5] << 3 | otherCycleBits.[7..5]: %011_110, %101_011, %110_101)  'if this block is newer..
+    field[IDToBlock][thisBlockID] := thisBlockAddress                           '..set IDToBlock to this block
+    field[BlockState][thisBlockAddress] := B_TEMP                               '..set B_TEMP status for this block
+    field[BlockState][otherBlockAddress] := B_FREE                              '..set B_FREE status for other block
+
+
+PRI check_block_fix_dupe_id(thisBlockAddress) | otherBlockAddress, thisCycleBits, otherCycleBits, thisBlockID
+
+' If there is more than one block with this blocks ID, cancel the older block
+'
+' @param thisBlockAddress - the block offset within the file system for "this" block
+
+' Local Variables:
+' @local otherBlockAddress -the block offset within the file system for the "other" block
+' @local thisCycleBits - the lifecycle bits of "this" block
+' @local otherCycleBits - the lifecycle bits of the "other" block
+' @local thisBlockID - the blockID of "this" block
+
+  flash_read_block_addr(thisBlockAddress, @thisCycleBits, $000, $000)           'read first byte of block
+
+  ifnot lookdown(thisCycleBits.[7..5]: %011, %101, %110)                        'is block canceled or inactive?
+    return                                                                      '..if so, block status remains B_FREE, done
+
+  flash_read_block_addr(thisBlockAddress, @tmpBlockBuffer, $000, $FFF)          'read entire block
+
+  if LONG[@tmpBlockBuffer + $FFC] <> block_crc(@tmpBlockBuffer)                 'is CRC bad?
+    flash_cancel_block(thisBlockAddress)                                        '..if so, cancel block to inhibit future CRC checks
+    return                                                                      '..block status remains B_FREE, done
+
+  thisBlockID := LONG[@tmpBlockBuffer].[19..8]                                  'this block is good, get its ID
+
+  ' if first block with this ID
+  ifnot field[IDValid][thisBlockID]~~                                           'set ID flag and if it wasn't already set.. (after test, bit := 1)
+    field[IDToBlock][thisBlockID] := thisBlockAddress                           '..set IDToBlock to this block
+    field[BlockState][thisBlockAddress] := B_TEMP                               '..set B_TEMP status for this block
+    return                                                                      '..done
+
+  ' we have a dupe ID, which do we keep?
+  otherBlockAddress := field[IDToBlock][thisBlockID]                            'ID flag was already set, get other block with same ID
+
+  flash_read_block_addr(otherBlockAddress, @otherCycleBits, $000, $000)         'read first byte of other block
+
+  if lookdown(thisCycleBits.[7..5] << 3 | otherCycleBits.[7..5]: %011_110, %101_011, %110_101)  'if this block is newer..
+    ' keep this one, cancel other
+    field[IDToBlock][thisBlockID] := thisBlockAddress                           '..set IDToBlock to this block
+    field[BlockState][thisBlockAddress] := B_TEMP                               '..set B_TEMP status for this block
+    field[BlockState][otherBlockAddress] := B_FREE                              '..set B_FREE status for other block
+    flash_cancel_block(otherBlockAddress)                                       '..cancel other block
+  else
+     ' keep other, cancel this one
+   flash_cancel_block(thisBlockAddress)                                         'else, cancel this block, block status remains B_FREE
+
+
+PRI count_file_bytes(block_address) : bytes_used, bytes_free, block_count | signature
+
+' Return information about a file: blocks allocated, bytes used, bytes free
+'
+' @param block_address - the offset within the file system of the first block of the file
+' @returns bytes_used - the number of bytes written to file
+' @returns bytes_free - the number of bytes allocated but not yet written (in the last block)
+' @returns block_count - the number of blocks allocation to this file
+
+' Local Variables:
+' @local signature - the block state bits of the block being counted
+
+  if block_address <> NOT_VALID
+    repeat                                                                      'trace blocks to count file bytes
+        flash_read_block_addr(block_address, @signature, $000, $003)            'read the first long of the head/body block
+        block_count++
+        case signature.[1..0]
+            %00:                                                                'head/last
+                bytes_used := signature.[31..20] - $088
+                bytes_free := $FFC - signature.[31..20]
+                return
+            %01:                                                                'head/more
+                bytes_used := $FFC - $088
+            %10:                                                                'body/last
+                bytes_used += signature.[31..20] - $004
+                bytes_free := $FFC - signature.[31..20]
+                return
+            %11:                                                                'body/more
+                bytes_used += $FFC - $004
+        block_address := field[IDToBlock][signature.[31..20]]                   'get next block to count
+
+
+PRI trace_file_set_flags(block_address, set) : valid | signature, block_id
+
+' Trace file chain marking (or clearing) block states until end of file is reached (or an error in block sequence is found)
+'
+' @param block_address - the block offset within the file system for the block to trace
+' @param set - true to set block states to B_HEAD/B_BODY, false to set block states to B_TEMP
+' @returns valid - true if file is valid, false if file is invalid
+
+' Local Variables:
+' @local signature - block state bits of block being checked
+' @local block_id - the blockID of the block being checked
+  valid := false
+  'if set
+  '    debug("tfsf() - ENTRY set")
+  'else
+  '    debug("tfsf() - ENTRY clear")
+  flash_read_block_addr(block_address, @signature, $000, $003)                  'read first long of initial block
+  field[BlockState][block_address] := set ? B_HEAD : B_TEMP                     'set first block state to (set-pass: B_HEAD or clear-pass: B_TEMP)
+
+  repeat BLOCKS                                                                 'limit repeat to BLOCKS in order to return false on endless loop
+    ifnot signature.[0]                                                         'if last block, file is complete, return true
+      'debug("tfsf() - OK complete file")
+      return true
+    block_id := signature.[31..20]                                              'get "next" ID from this full block
+    ifnot field[IDValid][block_id]                                              'if ID invalid (bit == 0), error!, return false
+      'debug("tfsf() - BAD next ID is bad")
+      return
+    block_address := field[IDToBlock][block_id]                                 'get address of block having this ID
+    flash_read_block_addr(block_address, @signature, $000, $003)                'read first long of "next" block
+    ifnot signature.[1]                                                         'if "next" is head block, error!, return false
+      'debug("tfsf() - BAD head within file")
+      return
+    field[BlockState][block_address] := set ? B_BODY : B_TEMP                   'set block state to (set-pass: B_BODY or clear-pass: B_TEMP)
+  'debug("tfsf() - EXIT at end: out of blocks?!")
+
+
+
+CON ' >>>  parameter type (no parameter)  <<<
+
+PRI blocks_free() : count | block_address
+
+' Return the count of available blocks
+'
+' @returns count - the number of filesystem blocks that are not in use
+
+' Local Variables:
+' @local block_address - the block offset within the file system
+
+  repeat BLOCKS with block_address                                              'count free blocks
+    ifnot field[BlockState][block_address]                                      'if the block is B_FREE
+        count++
+
+
+PRI next_available_block_id() : block_id | possible_block_id
+
+' Get a next available block ID
+'
+' @returns block_id - the next ID that is not in use (or E_DRIVE_FULL if no blockID's are available)
+
+' Local Variables:
+' @local possible_block_id - prospective blockID to check for availability
+
+  block_id := E_DRIVE_FULL                                                      ' preset error
+  repeat BLOCKS with possible_block_id                                          ' pick the first free block ID
+    ifnot field[IDValid][possible_block_id]~~                                   ' set IDValid, was IDValid previously clear? (after test, bit := 1)
+        block_id := possible_block_id                                           ' if IDValid was clear, return new ID
+        quit
+
+  if block_id < 0                                                               ' if error, set error code
+    LONG[@errorCode][cogid()] := block_id
+
+
+PRI available_blocks() : bool | blk8Idx
+
+' Return true if there are any available blocks
+'
+' @returns bool - true/false where true means blocks are available for write
+
+' Local Variables:
+' @local blk8Idx - index into the blocks allocated array
+
+    'debug("available_blocks() ENTRY")
+    bool := false
+    ' TODO: if field[IDValids] ever has extra bits at end this code won't work!
+    repeat FLAGS_SIZE with blk8Idx
+        if BYTE[@IDValids][blk8Idx] <> $FF
+            bool := true
+            quit
+    'debug("available_blocks() EXIT")
+
+
+PRI next_block_address() : block_address | blockFreeCount, freeBlockAddress, freeIndex, next_cycle_bits
+
+' Return the address of the next block to which we should write
+'
+' @returns block_address - E_DRIVE_FULL if no free block is available, otherwise the address of the next block to use
+
+' Local Variables:
+' @local blockFreeCount - the count of free blocks
+' @local freeBlockAddress - the offset within the file system of the free block
+' @local freeIndex - a counter of free blocks
+' @local next_cycle_bits - the next lifecycle bits to use for the new block
+
+  ifnot blockFreeCount := blocks_free()                                         'if no free block exists, abort with error
+        return (LONG[@errorCode][cogid()] := E_DRIVE_FULL)
+
+  repeat                                                                        'randomly pick an B_FREE/B_HEAD/B_BODY (not an B_TEMP) block
+        block_address := abs getrnd() // BLOCKS                                 '(random block selection results in +-5% wear leveling)
+  until field[BlockState][block_address] <> B_TEMP
+
+  if field[BlockState][block_address] == B_FREE                                 'if the block is B_FREE, change its state to B_TEMP and exit
+        field[BlockState][block_address] := B_TEMP
+        return
+
+  ' now we are using head or body so we have to move it!
+  freeIndex := abs getrnd() // blockFreeCount                                   'randomly pick an B_FREE block to move the B_HEAD/B_BODY block to
+  repeat BLOCKS with freeBlockAddress                                           'block is sHEAD/sBODY, must relocate it to an sFREE block
+        ifnot field[BlockState][freeBlockAddress]                               'if the block is B_FREE
+          ifnot freeIndex--
+            quit
+
+  ' evict this block!
+  'debug("* nbaddr() evicting block ", uhex_word(block_address, freeBlockAddress))
+  flash_read_block_addr(block_address, @tmpBlockBuffer, $000, $FFF)             'read the B_HEAD/B_BODY block
+  next_cycle_bits := next_active_cycle(LONG[@tmpBlockBuffer].[7..5])            'advance its lifecycle
+  flash_program_block(freeBlockAddress, @tmpBlockBuffer, next_cycle_bits)       'program the B_FREE block with the B_HEAD/B_BODY data
+  flash_activate_block(freeBlockAddress, next_cycle_bits)                       'activate the B_FREE block, now superior to the original block
+  flash_cancel_block(block_address)                                             'cancel the original block to complete the move
+
+  field[IDToBlock][LONG[@tmpBlockBuffer].[19..8]] := freeBlockAddress             'update IDToBlock table
+  field[BlockState][freeBlockAddress] := field[BlockState][block_address]\B_TEMP  'free block gets curr block state, -AND- set new block to B_TEMP
+
+
+PRI setup_semaphore() : status
+
+' first called allocates lock if avail, subsequent just wait for allocation to complete
+'
+' @returns status - returns E_NO_LOCK_AVAIL if can't acquire semaphore, otherwise SUCCESS
+
+    if fsLock == -1
+        'debug("setupSemaphore() ENTRY")
+        ifnot can_acquire_lock()
+            ' i was NOT first so I just wait
+            'debug("! didn't win, waiting...")
+            repeat
+                if fsLock <> -1                                                 ' I'm not allocating, just wait until is allocated
+                    quit
+            'debug("! done waiting")
+        else
+            'debug("! DID WIN, installing lock")
+            ' i was the first to mount this thing
+            fsLock := locknew()                                                 'I'm allocating... reserve a lock for driver use
+            'debug("! ", sdec(fsLock))
+            if(fsLock < 0)                                                      'if lock allocation failed
+                'debug("EEE failed to allocate lock")
+                status := (LONG[@errorCode][cogid()] := E_NO_LOCK_AVAIL)        '..return error
+    'else
+        'debug("setupLock() abort, already set up")
+
+PRI can_acquire_lock() : bItsMe | myCogId, tmpCogId, lowestValue, lowestID
+
+' determine if first or subsequent caller
+'
+' @returns bItsMe - True/False where True means is first caller and therefore should acquire lock
+
+' Local Variables:
+' @local myCogId - hold codID of caller
+' @local tmpCogId - tmep cogID for iteration
+' @local lowestValue - lowest tic count
+' @local lowestID - cogID with lowest tic count
+
+    lowestValue := $7fff_ffff   ' max signed long value
+    bItsMe := false
+    if fsLock == -1
+        myCogId := cogid()                                                      ' get our cog ID
+        LONG[@fsCogCts][myCogId] := getct()                                     ' set our cog timer value
+        waitms(10)                                                              'let any other cogs get in here too
+        repeat tmpCogId from 0 to 8-1                                           ' now scan to see if we win!
+            ' determine cog id of earliest cog that tried to start the filesystem
+            if LONG[@fsCogCts][tmpCogId] < lowestValue
+                lowestValue := LONG[@fsCogCts][tmpCogId]
+                lowestID := tmpCogId
+        ' if we were earliest, we get to allocate the lock and mount
+        bItsMe := lowestID == myCogId ? true : false
+        'debug("acquire_lock_and_mount() ", udec(lowestValue, lowestID, myCogId), sdec(bItsMe))
+
+
+CON ' >>>  parameter type (miscellaneous, one-off)  <<<
+
+PRI next_active_cycle(cycle_in) : cycle_out
+
+' Calculate and return the next active lifecycle pattern in (3 -> 5 -> 6 -> 3 -> 5 -> 6 -> 3... pattern)
+'
+' @param cycle_in - current lifecycle pattern
+' @returns cycle_out - next lifecycle pattern in sequence
+
+  cycle_out := (cycle_in * %001_001) >> 1 & %111                                  'get next lifecycle pattern
+
+
+PRI block_crc(p_block_buffer) : crc
+' Calculate and return the CRC for this pointed to block
+'
+' @param p_block_buffer - the address of the 4KB buffer for the file associated with this handle
+' @returns crc - the calculated CRC for the block
+
+  return getcrc(p_block_buffer, $AD0424F3 rev 31, BLOCK_SIZE - 4)  'compute CRC of a buffered block
+
+
+PRI size_in_blocks(size_in_bytes) : block_count | remainingSize, overflowBodyCount
+
+' Return number of blocks for given file size
+'
+' @param size_in_bytes - the number of bytes in the file
+' @returns block_count - the number of blocks that would be needed to contain the file
+
+' Local Variables:
+' @local remainingSize - temporary variable to hold the number of bytes remaining after the head block
+' @local overflowBodyCount - temporary variable to hold the number of bytes that will be in the tail block
+
+    block_count := 1
+    if size_in_bytes > BYTES_IN_HEAD_BLOCK
+        remainingSize := size_in_bytes - BYTES_IN_HEAD_BLOCK
+        block_count += remainingSize / BYTES_IN_BODY_BLOCK
+        overflowBodyCount := remainingSize +// BYTES_IN_BODY_BLOCK
+        if overflowBodyCount > 0
+            block_count++
+    'debug("size_in_blocks()  # bytes: ", udec_(size_in_bytes), ", blocks: ", udec_(block_count))
+
+
+
+CON ' --- Flash Operations ---
+
+PRI flash_read_block_id(block_id, p_buffer, firstByte, lastByte)
+
+' Return byte(s) read from physical block into memory at p_buffer
+'
+' @param block_id - the ID of block within the file system
+' @param p_buffer - memory location in which to place the data
+' @param firstByte - address of first byte to read
+' @param lastByte - address of last byte to read
+
+  flash_read_block_addr(field[IDToBlock][block_id], p_buffer, firstByte, lastByte)
+
+
+PRI flash_read_block_addr(block_address, p_buffer, firstByte, lastByte)
+
+' Return byte(s) read from physical block into memory at p_buffer
+'
+' @param block_address - the block offset within the file system
+' @param p_buffer - memory location in which to place the data
+' @param firstByte - address of first byte to read
+' @param lastByte - address of last byte to read
+
+  'debug("* rb(", uhex_word_(block_address), ", ", uhex_word_(firstByte), ", ", uhex_word_(lastByte),")")
+  flash_command($03 | (FIRST_BLOCK + block_address) << 20 | firstByte << 8, 4)  'read 4KB block
+  flash_receive(p_buffer, lastByte - firstByte + 1)                             'receive block data
+
+
+PRI flash_activate_updated_block(block_address, pBuff) | nextCycleBits
+
+' Write block in memory at block_address to physical block with updated life-cycle bits
+'
+' @param block_address - the block offset within the file system
+' @param pBuff - memory location from which to get the data
+
+' Local Variables:
+' @local nextCycleBits - updated lifeCycle bit-pattern to place into block
+  if showRTdebug
+    debug("* program_updated_block() ", uhex_word(block_address))
+
+  nextCycleBits := next_active_cycle(long[pBuff].[7..5])                        'get next cycle
+  flash_program_block(block_address, pBuff, nextCycleBits)                      'program new block to replace old block
+  flash_activate_block(block_address, nextCycleBits)                            'activate new block
+
+
+PRI flash_program_block(block_address, p_buffer, cycle_bits) | pageIndex
+
+' Write block in memory at block_address to physical block
+'
+' @param block_address - the block offset within the file system
+' @param p_buffer - memory location from which to get the data
+' @param cycle_bits - lifeCycle bit-pattern to place into block
+
+' Local Variables:
+' @local pageIndex - index [0-15] of 256-Byte page within 4KB block
+  if showRTdebug
+    debug("- program_block() ", uhex_word(block_address))
+
+  flash_command($06, 1)                                                         'enable write
+  flash_command($20 | (FIRST_BLOCK + block_address) << 20, 4)                   'erase 4KB block
+
+  BYTE[p_buffer].[7..5] := cycle_bits                                           'install lifecycle for CRC computation
+  LONG[p_buffer + $FFC] := block_crc(p_buffer)                                  'compute and install CRC
+  BYTE[p_buffer].[7..5]~~                                                       'remove lifecycle (:= %111), block will be inactive until activated
+
+  flash_wait()                                                                  'wait for erasure to complete (~45ms)
+
+  repeat 16 with pageIndex                                                      'program 16 pages within 4KB block
+    flash_command($06, 1)                                                                'enable write
+    flash_command($02 | (FIRST_BLOCK + block_address) << 20 | pageIndex << 16, 4)        'program
+    flash_send(p_buffer + pageIndex << 8, 256)                                           'send 256 bytes
+    flash_wait()                                                                'wait for programming to complete (~400us)
+
+
+PRI flash_activate_block(block_address, cycle_bits)
+
+' Write new activation pattern into block
+'
+' @param block_address - the block offset within the file system
+' @param cycle_bits - lifeCycle bit-pattern to place into block
+
+  if showRTdebug
+    debug("- activate_block() ", uhex_word(block_address))
+  flash_program_bit(block_address, cycle_bits << 5 | %00011111)                 'clear one cycle bit to activate block
+
+
+PRI flash_cancel_block(block_address)
+
+' Clear the block's cycle bits to cancel it
+'
+' @param block_address - the block offset within the file system
+
+  if showRTdebug
+    debug("- cancel_block() ", uhex_word(block_address))
+
+  flash_program_bit(block_address, %00011111)                                   'clear all cycle bits to cancel block
+
+
+PRI flash_program_bit(block_address, bit_pattern)
+
+' Write new bit_pattern into 1st byte of block (this contains the life-cycle bits) this is our most atomic operation
+'
+' @param block_address - the block offset within the file system
+' @param bit_pattern - the value to be placed in first byte of block
+
+  flash_command($06, 1)                                                         'enable write
+  flash_command($02 | (FIRST_BLOCK + block_address) << 20, 4)                   'program
+  flash_send(@bit_pattern, 1)                                                   'send byte with bit pattern
+  flash_wait()                                                                  'wait for programming to complete
+
+
+PRI flash_wait()| statusBits
+
+' Wait for FLASH Chip to become ready
+
+' Local Variables:
+' @local statusBits - status register bits read from FLASH Chip
+
+  repeat
+    flash_command($05, 1)                                                       ' read status register
+    flash_receive(@statusBits, 1)
+  while statusBits.[0]                                                          ' loop until BUSY bit clear
+
+{$flexspin
+' flexspin stores local variables in registers, rather than HUB, so for flash commands we need HUB space for temporary storage
+VAR
+   LONG m_command                                                               ' HUB storage for flash_command use
+}
+
+PRI flash_command(command, count)
+
+' Send flash command to FLASH Chip via SPI
+'
+' @param command - the command for the chip to execute
+' @param count - number of bytes to send: must be between 1 and 4
+'
+' uses the member variable m_command as temporary storage
+
+              org
+
+              fltl      #SF_MISO                        '2!     DO input
+
+              fltl      #SF_SCLK                        '2!     reset CK smart pin
+              wrpin     ##%001000000_01_00101_0,#SF_SCLK '2      set CK for transition output, inverted - SPI mode 3
+              wrpin     ##%001000000_00_00000_0,#SF_CS  '2      set CK for transition output, inverted - SPI mode 3
+              wxpin     #4,#SF_SCLK                     '2      set timebase to 4 clocks per transition
+
+              drvl      #SF_CS                          '2!     CS high
+              waitx     #14                             '2+14   CS deselect is 50ns at 350 MHz (50 / 2.777ns = 18)
+              drvh      #SF_CS                          '2!     CS low
+
+              movbyts   command,#%%1230                 'reverse order of post-command address bytes for sending
+
+              end
+{$flexspin
+#ifdef __FLEXSPIN__
+  ' in flexspin we have to copy the register to HUB explicitly (otherwise @command will force command
+  ' into HUB, which will conflict with using `command` in the inline assembly code)
+  m_command := command                      'copy command from register to HUB memory
+  flash_send(@m_command, count)             'send command
+#else
+}
+  flash_send(@command, count)
+{$flexspin #endif}
+
+PRI flash_send(p_buffer, count) | tx_byte
+
+' Write bytes to the FLASH Chip via SPI
+'
+' @param p_buffer - memory location from which to get the data
+' @param byteCount - number of bytes to send
+
+' Local Variables:
+' @local tx_byte - the byte value being sent over SPI
+
+              org
+
+              rdfast    #0,p_buffer                     'start fast read
+
+.byte         rfbyte    tx_byte                         '2  read byte to send
+              shl       tx_byte,#24 + 1         wc      '2  msb-justify bits and get D7 into c
+
+              rep       @.r,#1                          '2  protect from interrupts
+              fltl      #SF_SCLK                        '2! reset smart pin CK
+              drvl      #SF_SCLK                        '2! start smart pin CK, starts base period
+              drvc      #SF_MOSI                        '2! output D7
+              wypin     #16,#SF_SCLK                    '2* begin 16 clock transitions
+              rep       @.r,#7                          '2  repeat to output D6..D0
+              shl       tx_byte,#1              wc      '2    get data bit
+              drvc      #SF_MOSI                        '2!   output data bit
+              waitx     #2                              '2+2  delay makes 8 clocks/bit
+.r
+              djnz      count,#.byte                    '4|2 loop if another byte to send
+
+              drvl      #SF_MOSI                        '2! DI low
+
+              end
+
+
+PRI flash_receive(p_buffer, count) | rx_byte
+
+' Read bytes from the FLASH Chip via SPI
+'
+' @param p_buffer - memory location into which to put the data
+' @param count - number of bytes to receive
+
+' Local Variables:
+' @local rx_byte - gather bits received into this byte
+
+              org
+
+              wrfast    #0,p_buffer                     'start fast write
+
+.byte         rep       @.r,#1                          '2   protect from interrupts
+              fltl      #SF_SCLK                        '2!     reset smart pin CK
+              drvl      #SF_SCLK                        '2!     start smart pin CK, starts base period
+              wypin     #16,#SF_SCLK                    '2*     begin 16 clock transitions
+              waitx     #7                              '2+3    align TESTP's to before 2nd clock fall (DC..350MHz+)
+              rep       @.r,#8                          '2      repeat to input D7..D0
+              waitx     #2                              '2+2      delay makes 8 clocks/bit
+              testp     #SF_MISO                wc      '2        input data bit
+              rcl       rx_byte,#1                      '2        save data bit
+.r
+              wfbyte    rx_byte                         '2   write received byte
+              djnz      count,#.byte                    '4|2 loop if another byte to receive
+
+              drvl      #SF_CS                          '2!  CS high, terminates command
+              fltl      #SF_SCLK                        '2!  reset smart pin forcing dir to be correct
+
+              end
+
+
+{   ' REMOVE BEFORE FLIGHT: uncomment this line before commit to git, and release!!!
+
+' ----------------------------------------------------------------------------------------------
+'   these methods are for regression testing only - they are not used in production code
+
+CON { constants exposed for regression testing }
+
+     MAX_FILE_LEN_IN_BLOCKS = 16 ' not real, just our limit for passing data back to UT's
+
+DAT { regression testing buffers and such }
+
+   blockForUser         BYTE    0[4096]
+   block2ForUser        BYTE    0[4096]
+   signatures           LONG    0[MAX_FILE_LEN_IN_BLOCKS*2]                     ' we now keep sig[0] and sig[1] in list
+
+
+CON { methods supporting regression testing }
+
+
+PUB TEST_count_file_bytes(p_filename) : bytes_used, bytes_free, block_count | signature
+
+'' TEST METHOD: return information about a file: blocks allocated, bytes used, bytes free
+''  forwarding access to internal method: count_file_bytes()
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns bytes_used - the number of bytes written to file, E_FILE_NOT_FOUND if the file doesn't exist
+'' @returns bytes_free - the number of bytes allocated but not yet written (in the last block)
+'' @returns block_count - the number of blocks allocation to this file
+
+' Local Variables:
+' @local signature - the block state bits of the block being counted
+  'debug("TEST_count_file_bytes() ENTRY")
+
+  ifnot fsMounted
+    return (LONG[@errorCode][cogid()] := E_NOT_MOUNTED), 0, 0
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  LONG[@errorCode][cogid()] := SUCCESS
+  if signature := get_file_head_signature(p_filename)                           'does file exist?
+    'debug("* have signature")
+    bytes_used, bytes_free, block_count := count_file_bytes(field[IDToBlock][signature.[19..8]])
+  else
+    bytes_used := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+  'debug("TEST_count_file_bytes() EXIT")
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB TEST_getHead4kBlock(p_filename) : p_buffer | signature
+
+'' TEST METHOD: Return the named file's head block
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns p_buffer - address of a 4KB buffer containing the head block
+
+' Local Variables:
+' @local signature - temporary storage for a block state bits
+
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    p_buffer := @blockForUser
+    if signature := get_file_head_signature(p_filename)                         'if file doesn't exist...
+      flash_read_block_addr(field[IDToBlock][signature.[19..8]], @blockForUser, $000, $FFF)   'read head block into buffer
+    else
+        p_buffer := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB TEST_get4kBlockAndNextAtOffset(p_filename, file_position) : p_buffer, p_buffer2, blkAddr1, blkAddr2 | signature, block_id
+
+'' TEST METHOD: Return the named file's head block
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns p_buffer - address of a 4KB buffer containing the head block
+
+' Local Variables:
+' @local signature - temporary storage for a block state bits
+
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    if signature := get_file_head_signature(p_filename)                         'if file exists...
+
+      p_buffer := @blockForUser
+      p_buffer2 := @block2ForUser
+
+      block_id, _, _ := locate_file_byte(signature.[19..8], file_position)      'locate byte in file
+      blkAddr1 := field[IDToBlock][block_id]
+      flash_read_block_id(block_id, p_buffer, $000, $FFF)                       'read lead block into buffer
+      if LONG[p_buffer].[0]                                                     'if NOT last block
+        block_id := LONG[p_buffer].[31..20]
+        blkAddr2 := field[IDToBlock][block_id]
+        flash_read_block_id(block_id, p_buffer2, $000, $FFF)     '..read next block into buffer
+      else
+        p_buffer2 := 0
+        blkAddr2 := 0
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB TEST_getTail4kBlock(p_filename) : p_buffer | signature, block_address
+
+'' TEST METHOD: Return the named file's head block
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns p_buffer - address of a 4KB buffer containing the head block
+
+' Local Variables:
+' @local signature - temporary storage for a block state bits
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    p_buffer := @blockForUser
+    if signature := get_file_head_signature(p_filename)                         'if file doesn't exist...
+      ' locate tail
+      block_address := field[IDToBlock][signature.[19..8]]                      'get this block address
+      if signature.[0]                                                          ' if not last block, exit loop
+          repeat
+              ifnot signature.[0]                                               ' if last block, exit loop
+                quit
+              block_address := field[IDToBlock][signature.[31..20]]             'get next block address
+              flash_read_block_addr(block_address, @signature, $000, $003)      'read the first long of the head/body block
+
+      flash_read_block_addr(block_address, @blockForUser, $000, $FFF)           'read head block into buffer
+      debug("returning: id=", udec_word_(signature.[19..8]), " addr=", uhex_word(block_address))
+    else
+        p_buffer := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB TEST_getFileBlockSignatures(p_filename) : p_sigLong, sigCount | signature[2], block_address, bIsHeadSig
+
+'' TEST METHOD: return the named file's list block signatures for blocks allocated to the file
+''
+'' @param p_filename - address of a zstring containing the filename
+'' @returns p_sigLong - address of a long array containing the block signatures
+'' @returns sigCount - the number of signatures in the array
+
+' Local Variables:
+' @local signature - temporary storage for a block state bits
+' @local block_address - the block offset within the file system
+
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    p_sigLong := @signatures
+    if signature := get_file_head_signature(p_filename)                         'if file doesn't exist...
+
+      block_address := field[IDToBlock][signature.[19..8]]                      'get this block address
+      bIsHeadSig := true
+      repeat
+          flash_read_block_addr(block_address, @signature, $000, $007)          'read the first long of the head/body block
+          LONG[@signatures][sigCount++] := bIsHeadSig ? signature : signature[0] ' place this signature in list
+          LONG[@signatures][sigCount++] := signature[1]                         ' place the dataOffset in list
+          ifnot signature.[0]                                                   ' if last block, exit loop
+              quit
+          if sigCount >= MAX_FILE_LEN_IN_BLOCKS - 1                             ' if filled table, exit loop
+              quit
+          bIsHeadSig := false
+          block_address := field[IDToBlock][signature.[31..20]]                 'get next block address
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB TEST_getCommitBlockSignatures(handle) : p_sigLong, sigCount  | pBuff, endPtr, signature[2], block_address, lastSignature[2], lastBlockId
+
+'' TEST METHOD: Return pending-commit chain signatures
+''
+'' @param handle - a handle to an open file
+'' @returns p_sigLong - address of a long array containing the block signatures
+'' @returns sigCount - the number of signatures in the array
+
+' Local Variables:
+' @local signature - temporary storage for a block state bits
+' @local block_address - the block offset within the file system
+
+' NOTE: !!! INTERNAL USE !!!   signature.[4..2] are unused - we use .[3] herein to indicate modified!
+
+    ifnot fsMounted
+        LONG[@errorCode][cogid()] := E_NOT_MOUNTED
+        return 0, 0
+    elseif handle < 0 or handle > MAX_FILES_OPEN - 1
+        LONG[@errorCode][cogid()] := E_BAD_HANDLE
+        return 0, 0
+
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    endPtr := hSeekPtr[handle] <> NOT_ENABLED ? hSeekPtr[handle] : hEndPtr[handle]
+
+    pBuff := buffer_pointer(handle)                                             'get block buffer pointer
+    'debug("TEST_gtCommitBlockSignatures() ENTRY")
+    p_sigLong := @signatures
+    if hChainBlockAddr[handle] == 0
+        'debug("TEST_gtCommitBlockSignatures() NO head block")
+        ' no commit chain (must be single block write)
+        ' in this case return signature from in-memory buffer[handle]
+        signature[0] := LONG[pBuff]
+        signature[0].[3] := hModified[handle] ? 0 : 1                           ' special FLAG for this routine (block is modified)
+        signature[1] := LONG[pBuff][1]
+        ifnot signature.[0]                                                     ' if is tail block
+            signature[0].[31..20] := endPtr
+        lastSignature := 0
+    else
+        'debug("TEST_gtCommitBlockSignatures() head block")
+        ' NOTE: hChainBlockAddr[handle] ' has block address of head of commit chain
+        lastSignature[0] := LONG[pBuff]
+        lastSignature[0].[3] := hModified[handle] ? 0 : 1                       ' special FLAG for this routine (block is modified)
+        lastSignature[1] := LONG[pBuff][1]
+        ifnot lastSignature.[0]  ' if is tail block
+            lastSignature[0].[31..20] := endPtr
+        lastBlockId := lastSignature[0].[19..8]
+        flash_read_block_addr(hChainBlockAddr[handle], @signature, $000, $007)  'if so, read first long of block to get ID
+
+    repeat
+        LONG[@signatures][sigCount++] := signature[0]                           ' place this signature in list
+        LONG[@signatures][sigCount++] := signature[1]                           ' place this data offset in list
+        ifnot signature.[0]                                                     ' if last block, exit loop
+            quit
+        if sigCount >= MAX_FILE_LEN_IN_BLOCKS - 1                               ' if filled table, exit loop
+            quit
+        if signature.[0] == 1 and signature.[31..20] == lastBlockId             ' if more block pointing to last in memory block
+            LONG[@signatures][sigCount++] := lastSignature[0]                   ' place final buffer signature in list
+            LONG[@signatures][sigCount++] := lastSignature[1]                   ' place final data offset in list
+            quit
+        block_address := field[IDToBlock][signature.[31..20]]                   'get next block address
+        flash_read_block_addr(block_address, @signature, $000, $007)            'read the first long of the head/body block
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB TEST_getBlockAddressForId(blockID, possHandle) : block_address
+
+'' TEST METHOD: Return block address associated with block ID
+''
+'' @param blockID - the ID of the block
+'' @param possHandle - possible handle of file
+'' @returns block_address - the address the ID currently maps to, or 0 if block ID is not in use
+
+  repeat while locktry(fsLock) == 0                                             ' lock for exlusive use
+
+  if field[IDValid][blockID]
+
+    if possHandle >= 0 and hChainBlockID[possHandle] == blockID
+      block_address := hChainBlockAddr[possHandle]
+    else
+      block_address := field[IDToBlock][blockID]
+
+  lockrel(fsLock)                                                               ' release the lock, we're done with it
+
+
+PUB TEST_filename_for_handle(handle) : pStr
+
+'' TEST METHOD: return pointer to filename associated with handle
+''
+'' @param handle - a handle to an open file
+'' @returns pStr - pointer to filename string or 0 in which case error() contains:
+'' .. E_NOT_MOUNTED if the file system is NOT mounted
+'' .. E_BAD_HANDLE if the handle is not valid
+
+  'debug("* TST_fn_for_h() ", sdec(fsMounted))
+  ifnot fsMounted
+    LONG[@errorCode][cogid()] := E_NOT_MOUNTED
+    return 0
+  elseif handle < 0 or handle > MAX_FILES_OPEN - 1
+    LONG[@errorCode][cogid()] := E_BAD_HANDLE
+    return 0
+
+  LONG[@errorCode][cogid()] := SUCCESS
+  pStr := @hFilename + handle * FILENAME_SIZE
+
+
+PUB TEST_enableRTdebug()
+
+'' Turn on showing of debug for low level routines
+
+   showRTdebug := TRUE
+
+PUB TEST_filename_for_block_addr(block_address, pFilename, maxBytes) : status | BYTE filenameBffr[$088]
+
+'' return filename for given head block address
+''
+'' @param block_address - address of file head block
+'' @param pFilename - address of location to place zstring
+'' @param maxBytes - max bytes at target location
+'' @returns status - SUCCESS (0) or error code
+
+' Local Variables:
+' @local BYTE -
+
+    if fsMounted
+        return (LONG[@errorCode][cogid()] := SUCCESS)                        ' return T if already mounted
+
+    if fsLock == -1                                                             ' don't acquire lock if already have it
+        if setup_semaphore() < 0
+            return LONG[@errorCode][cogid()]
+
+    LONG[@errorCode][cogid()] := SUCCESS                                        ' preset to success
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    flash_read_block_addr(block_address, @filenameBffr, $000, $087)             'yes, read first byte of block
+    strcopy(pFilename, @BYTE[@filenameBffr][8], maxBytes - 1)
+
+    lockrel(fsLock)                                                             ' release the lock, we're done with it
+
+
+PUB TEST_dumpMountMap(pFileBlocks, pFragments): fileLen, badLen | bFileFound, blockCount, blkIdx, block_address, blockTypeBits, badBlockCount, fileCount, LONG signature[2], bad_count, dupe_count, dupeIdCount
+
+'' mount non-destructively and dump all findings... so we can visually verify
+''
+'' @param pFileBlocks - address of place to put list of file blocks (3 longs per entry)
+'' @param pFragments - address of place to put list of bad blocks (those not in files) (3 longs per entry)
+'' @returns fileLen - number of files found
+'' @returns badLen - number of bad blocks found
+
+' Local Variables:
+' @local bFileFound -
+' @local blockCount -
+' @local blkIdx -
+' @local block_address -
+' @local blockTypeBits -
+' @local badBlockCount -
+' @local fileCount -
+' @local LONG -
+' @local signature[2] -
+' @local bad_count -
+' @local dupe_count -
+
+    if fsMounted
+        return (LONG[@errorCode][cogid()] := SUCCESS), 0                           ' return T if already mounted
+
+    if fsLock == -1                                                             ' don't acquire lock if already have it
+        if setup_semaphore() < 0
+            return LONG[@errorCode][cogid()], 0
+
+    LONG[@errorCode][cogid()] := SUCCESS                                        ' preset to success
+
+    repeat while locktry(fsLock) == 0                                           ' lock for exlusive use
+
+    bytefill(@hStatus, 0, MAX_FILES_OPEN)                                       'clear handles
+
+    bytefill(@IDToBlocks,0,ID_TO_BLOCKS_SZ)                                     'clear ID-to-block translation table
+    bytefill(@IDValids, 0, FLAGS_SIZE)                                          'clear ID flags
+    bytefill(@BlockStates, 0, STATES_SIZE)                                      'clear block states to B_FREE
+
+    'debug("mntCk: - locating duplicate blocks...")
+    repeat BLOCKS with block_address                                            'check each block and fix any duplicate IDs
+        bad_count, dupe_count := check_block_read_only(block_address)
+        badBlockCount += bad_count
+        dupeIdCount += dupe_count
+
+    debug("dmm: (1) ", udec(dupeIdCount, badBlockCount))
+
+    'debug("mntCk: - locating files...")
+    repeat BLOCKS with block_address                                            'trace head blocks and cancel any broken files
+        if field[BlockState][block_address] == B_TEMP                           'is this a valid block?
+            flash_read_block_addr(block_address, @blockTypeBits, $000, $000)    'yes, read first byte of block
+            ifnot blockTypeBits.[1]                                             'is this a head block?
+                'debug("mnt: - head block ", uhex_word(block_address))
+                bFileFound, blockCount := TEST_trace_n_set(block_address, true, @LONG[pFileBlocks][blkIdx])
+                ifnot bFileFound                                                    'yes, trace file, set block states to B_HEAD/B_BODY
+                    trace_file_set_flags(block_address, false)                  'if error, retrace file, return block states to B_TEMP
+                else
+                    fileCount++
+                    blkIdx += blockCount
+
+    LONG[pFileBlocks][blkIdx] := 0
+    fileLen := fileCount
+    debug("dmm: (2) ", udec(fileCount, blkIdx))
+
+    'debug("mntCk: - clearing dead blocks...")
+    blkIdx := 0
+    badBlockCount := 0
+    repeat BLOCKS with block_address                                            'cancel sTEMP blocks that didn't become sHEAD/sBODY blocks
+        if field[BlockState][block_address] == B_TEMP                           'is this an B_TEMP block?
+            flash_read_block_addr(block_address, @signature, $000, $007)        'if so, read first long of block to get ID
+            field[IDValid][signature.[19..8]]~                                  '..cancel ID flag (bit := 0)
+            field[BlockState][block_address] := B_FREE                          '..return block state to B_FREE
+            badBlockCount++                                                     '..would cancel block to inhibit future CRC checks
+            'debug(" -- found dead block...")
+            LONG[pFragments][blkIdx++] := block_address
+            LONG[pFragments][blkIdx++] := signature[0]
+            LONG[pFragments][blkIdx++] := signature[1]
+
+    LONG[pFragments][blkIdx] := 0
+    badLen := badBlockCount
+
+    debug("dmm: (3) ", udec(badBlockCount, blkIdx))
+
+    'debug("mntCk: - mount test done")
+    'debug("mntCk: - ", udec(badBlockCount, dupeIdCount, fileCount))
+
+    lockrel(fsLock)              ' release the lock, we're done with it
+    'debug("- lock released")
+
+pri TEST_trace_n_set(block_address, set, pFileBlocks) : valid, lenLongs | signature[2], block_id
+
+' Trace file chain marking (or clearing) block states until end of file is reached (or an error in block sequence is found)
+'
+' @param block_address - the block offset within the file system for the block to trace
+' @param set - true to set block states to B_HEAD/B_BODY, false to set block states to B_TEMP
+' @returns valid - true if file is valid, false if file is invalid
+
+' Local Variables:
+' @local signature - block state bits of block being checked
+' @local block_id - the blockID of the block being checked
+  valid := false
+  'if set
+  '    debug("tfsf() - ENTRY set")
+  'else
+  '    debug("tfsf() - ENTRY clear")
+  flash_read_block_addr(block_address, @signature, $000, $007)                  'read first long of initial block
+  field[BlockState][block_address] := set ? B_HEAD : B_TEMP                     'set first block state to (set-pass: B_HEAD or clear-pass: B_TEMP)
+  LONG[pFileBlocks][lenLongs++] := block_address
+  LONG[pFileBlocks][lenLongs++] := signature[0]
+  LONG[pFileBlocks][lenLongs++] := signature[1]
+
+  repeat BLOCKS                                                                 'limit repeat to BLOCKS in order to return false on endless loop
+    ifnot signature.[0]                                                         'if last block, file is complete, return true
+      'debug("tfsf() - OK complete file")
+      LONG[pFileBlocks][lenLongs++] := 0
+      valid := true
+      return
+    block_id := signature.[31..20]                                              'get "next" ID from this full block
+    ifnot field[IDValid][block_id]                                              'if ID invalid (bit == 0), error!, return false
+      'debug("tfsf() - BAD next ID is bad")
+      return
+    block_address := field[IDToBlock][block_id]                                 'get address of block having this ID
+    flash_read_block_addr(block_address, @signature, $000, $007)                'read first long of "next" block
+    ifnot signature.[1]                                                         'if "next" is head block, error!, return false
+      'debug("tfsf() - BAD head within file")
+      return
+    LONG[pFileBlocks][lenLongs++] := block_address
+    LONG[pFileBlocks][lenLongs++] := signature[0]
+    LONG[pFileBlocks][lenLongs++] := signature[1]
+    field[BlockState][block_address] := set ? B_BODY : B_TEMP                   'set block state to (set-pass: B_BODY or clear-pass: B_TEMP)
+  'debug("tfsf() - EXIT at end: out of blocks?!")
+
+
+' ----------------------------------------------------------------------------------------------
+'}
+
+CON ' --- Technical Details ---
+
+{
+
+head/last block
+------------------------------------------------------------------------------------------------
+000..003    long {EndPtr[11:0], ThisID[11:0], %vvv11100}    'vvv = lifecycle, 00 = head/last
+004..007    long {FilenameCRC19[19:0], DataOffset[11:0]}    'crc of filename and data offset
+008..087    byte Filename[127+1]                            'filename z-string
+088..FFB    byte Data[3956]                                 'data
+FFC..FFF    long CRC32                                      'crc32 of 000..FFB
+
+
+head/more block
+------------------------------------------------------------------------------------------------
+000..003    long {NextID[11:0], ThisID[11:0], %vvv11101}    'vvv = lifecycle, 01 = head/more
+004..007    long {FilenameCRC19[19:0], DataOffset[11:0]}    'crc of filename and data offset
+008..087    byte Filename[127+1]                            'filename z-string
+088..FFB    byte Data[3956]                                 'data
+FFC..FFF    long CRC32                                      'crc32 of 000..FFB
+
+
+body/last block
+------------------------------------------------------------------------------------------------
+000..003    long {EndPtr[11:0], ThisID[11:0], %vvv11110}    'vvv = lifecycle, 10 = body/last
+004..FFB    byte Data[4088]                                 'data
+FFC..FFF    long CRC32                                      'crc32 of 000..FFB
+
+
+body/more block
+------------------------------------------------------------------------------------------------
+000..003    long {NextID[11:0], ThisID[11:0], %vvv11111}    'vvv = lifecycle, 11 = body/more
+004..FFB    byte Data[4088]                                 'data
+FFC..FFF    long CRC32                                      'crc32 of 000..FFB
+
+
+
+vvv lifecycle rules
+- single-zero ring counter state sequence is 011..101..110..repeat (akin to "rock, paper, scissors")
+- the block with the greater state is the valid block between two blocks with identical IDs
+- this allows for make-before-break block replacement that can be recovered after unexpected power loss
+-------------------------------------------------------------------------------------------------------
+111                 inactive    no zeroes
+011/101/110         active      one zero        rock, paper, scissors
+001/010/100/000     canceled    two or three zeroes
+
+011 > 110       new > old   rock > scissors
+101 > 011       new > old   paper > rock
+110 > 101       new > old   scissors > paper
+
+}
+
+
+CON { license }
+
+{{
+  =================================================================================================
+
+  Terms of Use: MIT License
+
+  Copyright (c) 2023 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+  =================================================================================================
+}}

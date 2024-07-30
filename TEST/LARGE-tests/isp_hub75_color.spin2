@@ -1,0 +1,86 @@
+'' =================================================================================================
+''
+''   File....... isp_hub75_color.spin2
+''   Purpose.... Provide utility color routines
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2020 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Oct 2020
+''   Updated.... 5 Nov 2022
+''
+'' =================================================================================================
+
+CON { test colorset }
+
+    cBlack = $000000
+    cWhite = $FFFFFF
+    cRed = $FF0000
+    cLime = $00FF00
+    cBlue = $0000FF
+    cYellow = $FFFF00
+    cCyan = $00FFFF
+    cMagenta = $FF00FF
+    cSilver = $C0C0C0
+    cGray = $808080
+    cMaroon = $800000
+    cOlive = $808000
+    cGreen = $008000
+    cPurple = $800080
+    cTeal = $08080
+    cNavy = $000080
+    cDarkGreen = $006400
+    cOrange = $FFA500
+    cBlueViolet = $8A2BE2
+
+    cFullRed = $FF0000
+    cFullGreen = $00FF00
+    cFullBlue = $0000FF
+
+    ' SPECIAL non-colors - invoke alforithm to gerate actual color used'
+    cRedWhtBlu = $deadf0
+    cRainbow = $deadf1
+
+    ' our 3-bit colors
+    BASE_BLACK   = $00
+    BASE_RED     = $01
+    BASE_GREEN   = $02
+    BASE_YELLOW    = $03
+    BASE_BLUE    = $04
+    BASE_MAGENTA = $05
+    BASE_CYAN  = $06
+    BASE_WHITE   = $07
+
+PUB null()
+    '' This is not a top level object
+
+
+CON { license }
+
+{{
+
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2020 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}

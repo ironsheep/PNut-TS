@@ -1,0 +1,100 @@
+'' =================================================================================================
+''
+''   File....... isp_hub75_screenUtils.spin2
+''   Purpose.... Provide access to basic screen pixel setting methods
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2020 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Nov 2020
+''   Updated.... 26 Mar 2024
+''
+'' =================================================================================================
+
+CON { Object Interface: PUBLIC ENUMs }
+
+
+OBJ { Objects Used by this Object }
+
+    color       :   "isp_hub75_color"
+    colorUtils  :   "isp_hub75_colorUtils"
+    hub75Bffrs  :   "isp_hub75_hwBufferAccess"
+
+PUB null()
+    '' This is not a top level object
+
+PUB drawPixelAtRC(nChainIdx, row, column, rgbColor) | xlatedColor, fHue
+    '' Place rgbColor pixel at r,c
+    xlatedColor := rgbColor
+    if rgbColor == color.cRainbow
+        xlatedColor := colorUtils.rgbColorFromDegrees(6 * (column + 1))   ' replace '360 / 64' with 6 [was resulting in 5 vs. 6]
+    'elseif rgbColor == cRedWhtBlu
+     '   case column // 3
+     '       0: xlatedColor := cRed
+    '       1: xlatedColor := cWhite
+     '       2: xlatedColor := cBlue
+
+    drawPixelAtRCwithRGB(nChainIdx, row, column, colorUtils.rgbForCValue(xlatedColor))
+
+PUB drawPixelAtRCwithRGB(nChainIdx, row, column, red, green, blue) | rowIndex, columnIndex, colorOffset, pColor, pScreen
+    '' Place r,g,b color pixel at r,c
+    rowIndex := 0 #> row <# hub75Bffrs.maxDisplayRows(nChainIdx) - 1
+    columnIndex :=  0 #> column <# hub75Bffrs.maxDisplayColumns(nChainIdx) - 1
+    case hub75Bffrs.panelRotation(nChainIdx)
+        hub75Bffrs.ROT_LEFT_90:
+            pScreen := rowIndex
+            rowIndex := columnIndex
+            columnIndex := pScreen
+            rowIndex := (hub75Bffrs.maxDisplayColumns(nChainIdx) - 1) - rowIndex
+            colorOffset := ((rowIndex * hub75Bffrs.maxDisplayRows(nChainIdx)) + columnIndex) * hub75Bffrs.bytesPerColor(nChainIdx)
+        hub75Bffrs.ROT_RIGHT_90:
+            pScreen := rowIndex
+            rowIndex := columnIndex
+            columnIndex := pScreen
+            columnIndex := (hub75Bffrs.maxDisplayRows(nChainIdx) - 1) - columnIndex
+            colorOffset := ((rowIndex * hub75Bffrs.maxDisplayRows(nChainIdx)) + columnIndex) * hub75Bffrs.bytesPerColor(nChainIdx)
+        hub75Bffrs.ROT_180:
+            columnIndex := (hub75Bffrs.maxDisplayColumns(nChainIdx) - 1) - columnIndex
+            rowIndex := (hub75Bffrs.maxDisplayRows(nChainIdx) - 1) - rowIndex
+            colorOffset := ((rowIndex * hub75Bffrs.maxDisplayColumns(nChainIdx)) + columnIndex) * hub75Bffrs.bytesPerColor(nChainIdx)
+       other:
+            colorOffset := ((rowIndex * hub75Bffrs.maxDisplayColumns(nChainIdx)) + columnIndex) * hub75Bffrs.bytesPerColor(nChainIdx)
+
+    pScreen := hub75Bffrs.displayBufferAddress(nChainIdx)
+    pColor := @byte[pScreen][colorOffset]
+    'if isDebugLocn(rowIndex, columnIndex)
+    'if column // 16 == 0
+        'debug("- Screen RC=(", udec_(rowIndex), ", ", udec_(columnIndex), "), ofs=", udec_(colorOffset), ", RGB=(", uhex_(red), uhex_(green), uhex_(blue), ")")
+    byte[pColor][0] := hub75Bffrs.correctedSingleColor(nChainIdx, colorUtils.LED_RED, red)
+    byte[pColor][1] := hub75Bffrs.correctedSingleColor(nChainIdx, colorUtils.LED_GREEN, green)
+    byte[pColor][2] := hub75Bffrs.correctedSingleColor(nChainIdx, colorUtils.LED_BLUE, blue)
+
+CON { license }
+
+{{
+
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2020 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}

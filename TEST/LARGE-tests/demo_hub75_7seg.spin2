@@ -1,0 +1,240 @@
+'' =================================================================================================
+''
+''   File....... demo_hub75_7seg.spin2
+''   Purpose.... Top-level Demonstration - showing off our HUB75 matrix
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2020 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Oct 2020
+''   Updated.... 10 Nov 2022
+''
+'' =================================================================================================
+
+
+CON { timing }
+
+  CLK_FREQ = 335_000_000                                        ' system freq as a constant
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+CON { DEBUG PINs }
+
+'DEBUG_PIN = 0
+
+CON { Display constants }
+
+MAX_DIGITS = 8
+
+VAR
+
+    long    cog
+    long    chainIndex
+    long    segmentPeriod
+    long    digitPeriod
+    long    digitVal
+    long    digitIndex
+    long    hours
+    long    minutes
+
+OBJ
+
+    color               :   "isp_hub75_color"
+    display             :   "isp_hub75_display"
+    pixels              :   "isp_hub75_screenUtils"
+    digit[MAX_DIGITS]   :   "isp_hub75_7seg"
+    hub75Bffrs          :   "isp_hub75_hwBufferAccess"
+    user                :   "isp_hub75_hwPanelConfig"   ' hardware config common to all demos
+    scrnBuffers         :   "isp_hub75_hwBuffers"       ' the large buffers storing pixel data
+
+PUB start() : ok | blockX, blockY, subrow, subcol, row, col, red, green, blue, builtPtr, color3bit, color24bit, pPixColor, colorOffset, byteOffset, hours24
+    '' Start underlying drivers and run demo
+
+    'debug("`term temp size 82 50 textsize 10")
+    hub75Bffrs.configure(hub75Bffrs.HUB75_ADAPTER_1, user.DISP0_ADAPTER_BASE_PIN, user.DISP0_PANEL_DRIVER_CHIP, user.DISP0_PANEL_ADDR_LINES)
+    chainIndex := hub75Bffrs.indexForHub75ChainId(hub75Bffrs.HUB75_ADAPTER_1)
+
+    ' startup our backend COG(s)
+    display.setBufferPointers(chainIndex, scrnBuffers.chain0Ptrs())
+    ok := cog := display.start(chainIndex)   ' send buffer to driver
+    if ok == -1
+        debug("- DEMO: underlying drivers failed!")
+        abort
+
+    '  SEVEN SEGMENT DEMO
+
+    segmentPeriod := 8     ' 4 x 100ths of a second
+    digitPeriod := 12    ' 90     ' 4 x 100ths of a second
+
+        ' draw some text!
+    display.setTextFont(display.TEXT_FONT_5x7)    ' font size
+    display.setCursor(0, 0)   ' start at top left, with one pixel of spacing
+
+
+    display.setColoredTextAtLnCol(0,0, string("iron sheep"), color.cMaroon)
+    display.commitScreenToPanelSet()
+
+    ' High Speed CLOCK demo
+    hours := minutes := 0
+
+    digit[0].placeDigit(chainIndex, 8, 2, 0, color.cOrange)
+    digit[1].placeDigit(chainIndex, 8, 17, 0, color.cOrange)
+    if hub75Bffrs.maxDisplayColumns(chainIndex) > 32
+        digit[2].placeDigit(chainIndex, 8, 35, 0, color.cOrange)
+        digit[3].placeDigit(chainIndex, 8, 50, 0, color.cOrange)
+    if hub75Bffrs.maxDisplayColumns(chainIndex) > 64
+        digit[4].placeDigit(chainIndex, 8, 2+64, 1, color.cOrange)
+        digit[5].placeDigit(chainIndex, 8, 17+64, 2, color.cOrange)
+    if hub75Bffrs.maxDisplayColumns(chainIndex) > 96
+        digit[6].placeDigit(chainIndex, 8, 35+64, 0, color.cOrange)
+        digit[7].placeDigit(chainIndex, 8, 50+64, 0, color.cOrange)
+
+    display.commitScreenToPanelSet()
+    wait100thSecs(segmentPeriod)
+
+    loopUntilSegmentsFinish()
+
+    ' PAUSE to see digit before next morph
+    wait100thSecs(digitPeriod)
+
+    repeat hours from 0 to 12
+        hours24 := hours + 12
+        if hours24 > 23
+            hours24 -= 24
+
+        repeat minutes from 0 to 59
+
+            digit[0].setValue(hours / 10)
+            digit[1].setValue(hours // 10)
+            digit[2].setValue(minutes / 10)
+            digit[3].setValue(minutes // 10)
+            if hub75Bffrs.maxDisplayColumns(chainIndex) > 64
+                digit[4].setValue(hours24 / 10)
+                digit[5].setValue(hours24 // 10)
+            if hub75Bffrs.maxDisplayColumns(chainIndex) > 96
+                digit[6].setValue(minutes / 10)
+                digit[7].setValue(minutes // 10)
+
+            display.commitScreenToPanelSet()
+            wait100thSecs(segmentPeriod)
+
+            showSecondsDots( minutes // 2 )
+
+            loopUntilSegmentsFinish()
+
+            wait100thSecs(digitPeriod)
+
+{
+' transitional DEMO
+
+    digit[0].placeDigit(chainIndex, 8, 2, 5, color.cOrange)
+    digit[1].placeDigit(chainIndex, 8, 18, 7, color.cOrange)
+    digit[2].placeDigit(chainIndex, 8, 34, 1, color.cOrange)
+    digit[3].placeDigit(chainIndex, 8, 50, 4, color.cOrange)
+
+    display.commitScreenToPanelSet()
+    wait100thSecs(segmentPeriod)
+
+    loopUntilSegmentsFinish()
+
+    ' PAUSE to see digit before next morph
+    wait100thSecs(digitPeriod)
+
+    'repeat ' hold here
+
+    repeat digitVal from 1 to 9
+        repeat digitIndex from 0 to 3
+            digit[digitIndex].incrementValue(digit.WITH_WRAP)
+        display.commitScreenToPanelSet()
+        wait100thSecs(segmentPeriod)
+
+        loopUntilSegmentsFinish()
+
+        wait100thSecs(digitPeriod)
+}
+
+
+    debug("DEMO: done")
+    repeat
+
+PRI showSecondsDots(lightDark) | red, green, blue, targetColor
+   ' lightDarkv[0,1] where 1 means bright color
+    if lightDark == 0
+        targetColor := $00006F
+    else
+        targetColor := $0080FF
+
+    drawSecondsDot(15, 31, targetColor)
+    drawSecondsDot(23, 31, targetColor)
+    if hub75Bffrs.maxDisplayColumns(chainIndex) > 96
+        drawSecondsDot(15, 31+64, targetColor)
+        drawSecondsDot(23, 31+64, targetColor)
+
+PRI drawSecondsDot(row, column, rgbColor)
+    pixels.drawPixelAtRC(chainIndex, row, column, rgbColor)
+    pixels.drawPixelAtRC(chainIndex, row, column+1, rgbColor)
+    pixels.drawPixelAtRC(chainIndex, row+1, column, rgbColor)
+    pixels.drawPixelAtRC(chainIndex, row+1, column+1, rgbColor)
+
+PRI allDigitAnimationsComplete() : status
+    status := TRUE
+    repeat digitIndex from 0 to MAX_DIGITS - 1
+        if not digit[digitIndex].isAnimationComplete()
+            status := FALSE
+            quit
+
+PRI loopUntilSegmentsFinish() | didAnimate
+    repeat
+        didAnimate := FALSE
+        if not allDigitAnimationsComplete()
+            repeat digitIndex from 0 to MAX_DIGITS - 1
+                if not digit[digitIndex].isAnimationComplete()
+                    didAnimate := TRUE
+                    digit[digitIndex].animateStep()
+            if didAnimate
+                display.commitScreenToPanelSet()
+                wait100thSecs(segmentPeriod)
+
+        if allDigitAnimationsComplete()
+            quit
+
+PUB wait100thSecs(count)
+    '' Wait for {count} 100ths of a second
+    repeat count
+        waitms(10)  ' 1/100 seconds
+
+
+PUB stop()
+    '' Stop the driver
+    if cog
+        display.stop()
+        cog := 0
+
+CON { license }
+
+{{
+
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2020 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}

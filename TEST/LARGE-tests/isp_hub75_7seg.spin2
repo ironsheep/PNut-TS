@@ -1,0 +1,204 @@
+'' =================================================================================================
+''
+''   File....... isp_hub75_7seg.spin2
+''   Purpose.... manipulate a mechanical 7 segment digit
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2020 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Oct 2020
+''   Updated.... 18 Oct 2020
+''
+'' =================================================================================================
+
+CON { public control values }
+
+    DIGIT_NO_VALUE = -2   ' digit value when NOT [0-9]
+    DIGIT_HIDDEN = -1     ' digit value when NOT [0-9]
+
+    WITH_WRAP = TRUE
+    WITHOUT_WRAP = FALSE
+
+OBJ
+
+    hub75Bffrs      :   "isp_hub75_hwBufferAccess"
+    segments[7]     :   "isp_hub75_segment"
+
+DAT { initialized data }
+
+segmentsByDigit
+    byte    %0111_1110   ' 0 abcdef-
+    byte    %0011_0000   ' 1 -bc----
+    byte    %0110_1101   ' 2 ab-de-g
+    byte    %0111_1001   ' 3 abcd--g
+    byte    %0011_0011   ' 4 -bc--fg
+    byte    %0101_1011   ' 5 a-cd-fg
+    byte    %0101_1111   ' 6 a-cdefg
+    byte    %0111_0000   ' 7 abc----
+    byte    %0111_1111   ' 8 abcdefg
+    byte    %0111_1011   ' 9 abcd-fg
+
+VAR { globals }
+    long    chainIndex
+    long    currValue
+    long    currRgbColor
+    long    topY
+    long    leftX
+
+    long    defaultColor
+
+    byte    isSetup
+
+PUB null()
+    '' This is NOT a top level object
+
+PUB placeDigit(nChainIdx, row, column, digit, rgbColor)
+    chainIndex := nChainIdx
+    '' Locate a desired digit on our screen  Draw initial segement if state is NOT off
+    ' now we can inform segements of their own locations
+    'debug("7s:placeDigit rc=(", udec_(row), ",", udec_(column),"), dgt=(", udec_(digit), "), RGB=(", uhex_long_(rgbColor),")")
+    isSetup := FALSE
+    ' FIXME: UNDONE shouldn't this limit to whole digit width from right edge???
+    leftX :=  0 #> column <# hub75Bffrs.maxDisplayColumns(chainIndex) - 1
+    topY :=  0 #> row <# hub75Bffrs.maxDisplayRows(chainIndex) - 1
+    currRgbColor := rgbColor
+    currValue := DIGIT_NO_VALUE
+    ensureIsSetup()
+    if digit <> DIGIT_HIDDEN
+        reconfigureForDigit(digit)
+
+PUB setValue(digit)
+    '' Configure display to show desired {digit}: [0-9, DIGIT_HIDDEN]
+    ensureIsSetup()
+    if currValue <> digit
+        reconfigureForDigit(digit)
+
+PUB incrementValue(shouldWrap) | nextValue
+    '' Increment to the next digit [0->9]
+    ''  if wrap is requested, return to 0 after 9, else just stop at 9
+    nextValue := currValue + 1
+    if nextValue > 9
+        if shouldWrap <> WITH_WRAP
+            nextValue := 9
+        else
+            nextValue := 0
+    setValue(nextValue)
+
+PUB isAnimationComplete() : status | segmentIndex
+    '' Return T/F where T means all segment animations are complete
+    status := TRUE
+    repeat segmentIndex from 0 to 6
+        if not segments[segmentIndex].isMovementComplete()
+            status := FALSE
+            quit   ' we have our answer, abort loop
+
+PUB animateStep() | segmentIndex
+    '' Have each sement do 1 animation step, if one is pending
+    if not isAnimationComplete()
+        repeat segmentIndex from 0 to 6
+            if not segments[segmentIndex].isMovementComplete()
+                segments[segmentIndex].animateStep()
+
+PRI ensureIsSetup()
+    ' Do intial setup, if not yet done
+    if not isSetup
+        initialSetup()
+
+PRI initialSetup() | segIndex, orientation, segRow, segCol
+    ' Perform initial setup
+    'debug("7s:initialSetup")
+    ' initialize all segments with type, color, location and set to hidden
+    repeat segIndex from 0 to 6
+        case segIndex
+          6: ' A TOP
+            orientation := segments.SEG_TOP
+            segRow := topY
+            segCol := leftX + 1
+          5: ' B RIGHT-upper
+            orientation := segments.SEG_RIGHT_B
+            segRow := topY + 1
+            segCol := leftX + 1 + segments.SEG_LENGTH + 1 - segments.SEG_WIDTH
+          4: ' C RIGHT-lower
+            orientation := segments.SEG_RIGHT_C
+            segRow := topY + 1 + segments.SEG_LENGTH + 1
+            segCol := leftX + 1 + segments.SEG_LENGTH + 1 - segments.SEG_WIDTH
+          3: ' D BOTTOM
+            orientation := segments.SEG_BOTTOM
+            segRow := topY + 1 + (segments.SEG_LENGTH * 2) + 1 + 1 - segments.SEG_WIDTH
+            segCol := leftX + 1
+          2: ' E LEFT-lower
+            orientation := segments.SEG_LEFT_E
+            segRow := topY + 1 + segments.SEG_LENGTH + 1
+            segCol := leftX
+          1: ' F LEFT-upper
+            orientation := segments.SEG_LEFT_F
+            segRow := topY + 1
+            segCol := leftX
+          0: ' G MIDDLE
+            orientation := segments.SEG_MIDDLE
+            segRow := topY + 1 + segments.SEG_LENGTH + 0 - 1
+            segCol := leftX + 1
+
+        segments[segIndex].placeSegment(chainIndex, segRow, segCol, orientation, segments.STATE_OFF, currRgbColor)
+
+    currValue := DIGIT_NO_VALUE
+    isSetup := TRUE
+
+PRI reconfigureForDigit(digit) | byte fromSegments, byte toSegments, bitIndex
+    'debug("7s:reconfig dgt=(", udec_(digit), ")")
+    if currValue <> digit
+        if digit <> DIGIT_HIDDEN
+            ' hide some segments, show others
+            fromSegments := byte[@segmentsByDigit][currValue]   ' currValue [0-9]
+            toSegments := byte[@segmentsByDigit][digit]   ' digit [0-9]
+            'debug(" -- table:",ubin(fromSegments),ubin(toSegments))
+            repeat bitIndex from 6 to 0
+                if fromSegments & (1 << bitIndex) > 0
+                    ' from segment is showing
+                    if toSegments & (1 << bitIndex) > 0
+                        ' to segment should be showing
+                        '   NO CHANGE
+                    else
+                        ' to segment should be hidden
+                        segments[bitIndex].moveSegmentToState(segments.STATE_OFF)
+                else
+                    ' from segment is hidden
+                    if toSegments & (1 << bitIndex) > 0
+                        ' to segment should be showing
+                        segments[bitIndex].moveSegmentToState(segments.STATE_ON)
+                    else
+                        ' to segment should be hidden
+                        '   NO CHANGE
+        else
+            ' going from digit to same digit, nothing to do!
+    currValue := digit
+
+CON { license }
+
+{{
+
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2020 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}

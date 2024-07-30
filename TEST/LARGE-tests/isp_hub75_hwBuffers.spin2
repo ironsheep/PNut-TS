@@ -1,0 +1,155 @@
+'' =================================================================================================
+''
+''   File....... isp_hub75_hwBuffers.spin2
+''   Purpose.... Allocate large screen buffers for each of the HUB75 adapter boards in use
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2024 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Nov 2022
+''   Updated.... 10 Jan 2024
+''
+'' =================================================================================================
+'
+' -----------------
+' User Setup Notes:
+' -----------------
+'   There are two areas in this file that need adjustment to the number of hub75 adapter boards you are using.
+'
+'   This file has ONE adapter board enabled by default.  If you are using more than one adapter board, you will
+'   need to uncomment  sections for each additional adapter board you wish to use.
+'
+'   The lines containing the text "2nd HUB75 adapter board" are lines which set up the 2nd adapter board.
+'   The lines containing the text "3rd HUB75 adapter board" are lines which set up the 3rd adapter board.
+'
+'    There are 3 such lines in this file for each of the 2nd and 3rd adapter boards.
+'     1st line activates or comments out the large buffers
+'     2nd line activates or comments out the PUBs which return the pointers to the buffers
+
+OBJ
+
+    hwEnum   : "isp_hub75_hwEnums"                      ' hub75 attachment, set up constants
+    user     : "isp_hub75_hwPanelConfig"                ' panel(s) size and layout per adapter
+
+CON { User Panel Connection and Configuration }
+
+''  User customized section allocating large screen buffers for each HUB75 adapter board
+
+
+DAT { Large Buffers for each HUB75 adapter/chain of panels }
+
+' allocating one or more screens of pixels of 24bit color
+' our screen bitmap of RGB colors (pwm bit lengths ;-)
+sigFront                LONG    $0DF0ADDE
+hub75Buffer0            LONG    0[user.DISP0_SCRN_SIZE_IN_LONGS]
+pwmFrames0_1            LONG    0[user.DISP0_FRAMESET_SIZE_IN_LONGS]
+pwmFrames0_2            LONG    0[user.DISP0_FRAMESET_SIZE_IN_LONGS]
+sigBack                 LONG    $0DF1ADDE
+
+
+screenTable0            LONG    @hub75Buffer0
+                        LONG    @pwmFrames0_1
+                        LONG    @pwmFrames0_2
+screenTable0End
+sigBack1                 LONG    $0DF2ADDE
+
+{   COMMENT-OUT THIS LINE (place tic in front of this line) if you using the 2nd HUB75 adapter board
+hub75Buffer1            LONG    0[user.DISP1_SCRN_SIZE_IN_LONGS]
+pwmFrames1_1            LONG    0[user.DISP1_FRAMESET_SIZE_IN_LONGS]
+pwmFrames1_2            LONG    0[user.DISP1_FRAMESET_SIZE_IN_LONGS]
+
+screenTable1            LONG    @hub75Buffer1
+                        LONG    @pwmFrames1_1
+                        LONG    @pwmFrames1_2
+screenTable1End
+'}
+
+{   COMMENT-OUT THIS LINE (place tic in front of this line) if you using the 3rd HUB75 adapter board
+hub75Buffer2            LONG    0[user.DISP2_SCRN_SIZE_IN_LONGS]
+pwmFrames2_1            LONG    0[user.DISP2_FRAMESET_SIZE_IN_LONGS]
+pwmFrames2_2            LONG    0[user.DISP2_FRAMESET_SIZE_IN_LONGS]
+
+screenTable2            LONG    @hub75Buffer2
+                        LONG    @pwmFrames2_1
+                        LONG    @pwmFrames2_2
+screenTable2End
+'}
+
+PUB null()
+'' This is not a top level object
+
+PUB chain0Ptrs() : pScrnBuffer, pPwmFrameSet1, pPwmFrameSet2
+
+'' Return the pointers to the buffers for the first HUB75 adapter board
+''
+'' @returns pScrnBuffer - address of screen Buffer (2-3 bytes per pixel)
+'' @returns pPwmFrameSet1 - address of PWM Frame-Set 1 (4 bits per pixel * color depth)
+'' @returns pPwmFrameSet2 - address of PWM Frame-Set 2 (4 bits per pixel * color depth)
+    debug("hwBffrs: scrnBffr bytes=", udec_long_(user.DISP0_SCRN_SIZE_IN_LONGS * 4))
+    debug("hwBffrs: 2x pwmFrameBffr bytes=", udec_long_(user.DISP0_FRAMESET_SIZE_IN_LONGS * 4))
+    pScrnBuffer := @@LONG[@screenTable0][0]
+    pPwmFrameSet1 := @@LONG[@screenTable0][1]
+    pPwmFrameSet2 := @@LONG[@screenTable0][2]
+    'pScrnBuffer := LONG[@screenTable0][0]
+    'pPwmFrameSet1 := LONG[@screenTable0][1]
+    'pPwmFrameSet2 := LONG[@screenTable0][2]
+    debug("hwBffrs: ", uhex_long(pScrnBuffer, pPwmFrameSet1, pPwmFrameSet2))
+
+
+{   COMMENT-OUT THIS LINE (place tic in front of this line) if you using the 2nd HUB75 adapter board
+PUB chain1Ptrs() : pScrnBuffer, pPwmFrameSet1, pPwmFrameSet2
+
+'' Return the pointers to the buffers for the first HUB75 adapter board
+''
+'' @returns pScrnBuffer - address of screen Buffer (2-3 bytes per pixel)
+'' @returns pPwmFrameSet1 - address of PWM Frame-Set 1 (4 bits per pixel * color depth)
+'' @returns pPwmFrameSet2 - address of PWM Frame-Set 2 (4 bits per pixel * color depth)
+
+    pScrnBuffer := @@LONG[@screenTable1][0]
+    pPwmFrameSet1 := @@LONG[@screenTable1][1]
+    pPwmFrameSet2 := @@LONG[@screenTable1][2]
+'}
+
+{   COMMENT-OUT THIS LINE (place tic in front of this line) if you are using the 3rd HUB75 adapter board
+PUB chain2Ptrs() : pScrnBuffer, pPwmFrameSet1, pPwmFrameSet2
+
+'' Return the pointers to the buffers for the first HUB75 adapter board
+''
+'' @returns pScrnBuffer - address of screen Buffer (2-3 bytes per pixel)
+'' @returns pPwmFrameSet1 - address of PWM Frame-Set 1 (4 bits per pixel * color depth)
+'' @returns pPwmFrameSet2 - address of PWM Frame-Set 2 (4 bits per pixel * color depth)
+
+    pScrnBuffer := @@LONG[@screenTable2][0]
+    pPwmFrameSet1 := @@LONG[@screenTable2][1]
+    pPwmFrameSet2 := @@LONG[@screenTable2][2]
+'}
+
+CON { license }
+
+{{
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2024 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+
+}}
