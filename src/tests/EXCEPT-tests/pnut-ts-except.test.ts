@@ -13,6 +13,7 @@ import {
   compareExceptionFiles,
   compareListingFiles,
   compareObjOrBinFiles,
+  fileEmpty,
   fileExists,
   removeExistingFiles,
   topLevel,
@@ -98,12 +99,21 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
       const errorFSpec = path.join(testDirPath, `${basename}.errout`);
       stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
+      // ID the golden listing file
+      const goldenFSpec = `${listingFSpec}.GOLD`;
+      // ID the golden .obj file
+      const goldenObjFSpec = `${objectFSpec}.GOLD`;
+      // ID the golden .bin file
+      const goldenBinFSpec = `${binaryFSpec}.GOLD`;
+      // ID the golden .errout file
+      const goldenErroutFSpec = `${errorFSpec}.GOLD`;
+
       // Remove existing files
       const existingFiles: string[] = [listingFSpec, objectFSpec, binaryFSpec, elementsFSpec, errorFSpec];
       removeExistingFiles(existingFiles);
 
       // compile our file generating output files
-      const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '-l', '-O', '--regression', 'element', '--', `${file}`];
+      const testArguments: string[] = ['node', 'pnut-ts.js', '-d', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
 
       try {
@@ -120,24 +130,14 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
         throw error;
       }
 
-      // ID the golden listing file
-      const goldenFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
-      // ID the golden .obj file
-      const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
-      // ID the golden .bin file
-      const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
-      // ID the golden .errout file
-      const goldenErroutFSpec = path.join(testDirPath, `${basename}.errout.GOLD`);
-
       // my wait list...
-      let outFilesList: string[] = [listingFSpec, objectFSpec, binaryFSpec];
-      if (fileExists(goldenFSpec) == false) {
-        //console.log(`TEST: don't have GOLD .lst`);
-        outFilesList = [];
-      } else {
-        if (fileExists(goldenBinFSpec) == false) {
-          //console.log(`TEST: don't have GOLD .bin`);
-          outFilesList = [listingFSpec, objectFSpec];
+      const possibleGoldFilesList: string[] = [goldenFSpec, goldenObjFSpec, goldenBinFSpec];
+      const outFilesList: string[] = [];
+      for (let index = 0; index < possibleGoldFilesList.length; index++) {
+        const goldFSpec = possibleGoldFilesList[index];
+        const genFSpec = goldFSpec.replace(/\.GOLD$/, '');
+        if (fileExists(goldFSpec)) {
+          outFilesList.push(genFSpec); // we need to wait for this to appear
         }
       }
       const compileProducesFiles: boolean = outFilesList.length > 0;
@@ -170,6 +170,14 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
             fileGenerated = fileExists(binaryFSpec);
             if (!fileGenerated) {
               whatFailed = appendDiagnosticString(whatFailed, '.bin', ', ');
+              allFilesPresent = false;
+            }
+          }
+
+          if (outFilesList.includes(errorFSpec)) {
+            fileGenerated = fileExists(errorFSpec);
+            if (!fileGenerated) {
+              whatFailed = appendDiagnosticString(whatFailed, '.errout', ', ');
               allFilesPresent = false;
             }
           }
@@ -284,12 +292,21 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
       const errorFSpec = path.join(testDirPath, `${basename}.errout`);
       stdErrOutFile = errorFSpec; // tell stderr capture what filespec to use
 
+      // ID the golden listing file
+      const goldenFSpec = `${listingFSpec}.GOLD`;
+      // ID the golden .obj file
+      const goldenObjFSpec = `${objectFSpec}.GOLD`;
+      // ID the golden .bin file
+      const goldenBinFSpec = `${binaryFSpec}.GOLD`;
+      // ID the golden .errout file
+      const goldenErroutFSpec = `${errorFSpec}.GOLD`;
+
       // Remove existing files
       const existingFiles: string[] = [listingFSpec, objectFSpec, binaryFSpec, elementsFSpec, errorFSpec];
       removeExistingFiles(existingFiles);
 
       // compile our file generating output files
-      const testArguments: string[] = ['node', 'pnut-ts.js', '-l', '-O', '--regression', 'element', '--', `${file}`];
+      const testArguments: string[] = ['node', 'pnut-ts.js', '--regression', 'element', '--', `${file}`];
       //console.log(`* TEST sending testArguments=[${testArguments}]`);
       try {
         PNut_ts_compiler = new PNutInTypeScript(testArguments);
@@ -306,34 +323,24 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
         throw error;
       }
 
-      // ID the golden listing file
-      const goldenFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
-      // ID the golden .obj file
-      const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
-      // ID the golden .bin file
-      const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
-      // ID the golden .errout file
-      const goldenErroutFSpec = path.join(testDirPath, `${basename}.errout.GOLD`);
-
       // my wait list...
-      let outFilesList: string[] = [listingFSpec, objectFSpec, binaryFSpec];
-      if (fileExists(goldenFSpec) == false) {
-        //console.log(`TEST: don't have GOLD .lst`);
-        outFilesList = [];
-      } else {
-        if (fileExists(goldenBinFSpec) == false) {
-          //console.log(`TEST: don't have GOLD .bin`);
-          outFilesList = [listingFSpec, objectFSpec];
+      const possibleGoldFilesList: string[] = [goldenFSpec, goldenObjFSpec, goldenBinFSpec];
+      const outFilesList: string[] = [];
+      for (let index = 0; index < possibleGoldFilesList.length; index++) {
+        const goldFSpec = possibleGoldFilesList[index];
+        const genFSpec = goldFSpec.replace(/\.GOLD$/, '');
+        if (fileExists(goldFSpec)) {
+          outFilesList.push(genFSpec); // we need to wait for this file to appear
         }
       }
       const compileProducesFiles: boolean = outFilesList.length > 0;
-      //console.log(`TEST: compileProducesFiles=(${compileProducesFiles}), outFilesList=[${outFilesList.join(', ')}]`);
+      console.log(`TEST: compileProducesFiles=(${compileProducesFiles}), outFilesList=[${outFilesList.join(', ')}]`);
 
       let whatFailed: string = '';
       if (compileProducesFiles) {
+        // ensure all output files were generated!
         const allFilesExist: boolean = await waitForFiles(outFilesList);
         if (!allFilesExist) {
-          // ensure all output files were generated!
           let allFilesPresent: boolean = true;
           let fileGenerated: boolean;
           if (outFilesList.includes(listingFSpec)) {
@@ -355,6 +362,18 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
             fileGenerated = fileExists(binaryFSpec);
             if (!fileGenerated) {
               whatFailed = appendDiagnosticString(whatFailed, '.bin', ', ');
+              allFilesPresent = false;
+            }
+          }
+
+          const existsErrout = fileExists(errorFSpec);
+          const zeroLenErrout = fileEmpty(errorFSpec);
+          console.log(`TEST: existsErrout=(${existsErrout}), zeroLenErrout=[${zeroLenErrout}]`);
+
+          if (outFilesList.includes(errorFSpec)) {
+            fileGenerated = fileExists(errorFSpec);
+            if (!fileGenerated) {
+              whatFailed = appendDiagnosticString(whatFailed, '.errout', ', ');
               allFilesPresent = false;
             }
           }
