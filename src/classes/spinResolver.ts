@@ -7851,10 +7851,13 @@ export class SpinResolver {
     // PNut get_obj_symbol:
     let desiredType: eElementType = eElementType.type_undefined;
     let desiredValue: bigint | string = 0n;
-    this.getElement(); // get element after dot...
     const objectId: number = elementValue >> 24;
+    this.logMessage(`  -- getObjSymbol(obj Id=${objectId}) at elem=[${this.currElement.toString()}]`);
+    this.getElement(); // get element after dot...
     const symbolName: string = this.currElement.stringValue + String.fromCharCode(objectId + 1);
-    this.logMessage(`  -- getObjSymbol() looking up [${symbolName}] objectId=(${objectId}) elem=${this.currElement.toString()}`);
+    const symbolNameDebug: string = this.replacedName.length > 0 ? this.replacedName : this.currElement.stringValue;
+    const fullSymbolName: string = symbolNameDebug + String.fromCharCode(objectId + 1);
+    this.logMessage(`  -- getObjSymbol() looking up [${fullSymbolName}] objectId=(${objectId}) elem=${this.currElement.toString()}`);
     const foundSymbol: iSymbol = this.findSymbol(symbolName);
     desiredValue = foundSymbol.value;
     if (foundSymbol.type == eElementType.type_objpub) {
