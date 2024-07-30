@@ -44,8 +44,14 @@ export class Spin2Parser {
   }
 
   get sourceLineNumber(): number {
+    // used during exception reporting
     return this.spinResolver.sourceLineNumber;
     //return this.elementizer.sourceLineNumber;
+  }
+
+  get failingFileID(): number {
+    // used during exception reporting
+    return this.spinResolver.failingFileID;
   }
 
   public setSourceFile(spinCode: SpinDocument) {

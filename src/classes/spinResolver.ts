@@ -320,7 +320,13 @@ export class SpinResolver {
   }
 
   get sourceLineNumber(): number {
+    // used during exception reporting
     return this.currElement.sourceLineNumber;
+  }
+
+  get failingFileID(): number {
+    // used during exception reporting
+    return this.currElement.fileId;
   }
 
   get objectImage(): ObjectImage {

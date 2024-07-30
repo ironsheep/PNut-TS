@@ -80,7 +80,9 @@ export class Compiler {
         this.spin2Parser.ComposeRam(needFLash, ramDownload);
       } catch (error: unknown) {
         if (error instanceof Error) {
-          const filename: string = this.srcFile.fileSpec;
+          const sourceFileID: number = this.spin2Parser.failingFileID;
+          const srcDocument: SpinDocument | undefined = this.context.sourceFiles.getFileHavingID(sourceFileID);
+          const filename: string = srcDocument !== undefined ? srcDocument.fileSpec : this.srcFile.fileSpec;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
           const compilerErrorText: string = `${filename}:${sourceLineNumber}:error:${error.message}`;
           this.context.logger.logMessage(`EEEE: About to report:   ${compilerErrorText}`);
