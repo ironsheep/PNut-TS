@@ -476,7 +476,7 @@ export class SpinResolver {
 
   private determinePasmMode(): boolean {
     // determine_mode:
-    let pasmModeStatus: boolean = true;
+    let pasmModeStatus: boolean = false;
     let element: SpinElement;
     this.restoreElementLocation(0); // start from first in list
     const savedLogState: boolean = this.isLogging;
@@ -2677,6 +2677,7 @@ export class SpinResolver {
   private compile_sub_blocks_id() {
     // Compile sub blocks - id only
     // PNut compile_sub_blocks_id:
+    //this.logMessage(`** compile_sub_blocks_id() pasmMode=(${this.pasmMode}) - ENTRY`);
     if (this.pasmMode == false) {
       this.logMessage('*==* COMPILE_sub_blocks_id()');
       const subStartIndex: number = this.objImage.offset >> 2;
@@ -2691,11 +2692,13 @@ export class SpinResolver {
       this.compilePubPriBlocksId(eBlockType.block_pri, subStartIndex);
       this.objWrLong(0); // enter 0 (future size) into index
     }
+    //this.logMessage(`** compile_sub_blocks_id() pasmMode=(${this.pasmMode}) - EXIT`);
   }
 
   private compilePubPriBlocksId(blockType: eBlockType, subStartIndex: number): boolean {
     // here is compile_sub_blocks_id: @@compile
     // this locates PUB and PRI blocks, validates and emits symbols and obj public interface
+    //this.logMessage(`** compilePubPriBlocksId() - ENTRY`);
     let foundBlocksStatus: boolean = false;
     let parameterCount: number = 0;
     let resultCount: number = 0;
@@ -2792,6 +2795,7 @@ export class SpinResolver {
       foundBlocksStatus = true;
     }
 
+    //this.logMessage(`** compilePubPriBlocksId() - EXIT w/(${foundBlocksStatus})`);
     return foundBlocksStatus;
   }
 

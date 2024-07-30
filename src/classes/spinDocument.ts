@@ -728,15 +728,6 @@ export class SpinDocument {
     return newProcLevel;
   }
 
-  private flipToElse(): PreProcState {
-    if (!this.inIfDef()) {
-      throw new Error(`[PREPROCESSOR] error found #else without #ifdef or #ifndef`);
-    }
-    const procLevel = this.preProcNestingState[this.preProcNestingState.length - 1];
-    procLevel.setInElse();
-    return procLevel;
-  }
-
   private exitIf(): PreProcState {
     if (!this.inIfDef()) {
       throw new Error(`[PREPROCESSOR] error found #endif without #ifdef or #ifndef`);

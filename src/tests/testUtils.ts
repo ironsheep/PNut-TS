@@ -59,6 +59,17 @@ export function removeFileIfEmpty(fileSpec: string) {
   }
 }
 
+export function fileEmpty(fileSpec: string): boolean {
+  let emptyFileStatus: boolean = true;
+  if (fileExists(fileSpec)) {
+    const stats = fs.statSync(fileSpec);
+    if (stats.size > 0) {
+      emptyFileStatus = false;
+    }
+  }
+  return emptyFileStatus;
+}
+
 export function fileExists(fileSpec: string): boolean {
   const fileFoundStatus: boolean = fs.existsSync(fileSpec);
   //console.log(`testUtils: fileExists([${fileSpec}]) -> (${fileFoundStatus})`);
