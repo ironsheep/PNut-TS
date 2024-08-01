@@ -435,7 +435,7 @@ export class SpinResolver {
     this.compile_con_blocks_2nd();
     this.determine_bauds_pins();
     if (this.context.passOptions.afterConBlock == false) {
-      this.logMessage('* COMPILE_dat_blocks()');
+      this.logMessage('* continue compilation after CON pass');
       if (this.pasmMode == false) {
         this.compile_var_blocks();
       }
@@ -1095,7 +1095,7 @@ export class SpinResolver {
           }
 
           if (this.currElement.type == eElementType.type_end) {
-            this.logMessage(`* COMPILE_dat_blocks() enter symbol [${this.symbolName}]`);
+            this.logMessage(`* compile_dat_blocks() enter symbol [${this.symbolName}]`);
             this.enterDatSymbol(); // at end of line
             // back to top of loop to get first elem of new line
             continue;
@@ -1661,20 +1661,26 @@ export class SpinResolver {
         break;
       case eValueType.operand_rep:
         // rep d/#/@,s/#
+        // here is @@op_rep:
+        this.logMessage(`  -- OP_REP: inlineModeForGetConstant=(${this.inlineModeForGetConstant})`);
         if (this.checkAt()) {
           // rep @,s/#
+          this.logMessage(`* rep @,s/#!`);
           this.instructionImage |= 1 << 19;
-          const instructionCountResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
+          const instructionCountResult: iValueReturn = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           let instructionCount: number = Number(instructionCountResult.value);
+          this.logMessage(`  -- OP_REP: instructionCount=(${hexLong(instructionCount, '0x')})`);
           this.getComma();
           this.trySImmediate(); // get repetition count
           if (this.pasmResolveMode == eResolve.BR_Must) {
             instructionCount = this.hubMode ? instructionCount - this.hubOrg : (instructionCount << 2) - this.cogOrg;
+            this.logMessage(`  -- OP_REP: MUST RESOLVE instructionCount=(${hexLong(instructionCount, '0x')})`);
             if (instructionCount & 0b11) {
               // [error_rbeiooa]
               throw new Error('REP block end is out of alignment');
             }
             instructionCount = (instructionCount >> 2) - 1;
+            this.logMessage(`  -- OP_REP: MUST RESOLVE 2 instructionCount=(${hexLong(instructionCount, '0x')})`);
             if (instructionCount < 0 || instructionCount > 0x1ff) {
               // [error_rbeioor]
               throw new Error('REP block end is out of range');
@@ -1683,6 +1689,7 @@ export class SpinResolver {
           }
         } else {
           // rep d/#,s/#
+          this.logMessage(`* rep d/#,s/#`);
           this.tryDImmediate(19);
           this.getComma();
           this.trySImmediate();
@@ -2380,6 +2387,7 @@ export class SpinResolver {
   }
 
   private checkCogHubCrossing(address: number) {
+    this.logMessage(`  -- checkCogHubCrossing(${hexLong(address, '0x')})`);
     if (this.hubMode ? address < 0x400 : address >= 0x400) {
       // [error_racc]
       throw new Error('Relative addresses cannot cross between cog and hub domains');
@@ -5266,6 +5274,7 @@ export class SpinResolver {
   private compileInline() {
     // Compile inline assembly section - first handle ORG operand(s)
     // PNut compile_inline:
+    this.logMessage(`* compileInline() - ENTRY`);
     let inlineOrigin: number = 0;
     let inlineLimit: number = this.inlineLimit;
     // handle inline:  ORG {start{,limit}}
@@ -5297,6 +5306,7 @@ export class SpinResolver {
     const patchLocation: number = this.objImage.offset;
     const isInlineMode: boolean = true;
     // compile inline section
+    this.logMessage(`  -- compile inline section`);
     this.compile_dat_blocks(isInlineMode, inlineOrigin << 2, inlineLimit << 2);
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -5312,7 +5322,7 @@ export class SpinResolver {
       throw new Error('Inline section is empty');
     }
     this.objImage.replaceWord(lengthInLongs - 1, patchLocation - 2); // replace the placeholder with length
-    this.logMessage(`  -- compileInLine() - EXIT`);
+    this.logMessage(`* compileInline() - EXIT`);
   }
 
   private ci_next_quit() {
@@ -7731,9 +7741,10 @@ export class SpinResolver {
             }
           }
           // have checkUndefined() consider the local symbol type if it is present
+          // PNut here is @@notop:
           const haveUndefinedSymbol = this.checkUndefined(resolve, didFindLocal, symbol.type);
           if (haveUndefinedSymbol == false) {
-            this.logMessage(`* getCON haveUndefinedSymbol == false`);
+            this.logMessage(`* getCON our symbol is DEFINED`);
             // FIXME: TODO: handle DAT symbols
             if (this.currElement.type == eElementType.type_dollar) {
               // HANDLE an origin symbol
@@ -7745,7 +7756,7 @@ export class SpinResolver {
               resultStatus.value = BigInt(this.hubMode ? this.hubOrg : this.cogOrg >> 2);
             } else if (this.currElement.type == eElementType.type_register) {
               // PNut here is @@notorg:
-              this.logMessage(`* getCON type_register`);
+              this.logMessage(`* getCON() type_register`);
               // HANDLE a cog register
               if (mode != eMode.BM_OperandIntOnly && mode != eMode.BM_OperandIntOrFloat) {
                 // [error_rinah]
@@ -7753,24 +7764,30 @@ export class SpinResolver {
               }
               this.checkIntMode();
               resultStatus.value = this.currElement.bigintValue;
-            } else if (this.inlineModeForGetConstant) {
-              this.logMessage(`* getCON inlineModeForGetConstant`);
-              // HANDLE DAT Local variable now in register for inline access
-              if (this.currElement.type == eElementType.type_loc_byte || this.currElement.type == eElementType.type_loc_word) {
-                // [error_lvmb]
-                // We don't quite like this message (so we adjusted to not match PNut)
-                throw new Error('Local variable must be LONG and within first 16 longs (m1C0)');
-              }
-              if (this.currElement.type == eElementType.type_loc_long) {
-                if (this.currElement.bigintValue & BigInt(0b11) || this.currElement.bigintValue >= BigInt(0x10 << 2)) {
-                  // [error_lvmb]
-                  // We don't quite like this message (so we adjusted to not match PNut)
-                  throw new Error('Local variable must be LONG and within first 16 longs (m1C1)');
-                }
-              }
+            } else if (
+              this.inlineModeForGetConstant &&
+              (this.currElement.type == eElementType.type_loc_byte || this.currElement.type == eElementType.type_loc_word)
+            ) {
+              // above is @@notreg:
+              this.logMessage(`* getCON() inlineModeForGetConstant=(true)`);
+              // if inline mode, remap local longs
+              //  HANDLE DAT Local variable now in register for inline access
+              // [error_lvmb]
+              // We don't quite like this message (so we adjusted to not match PNut)
+              throw new Error('Local variable must be LONG and within first 16 longs (m1C0)');
+            } else if (
+              this.inlineModeForGetConstant &&
+              this.currElement.type == eElementType.type_loc_long &&
+              (this.currElement.bigintValue & BigInt(0b11) || this.currElement.bigintValue >= BigInt(0x10 << 2))
+            ) {
+              // [error_lvmb]
+              // We don't quite like this message (so we adjusted to not match PNut)
+              throw new Error('Local variable must be LONG and within first 16 longs (m1C1)');
+            } else if (this.inlineModeForGetConstant && this.currElement.type == eElementType.type_loc_long) {
               // return address of local var
               resultStatus.value = (this.currElement.bigintValue >> 2n) + BigInt(this.inlineLocalsStart);
             } else if (this.currElement.type == eElementType.type_obj) {
+              // above is @@notinline:
               // HANDLE object.constant reference
               const savedElement: SpinElement = this.currElement;
               this.getDot();
