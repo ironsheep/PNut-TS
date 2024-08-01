@@ -1,0 +1,9 @@
+CON { Interface Constant Forwarding }
+
+    ' this reduces include complexity for demo's
+    HUB75_ADAPTER_1 = hwEnum.HUB75_ADAPTER_1
+OBJ
+
+    hwEnum      : "spin_test20_child"                   ' hub75 attachment, set up constants
+
+PUB main()

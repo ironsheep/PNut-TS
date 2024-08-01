@@ -54,7 +54,7 @@
     "watch": "tsc -b -w",
     "lint": "eslint ./src --ext .ts,.tsx",
     "prettier-format": "prettier --config .prettierrc.json 'src/**/*.ts' --write",
-    "pkg-exes": "npm run build && npm run esbuild && npm pack && pkg ."
+    "bld-dist": "npm run build && npm run esbuild && npm pack && pkg ."
   },
   "repository": {
     "type": "git",

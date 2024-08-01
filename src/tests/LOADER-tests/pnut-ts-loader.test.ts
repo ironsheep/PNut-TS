@@ -39,7 +39,8 @@ describe('PNut_ts builds our LOADER test files correctly', () => {
   }
   files.forEach((file) => {
     test(`Compile file: ${path.basename(file)}`, () => {
-      const options: string = '-v -l -d -O --regression element --';
+      //const options: string = '-v -l -d -O --regression element --';
+      const options: string = '-v -l -O --regression element --';
       const basename = path.basename(file, '.spin2');
 
       const listingFSpec = path.join(testDirPath, `${basename}.lst`);

@@ -1,0 +1,47 @@
+CON { fixed io pins }
+
+  PGM_RX   = 63  { I }                                  ' programming / debug
+  PGM_TX   = 62  { O }
+
+  SF_CS    = 61  { O }                                  ' flash chip select
+  SF_SCLK  = 60  { O }                                  ' flash clock
+  SF_MOSI  = 59  { O }                                  ' flash data in
+  SF_MISO  = 58  { I }                                  ' flash data out
+
+  LED2     = 57  { O }                                  ' Eval and Edge LEDs
+  LED1     = 56  { O }
+
+PUB main()
+
+PRI flash_send(p_buffer, count) | tx_byte
+
+' Write bytes to the FLASH Chip via SPI
+'
+' @param p_buffer - memory location from which to get the data
+' @param byteCount - number of bytes to send
+
+' Local Variables:
+' @local tx_byte - the byte value being sent over SPI
+
+              org
+
+              rdfast    #0,p_buffer                     'start fast read
+
+.byte         rfbyte    tx_byte                         '2  read byte to send
+              shl       tx_byte,#24 + 1         wc      '2  msb-justify bits and get D7 into c
+
+              rep       @.r,#1                          '2  protect from interrupts
+              fltl      #SF_SCLK                        '2! reset smart pin CK
+              drvl      #SF_SCLK                        '2! start smart pin CK, starts base period
+              drvc      #SF_MOSI                        '2! output D7
+              wypin     #16,#SF_SCLK                    '2* begin 16 clock transitions
+              rep       @.r,#7                          '2  repeat to output D6..D0
+              shl       tx_byte,#1              wc      '2    get data bit
+              drvc      #SF_MOSI                        '2!   output data bit
+              waitx     #2                              '2+2  delay makes 8 clocks/bit
+.r
+              djnz      count,#.byte                    '4|2 loop if another byte to send
+
+              drvl      #SF_MOSI                        '2! DI low
+
+              end

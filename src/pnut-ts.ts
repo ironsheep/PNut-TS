@@ -5,7 +5,7 @@
 // src/pnut-ts.ts
 'use strict';
 import { Command, Option, CommanderError, type OptionValues } from 'commander';
-import { Context, PreProcessorOptions } from './utils/context';
+import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
 import path from 'path';
