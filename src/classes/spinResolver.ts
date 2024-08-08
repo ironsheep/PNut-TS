@@ -157,6 +157,7 @@ interface ObjectRecord {
 export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
+  private isLoggingOutline: boolean = false;
   // data from our elemtizer and navigation variables
   private spinElements: SpinElement[] = [];
   private nextElementIndex: number = 0;
@@ -275,6 +276,7 @@ export class SpinResolver {
     this.debug_record = new DebugRecord(this.context);
     this.debug_data = new DebugData(this.context);
     this.isLogging = this.context.logOptions.logResolver;
+    this.isLoggingOutline = this.context.logOptions.logOutline;
     // get references to the single global data
     this.objImage = ctx.compileData.objImage;
     this.datFileData = ctx.compileData.datFileData;
@@ -302,7 +304,7 @@ export class SpinResolver {
 
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
-    this.logMessage(`* Resolver.setSourceFile([${spinCode.fileName}])`);
+    this.logMessageOutline(`++ Resolver.setSourceFile([${spinCode.fileName}])`);
   }
 
   public getSymbol(symbolName: string): iSymbol | undefined {
@@ -400,9 +402,9 @@ export class SpinResolver {
     */
     this.overrideSymbolTable = overrideSymbolTable;
     if (overrideSymbolTable === undefined) {
-      this.logMessage(`* No CON Overrides provided`);
+      this.logMessageOutline(`++ compile1() No CON Overrides provided`);
     } else {
-      this.logMessage(`* Using ${this.overrideSymbolTable?.length} CON Overrides`);
+      this.logMessageOutline(`++ compile1() Using ${this.overrideSymbolTable?.length} CON Overrides`);
     }
     this.mainSymbols.reset();
     this.localSymbols.reset();
@@ -426,7 +428,7 @@ export class SpinResolver {
 
   public compile2(isTopLevel: boolean) {
     //this.isLogging = true;
-    this.logMessage(`*==* compile2(isTopLevel=(${isTopLevel}))`);
+    this.logMessageOutline(`++ compile2(isTopLevel=(${isTopLevel}))- ENTRY`);
     this.logMessage(
       `  -- OPTS elem(${this.context.logOptions.logElementizer}), parse(${this.context.logOptions.logParser}), comp(${this.context.logOptions.logCompile}), resolv(${this.context.logOptions.logResolver}), preproc(${this.context.logOptions.logPreprocessor})`
     );
@@ -448,6 +450,7 @@ export class SpinResolver {
       this.compile_final();
       //this.compile_done();  // XYZZY do we need this?
     }
+    this.logMessageOutline(`++ compile2(isTopLevel=(${isTopLevel}))- EXIT`);
   }
 
   public testResolveExp(mode: eMode, resolve: eResolve, precedence: number) {
@@ -1006,6 +1009,7 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
+    this.logMessageOutline(`++ compile_dat_blocks(inLineMode=(${inLineMode}))`);
     this.logMessage(`*==* COMPILE_dat_blocks() inLineMode=(${inLineMode})`);
     this.inlineModeForGetConstant = inLineMode;
     if (inLineMode) {
@@ -4173,6 +4177,7 @@ export class SpinResolver {
     // PNut distill_obj_blocks:
     if (this.pasmMode == false) {
       // here is distill_objects:
+      this.logMessageOutline(`++ distill_obj_blocks() objImgLen=${this.objImage.offset}(${hexLong(this.objImage.offset, '0x')}) - ENTRY`);
       this.logMessage(`* distill_obj_blocks()`);
       //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
       const startingOffset: number = this.objImage.offset;
@@ -4182,8 +4187,13 @@ export class SpinResolver {
       this.distillDumpRecords('post_build');
       //if (recordCount > 1) {
       this.distill_scrub(); // damages object IDs in objImage
-      const removeObjectCount: number = this.distill_eliminate();
-      //if (removeObjectCount > 0) {  can't do this cuz object IDs need to be repaired
+      //const removeObjectCount: number = this.distill_eliminate();
+
+      let recordWasEliminated: boolean;
+      do {
+        recordWasEliminated = this.distill_eliminate();
+      } while (recordWasEliminated);
+
       this.distill_rebuild();
       this.distill_reconnect();
       //}
@@ -4191,6 +4201,7 @@ export class SpinResolver {
       //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
       // NOTE: PNut v43 has this as an assign, we are moving to sum from assign
       this.distilledBytes += startingOffset - this.objImage.offset;
+      this.logMessageOutline(`++ distill_obj_blocks() - EXIT`);
     }
   }
 
@@ -4208,12 +4219,14 @@ export class SpinResolver {
     return recordcount;
   }
 
+  // -------------------------------------
   // 0: object id
   // 1: object offset
   // 2: sub-object count
   // 3: method count
   // 4: object size
   // 5+:        sub-object id's (if any)
+  // -------------------------------------
 
   private distillDumpRecords(callerId: string) {
     const recordCount: number = this.distillRecordCount(callerId);
@@ -4253,18 +4266,24 @@ export class SpinResolver {
     // Build initial object list
     // PNut distill_build:
     // record object Id
-    this.logMessage(`* distillBuild(objId=(${objectId}),ofs=(${objectOffset}), subObjId=(${subObjectId}))`);
+    //this.logMessageOutline(`++ distillBuild(id=(${objectId}), ofs=(${hexLong(objectOffset, '0x')}), subObjId=(${subObjectId}))`);
+    this.logMessage(`* distillBuild(objId=(id=(${objectId}), ofs=(${objectOffset}), subObjId=(${subObjectId}))`);
     // here is @@record:
     this.distillBuildEnter(objectId);
     this.distillBuildEnter(objectOffset);
 
     // count sub-objects
-    let tableEntry: number = 0;
+    let tableEntry: number;
     let subObjectCount: number = 0;
+    let loopCt: number = 0; // INTERNAL DEBUG use
     // eslint-disable-next-line no-constant-condition
     while (true) {
       // here is @@countobjects:
       tableEntry = this.objImage.readLong(objectOffset + subObjectCount * 8);
+      if (loopCt++ < 15) {
+        // DEBUG Logging...
+        this.logMessage(`  -- tableEntry=(${hexLong(tableEntry, '0x')}), subObjectCount=(${subObjectCount})`);
+      }
       if ((tableEntry & 0x80000000) == 0) {
         subObjectCount++;
       } else {
@@ -4274,7 +4293,6 @@ export class SpinResolver {
     this.distillBuildEnter(subObjectCount);
 
     // count methods
-    tableEntry = 0;
     let methodCount: number = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -4289,13 +4307,13 @@ export class SpinResolver {
     this.distillBuildEnter(methodCount);
     this.distillBuildEnter(tableEntry); // record object size
 
-    let newSubObjectId = subObjectId;
-    if (subObjectCount != 0) {
+    let newSubObjectId = subObjectId; // return this value if NO subObjects
+    if (subObjectCount > 0) {
       // (initial sub object ID is passed parameter)
       // enter record for each sub object
       // here is @@id:
       for (let index = 0; index < subObjectCount; index++) {
-        this.distillBuildEnter(subObjectId + index);
+        this.distillBuildEnter(subObjectId + index); // record subObjIDs: this is @@enter
       }
 
       // here is @@sub:
@@ -4314,7 +4332,7 @@ export class SpinResolver {
   /*
   private distill_build_new(objectId: number = 0, objectOffset: number = 0, subObjectId: number = 1): number {
     // Build initial object list
-    // PNut distill_build:
+    // PNut distill_build new?:
     // record object Id
     this.logMessage(`* distillBuild(objId=(${objectId}),ofs=(${objectOffset}), subObjId=(${subObjectId}))`);
     // here is @@record:
@@ -4378,10 +4396,10 @@ export class SpinResolver {
     // PNut distill_build: @@enter:
     if (this.distillPtr >= this.distiller_limit) {
       // [error_odo]
-      throw new Error('Object distiller overflow');
+      throw new Error(`Object distiller overflow (more than ${this.distiller_limit} entries)`);
     }
     const newLength = this.distiller.push(value);
-    this.logMessage(`  -- dbldE() distiller[${this.distillPtr}]=(${value}),  arLen=(${newLength})`);
+    this.logMessage(`  -- dbldEn() distiller[${this.distillPtr}]=(${hexLong(value, '0x')}),  arLen=(${newLength})`);
     this.distillPtr++;
   }
 
@@ -4389,13 +4407,13 @@ export class SpinResolver {
     // Scrub sub-object offsets within objects to enable comparison of redundant objects
     // PNut distill_scrub:
     this.logMessage(`* distill_scrub()`);
-    let recordOffset = 0;
+    let recordOffset = 0; // this is [ebx]
     let recordID = 0;
     //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
     do {
       recordID++;
-      const objectOffset = this.distiller[recordOffset + 1];
-      const subObjectCount = this.distiller[recordOffset + 2];
+      const objectOffset = this.distiller[recordOffset + 1]; // [esi]
+      const subObjectCount = this.distiller[recordOffset + 2]; // [ecx]
       this.logMessage(`distill_scrub() #${recordID} subCnt-(${subObjectCount})`);
       for (let subObjIndex = 0; subObjIndex < subObjectCount; subObjIndex++) {
         // clear subOjbectOffsets - facilitating later compare
@@ -4406,11 +4424,11 @@ export class SpinResolver {
     //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
   }
 
-  private distill_eliminate(): number {
+  private distill_eliminate_old(): number {
     // Eliminate redundant objects
     // PNut distill_eliminate:
     this.logMessage(`* distill_eliminate()`);
-    let recordOffset = 0;
+    let recordOffset = 0; // this is [ebx]
     let recordID = 0;
     let eliminationCount: number = 0;
     // eslint-disable-next-line no-constant-condition
@@ -4453,7 +4471,7 @@ export class SpinResolver {
             this.distillPtr -= elimRcdLength;
             this.distillDumpRecords('postDelete');
             // NOW break to outer loop which starts all over from top (or call ourself?)
-            eliminationCount += this.distill_eliminate();
+            eliminationCount += this.distill_eliminate_old();
           }
           const elimSubObjectCount = this.distiller[elimRecordOffset + 2];
           elimRecordOffset += 5 + elimSubObjectCount;
@@ -4466,6 +4484,66 @@ export class SpinResolver {
     } while (recordOffset < this.distillPtr);
     this.logMessage(`  -- distElim EXIT (return) eliminationCount=(${eliminationCount})`);
     return eliminationCount;
+  }
+
+  private distill_eliminate(): boolean {
+    // Eliminate redundant objects
+    // PNut distill_eliminate:
+    this.logMessage(`* distill_eliminate()`);
+    let recordOffset = 0; // this is [ebx]
+    let recordID = 0;
+    let didEliminateStatus: boolean = false;
+    // eslint-disable-next-line no-constant-condition
+    do {
+      // here is @@newobject:
+      const subObjectCount = this.distiller[recordOffset + 2];
+      recordID++;
+      // here is @@msb:
+      let areAllSubObjectsCompleted: boolean = true;
+      for (let index = 0; index < subObjectCount; index++) {
+        const subObjectId = this.distiller[recordOffset + 5 + index];
+        if ((subObjectId & 0x80000000) == 0) {
+          areAllSubObjectsCompleted = false;
+        }
+      }
+
+      this.logMessage(`distill_eliminate() allSubsComplete=(${areAllSubObjectsCompleted})`);
+      // if this record's subObjects are marked as complete...
+      if (areAllSubObjectsCompleted) {
+        let elimRecordOffset = 0;
+        // eslint-disable-next-line no-constant-condition
+        do {
+          // check for match
+          const matchingRecordOffset = this.findMatchForRecord(elimRecordOffset);
+          if (matchingRecordOffset !== undefined) {
+            // objects match, update all related sub-object id's
+            didEliminateStatus = true;
+            // set msb's of id's
+            const oldObjectId = this.distiller[elimRecordOffset + 0];
+            const newObjectId = this.distiller[matchingRecordOffset + 0];
+            this.distillEliminateUpdate(oldObjectId, newObjectId);
+            // remove redundant object record from list
+            // (id is no longer referenced by any record)
+            this.distillDumpRecords('preDelete');
+            const elimRcdLength = 5 + this.distiller[elimRecordOffset + 2];
+            this.logMessage(
+              `DR: [${recordOffset}] DELETE len=(${elimRcdLength})  distPtr (${this.distillPtr}) -> (${this.distillPtr - elimRcdLength})`
+            );
+            this.distiller.splice(elimRecordOffset, elimRcdLength);
+            this.distillPtr -= elimRcdLength;
+            this.distillDumpRecords('postDelete');
+          }
+          const elimSubObjectCount = this.distiller[elimRecordOffset + 2];
+          elimRecordOffset += 5 + elimSubObjectCount;
+        } while (didEliminateStatus == false && elimRecordOffset < this.distillPtr);
+      }
+
+      //  return to top of loop @@newobject:
+      // here is @@nextobject:
+      recordOffset += 5 + subObjectCount;
+    } while (didEliminateStatus == false && recordOffset < this.distillPtr);
+    this.logMessage(`  -- distElim EXIT (return) didEliminateStatus=(${didEliminateStatus})`);
+    return didEliminateStatus;
   }
 
   private findMatchForRecord(matchRecordOffset: number): number | undefined {
@@ -4571,6 +4649,8 @@ export class SpinResolver {
   private distill_rebuild() {
     // Rebuild distilled object with sub-objects
     // PNut distill_rebuild:
+    const savedOffset = this.objImage.offset;
+    //this.logMessageOutline(`++ distill_rebuild() imgOfs=(${hexLong(savedOffset, '0x')})`);
     this.logMessage(`* distill_rebuild()`);
     let recordOffset: number = 0;
     let rebuildObjImage: ObjectImage = new ObjectImage(this.context, 'rebuildImage');
@@ -4598,6 +4678,8 @@ export class SpinResolver {
     // now replace objImage content with rebuildObjImage content
     this.objImage.rawUint8Array.set(rebuildObjImage.rawUint8Array.subarray(0, rebuildObjImage.offset));
     this.objImage.setOffsetTo(rebuildObjImage.offset);
+    this.logMessage(`*distill_rebuild() imgOfs=(${hexLong(this.objImage.offset, '0x')})`);
+    //this.logMessageOutline(`++ distill_rebuild() exit imgOfs=(${hexLong(savedOffset, '0x')}) -> (${hexLong(this.objImage.offset, '0x')})`);
   }
 
   private distill_reconnect(recordOffset: number = 0) {
@@ -4848,6 +4930,7 @@ export class SpinResolver {
 
   private compile_final() {
     // PNut compile_final:
+    this.logMessageOutline(`++ compile_final()`);
     this.logMessage(`*==* COMPILE_final()`);
     // TODO: place code for flash_loader file size and interpreter file size
     this.sizeFlashLoader = 0; // for now
@@ -7354,22 +7437,32 @@ export class SpinResolver {
   private constantWasDecoded(value: number): boolean {
     let didDecodeStatus: boolean = false;
     for (let shiftValue = 0; shiftValue < 0x20; shiftValue++) {
-      if (1 << shiftValue == value) {
+      if (((1 << shiftValue) & 0xffffffff) == value) {
+        // BUGFIX: added final mask above with 0xffffffff to clear sign extension
         this.objWrByte(eByteCode.bc_con_rfbyte_decod);
         this.objWrByte(shiftValue);
         didDecodeStatus = true;
         break;
-      } else if (((1 << shiftValue) ^ 0xffffffff) == value) {
+      } else if ((((1 << shiftValue) ^ 0xffffffff) & 0xffffffff) == value) {
+        // BUGFIX: added final mask above with 0xffffffff to clear sign extension
+        //this.logMessageOutline(
+        //  `* constantWasDecoded() bc_con_rfbyte_decod_not value=(${hexLong(value, '0x')}), shiftValue=(${hexLong(shiftValue, '0x')})`
+        //);
         this.objWrByte(eByteCode.bc_con_rfbyte_decod_not);
         this.objWrByte(shiftValue);
         didDecodeStatus = true;
         break;
-      } else if ((2 << shiftValue) - 1 == value) {
+      } else if ((((2 << shiftValue) - 1) & 0xffffffff) == value) {
+        // BUGFIX: added final mask above with 0xffffffff to clear sign extension
+        //this.logMessageOutline(
+        //  `* constantWasDecoded() bc_con_rfbyte_bmask value=(${hexLong(value, '0x')}), shiftValue=(${hexLong(shiftValue, '0x')})`
+        //);
         this.objWrByte(eByteCode.bc_con_rfbyte_bmask);
         this.objWrByte(shiftValue);
         didDecodeStatus = true;
         break;
-      } else if ((((2 << shiftValue) - 1) ^ 0xffffffff) == value) {
+      } else if (((((2 << shiftValue) - 1) ^ 0xffffffff) & 0xffffffff) == value) {
+        // BUGFIX: added final mask above with 0xffffffff to clear sign extension
         this.objWrByte(eByteCode.bc_con_rfbyte_bmask_not);
         this.objWrByte(shiftValue);
         didDecodeStatus = true;
@@ -7871,11 +7964,11 @@ export class SpinResolver {
     const objectId: number = elementValue >> 24;
     this.logMessage(`  -- getObjSymbol(obj Id=${objectId}) at elem=[${this.currElement.toString()}]`);
     this.getElement(); // get element after dot...
-    const symbolName: string = this.currElement.stringValue + String.fromCharCode(objectId + 1);
     const symbolNameDebug: string = this.replacedName.length > 0 ? this.replacedName : this.currElement.stringValue;
-    const fullSymbolName: string = symbolNameDebug + String.fromCharCode(objectId + 1);
-    this.logMessage(`  -- getObjSymbol() looking up [${fullSymbolName}] objectId=(${objectId}) elem=${this.currElement.toString()}`);
+    const symbolName: string = symbolNameDebug + String.fromCharCode(objectId + 1);
+    this.logMessage(`  -- getObjSymbol() looking up srch=[${symbolName}] objectId=(${objectId}) elem=${this.currElement.toString()}`);
     const foundSymbol: iSymbol = this.findSymbol(symbolName);
+    this.logMessage(`  -- found sym.name=[${foundSymbol.name}] type=[${eElementType[foundSymbol.type]}]`);
     desiredValue = foundSymbol.value;
     if (foundSymbol.type == eElementType.type_objpub) {
       desiredType = foundSymbol.type;
@@ -9660,6 +9753,11 @@ private checkDec(): boolean {
     return result;
   }
 
+  private logMessageOutline(message: string): void {
+    if (this.isLoggingOutline) {
+      this.context.logger.logMessage(message);
+    }
+  }
   private logMessage(message: string): void {
     if (this.isLogging) {
       this.context.logger.logMessage(message);
