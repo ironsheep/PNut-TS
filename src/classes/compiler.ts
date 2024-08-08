@@ -21,6 +21,7 @@ const OBJ_STACK_LIMIT: number = 16;
 export class Compiler {
   private context: Context;
   private isLogging: boolean = false;
+  private isLoggingOutline: boolean = false;
   private srcFile: SpinDocument | undefined;
   private spin2Parser: Spin2Parser;
   private objectFileCount: number = 0; // from pascal EditUnit.pas ObjFileCount
@@ -39,6 +40,7 @@ export class Compiler {
   constructor(ctx: Context) {
     this.context = ctx;
     this.isLogging = ctx.logOptions.logCompile;
+    this.isLoggingOutline = ctx.logOptions.logOutline;
     this.spin2Parser = new Spin2Parser(ctx);
     // get references to the single global data
     this.objectData = ctx.compileData.objectData;
@@ -102,7 +104,8 @@ export class Compiler {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private compileRecursively(depth: number, srcFile: SpinDocument, overrideParameters: SymbolTable | undefined = undefined) {
-    this.logMessage(`* compileRecursively(${depth}, [${srcFile.fileName}]) - ENTRY ----------------------------------------`);
+    this.logMessageOutline(`++ compileRecursively(${depth}, [${srcFile.fileName}]) - ENTRY ---------------------------------------`);
+    this.logMessage(`* compileRecursively(${depth}, [${srcFile.fileName}]) - ENTRY ---------------------------------------`);
     if (this.spin2Parser !== undefined) {
       if (depth > OBJ_STACK_LIMIT) {
         throw new Error(`Object nesting exceeds ${OBJ_STACK_LIMIT} levels - illegal circular reference may exist`);
@@ -208,7 +211,8 @@ export class Compiler {
           }
           //
           // perform second pass of compilation
-          this.logMessage(`  -- compRecur(${depth}) - compile2 ----------------------------------------`);
+          this.logMessageOutline(`  -- compRecur(${depth}).compile2 ENTRY`);
+          this.logMessage(`  -- compRecur(${depth}) - compile2 ENTRY`);
           this.spin2Parser.P2Compile2(depth == 0); // NOTE: if at zero  (see above note...)
 
           // now copy obj data to output
@@ -229,10 +233,14 @@ export class Compiler {
           // DEBUG dump into .obj file for inspection
           //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child'); // REMOVE BEFORE FLIGHT
           //dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
-          this.logMessage(`  -- compRecur(${depth}) - compile2 END ------------------------------------`);
+          this.logMessageOutline(`  -- objFiCnt=(${this.objectFileCount}), objLen=(${objectLength}), new objEndOffset=(${this.objectFileOffset})`);
+          this.logMessageOutline(`  -- compRecur(${depth}).compile2 EXIT`);
+          this.logMessage(`  -- compRecur(${depth}) - compile2 EXIT`);
         }
       }
     }
+    this.logMessageOutline(`++ compileRecursively(${depth}, [${srcFile.fileName}]) - EXIT ----------------------------------------`);
+    this.logMessageOutline(``);
     this.logMessage(`* compileRecursively(${depth}) - EXIT ----------------------------------------`);
   }
 
@@ -248,6 +256,12 @@ export class Compiler {
     const sourceType = path.extname(filename);
     const newFileSpec = path.join(dirSpec, `${structId}-${depth}-${filename}`.replace(sourceType, '.obj'));
     return newFileSpec;
+  }
+
+  private logMessageOutline(message: string): void {
+    if (this.isLoggingOutline) {
+      this.context.logger.logMessage(message);
+    }
   }
 
   private logMessage(message: string): void {

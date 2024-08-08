@@ -68,6 +68,8 @@ export class Spin2Parser {
     if (this.srcFile) {
       this.elementizer.setSourceFile(this.srcFile);
     }
+    // FIXME: TODO: elements should be stored in srcFile!
+    //   then NOT generate elementsList when already present
     this.spinElements = this.elementizer.getFileElements();
     this.spinResolver.setElements(this.spinElements);
     if (this.srcFile) {
@@ -99,7 +101,6 @@ export class Spin2Parser {
     this.logMessage(
       `  -- OPTS elem(${this.context.logOptions.logElementizer}), parse(${this.context.logOptions.logParser}), comp(${this.context.logOptions.logCompile}), resolv(${this.context.logOptions.logResolver}), preproc(${this.context.logOptions.logPreprocessor})`
     );
-    //this.spinResolver.compile2();
     try {
       this.spinResolver.compile2(isTopLevel);
     } catch (error) {

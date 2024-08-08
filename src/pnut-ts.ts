@@ -85,7 +85,7 @@ export class PNutInTypeScript {
       .option('-44, --ver44', 'Listings compatible with PNut_v44')
       .option('-d, --debug', 'Compile with DEBUG')
       //      .option('-f, --flash', 'Download to FLASH and run')
-      .option('-f, --flash', 'Generate binary with incorporated flash loader')
+      //.option('-f, --flash', 'Generate binary with incorporated flash loader')
       //      .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
       //      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
@@ -98,7 +98,9 @@ export class PNutInTypeScript {
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
-      .addOption(new Option('--log <objectName...>', 'objectName').choices(['all', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver']))
+      .addOption(
+        new Option('--log <objectName...>', 'objectName').choices(['all', 'outline', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver'])
+      )
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
       .option('-v, --verbose', 'Output verbose messages');
@@ -290,6 +292,10 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg('MODE: Logging:');
       //this.context.logger.verboseMsg(`* log: [${choices}]`);
       const wantsAll: boolean = choices.includes('all');
+      if (choices.includes('outline') || wantsAll) {
+        this.context.logOptions.logOutline = true;
+        this.context.logger.verboseMsg('  Outline');
+      }
       if (choices.includes('elementizer') || wantsAll) {
         this.context.logOptions.logElementizer = true;
         this.context.logger.verboseMsg('  Elementizer');
