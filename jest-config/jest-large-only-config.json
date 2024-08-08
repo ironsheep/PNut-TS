@@ -1,0 +1,6 @@
+{
+  "displayName": "LARGE files suite of tests",
+  "roots": ["<rootDir>/../dist/tests/LARGE-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

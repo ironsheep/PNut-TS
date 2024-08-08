@@ -43,5 +43,4 @@ PRI flash_send(p_buffer, count) | tx_byte
               djnz      count,#.byte                    '4|2 loop if another byte to send
 
               drvl      #SF_MOSI                        '2! DI low
-
               end
