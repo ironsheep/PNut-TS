@@ -1,0 +1,197 @@
+────────────────────────────────────────
+Parallax Propeller Chip Object Hierarchy
+────────────────────────────────────────
+
+ Project :  "demo_hub75_7seg"
+
+Reported :  Wednesday, July 31, 2024 at 12:42:18 PM
+
+    Tool :  VSCode Spin2 Extension v2.2.91 
+
+
+            demo_hub75_7seg.spin2
+              │
+              ├──isp_hub75_color.spin2
+              │
+              ├──isp_hub75_display.spin2
+              │    │
+              │    ├──isp_hub75_hwBufferAccess.spin2
+              │    │    │
+              │    │    ├──isp_hub75_hwEnums.spin2
+              │    │    │
+              │    │    ├──isp_hub75_hwPanelConfig.spin2
+              │    │    │    │
+              │    │    │    └──isp_hub75_hwEnums.spin2
+              │    │    │     
+              │    │    └──isp_hub75_colorUtils.spin2
+              │    │     
+              │    ├──isp_hub75_screenUtils.spin2
+              │    │    │
+              │    │    ├──isp_hub75_color.spin2
+              │    │    │
+              │    │    ├──isp_hub75_colorUtils.spin2
+              │    │    │
+              │    │    └──isp_hub75_hwBufferAccess.spin2
+              │    │         │
+              │    │         ├──isp_hub75_hwEnums.spin2
+              │    │         │
+              │    │         ├──isp_hub75_hwPanelConfig.spin2
+              │    │         │    │
+              │    │         │    └──isp_hub75_hwEnums.spin2
+              │    │         │     
+              │    │         └──isp_hub75_colorUtils.spin2
+              │    │          
+              │    ├──isp_hub75_panel.spin2
+              │    │    │
+              │    │    ├──isp_hub75_hwBufferAccess.spin2
+              │    │    │    │
+              │    │    │    ├──isp_hub75_hwEnums.spin2
+              │    │    │    │
+              │    │    │    ├──isp_hub75_hwPanelConfig.spin2
+              │    │    │    │    │
+              │    │    │    │    └──isp_hub75_hwEnums.spin2
+              │    │    │    │     
+              │    │    │    └──isp_hub75_colorUtils.spin2
+              │    │    │     
+              │    │    └──isp_hub75_rgb3bit.spin2
+              │    │         │
+              │    │         ├──isp_hub75_hwBufferAccess.spin2
+              │    │         │    │
+              │    │         │    ├──isp_hub75_hwEnums.spin2
+              │    │         │    │
+              │    │         │    ├──isp_hub75_hwPanelConfig.spin2
+              │    │         │    │    │
+              │    │         │    │    └──isp_hub75_hwEnums.spin2
+              │    │         │    │     
+              │    │         │    └──isp_hub75_colorUtils.spin2
+              │    │         │     
+              │    │         ├──isp_hub75_color.spin2
+              │    │         │
+              │    │         └──isp_hub75_hwEnums.spin2
+              │    │          
+              │    ├──isp_hub75_fonts.spin2
+              │    │
+              │    ├──isp_hub75_hwEnums.spin2
+              │    │
+              │    ├──isp_hub75_colorUtils.spin2
+              │    │
+              │    └──isp_hub75_scrollingText.spin2
+              │         │
+              │         ├──isp_hub75_hwBufferAccess.spin2
+              │         │    │
+              │         │    ├──isp_hub75_hwEnums.spin2
+              │         │    │
+              │         │    ├──isp_hub75_hwPanelConfig.spin2
+              │         │    │    │
+              │         │    │    └──isp_hub75_hwEnums.spin2
+              │         │    │     
+              │         │    └──isp_hub75_colorUtils.spin2
+              │         │     
+              │         ├──isp_hub75_screenUtils.spin2
+              │         │    │
+              │         │    ├──isp_hub75_color.spin2
+              │         │    │
+              │         │    ├──isp_hub75_colorUtils.spin2
+              │         │    │
+              │         │    └──isp_hub75_hwBufferAccess.spin2
+              │         │         │
+              │         │         ├──isp_hub75_hwEnums.spin2
+              │         │         │
+              │         │         ├──isp_hub75_hwPanelConfig.spin2
+              │         │         │    │
+              │         │         │    └──isp_hub75_hwEnums.spin2
+              │         │         │     
+              │         │         └──isp_hub75_colorUtils.spin2
+              │         │          
+              │         ├──isp_hub75_fonts.spin2
+              │         │
+              │         └──isp_hub75_colorUtils.spin2
+              │          
+              ├──isp_hub75_screenUtils.spin2
+              │    │
+              │    ├──isp_hub75_color.spin2
+              │    │
+              │    ├──isp_hub75_colorUtils.spin2
+              │    │
+              │    └──isp_hub75_hwBufferAccess.spin2
+              │         │
+              │         ├──isp_hub75_hwEnums.spin2
+              │         │
+              │         ├──isp_hub75_hwPanelConfig.spin2
+              │         │    │
+              │         │    └──isp_hub75_hwEnums.spin2
+              │         │     
+              │         └──isp_hub75_colorUtils.spin2
+              │          
+              ├──isp_hub75_7seg.spin2
+              │    │
+              │    ├──isp_hub75_hwBufferAccess.spin2
+              │    │    │
+              │    │    ├──isp_hub75_hwEnums.spin2
+              │    │    │
+              │    │    ├──isp_hub75_hwPanelConfig.spin2
+              │    │    │    │
+              │    │    │    └──isp_hub75_hwEnums.spin2
+              │    │    │     
+              │    │    └──isp_hub75_colorUtils.spin2
+              │    │     
+              │    └──isp_hub75_segment.spin2
+              │         │
+              │         ├──isp_hub75_hwBufferAccess.spin2
+              │         │    │
+              │         │    ├──isp_hub75_hwEnums.spin2
+              │         │    │
+              │         │    ├──isp_hub75_hwPanelConfig.spin2
+              │         │    │    │
+              │         │    │    └──isp_hub75_hwEnums.spin2
+              │         │    │     
+              │         │    └──isp_hub75_colorUtils.spin2
+              │         │     
+              │         ├──isp_hub75_screenUtils.spin2
+              │         │    │
+              │         │    ├──isp_hub75_color.spin2
+              │         │    │
+              │         │    ├──isp_hub75_colorUtils.spin2
+              │         │    │
+              │         │    └──isp_hub75_hwBufferAccess.spin2
+              │         │         │
+              │         │         ├──isp_hub75_hwEnums.spin2
+              │         │         │
+              │         │         ├──isp_hub75_hwPanelConfig.spin2
+              │         │         │    │
+              │         │         │    └──isp_hub75_hwEnums.spin2
+              │         │         │     
+              │         │         └──isp_hub75_colorUtils.spin2
+              │         │          
+              │         └──isp_hub75_colorUtils.spin2
+              │          
+              ├──isp_hub75_hwBufferAccess.spin2
+              │    │
+              │    ├──isp_hub75_hwEnums.spin2
+              │    │
+              │    ├──isp_hub75_hwPanelConfig.spin2
+              │    │    │
+              │    │    └──isp_hub75_hwEnums.spin2
+              │    │     
+              │    └──isp_hub75_colorUtils.spin2
+              │     
+              ├──isp_hub75_hwPanelConfig.spin2
+              │    │
+              │    └──isp_hub75_hwEnums.spin2
+              │     
+              └──isp_hub75_hwBuffers.spin2
+                   │
+                   ├──isp_hub75_hwEnums.spin2
+                   │
+                   └──isp_hub75_hwPanelConfig.spin2
+                        │
+                        └──isp_hub75_hwEnums.spin2
+
+
+────────────────────────────────────────
+Parallax Inc.
+www.parallax.com
+support@parallax.com
+
+VSCode Spin2 Extension by:
+ Iron Sheep Productions, LLC

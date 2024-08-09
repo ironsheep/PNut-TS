@@ -821,7 +821,7 @@ PUB delete(p_filename) : status | signature
 
   lockrel(fsLock)                                                               ' release the lock, we're done with it
 
-
+{{
 PUB create_file(p_filename, fill_value, byte_count) : status | signature, head_block_id, block_id, block_address, notHead, dataOffset, isLast, currOffset, NextID_EndPtr
 
 '' Make a file of a byte_count size filled with fill_value bytes - "open read/write extended" to rewrite contents
@@ -894,7 +894,7 @@ PUB create_file(p_filename, fill_value, byte_count) : status | signature, head_b
     flash_activate_block(field[IDToBlock][head_block_id], %011)                 'now activate head block to activate file
 
   lockrel(fsLock)                                                               ' release the lock, we're done with it
-
+}}
 
 PUB exists(p_filename) : bool
 
@@ -916,7 +916,7 @@ PUB exists(p_filename) : bool
 
     lockrel(fsLock)                                                             ' release the lock, we're done with it
 
-
+{{
 PUB file_size(p_filename) : size_in_bytes | signature
 
 '' Return size of file in bytes
@@ -942,8 +942,9 @@ PUB file_size(p_filename) : size_in_bytes | signature
     size_in_bytes := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
 
   lockrel(fsLock)                                                               ' release the lock, we're done with it
+'}}
 
-
+{{
 PUB file_size_for_handle(handle) : size_in_bytes
 
 '' Return size of file in bytes
@@ -969,8 +970,9 @@ PUB file_size_for_handle(handle) : size_in_bytes
     size_in_bytes := (LONG[@errorCode][cogid()] := E_FILE_NOT_FOUND)
 
   lockrel(fsLock)                                                               ' release the lock, we're done with it
+'}}
 
-
+{{
 PUB file_size_unused(p_filename) : size_in_bytes_unused | signature
 
 '' Return the number of bytes not yet written in the last allocated block
@@ -998,7 +1000,7 @@ PUB file_size_unused(p_filename) : size_in_bytes_unused | signature
   'debug("file_size_unused(", zstr_(p_filename), ") = (", sdec_(size_in_bytes_unused), ")")
 
   lockrel(fsLock)                                                               ' release the lock, we're done with it
-
+'}}
 
 PUB seek(handle, position, whence) : end_position | file_length, file_position, block_id, pBuff
 

@@ -1,0 +1,1152 @@
+'' =================================================================================================
+''
+''   File....... isp_eInk_click.spin2
+''   Purpose.... Interface to the Mikroe eInk Click module w/display
+''   Authors.... Stephen M Moraco
+''               -- Copyright(c) 2022 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Jun 2022
+''   Updated.... 08 Jun 2022
+''
+'' =================================================================================================
+
+CON { Public Interface Constants }
+
+    '  ID where the P2 Eval Click Adapter for eInk Click is plugged in (Enum)
+    ' (Names of supported PinGroups)
+    #0[16], PINS_P0_P15, PINS_P16_P31, PINS_P32_P47
+    ' return value when user makes bad choice
+    INVALID_PIN_BASE = -1
+
+    #40, DS_eink154, DS_eink200, DS_eink213, DS_eink290
+    ' return value when user makes bad choice
+    INVALID_DISPLAY_TYPE = -1
+
+    ' forward the font constants so user can select an internal font
+    FONT_Tahoma_6 = eInkFonts.FONT_Tahoma_6
+    FONT_Tahoma_7 = eInkFonts.FONT_Tahoma_7
+    FONT_Tahoma_8 = eInkFonts.FONT_Tahoma_8
+    FONT_Tahoma_10 = eInkFonts.FONT_Tahoma_10
+    FONT_Tahoma_14 = eInkFonts.FONT_Tahoma_14
+    FONT_Tahoma_16 = eInkFonts.FONT_Tahoma_16
+    FONT_Tahoma_18 = eInkFonts.FONT_Tahoma_18
+    FONT_Exo_2_Condensed10x16 = eInkFonts.FONT_Exo_2_Condensed10x16
+    FONT_Exo_2_Condensed15x23 = eInkFonts.FONT_Exo_2_Condensed15x23
+    FONT_Exo_2_Condensed21x32 = eInkFonts.FONT_Exo_2_Condensed21x32
+    FONT_Roboto_Mono11x23 = eInkFonts.FONT_Roboto_Mono11x23
+
+    FONT_UNKNOWN = eInkFonts.FONT_UNKNOWN
+
+
+OBJ { Objects / constants included by this object }
+
+    eInkFonts   : "isp_eInk_fonts"              ' eInt ported font set
+    spi         : "jm_ez_spi"                   '   smart pin mode 0 spi coms
+
+
+CON { Click Module offsets }
+ {
+    P2 Eval Click Adapter IO Assignments
+    * - used by eInk Click module w/display(3.3v only)
+
+               ┌─────────────────────────────┐
+    Base + 06  │() AN                 D/C(*) │  Base + 05
+               │                             │
+    Base + 07  │(*) RST               BSY(*) │  Base + 04
+               │                             │
+    Base + 08  │(*) CS              <-- RX() │  Base + 03(marked TX on Click modules)
+               │                             │
+    Base + 09  │(*) SCK  <--        --> TX() │  Base + 02(marked RX on Click modules)
+               │                             │
+    Base + 10  │(*) MISO -->       --> SCL() │  Base + 01
+               │                             │
+    Base + 11  │(*) MOSI <--       <-> SDA() │  Base + 00
+               │                             │
+               │(*) 3v3                5v0() │
+               │                             │
+               │(*) GND               GND(*) │
+               └─────────────────────────────/
+}
+
+    ' specs for Click EINK board
+   CLICK_OFST_MOSI = 11     ' Mikroe pin 6  - SPI Data - Out
+   CLICK_OFST_MISO = 10     ' N/C  Mikroe pin 5
+   CLICK_OFST_SCK = 9       ' Mikroe pin 4  - SPI Clock - Out
+   CLICK_OFST_CS = 8        ' Mikroe pin 3  - SPI Chip Select - Out
+   CLICK_OFST_RST = 7       ' Mikroe pin 2  - Reset - Out
+   'CLICK_OFST_AN = 6       ' N/C  Mikroe pin 1
+
+   CLICK_OFST_DC = 5       ' Mikroe pin 16 - D/C - Out Data Config(normally CLICK_OFST_PWM)
+   CLICK_OFST_BSY = 4       ' Mikroe pin 15 - Busy - In(normally CLICK_OFST_INT)
+   'CLICK_OFST_RX = 3       ' N/C  Mikroe pin 14
+   'CLICK_OFST_TX = 2       ' N/C  Mikroe pin 13
+   'CLICK_OFST_SCL = 1      ' N/C  Mikroe pin 12
+   'CLICK_OFST_SDA = 0      ' N/C  Mikroe pin 11
+
+CON { eInk Constants }
+
+' error_code Error Code
+    EINK_OK                     = $00
+    EINK_INIT_ERROR             = $FF
+
+' =======================================
+' display_resolution Display resolution
+' ---------------------------------------
+' 1.54" square eInk display 200x200 (27.6mm x 27.6mm) - SSD1608
+' resolution 200-gate, 200-source
+
+    EINK154_DISPLAY_WIDTH = 200
+    EINK154_DISPLAY_HEIGHT = 200
+    EINK154_DISPLAY_RESOLUTION = 5000   ' = 200 * 200 / 8  ???
+
+' ---------------------------------------
+' 2.00" rectangular eInk display 72x172 (??mm x ??mm)
+' resolution 172-gate, 72-source
+
+    EINK200_DISPLAY_WIDTH = 72
+    EINK200_DISPLAY_HEIGHT = 172
+    EINK200_DISPLAY_RESOLUTION = 3096   '=  72 * 172 * 2 / 8  !!!
+
+' ---------------------------------------
+' 2.13" rectangular eInk display 122x250 (2.37mm x 48.44mm) - SSD1675
+' resolution 250-gate, 122-source
+
+    EINK213_DISPLAY_WIDTH = 128         ' 122 rounded up to 8-bit multiple (128)
+    EINK213_DISPLAY_HEIGHT = 250
+    EINK213_DISPLAY_RESOLUTION = 4000   ' = 128 * 250 / 8  ???
+
+' ---------------------------------------
+' 2.9" rectangular eInk display 128x296 (29.06mm x 66.90mm) - SSD1675
+
+    EINK290_DISPLAY_WIDTH = 128
+    EINK290_DISPLAY_HEIGHT = 296
+    EINK290_DISPLAY_RESOLUTION = 4736   ' = 128 * 296 / 8  ???
+'
+' =======================================
+
+    LARGEST_FRAME_SIZE_IN_BYTES = EINK154_DISPLAY_RESOLUTION
+
+' screen_color screen color
+    ' $FF=white, $00=black, $55=gray 1, $AA=gray 2
+    EINK_COLOR_WHITE          = $FF
+    EINK_COLOR_BLACK          = $00
+    EINK_COLOR_LIGHT_GREY     = $AA
+    EINK_COLOR_DARK_GREY      = $55
+
+' character orientation on screen
+    FO_HORIZONTAL               = $00
+    FO_VERTICAL                 = $01
+    FO_VERTICAL_COLUMN          = $02
+
+' display_commands Display Commands
+    CMD_DRIVER_OUTPUT_CTRL          = $01
+    CMD_BOOSTER_SOFT_START_CTRL     = $0C
+    CMD_GATE_SCAN_START_POSN        = $0F
+    CMD_DEEP_SLEEP_MODE             = $10
+    CMD_DATA_ENTRY_MODE_SETTING     = $11
+    CMD_SW_RESET                    = $12
+    CMD_TEMPERATURE_SENSOR_CTRL     = $1A
+    CMD_MASTER_ACTIVATION           = $20
+    CMD_DISPLAY_UPDATE_CTRL_1       = $21
+    CMD_DISPLAY_UPDATE_CTRL_2       = $22
+    CMD_WRITE_RAM                   = $24
+    CMD_WRITE_VCOM_REGISTER         = $2C
+    CMD_WRITE_LUT_REGISTER          = $32
+    CMD_SET_DUMMY_LINE_PERIOD       = $3A
+    CMD_SET_GATE_TIME               = $3B
+    CMD_BORDER_WAVEFORM_CTRL        = $3C
+    CMD_SET_RAM_X_ADDR_SRTEND_POS   = $44
+    CMD_SET_RAM_Y_ADDR_SRTEND_POS   = $45
+    CMD_SET_RAM_X_ADDR_CTR          = $4E
+    CMD_SET_RAM_Y_ADDR_CTR          = $4F
+    CMD_BOOSTER_FEEDBACK_SELECTION  = $F0
+    CMD_TERMINATE_FRAME_READ_WRITE  = $FF
+
+    ' SPI Communication Freq w/EINK Board
+    EINK_SPI_CLK_MHZ = 20_000
+
+PUB null()
+
+'' This is not a top-level object
+
+PUB start(eDisplayType, eClickBasePin) : ok | legalBase
+'' Specify the eval board connect location for the EINK click and start SPI
+    ' REF https://www.mikroe.com/eink-click
+
+   ' ensure we only use legal values
+
+    legalBase := eClickBasePin
+    case eClickBasePin
+        PINS_P0_P15 :
+        PINS_P16_P31 :
+        PINS_P32_P47 :
+        OTHER :
+            legalBase := INVALID_PIN_BASE
+            pinbase := INVALID_PIN_BASE
+
+    deviceType := eDisplayType
+    case eDisplayType
+        DS_eink154:
+            displayWidth        := EINK154_DISPLAY_WIDTH
+            displayHeight       := EINK154_DISPLAY_HEIGHT
+            frameSizeInBytes    := EINK154_DISPLAY_RESOLUTION
+
+            displayWidthInPix   := EINK154_DISPLAY_WIDTH
+            displayHeightInPix  := EINK154_DISPLAY_HEIGHT
+
+        DS_eink200:
+            displayWidth        := EINK200_DISPLAY_WIDTH
+            displayHeight       := EINK200_DISPLAY_HEIGHT
+            frameSizeInBytes    := EINK200_DISPLAY_RESOLUTION
+
+            displayWidthInPix   := EINK200_DISPLAY_WIDTH
+            displayHeightInPix  := EINK200_DISPLAY_HEIGHT
+
+        DS_eink213:
+            displayWidth        := EINK213_DISPLAY_WIDTH
+            displayHeight       := EINK213_DISPLAY_HEIGHT
+            frameSizeInBytes    := EINK213_DISPLAY_RESOLUTION
+
+            displayWidthInPix   := EINK213_DISPLAY_WIDTH - 6    ' 6 extra bytes per row!
+            displayHeightInPix  := EINK213_DISPLAY_HEIGHT
+
+        DS_eink290:
+            displayWidth        := EINK290_DISPLAY_WIDTH
+            displayHeight       := EINK290_DISPLAY_HEIGHT
+            frameSizeInBytes    := EINK290_DISPLAY_RESOLUTION
+
+            displayWidthInPix   := EINK290_DISPLAY_WIDTH
+            displayHeightInPix  := EINK290_DISPLAY_HEIGHT
+
+        OTHER :
+            deviceType := INVALID_DISPLAY_TYPE
+
+
+    ' if legal base-pin then start cog
+    ok := false
+    if legalBase <> INVALID_PIN_BASE and deviceType <> INVALID_DISPLAY_TYPE
+        pinbase := legalBase                    ' record base pin number
+        ' configure inputs
+        pinfloat(pinbase + CLICK_OFST_BSY)
+        'pinfloat(pinbase + CLICK_OFST_MOSI)
+        ' assert reset while starting up
+        pinlow(pinbase + CLICK_OFST_RST)
+        ' Deselect the click SPI device
+        pinhigh(pinbase + CLICK_OFST_CS)
+        ' start the smart pins                            ' deselect EINK Click
+        ok := spi.start(pinbase + CLICK_OFST_MISO, pinbase + CLICK_OFST_MOSI, pinbase + CLICK_OFST_SCK, EINK_SPI_CLK_MHZ)                     ' spi to EINK @ 3MHz(can run at 20MHz)
+
+        ' reset device
+        resetDevice()
+
+        '  Click initialization based on display size
+        startConfig()
+
+PUB stop()
+'' Stop the EINK Click SPI Object
+    spi.stop()
+
+
+CON ' ---- PUBLIC interface Methods ----
+
+
+PUB enableDevice()
+'' Enable the EINK Device(pull it out of reset)
+    pinhigh(pinbase + CLICK_OFST_RST)                       ' de-assert reset
+
+PUB resetDevice()
+'' Reset the EINK device
+    pinhigh(pinbase + CLICK_OFST_CS)    ' CS idle=1
+    pinlow(pinbase + CLICK_OFST_SCK)    ' SCLK idle=0
+
+    pinhigh(pinbase + CLICK_OFST_RST)   ' toggle reset
+    waitms(1)
+    pinlow(pinbase + CLICK_OFST_RST)
+    waitms(2)
+    pinhigh(pinbase + CLICK_OFST_RST)
+    waitms(3)
+
+{PRI reset()
+' from library source
+    pinlow(pinbase + CLICK_OFST_RST)
+    waitms(200)
+    pinhigh(pinbase + CLICK_OFST_RST)
+    waitms(200)
+}
+
+PUB enterSleepMode()
+'' Tell device to sleep
+    writeCmd(CMD_DEEP_SLEEP_MODE)
+    waitForDeviceIdle()
+
+PUB displaySize() : widthInPix, heightInPix
+'' Return display size in pixels
+''  NOTE: only valid is device is successfully started!
+''  (ensure start() is called, first and that it is successful!)
+    ' return actual value only if device is started!
+    widthInPix := displayWidthInPix
+    heightInPix := displayHeightInPix
+
+PUB displayType() : eDisplayType
+'' Return display size in pixels
+''  NOTE: only valid is device is successfully started!
+''  (ensure start() is called, first and that it is successful!)
+    ' return actual value only if device is started!
+    eDisplayType := deviceType
+
+CON ' --- PUBLIC write to Display methods ---
+
+PUB fillScreen(color) | xCtr, yCtr, fillColor, byteCtr
+'' Fill Display with {color}
+    ' override color if it is not one of the supported four!
+    fillColor := validColor(color)
+
+    if deviceType <> DS_eink200
+        ' setMemoryArea(xStart, yStart, xEnd, yEnd)
+        setMemoryArea(0, 0, displayWidth - 1, displayHeight - 1)
+    else
+        ' setMemoryArea(xStart, yStart, xEnd, yEnd)
+        setMemoryArea(0, displayHeight - 1, displayWidth - 1, 0)
+
+    if deviceType <> DS_eink213
+        ' 1.54", 2.00", and 2.90" have no extra bits so write 'em all
+        if deviceType == DS_eink200
+            setMemoryPointer(0, $AB)
+        else
+            setMemoryPointer(0, 0)
+        writeCmd(CMD_WRITE_RAM)
+        repeat byteCtr from 0 to frameSizeInBytes - 1
+            writeData(fillColor)
+
+    else
+        ' 2.13" means of doing this... we have 6 extra bits at end of ea row!
+        ' for each display line...
+        repeat yCtr from 0 to displayHeight - 1
+            setMemoryPointer(0, yCtr)
+            ' write contents for this line
+            writeCmd(CMD_WRITE_RAM)
+            repeat xCtr from 0 to (displayWidth / 8) - 1   ' our 122 width is really 128 bits with last 6 ignored!
+                writeData(fillColor)
+
+    if deviceType == DS_eink200
+        writeCmd(CMD_MASTER_ACTIVATION)
+
+    ' memory lodaed update display hardware
+    forceUpdateDisplay()
+
+
+PUB displayImage(pImageBffr) | xCtr, yCtr, imgIdx
+'' Write image bitmap to Display
+    if deviceType <> DS_eink200
+        ' setMemoryArea(xStart, yStart, xEnd, yEnd)
+        setMemoryArea(0, 0, displayWidth - 1, displayHeight - 1)
+    else
+        ' setMemoryArea(xStart, yStart, xEnd, yEnd)
+        setMemoryArea(0, displayHeight - 1, displayWidth - 1, 0)
+
+    if deviceType <> DS_eink213
+        ' 1.54", 2.00", and 2.90" have no extra bits so write 'em all
+        if deviceType == DS_eink200
+            setMemoryPointer(0, $AB)
+        else
+            setMemoryPointer(0, 0)
+        writeCmd(CMD_WRITE_RAM)
+        repeat imgIdx from 0 to frameSizeInBytes - 1
+            writeData(BYTE [@pImageBffr][ imgIdx ])
+
+    else
+        ' 2.13" means of doing this... we have 6 extra bits at end of ea row!
+        ' for each display line...
+        repeat yCtr from 0 to displayHeight - 1
+            setMemoryPointer(0, yCtr)
+            ' write contents for this line
+            writeCmd(CMD_WRITE_RAM)
+            repeat xCtr from 0 to (displayWidth / 8) - 1   ' our 122 width is really 128 bits with last 6 ignored!
+                imgIdx := xCtr +(yCtr * (displayWidth / 8))
+                writeData(BYTE [pImageBffr][imgIdx])
+
+    if deviceType == DS_eink200
+        writeCmd(CMD_MASTER_ACTIVATION)
+
+
+    ' memory lodaed update display hardware
+    forceUpdateDisplay()
+
+
+PUB selectFont(orientation, color, eFont) | pFont
+'' Set font configuration to be used in following setTextAtXY() and displayTextAtXY() calls
+
+    pFont := eInkFonts.fontAddress(eFont)
+    if pFont == FONT_UNKNOWN
+        return
+
+    fontAddr        := pFont
+    first_char      := BYTE [pFont][ 2 ] + (BYTE [pFont][ 3 ] << 8)
+    last_char       := BYTE [pFont][ 4 ] + (BYTE [pFont][ 5 ] << 8)
+    fontHeight      := BYTE [pFont][ 6 ]
+    fontColor       := color
+    fontOrientation := orientation
+    debug("ft: fontAddr ", uhex_Long_(first_char))
+    debug("ft: first_char ", udec_(first_char), ", ", uhex_byte_(first_char))
+    debug("ft: last_char ", udec_(last_char), ", ", uhex_byte_(last_char))
+    debug("ft: fontHeight ", udec_(fontHeight))
+    debug("ft: fontColor ", uhex_(fontColor))
+
+
+PUB displayTextAtXY(X, Y, pText) | xCtr, yCtr, strIdx, nChar, byteCtr
+'' Write zstr to Display at device row, column
+    if (X >= displayWidthInPix) || (Y >= displayHeightInPix)
+        return
+
+    nChar := strsize(pText)
+
+    deviceX := X
+    deviceY := Y
+
+    repeat strIdx from 0 to nChar - 1
+        char_wr(BYTE [pText][strIdx])   ' place chars in Frame Buffer
+
+    flushToDisplay()
+
+CON ' --- PUBLIC write to Frame Buffer methods ---
+
+PUB setBackground(color)
+'' Fill Frame Buffer with {color}
+    bkgndColor := validColor(color)
+    ' preset background color
+    bytefill(@deviceFrame, bkgndColor, frameSizeInBytes)
+
+
+PUB setTextAtXY(X, Y, pText) | xCtr, yCtr, strIdx, nChar, byteCtr
+'' Write zstr to Frame Buffer at row, column
+    if (X >= displayWidthInPix) || (Y >= displayHeightInPix)
+        return
+
+    nChar := strsize(pText)
+
+    deviceX := X
+    deviceY := Y
+
+    repeat strIdx from 0 to nChar - 1
+        char_wr(BYTE [pText][strIdx])   ' place chars in Frame Buffer
+
+
+PUB fillRegionAt(X, Y, color, width, height) | xCoord, yCoord, fillColor
+'' Fill region of Frame Buffer with color
+
+    ' bail if region doesn't exist
+    if width <= 0 or height <= 0
+        return
+
+    ' ensure we have a valid color
+    fillColor := validColor(color)
+
+    ' limit region to displayable area
+    vX, vY, vWidth, vHeight := validXYWidthHeight(X, Y, width, height)
+
+    ' fill the limited area
+    repeat yCoord from vY to vY + vHeight - 1
+        repeat xCoord from vX to vX + vWidth - 1
+            frame_px(xCoord, yCoord, fillColor)   ' place color bits in Frame Buffer
+
+PUB borderAtXY(X, Y, color, thickness, width, height) | lineCt, topRow, botRow, ltCol, rtCol, maxThickness
+'' Draw border of thinkness into Frame Buffer
+    ' if object not visible (zero or neg. size) abort
+    if thickness <= 0 or width <= 0 or height <= 0
+        return  ' nothing to do...
+
+    ' limit width to half of min dimension of object size
+    maxThickness := min(width, height) / 2
+    if thickness > maxThickness
+        thickness := maxThickness
+
+    ' limit region to displayable object
+    vX, vY, vWidth, vHeight := validXYWidthHeight(X, Y, width, height)
+    ' color validated by underlying code
+
+    topRow := vY
+    botRow := vY + vHeight - 1
+    ltCol := vX
+    rtCol := vX + vWidth - 1
+    ' now draw frame (1 px thickness)
+    ' +1's prevent drawing any pixel twice
+    repeat lineCt from 0 to thickness - 1
+        lineAtXY(ltCol, topRow, rtCol, topRow, color) ' top horiz
+        lineAtXY(ltCol, botRow, rtCol, botRow, color) ' bottom horiz
+        ' if remaining height > 2 then draw verticals
+        if botRow - topRow + 1 > 2
+            lineAtXY(ltCol, topRow+1, ltCol, botRow-1, color) ' left vert
+            lineAtXY(rtCol, topRow+1, rtCol, botRow-1, color) ' right vert
+        ' calc next outline
+        topRow++
+        botRow--
+        ltCol++
+        rtCol--
+        ' if overlaying, we're done abort
+        if botRow >= topRow or ltCol >= rtCol
+            quit
+
+
+PUB lineAtXY(fmX, fmY, toX, toY, color) | vFmX, vFmY, vToX, vToY, xOffset, yOffset, lineColor
+'' Draw line into Frame Buffer
+' Draw Line - start co-ords, end co-ords, color
+
+    ' limit locations to displayable area
+    vFmX, vFmY := validXY(fmX, fmY)
+    vToX, vToY := validXY(toX, toY)
+
+    ' ensure we have a valid color
+    lineColor := validColor(color)
+
+    if vFmX == vToX
+        ' simlple vertical
+        repeat yOffset from 0 to vToY - vFmY
+            frame_px(vFmX, vFmY + yOffset, lineColor)
+
+    elseif vFmY == vToY
+        ' simple horizontal
+        repeat xOffset from 0 to vToX - vFmX
+            frame_px(vFmX + xOffset, vFmY, lineColor)
+    else
+        ' diagonal (maybe issues with endpoint lengths!)
+        '  plot incrementing x axis
+        repeat xOffset from 0 to vToX - vFmX
+            yOffset := (vToY - vFmY) * xOffset / (vToX - vFmX)
+            frame_px(vFmX + xOffset, vFmY + yOffset, lineColor)
+        '  plot incrementing y axis
+        repeat yOffset from 0 to vToY-vFmY
+            xOffset := (vToX - vFmX) * yOffset / (vToY - vFmY)
+            frame_px(vFmX + xOffset, vFmY + yOffset, lineColor)
+
+PUB circleAtXY(xc, yc, diameter, color) | x, y, vXc, vYc, lineColor
+'' Draw circle into Frame Buffer
+' Draw Circle d^2 = x^2 + y^2; y = SQRT(d^2 - x^2) (Pythagoras theorum)
+
+    ' limit locations to displayable area
+    vXc, vYc := validXY(xc, yc)
+
+    ' ensure we have a valid color
+    lineColor := validColor(color)
+
+    repeat x from 0 to diameter
+        y := SQRT((diameter * diameter) - (x * x))
+        'plot 4 quadrants for incrementing x axis
+        frame_px(vXc + x, vYc + y, lineColor)
+        frame_px(vXc - x, vYc + y, lineColor)
+        frame_px(vXc + x, vYc - y, lineColor)
+        frame_px(vXc - x, vYc - y, lineColor)
+        'plot 4 quadrants for incrementing y axis (fills in more dots on circle)
+        frame_px(vXc + y, vYc + x, lineColor)
+        frame_px(vXc - y, vYc + x, lineColor)
+        frame_px(vXc + y, vYc - x, lineColor)
+        frame_px(vXc - y, vYc - x, lineColor)
+
+PUB placeImageAtXY(X, Y, pImgBits, imgWidth, imgHeight, rotation) | srcX, srcY, dstX, dstY, imageIdx, ltBits, rtBits, srcXinverted, srcYinverted, minX, minY, maxX, maxY
+'' Overlay image bits of color into Frame Buffer
+' NOTE image left-right must be flipped
+    debug("* placeImageAtXY() x,y=(", udec_byte_(X), udec_byte_(Y), ") ", uhex_long(pImgBits), udec(imgWidth), udec(imgHeight), udec_byte(rotation))
+    minX := minY := 65535
+    maxX := maxY := -1
+    ' limit region to displayable area
+    vX, vY, vImgWidth, vImgHeight := validXYWidthHeight(X, Y, imgWidth, imgHeight)
+
+    if rotation == 0
+        ' for each column... (2-px values/byte)
+        repeat srcX from 0 to vImgWidth - 1
+            dstX := vX + (srcX << 1)
+            minX := min(dstX, minX)
+            maxX := max(dstX, maxX)
+            ' for each row...
+            repeat srcY from 0 to vImgHeight - 1
+                dstY := vY + srcY
+                minY := min(dstY, minY)
+                maxY := max(dstY, maxY)
+                ' (no image INVERT)
+                imageIdx := (srcY * vImgWidth) + srcX
+                ' isolate our two px values
+                ltBits := (BYTE [pImgBits][imageIdx] & $f0) >> 4
+                rtBits := (BYTE [pImgBits][imageIdx] & $0f)
+                ' place our two px values only if colored
+                if ltBits <> $07
+                    frame_px(dstX + 0, dstY, ltBits & $03)
+                if rtBits <> $07
+                    frame_px(dstX + 1, dstY, rtBits & $03)
+
+    elseif rotation == 90
+        ' for each column... (2-px values/byte)
+        ' rotate image left 90 degrees
+        repeat srcX from 0 to vImgWidth - 1
+            dstX := vY + (srcX << 1)
+            minX := min(dstX, minX)
+            maxX := max(dstX, maxX)
+           ' for each row...
+            repeat srcY from 0 to vImgHeight - 1
+                dstY := vX + srcY
+                minY := min(dstY, minY)
+                maxY := max(dstY, maxY)
+                ' INVERT image once: left to right
+                srcYinverted := (vImgHeight - 1) - srcY
+                imageIdx := (srcYinverted * vImgWidth) + srcX
+                ' isolate our two px values
+                ltBits := (BYTE [pImgBits][imageIdx] & $f0) >> 4
+                rtBits := (BYTE [pImgBits][imageIdx] & $0f)
+                ' place our two px values only if colored
+                if ltBits <> $07
+                    frame_px(dstY, dstX+0, ltBits & $03)
+                if rtBits <> $07
+                    frame_px(dstY, dstX+1, rtBits & $03)
+
+    elseif rotation == 180
+        ' for each column... (2-px values/byte)
+        ' 180 degrees: invert image top to bottom
+        repeat srcX from 0 to vImgWidth - 1
+            dstX := vX + (srcX << 1)
+            minX := min(dstX, minX)
+            maxX := max(dstX, maxX)
+            ' for each row...
+            repeat srcY from 0 to vImgHeight
+                dstY := vY + srcY
+                minY := min(dstY, minY)
+                maxY := max(dstY, maxY)
+                ' INVERT image once: top to bottom
+                srcYinverted := (vImgHeight - 1) - srcY
+                srcXinverted := (vImgWidth - 1) - srcX
+                imageIdx := (srcYinverted * vImgWidth) + srcXinverted
+                ' isolate our two px values
+                ltBits := (BYTE [pImgBits][imageIdx] & $f0) >> 4
+                rtBits := (BYTE [pImgBits][imageIdx] & $0f)
+                ' place our two px values only if colored
+                if ltBits <> $07
+                    frame_px(dstX + 1, dstY, ltBits & $03)
+                if rtBits <> $07
+                    frame_px(dstX + 0, dstY, rtBits & $03)
+
+    elseif rotation == 270
+        ' for each column... (2-px values/byte)
+        ' 270 degrees: invert image top to bottom
+        repeat srcX from 0 to vImgWidth - 1
+            dstX := vY + (srcX << 1)
+            minX := min(dstX, minX)
+            maxX := max(dstX, maxX)
+           ' for each row...
+            repeat srcY from 0 to vImgHeight - 1
+                dstY := vX + srcY
+                minY := min(dstY, minY)
+                maxY := max(dstY, maxY)
+              ' INVERT image TWICE: left to right & top to bottom
+                srcXinverted := (vImgWidth - 1) - srcX
+                imageIdx := (srcY * vImgWidth) + srcXinverted
+                ' isolate our two px values
+                ltBits := (BYTE [pImgBits][imageIdx] & $f0) >> 4
+                rtBits := (BYTE [pImgBits][imageIdx] & $0f)
+                ' place our two px values only if colored
+                if ltBits <> $07
+                    frame_px(dstY, dstX+1, ltBits & $03)
+                if rtBits <> $07
+                    frame_px(dstY, dstX+0, rtBits & $03)
+
+    else
+        debug("* ERROR unsupported rotation: ", udec_(rotation))
+    debug("  - placed from x,y=(", udec_(minX), ", ", udec_(minY), "), to x,y=(", udec_(maxX), ", ", udec_(maxY), ")")
+
+PUB flushToDisplay() | byteCtr, yCtr, xCtr
+'' Flush Frame Buffer content to Display
+    if deviceType <> DS_eink200
+        ' setMemoryArea(xStart, yStart, xEnd, yEnd)
+        setMemoryArea(0, 0, displayWidth - 1, displayHeight - 1)
+    else
+        ' setMemoryArea(xStart, yStart, xEnd, yEnd)
+        setMemoryArea(0, displayHeight - 1, displayWidth - 1, 0)
+
+    if deviceType <> DS_eink213
+        ' 1.54", 2.00", and 2.90" have no extra bits so write 'em all
+        if deviceType == DS_eink200
+            setMemoryPointer(0, $AB)
+        else
+            setMemoryPointer(0, 0)
+        writeCmd(CMD_WRITE_RAM)
+        repeat byteCtr from 0 to frameSizeInBytes - 1
+            writeData(BYTE [@deviceFrame][ byteCtr ])
+
+    else
+        ' 2.13" means of doing this... we have 6 extra bits at end of ea row!
+        ' for each display line...
+        repeat yCtr from 0 to displayHeight - 1
+            setMemoryPointer(0, yCtr)
+            ' write contents for this line
+            writeCmd(CMD_WRITE_RAM)
+            repeat xCtr from 0 to (displayWidth / 8) - 1   ' our 122 width is really 128 bits with last 6 ignored!
+                byteCtr := xCtr + (yCtr * (displayWidth / 8))
+                writeData(BYTE [@deviceFrame][ byteCtr ])
+
+    if deviceType == DS_eink200
+        writeCmd(CMD_MASTER_ACTIVATION)
+
+    forceUpdateDisplay()
+
+VAR { PRIVATE Instance Variables }
+
+    LONG    frameSizeInBytes
+    LONG    pinbase
+    LONG    fontAddr
+
+    WORD    displayWidth
+    WORD    displayHeight
+    WORD    displayWidthInPix
+    WORD    displayHeightInPix
+
+    WORD    deviceX
+    WORD    deviceY
+    WORD    vX
+    WORD    vY
+    WORD    vWidth
+    WORD    vHeight
+    WORD    vImgWidth
+    WORD    vImgHeight
+
+    BYTE    deviceType
+    BYTE    first_char
+    BYTE    last_char
+    BYTE    fontHeight
+    BYTE    fontColor
+    BYTE    bkgndColor
+    BYTE    fontOrientation
+    BYTE    deviceFrame[LARGEST_FRAME_SIZE_IN_BYTES]
+
+
+CON ' ---- PRIVATE Utility Methods ----
+
+PRI startConfig()
+' configure our display
+    case deviceType
+        DS_eink154:
+            writeCmd(CMD_DRIVER_OUTPUT_CTRL)
+            writeData(((displayHeight - 1) & $FF))
+            writeData((((displayHeight - 1) >> 8) & $FF))
+            writeData($00)
+            writeCmd(CMD_BOOSTER_SOFT_START_CTRL)
+            writeData($D7)
+            writeData($D6)
+            writeData($9D)
+            writeCmd(CMD_WRITE_VCOM_REGISTER)
+            writeData($A8)
+            writeCmd(CMD_SET_DUMMY_LINE_PERIOD)
+            writeData($1A)
+            writeCmd(CMD_SET_GATE_TIME)
+            writeData($08)
+            writeCmd(CMD_DATA_ENTRY_MODE_SETTING)
+            writeData($03)
+
+            displayDelay()
+            setDeviceLut(@EINK154_LUT_TABLE, 30)    ' waits for 1sec at end
+
+        DS_eink200:
+            writeCmd(CMD_DEEP_SLEEP_MODE)
+            writeData ($00)
+            writeCmd(CMD_DATA_ENTRY_MODE_SETTING)
+            writeData ($01)
+
+            writeCmd(CMD_SET_RAM_X_ADDR_SRTEND_POS)
+            writeData ($00)
+            writeData ($11)
+            writeCmd(CMD_SET_RAM_Y_ADDR_SRTEND_POS)
+            writeData ($00)
+            writeData ($AB)
+
+            writeCmd(CMD_SET_RAM_X_ADDR_CTR)
+            writeData ($00)
+            writeCmd(CMD_SET_RAM_Y_ADDR_CTR)
+            writeData ($00)
+
+            writeCmd(CMD_BOOSTER_FEEDBACK_SELECTION)
+            writeData($1F)
+            writeCmd(CMD_DISPLAY_UPDATE_CTRL_1)
+            writeData($03)
+            writeCmd(CMD_WRITE_VCOM_REGISTER)
+            writeData($A0)
+            writeCmd(CMD_BORDER_WAVEFORM_CTRL)
+            writeData($63)
+            writeCmd(CMD_DISPLAY_UPDATE_CTRL_2)
+            writeData($C4)
+
+            displayDelay()
+            setDeviceLut(@EINK200_LUT_TABLE, 90)    ' waits for 1sec at end
+
+        DS_eink213:
+            writeCmd(CMD_DRIVER_OUTPUT_CTRL)            ' 0x01
+            writeData((displayHeight - 1) & $FF)           ' $f9 (249)
+            writeData(((displayHeight - 1) >> 8) & $FF)    ' $00 (0)
+
+            writeCmd(CMD_SET_DUMMY_LINE_PERIOD)         ' 0x3A
+            writeData($06)                                  ' doc 0x0F vs. 0x06
+            writeCmd(CMD_SET_GATE_TIME)                 ' 0x3B
+            writeData($0B)                                  ' doc 0x0C vs. 0x0B
+
+            writeCmd(CMD_DATA_ENTRY_MODE_SETTING)       ' 0x11
+            writeData($01)                                  ' AM=0, ID=01 -  addr ctr incr in X direction: -y decr, x incr
+
+            writeCmd(CMD_SET_RAM_X_ADDR_SRTEND_POS)     ' 0x44
+            writeData($00)                                  ' start
+            writeData((displayWidth / 8) - 1)              ' end   16 -1   NOTE: X is normal indexed  $00 -> $0F
+            writeCmd(CMD_SET_RAM_Y_ADDR_SRTEND_POS)     ' 0x45
+            writeData(displayHeight - 1)                   ' start 250 - 1 NOTE: Y is reverse indexed  $f9 -> $00
+            writeData($00)                                  ' end
+
+            writeCmd(CMD_WRITE_VCOM_REGISTER)           ' 0x2C
+            writeData($4B)                                  ' VCOM -1.9v
+
+            writeCmd(CMD_BORDER_WAVEFORM_CTRL)          ' 0x3C
+            writeData($33)                                  ' 7,6 = POR, 5,4 = VSH2, 1,0 = LUT3
+
+            displayDelay()
+            setDeviceLut(@EINK213_BIG_LUT_TABLE, 70)    ' doc: device LUT is 70 bytes!   waits for 1sec at end
+
+        DS_eink290:
+            writeCmd(CMD_DRIVER_OUTPUT_CTRL)
+            writeData(((displayHeight - 1) & $FF))
+            writeData((((displayHeight - 1) >> 8) & $FF))
+            writeData($00)
+
+            ' New eink display sttings
+            writeCmd(CMD_SET_DUMMY_LINE_PERIOD)
+            writeData($1A)
+            writeCmd(CMD_SET_GATE_TIME)
+            writeData($08)
+
+            writeCmd(CMD_DATA_ENTRY_MODE_SETTING)
+            writeData($01)
+            writeCmd(CMD_SET_RAM_X_ADDR_SRTEND_POS)
+            writeData($00)
+            writeData($0f)
+            writeCmd(CMD_SET_RAM_Y_ADDR_SRTEND_POS)
+            writeData($27)
+            writeData($01)
+            writeData($00)
+            writeData($00)
+
+            writeCmd(CMD_WRITE_VCOM_REGISTER)
+            writeData($6E)
+            writeCmd(CMD_BORDER_WAVEFORM_CTRL)
+            writeData($33)
+            writeCmd(CMD_DATA_ENTRY_MODE_SETTING)
+            writeData($03)
+
+            displayDelay()
+            setDeviceLut(@EINK290_LUT_TABLE, 70)    ' waits for 1sec at end
+        other:
+            debug("sc() ERROR unknown display size")
+
+
+
+PRI setDeviceLut(pLut, nBytes) | nIdx
+' write the device LUT data - waits for 1sec at end
+    writeCmd(CMD_WRITE_LUT_REGISTER)
+    repeat nIdx from 0 to nBytes - 1
+        writeData(BYTE [pLut][nIdx])
+
+    waitms(1000)    ' let device settle
+
+
+PRI setMemoryPointer(x, y)
+' set pointer to RAM
+    writeCmd(CMD_SET_RAM_X_ADDR_CTR)
+    writeData(((x >> 3) & $FF))
+    writeCmd(CMD_SET_RAM_Y_ADDR_CTR)
+    writeData((y & $FF))
+    if deviceType <> DS_eink200
+        writeData(((y >> 8) & $FF))
+    if deviceType == DS_eink200 or deviceType == DS_eink154
+        waitForDeviceIdle()
+
+
+PRI setMemoryArea(xStart, yStart, xEnd, yEnd)
+' set region of RAM
+    if deviceType == DS_eink200
+        writeCmd(CMD_SET_RAM_X_ADDR_SRTEND_POS)
+        writeData((xStart >> 3) & $FF)
+        writeData((((xEnd + 1) >> 2) - 1) & $FF)
+        writeCmd(CMD_SET_RAM_Y_ADDR_SRTEND_POS)
+        writeData(yStart & $FF)
+        writeData(yEnd & $FF)
+    else
+        writeCmd(CMD_SET_RAM_X_ADDR_SRTEND_POS)
+        writeData((xStart >> 3) & $FF)
+        writeData((xEnd >> 3) & $FF)
+        writeCmd(CMD_SET_RAM_Y_ADDR_SRTEND_POS)
+        writeData(yStart & $FF)
+        writeData((yStart >> 8) & $FF)
+        writeData(yEnd & $FF)
+        writeData((yEnd >> 8) & $FF)
+
+
+PRI forceUpdateDisplay()
+' tell display heardware to update
+    displayDelay()
+    updateDisplay() ' waits for busy to end...
+
+
+PRI displayDelay()
+' wait for settle time
+    waitms(2)
+
+
+PRI updateDisplay() | cmdValue
+' Tell display to show updates
+    case deviceType
+        DS_eink154:
+            cmdValue := $C4
+        DS_eink200:
+            cmdValue := $02
+        DS_eink213:
+            cmdValue := $C7
+        DS_eink290:
+            cmdValue := $C7
+        other:
+            cmdValue := $C7 ' just some random value since unknown display
+            debug("ud() ERROR unknown display size")
+
+    waitms(100)
+    writeCmd(CMD_DISPLAY_UPDATE_CTRL_2)
+    writeData(cmdValue)
+    writeCmd(CMD_MASTER_ACTIVATION) ' raises BUSY must wait for end!
+
+    if deviceType <> DS_eink200
+        writeCmd(CMD_TERMINATE_FRAME_READ_WRITE)
+
+    waitForDeviceIdle()
+
+
+PRI waitForDeviceIdle() | state
+    ' wait until BUSY is de-asserted
+    repeat
+        state := pinread(pinbase + CLICK_OFST_BSY)
+        if state
+            waitms(100)
+    until state == 0
+
+PRI validColor(rawColor) : valColor
+    valColor := rawColor
+
+    ' override color if it is not one of the supported four!
+    case rawColor
+        EINK_COLOR_WHITE:
+        EINK_COLOR_BLACK:
+        EINK_COLOR_LIGHT_GREY:
+        EINK_COLOR_DARK_GREY:
+        other:
+            valColor := EINK_COLOR_WHITE    ' default
+
+PRI validXY(X, Y) : valX, valY
+    ' limit region to displayable area
+    valX := 0 #> X <# displayWidthInPix - 1
+    valY := 0 #> Y <# displayHeightInPix - 1
+
+PRI validXYWidthHeight(X, Y, width, height) : valX, valY, valWidth, valHeight
+    ' limit region to displayable area
+    valX := 0 #> X <# displayWidthInPix - width
+    valY := 0 #> Y <# displayHeightInPix - height
+    valWidth := 1 #> width <# displayWidthInPix - X
+    valHeight := 1 #> height <# displayHeightInPix - Y
+    'debug("validXYWidthHeight() ", udec(X), udec(Y), udec(width), udec(height))
+    'debug("               valid ", udec(valX), udec(valY), udec(valWidth), udec(valHeight))
+
+PRI max(a,b) : maxValue
+    maxValue := (a > b) ? a : b
+
+PRI min(a,b) : minValue
+    minValue := (a < b) ? a : b
+
+
+DAT { PRIVATE object CLASS data }
+
+     EINK154_LUT_TABLE      BYTE    $02, $02, $01, $11, $12, $12, $22, $22      ' 30 bytes long!
+                            BYTE    $66, $69, $69, $59, $58, $99, $99, $88
+                            BYTE    $00, $00, $00, $00, $F8, $B4, $13, $51
+                            BYTE    $35, $51, $51, $19, $01, $00
+
+     EINK200_LUT_TABLE      BYTE    $82, $00, $00, $00, $AA, $00, $00, $00      ' 90 bytes long!
+                            BYTE    $AA, $AA, $00, $00, $AA, $AA, $AA, $00
+                            BYTE    $55, $AA, $AA, $00, $55, $55, $55, $55
+                            BYTE    $AA, $AA, $AA, $AA, $55, $55, $55, $55
+                            BYTE    $AA, $AA, $AA, $AA, $15, $15, $15, $15
+                            BYTE    $05, $05, $05, $05, $01, $01, $01, $01
+                            BYTE    $00, $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $41, $45, $F1, $FF, $5F, $55, $01, $00
+                            BYTE    $00, $00
+
+    EINK213_BIG_LUT_TABLE   BYTE    $A0, $90, $50, $00, $00, $00, $00           ' 70 bytes long!
+                            BYTE    $50, $90, $A0, $00, $00, $00, $00
+                            BYTE    $A0, $90, $50, $00, $00, $00, $00
+                            BYTE    $50, $90, $A0, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $0F, $0F, $0F, $0F, $02, $10, $10
+                            BYTE    $0A, $0A, $03, $08, $08, $09, $43
+                            BYTE    $07, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00
+
+    EINK290_LUT_TABLE       BYTE    $A0, $90, $50, $00, $00, $00, $00           ' 70 bytes long!
+                            BYTE    $50, $90, $A0, $00, $00, $00, $00
+                            BYTE    $A0, $90, $50, $00, $00, $00, $00
+                            BYTE    $50, $90, $A0, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $0F, $0F, $0F, $0F, $02, $10, $10
+                            BYTE    $0A, $0A, $03, $08, $08, $09, $43
+                            BYTE    $07, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00
+                            BYTE    $00, $00, $00, $00, $00, $00, $00
+
+
+PRI char_wr(chrCode) | descriptorOffset, chrWidth, fntIdxX, fntIdxY, frmX, frmY, rowBits, mask, bitmapOffset, pChrDescriptor, pChrBitmap
+' place font character in device frame for later display
+' NOTE: font color and device X,Y set externally
+'       adjusts external device X,Y to value for next character
+
+    ' exit if FONT doesn't have this chrCode
+    if(chrCode < first_char)
+        return
+
+    if(chrCode > last_char)
+        return
+
+    ' locate descriptor for this chrCode
+    descriptorOffset := (chrCode - first_char) << 2      ' NOTE: "<< 2" - descriptors are 4 bytes ea.
+    pChrDescriptor := fontAddr + (8 + descriptorOffset) ' NOTE font header is 8 bytes
+
+    ' load values from descriptor of this charactor
+    chrWidth := BYTE [pChrDescriptor][0]
+    bitmapOffset := BYTE [pChrDescriptor][1] + (BYTE [pChrDescriptor][2] << 8) + (BYTE [pChrDescriptor][3] << 16)
+
+    ' addr of bits to write
+    pChrBitmap := fontAddr + bitmapOffset
+
+    ' now place bits in display buffer at specific location (deviceX, deviceY)
+    if((fontOrientation == FO_HORIZONTAL) || (fontOrientation == FO_VERTICAL_COLUMN))
+        ' place horizontal letter or horizontal letter (within vertical column)
+        frmY := deviceY
+        repeat fntIdxY from 0 to fontHeight - 1
+            frmX := deviceX
+            mask := 0
+            repeat fntIdxX from 0 to chrWidth - 1
+                if mask == 0
+                    rowBits := BYTE [pChrBitmap]
+                    pChrBitmap++
+                    mask := $01
+
+                if rowBits & mask
+                    frame_px(frmX, frmY, fontColor)
+                   'waitms(1)   ' PROXY for Delay_80us()
+
+                frmX++
+                mask <<= 1
+                mask &= $ff
+
+            frmY++
+
+        if fontOrientation == FO_HORIZONTAL
+            deviceX := frmX + 1    ' move to next char position HORIZONTAL
+        else
+            deviceY := frmY        ' move to next char position VERTICAL
+
+    else
+        ' place vertical letter
+        frmY := deviceX
+        repeat fntIdxY from 0 to fontHeight - 1
+            frmX := deviceY
+            mask := 0
+            repeat fntIdxX from 0 to chrWidth - 1
+                if mask == 0
+                    rowBits := BYTE [pChrBitmap]
+                    pChrBitmap++
+                    mask := $01
+
+                if rowBits & mask
+                    frame_px(frmY, frmX, fontColor)
+                    'waitms(1)   ' PROXY for Delay_80us()
+
+                frmX--
+                mask <<= 1
+                mask &= $ff
+
+            frmY++
+
+        deviceY := frmX - 1    ' move to next char position vertically
+
+PUB frame_px(x, y, fntColor) | bitInByte, byteIdx
+' place colored font pixel in device frame for later display
+    if deviceType <> DS_eink200
+        ' for 1.54", 2.13" and 2.90" displays
+        ' monochrome (black/white) - 1 bit / pixel!
+        byteIdx := (y * (displayWidth / 8)) + (x / 8)
+        bitInByte := 7 - (x +// 8)
+
+        BYTE [@deviceFrame][byteIdx] &= !($01 << bitInByte)
+        BYTE [@deviceFrame][byteIdx] |= ((fntColor & $01) << bitInByte)
+    else
+        ' for 2.00" display with 2-bit grey-scale
+        '  4bits packed into each byte - 2-bits / pixel
+        '
+        ' AUGH!  orientation of display is Y inverted
+        '  let's counter this so 0,0 is same on all 4 displays
+        y := (displayHeight- 1) - y
+        byteIdx := (y * (displayWidth / 4)) + (x / 4)
+        bitInByte := (3 - (x +// 4)) * 2
+
+        BYTE [@deviceFrame][byteIdx] &= !($03 << bitInByte)
+        BYTE [@deviceFrame][byteIdx] |= ((fntColor & $03) << bitInByte)
+
+
+
+PRI writeCmd(data)
+' write command byte(DC low = command)
+    pinlow(pinbase + CLICK_OFST_DC)
+    selectNWrite(data)
+
+
+PRI writeData(data)
+' write data byte(DC high = data)
+    pinhigh(pinbase + CLICK_OFST_DC)
+    selectNWrite(data)
+
+
+PRI selectNWrite(dataByte) | count
+' write byte to SPI
+    ' select device
+    pinlow(pinbase + CLICK_OFST_CS)
+    ' clock out bits MSB first
+    spi.shiftout(spi.MSBFIRST, dataByte, 8)
+    ' deselect device
+    pinhigh(pinbase + CLICK_OFST_CS)
+
+
+CON { license }
+{{
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright(c) 2022 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files(the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}

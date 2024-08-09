@@ -1,0 +1,122 @@
+'' =================================================================================================
+''
+''   File....... isp_image_coffee.spin2
+''   Purpose.... Coffee Cup image for use in Demos
+''   Authors.... Stephen M Moraco
+''               -- Copyright(c) 2022 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Jun 2022
+''   Updated.... 15 Jun 2022
+''
+'' =================================================================================================
+
+CON { Public Interface Constants }
+
+#50, IMAGE_Coffee
+
+    IMAGE_UNKNOWN = -1
+
+pub null()
+
+'' This is not a top object
+
+PUB imageInfo(eImage) : imageAddr, imageWidthBytes, imageHeightBytes
+'' Return the address of the image bitmap associated with {eImage}
+'' NOTE: widthInPix = imageWidthBytes * 2, while heightInPix = imageHeightBytes
+    case eImage
+        IMAGE_Coffee:
+            imageAddr := @imgBits
+            imageWidthBytes := imgWidthBytes
+            imageHeightBytes := imgHeightBytes
+        other:
+            imageAddr := IMAGE_UNKNOWN
+
+DAT { Overlay Bitmap Data }
+
+'  Image by Convert v1.0
+
+	imgWidthBytes	WORD	16
+	imgHeightBytes  WORD	49
+	imgBits
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $77, $77	' row 1 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $77, $77	' row 2 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $77, $77	' row 3 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $77, $77	' row 4 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $77, $77, $77	' row 5 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $77, $77, $77	' row 6 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $70, $77, $71, $77, $77, $77, $77	' row 7 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $77, $77	' row 8 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $70, $07, $77, $77, $07, $77, $77, $77, $77, $77	' row 9 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $70, $71, $77, $77, $77, $77	' row 10 of 49
+		BYTE	$77, $77, $77, $77, $77, $70, $77, $77, $77, $77, $70, $77, $77, $77, $77, $77	' row 11 of 49
+		BYTE	$77, $77, $77, $77, $77, $07, $77, $77, $77, $70, $07, $77, $77, $77, $77, $77	' row 12 of 49
+		BYTE	$77, $77, $77, $77, $77, $07, $77, $77, $77, $07, $77, $77, $77, $77, $77, $77	' row 13 of 49
+		BYTE	$77, $77, $77, $77, $77, $07, $77, $77, $77, $07, $77, $77, $77, $77, $77, $77	' row 14 of 49
+		BYTE	$77, $77, $77, $77, $77, $07, $77, $77, $77, $07, $77, $77, $77, $77, $77, $77	' row 15 of 49
+		BYTE	$77, $77, $77, $77, $77, $70, $07, $77, $77, $70, $77, $77, $77, $77, $77, $77	' row 16 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $00, $77, $77, $77, $77, $77	' row 17 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $07, $17, $77, $77, $77	' row 18 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $70, $77, $77, $77, $77	' row 19 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $70, $77, $77, $77, $77	' row 20 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $70, $77, $77, $77, $77	' row 21 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $07, $77, $77, $77, $07, $17, $77, $77, $77	' row 22 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $70, $77, $77, $77, $00, $77, $77, $77, $77, $77	' row 23 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $70, $77, $77, $00, $77, $77, $77, $77, $77, $77	' row 24 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $70, $77, $70, $77, $77, $77, $77, $77, $77, $77	' row 25 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $70, $77, $70, $77, $77, $77, $77, $77, $77, $77	' row 26 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $07, $07, $77, $77, $77, $77, $77, $77, $77	' row 27 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $70, $07, $77, $77, $77, $77, $77, $77, $77	' row 28 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 29 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $00, $77	' row 30 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $22, $07	' row 31 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $77, $10	' row 32 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $77, $10	' row 33 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $22, $07	' row 34 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $00, $77	' row 35 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 36 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 37 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 38 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 39 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 40 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 41 of 49
+		BYTE	$77, $77, $70, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $77, $77, $77	' row 42 of 49
+		BYTE	$77, $77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77, $77	' row 43 of 49
+		BYTE	$77, $77, $77, $77, $00, $77, $70, $07, $70, $07, $70, $07, $77, $77, $77, $77	' row 44 of 49
+		BYTE	$00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07	' row 45 of 49
+		BYTE	$70, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $77	' row 46 of 49
+		BYTE	$77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77	' row 47 of 49
+		BYTE	$77, $77, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $07, $77, $77	' row 48 of 49
+		BYTE	$77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $77, $77	' row 49 of 49
+' Converted 32 x 49 (1568) pixel values into 784 bytes
+	imgBitsEnd
+	imgLenBytes	WORD	imgBitsEnd - imgBits	' Image length in bytes
+
+
+CON { license }
+{{
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright(c) 2022 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files(the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}
