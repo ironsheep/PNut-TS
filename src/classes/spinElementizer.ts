@@ -91,6 +91,12 @@ export class SpinElementizer {
     this.loadNextLine();
     // configure our tabes with version for this spin2 source file
     this.symbol_tables.setLangaugeVersion(spinCode.versionNumber);
+
+    // if we have a new source file then generate its element list
+    if (spinCode.elementList.length == 0) {
+      const elementList = this.getFileElements();
+      spinCode.setElementList(elementList);
+    }
   }
 
   get sourceLineNumber(): number {

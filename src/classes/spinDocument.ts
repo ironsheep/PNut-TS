@@ -15,6 +15,7 @@ import { Context } from '../utils/context';
 import { SymbolTable } from './symbolTable';
 import { eElementType } from './types';
 import { RegressionReporter } from './regression';
+import { SpinElement } from './spinElement';
 
 export enum eEOLType {
   EOL_Unknown,
@@ -128,6 +129,7 @@ export class SpinDocument {
   private requiredVersion: number = 0;
   // errors reported while processing file
   private errorsfound: iError[] = [];
+  private spinElements: SpinElement[] = [];
 
   constructor(ctx: Context, fileSpec: string) {
     // record file name and location
@@ -210,6 +212,16 @@ export class SpinDocument {
   get allTextLines(): TextLine[] {
     // return entire content of file
     return this.preprocessedLines;
+  }
+
+  get elementList(): SpinElement[] {
+    // return entire element list for this file
+    return this.spinElements;
+  }
+
+  public setElementList(elements: SpinElement[]) {
+    // capture element list for this source file
+    this.spinElements = elements;
   }
 
   public defineSymbol(newSymbol: string, value: string | number): void {

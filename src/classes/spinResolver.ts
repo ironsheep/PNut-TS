@@ -304,6 +304,7 @@ export class SpinResolver {
 
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
+    this.spinElements = this.srcFile.elementList;
     this.logMessageOutline(`++ Resolver.setSourceFile([${spinCode.fileName}])`);
   }
 

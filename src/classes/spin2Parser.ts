@@ -13,7 +13,7 @@ import { SpinResolver } from './spinResolver';
 import { ID_SEPARATOR_STRING, SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
 import { eElementType } from './types';
-import { getSourceSymbol } from '../utils/fileUtils';
+//import { getSourceSymbol } from '../utils/fileUtils';
 import { ObjectImage } from './objectImage';
 import { ExternalFiles } from './externalFiles';
 import { hexLong } from '../utils/formatUtils';
@@ -67,27 +67,20 @@ export class Spin2Parser {
     // publish for next steps to use
     if (this.srcFile) {
       this.elementizer.setSourceFile(this.srcFile);
-    }
-    // FIXME: TODO: elements should be stored in srcFile!
-    //   then NOT generate elementsList when already present
-    this.spinElements = this.elementizer.getFileElements();
-    this.spinResolver.setElements(this.spinElements);
-    if (this.srcFile) {
+      this.spinElements = this.srcFile.elementList;
       this.spinResolver.setSourceFile(this.srcFile);
-    }
 
-    //this.logMessage(`* P2Elementize() - Log Element List - ENTRY`);
-    //this.P2ListElements(); // blank line
-    //this.logMessage(`* P2Elementize() - Log Element List - EXIT`);
+      //this.logMessage(`* P2Elementize() - Log Element List - ENTRY`);
+      //this.P2ListElements(); // blank line
+      //this.logMessage(`* P2Elementize() - Log Element List - EXIT`);
 
-    // if regression reporting enabled then generate the report
-    if (this.context.reportOptions.writeElementsReport) {
-      this.logMessage(`* P2Elementize() - Dump Element List - ENTRY`);
-      const reporter: RegressionReporter = new RegressionReporter(this.context);
-      if (this.srcFile) {
-        reporter.writeElementReport(this.srcFile.dirName, this.srcFile.fileName, this.spinElements);
+      // if regression reporting enabled then generate the report
+      if (this.context.reportOptions.writeElementsReport) {
+        this.logMessage(`* P2Elementize() - Dump Element List - ENTRY`);
+        const reporter: RegressionReporter = new RegressionReporter(this.context);
+        reporter.writeElementReport(this.srcFile.dirName, this.srcFile.fileName, this.srcFile.elementList);
+        this.logMessage(`* P2Elementize() - Dump Element List - EXIT`);
       }
-      this.logMessage(`* P2Elementize() - Dump Element List - EXIT`);
     }
   }
 
@@ -334,6 +327,7 @@ export class Spin2Parser {
     }
   }
 
+  /*
   private P2ListElements() {
     this.logMessage(''); // blank line
     this.logMessage('// ---------------------------------------');
@@ -354,6 +348,7 @@ export class Spin2Parser {
     this.logMessage('\\ ---------------------------------------');
     this.logMessage('');
   }
+  */
 
   private rightAlignedHexValue(value: number, width: number): string {
     const symbolValue: string = `$${float32ToHexString(BigInt(value)).replace('0x', '').padStart(8, '0')}`;
