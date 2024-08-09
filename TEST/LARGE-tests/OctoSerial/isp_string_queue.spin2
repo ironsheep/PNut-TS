@@ -1,0 +1,359 @@
+'' =================================================================================================
+''
+''   File....... isp_string_queue.spin2
+''   Purpose.... provide fifo queue for strings
+''
+''   Authors.... Stephen M. Moraco
+''               -- Copyright (c) 2022 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Oct 2022
+''   Updated.... 27 Oct 2022
+''
+'' =================================================================================================
+
+' implemented as a larger circular buffer. As complete strings
+' are identified (denoted by LF char at end) the LF is replaced by a zero terminator and the
+' pointer to the newly arrived string is stored in a circular queue of arrived strings.
+
+CON { Object Interface: PUBLIC ENUMs }
+
+    WAIT_FOR_STRING = TRUE
+    DONT_WAIT_FOR_STRING = FALSE
+    STRING_NOT_AVAILABLE = 0
+
+
+CON { driver config values }
+
+
+    RX_CHR_Q_MAX_BYTES = 640    ' 80 = testing size, else 512
+    'RX_CHR_Q_MAX_BYTES = 80    ' 80 = testing size, else 512
+    MAX_SINGLE_STRING_LEN = 128 ' 79 = testing size, else 128
+    RX_STR_Q_MAX_LONGS = 10  ' 10 strings waiting to be picked up - MAX
+
+    DO_NOT_WRITE_MARK = $addee5e5
+    NOT_WRITTEN_MARK = $a5a50df0
+
+PUB null()
+'' This is not a top level object
+
+CON { - - - - - }
+
+PUB start()
+'' Initialize our Queue Structure for use
+    bDbgShoMem := FALSE
+    initQueue()
+
+PUB stop()
+'' Empty queue
+    flushQueue()
+
+PUB showDebug(bEnable)
+'' Enable/Disable Debug messages
+    bDbgShoMem := bEnable
+
+PUB stringsCount() : nCount
+'' Return count of strings received
+    'debug("(DBG) ", udec(nQStrCount))
+    nCount := nQStrCount
+
+PUB haveString() : bPresentStatus
+'' Return T/F where T means have received a string!
+    bPresentStatus := (nQStrCount > 0) ? TRUE : FALSE
+    'debug("strQ: haveString[T/F]: ", ubin_byte(presentStatus))
+
+PUB haveQueueOverflow() : bAttemptedOverFlow
+'' Return T/F where T means we have attempted to push a string but there was insufficient space for it
+    bAttemptedOverFlow := bStrQueOverflow
+    'debug("strQ: haveString[T/F]: ", ubin_byte(presentStatus))
+
+PUB resetQueueOverflow()
+'' Reset queue operation-failure indicators
+    bStrQueOverflow := FALSE
+
+PUB pushStr(pStr) : bStatus | nStrLen, strIdx, nByteCountToEnd, wrapLen, pStrTail, pBffrStr
+'' Place string into queue (possibly wrapped)
+''  Returns T/F where T means string was placed in queue
+''  NOTE if returns F then queue-overflow is also set (call resetQueueOverflow() to clear it)
+    bStatus := TRUE     ' success until not
+    nStrLen := strsize(pStr)
+    if nStrLen < MAX_SINGLE_STRING_LEN and nStrLen > 0
+        ' logically remove trailing crlfs
+        repeat strIdx from nStrLen - 1 to 0
+            if BYTE[pStr][strIdx] == $0a or BYTE[pStr][strIdx] == $0d
+                nStrLen--
+            else
+                quit
+        ' now place string in circular buffer
+        if (RX_CHR_Q_MAX_BYTES - nQueueBytesOccupied) >= nStrLen + 1
+            if bDbgShoMem
+                debug("strQ:pushStr()=[", lstr_(pStr, nStrLen), "](", udec_(nStrLen), ") now ", udec_(nQStrCount+1), " strings")
+            pBffrStr := @BYTE[@stringQueue][nStrByteNextFreeIdx]
+            nByteCountToEnd := pStrBffrByteAfter - pBffrStr
+            if nStrLen + 1 <= nByteCountToEnd
+                ' string fits in buffer
+                ensureFreeBytes(pBffrStr, nStrLen+1)
+                bytemove(pBffrStr, pStr, nStrLen)
+                BYTE[pBffrStr][nStrLen] := 0    ' place string end
+            else
+                ' string wrap to front of buffer
+                wrapLen := nStrLen - nByteCountToEnd        ' don't count term!
+                ensureFreeBytes(pBffrStr, nByteCountToEnd)
+                bytemove(pBffrStr, pStr, nByteCountToEnd)
+                pStrTail := @BYTE[pStr][nByteCountToEnd]
+                ensureFreeBytes(@stringQueue, wrapLen+1)
+                bytemove(@stringQueue, pStrTail, wrapLen)
+                BYTE[@stringQueue][wrapLen] := 0    ' place string end
+            nStrByteNextFreeIdx := incrementIndexWithWrap(nStrByteNextFreeIdx, nStrLen + 1)
+            'debug("(DBG) ", udec_long(nStrByteNextFreeIdx))
+            nQueueBytesOccupied += nStrLen + 1      ' len + terminal
+            nQStrCount++
+        else
+            bStrQueOverflow := TRUE ' signal that we lost incoming data!!!
+            bStatus := FALSE
+            debug("strQ:push() ERROR Q full!! Skipping add of [", lstr_(pStr, nStrLen), "](", udec_(nStrLen), ")")
+    else
+        debug("strQ:psib() skipped: string too LONG (or zero len)!! str(", udec_(nStrLen), ")=[...]")
+    'dumpStringQueue(FALSE, @"SQ PUSH")
+    runtimeCheckHealth()
+
+PUB popStr(pUserDest, lenDest, bShouldWait) : pStr | bStringArrived, nStrLen
+'' Remove string from Queue (if {bShouldWait} is TRUE then wait until string arrives before returning)
+''  if waits then current COG is blocked and another COG must place the string on the QUEUE (BE CAREFUL WITH THIS!)
+'' Returns pointer to string or STRING_NOT_AVAILABLE if queue was empty
+    pStr := STRING_NOT_AVAILABLE
+    if bShouldWait == TRUE
+        bStringArrived := TRUE
+        repeat until haveString() == TRUE
+    else
+        bStringArrived := haveString()
+
+    if bStringArrived == TRUE
+        pStr := pUserDest
+        copyWrappedStr(@tempString, nStrByteNextStrIdx)
+
+        'if strsize(@tempString) + 1 < 7
+        '    dumpStringQueue(TRUE, @"ERR QUEUE")
+
+        ' place string into user buffer (up to user buffer max)
+        nStrLen := MIN(strsize(@tempString), lenDest-1)
+        bytemove(pStr, @tempString, nStrLen)
+        BYTE[pStr][nStrLen] := 0
+        if bDbgShoMem
+            debug("strQ:popStr()=[", zstr_(pUserDest), "](", udec_(strsize(pUserDest)), ") now ", udec_(nQStrCount-1), " strings")
+
+        nStrLen := strsize(@tempString)
+        freeWrappedString(nStrByteNextStrIdx, nStrLen)
+        nStrByteNextStrIdx := incrementIndexWithWrap(nStrByteNextStrIdx, nStrLen + 1)
+        'debug("(DBG) ", udec_long(nStrByteNextStrIdx))
+        if nQStrCount > 0
+            nQStrCount--
+        if not (nQueueBytesOccupied >= nStrLen + 1)
+            debug("(DBG) ?? nQueueBytesOccupied=", udec_(nQueueBytesOccupied), ", wantToRmv=", udec_(nStrLen + 1))
+        runtimeAssert(nQueueBytesOccupied >= nStrLen + 1, @"MUST have sufficient bytes to remove")
+        nQueueBytesOccupied -= nStrLen + 1   ' len + terminal
+    else
+        if bShouldWait == TRUE
+            debug("strQ:pop() ERROR Q empty!!")
+
+    'dumpStringQueue(FALSE, @"SQ POP")
+    runtimeCheckHealth()
+
+PRI dumpStringQueue(bShowFail, pMessage)
+    if bShowFail
+        debug("* FAIL EVAL: ", udec_long(nQStrCount), udec_long(nStrByteNextStrIdx), uhex_byte_array(@tempString, strsize(@tempString)+1))
+    debug("Q-CTRL: ", udec_long(nQStrCount), udec_long(nStrByteNextFreeIdx), udec_long(nStrByteNextStrIdx))
+    dbgMemDump(pMessage, @stringQueue, RX_CHR_Q_MAX_BYTES)
+
+PUB flushQueue()
+'' Reset all Queue control-variables and buffers (emptying it!)
+    bytefill(@stringQueue, 0, RX_CHR_Q_MAX_BYTES)
+    bytefill(@tempString, 0, MAX_SINGLE_STRING_LEN+1)
+
+    nStrByteNextFreeIdx := 0   ' our QUEUE control vars - received BYTEs
+    nStrByteNextStrIdx := 0
+    nQueueBytesOccupied := 0
+    nQStrCount := 0
+
+    resetQueueOverflow()
+
+
+DAT { instance Variables }
+
+    bDbgShoMem              LONG    FALSE
+
+    nStrByteNextFreeIdx     LONG    0    ' our QUEUE control vars - index into stringQueue[]
+    nStrByteNextStrIdx      LONG    0
+    nQueueBytesOccupied     LONG    0
+    nQStrCount              LONG    0
+    bStrQueOverflow         LONG    0
+
+    pStrBffrByteAfter       LONG    0           ' temp vars to reduce stack use
+
+    nQStrFill0              BYTE    0[4]
+    stringQueue             BYTE    0[RX_CHR_Q_MAX_BYTES]   ' our circular buffer - received chars
+    nQStrFill1              BYTE    0[4]
+    tempString              BYTE    0[MAX_SINGLE_STRING_LEN+1]   ' temp place to unwrap string
+    nQStrFill2              BYTE    0[4]
+
+'VAR { instance Variables }
+{
+    LONG    bDbgShoMem
+
+    LONG    nStrByteNextFreeIdx    ' our QUEUE control vars - index into stringQueue[]
+    LONG    nStrByteNextStrIdx
+    LONG    nQueueBytesOccupied
+    LONG    nQStrCount
+    LONG    bStrQueOverflow
+
+    LONG    pStrBffrByteAfter             ' temp vars to reduce stack use
+
+    BYTE    nQStrFill0[4]
+    BYTE    stringQueue[RX_CHR_Q_MAX_BYTES]   ' our circular buffer - received chars
+    BYTE    nQStrFill1[4]
+    BYTE    tempString[MAX_SINGLE_STRING_LEN+1]   ' temp place to unwrap string
+    BYTE    nQStrFill2[4]
+'}
+CON { ----- PRIVATE (Utility) Routines ----- }
+
+PRI initQueue()
+    ' initialize our queue control data
+    LONG[@nQStrFill0] := DO_NOT_WRITE_MARK
+    LONG[@nQStrFill1] := DO_NOT_WRITE_MARK
+    LONG[@nQStrFill2] := DO_NOT_WRITE_MARK
+    pStrBffrByteAfter := @BYTE[@stringQueue][RX_CHR_Q_MAX_BYTES]
+    flushQueue()
+
+PRI incrementIndexWithWrap(nIndexValue, nIncrement) : nWappedIndexValue
+    nWappedIndexValue := nIndexValue + nIncrement
+    if nWappedIndexValue > RX_CHR_Q_MAX_BYTES - 1
+        nWappedIndexValue -= RX_CHR_Q_MAX_BYTES
+
+PRI ensureFreeBytes(pBffr, nLen) : bFreeStatus | bytIdx
+    bFreeStatus := TRUE
+    repeat bytIdx from 0 to nLen - 1
+        if BYTE[pBffr][bytIdx] <> 0
+            bFreeStatus := FALSE
+            quit
+
+    if bFreeStatus == FALSE
+        debug("strQ:efb() bffr not empty, abort!")
+        lockupForAnly()
+
+PRI runtimeCheckHealth() | bIsBad
+' determine if we have random overwrite of fixed data
+' show error and lock up (halt) if we do!
+    bIsBad := FALSE
+    if LONG[@nQStrFill0] <> DO_NOT_WRITE_MARK or LONG[@nQStrFill1] <> DO_NOT_WRITE_MARK or LONG[@nQStrFill2] <> DO_NOT_WRITE_MARK
+        bIsBad := TRUE
+        debug("Q FAULT: ", uhex_long(LONG[@nQStrFill0]), uhex_long(LONG[@nQStrFill1]), uhex_long(LONG[@nQStrFill2]))
+
+    if pStrBffrByteAfter <> @BYTE[@stringQueue][RX_CHR_Q_MAX_BYTES]
+        bIsBad := TRUE
+        debug("Q FAULT: pStrBffrByteAfter=", uhex_long_(pStrBffrByteAfter), " <> bffrEnd=", uhex_long_(@BYTE[@stringQueue][RX_CHR_Q_MAX_BYTES]))
+
+    if bIsBad
+        debug("strQ: ERROR markers damaged")
+        lockupForAnly()
+
+PRI runtimeAssert(bCondition, pMessage)
+    if not bCondition
+        debug("* ASSERTION FAILED: ", zstr_(pMessage))
+        lockupForAnly()
+
+PRI lockupForAnly()
+' tell that we are halting then halt (effictivly)
+    debug("---- FAIL - stopping here for Analysis of above ^^^")
+    repeat      ' hold here for now
+
+PRI copyWrappedStr(pUserDest, nStrQueueIdx) | nIdx, pSrc, pDest, nStrLen
+' copy possible wrapped string {pSrcStr} to {pUserDest} (use min(strlen,lenDest) as bytes to move)
+'  NOTE handle buffer wrap!
+'    string can start near and and wrap to front!
+    runtimeAssert(nStrQueueIdx < RX_CHR_Q_MAX_BYTES, @"MUST have index withing queue bounds: cwr()")
+
+    pDest := pUserDest
+    pSrc := @BYTE[@stringQueue][nStrQueueIdx]
+    repeat
+        BYTE[pDest++] := BYTE[pSrc++]
+        if pSrc >= pStrBffrByteAfter
+            pSrc := @stringQueue
+        if BYTE[pSrc] == 0
+            quit
+    BYTE[pDest] := 0  ' place final terminator
+    'if bDbgShoMem
+    '    debug("strQ:-- cws: str=[", zstr_(pUserDest), "](", udec_(strsize(pUserDest)), ")")
+
+PRI freeWrappedString(nStrQueueIdx, nLen) | nIdx, pSrc
+' fill space occuppied by string with zero's
+'  NOTE handle buffer wrap!
+'    string can start near end and and wrap to front!
+    runtimeAssert(nStrQueueIdx < RX_CHR_Q_MAX_BYTES, @"MUST have index withing queue bounds: frs()")
+    pSrc := @BYTE[@stringQueue][nStrQueueIdx]
+    repeat nIdx from 0 to nLen - 1
+        ' if pointing beyond end, wrap to front!
+        if pSrc >= pStrBffrByteAfter
+            pSrc := @stringQueue
+        BYTE[pSrc++] := 0
+    'if bDbgShoMem
+    '    debug("strQ:-- zws: ", uhex_long(@BYTE[@stringQueue][nStrQueueIdx]), udec(nLen), udec(nQueueBytesOccupied))
+
+
+PRI MIN(a, b) : nLarger
+    nLarger := (a < b) ? a : b
+
+PUB dbgMemDump(pMessage, pBytes, lenBytes) | rowCount, rowLen, pCurrByte, lastRowByteCount, bytesSoFar
+' Dump rows of hex values with address preceeding
+
+    if pMessage
+        debug("** ", zstr_(pMessage), ":",10)
+
+    rowCount := lenBytes / 16
+    lastRowByteCount := lenBytes - (rowCount * 16)
+    pCurrByte := pBytes
+    bytesSoFar := 0
+
+    ' emit full lines
+    if rowCount > 0
+        repeat rowCount
+            dbgMemDumpRow(pCurrByte, 16)
+            pCurrByte += 16
+            bytesSoFar += 16
+
+    if  bytesSoFar < lenBytes
+        ' emit last line
+        dbgMemDumpRow(pCurrByte, lastRowByteCount)
+
+PRI dbgMemDumpRow(pBytes, lenBytes)
+' emit address followed by bytes
+    debug(" ", uhex_long_(pBytes), ": ", uhex_byte_array_(pBytes, lenBytes))
+
+
+
+CON { license }
+{{
+
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2022 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}
