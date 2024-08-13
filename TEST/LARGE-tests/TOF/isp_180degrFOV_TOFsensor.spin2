@@ -1,0 +1,857 @@
+'' =================================================================================================
+''
+''   File....... isp_180degrFOV_TOFsensor.spin2
+''   Purpose.... Object Providing interface to 4x VL53L5CX time-of-flight sensors acting as a single TOF sensor w/180° Field of View
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2022 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Sep 2022
+''   Updated.... 11 Sep 2022
+''
+'' =================================================================================================
+CON { PUBLIC Interface Constants }
+
+    DRVR_DIDNT_RESPOND  = (-1)
+    DRVR_CMD_OK         = 0
+
+CON { fixed io pins }
+
+    RX1      = 63  { I }                                          ' programming / debug
+    TX1      = 62  { O }
+
+    SF_CS    = 61  { O }                                          ' serial flash
+    SF_SCK   = 60  { O }
+    SF_SDO   = 59  { O }
+    SF_SDI   = 58  { I }
+
+    SD_SCK   = 61  { O }                                          ' sd card
+    SD_CS    = 60  { O }
+    SD_SDI   = 59  { O }
+    SD_SDO   = 58  { I }
+
+    SDA1     = 57  { IO }                                         ' i2c (optional)
+    SCL1     = 56  { IO }
+
+
+CON { basic constants }
+
+    TEST_WORD_CT = 4
+
+    ' internal driver commands
+    #0, DC_UNKNOWN, DC_IDLE, DC_START, DC_STOP, DC_ENABLE_RANGING, DC_DISABLE_RANGING, DC_SET_PARM, DC_GET_PARM
+
+    #50, RSP_UNKNOWN, RSP_PROCESSING_CMD, RSP_OK, RSP_ERROR, RSP_BAD_PARAM_ID
+
+    #128, ERR_UNKNOWN, ERR_INIT_FAIL, ERR_DVC_CMD_FAIL, ERR_SET_PARAM_FAIL, ERR_GET_PARAM_FAIL, ERR_CMD_UNKNOWN
+
+    #16, PID_RANGING_FREQUENCY, PID_RANGING_MODE, PID_RESOLUTION, PID_POWER_MODE
+    #20, PID_INTEGRATION_TIME, PID_SHARPENER_PERCENT, PID_TARGET_ORDER
+
+    ' INTERFACE FORWARDING:
+    ' The default power mode is VL53L5CX_POWER_MODE_WAKEUP. User can choose
+'  the mode VL53L5CX_POWER_MODE_SLEEP to save power consumption is the device
+'  is not used. The low power mode retains the firmware and the configuration.
+'  Both modes can be changed using function setPowerMode().
+    VL53L5CX_POWER_MODE_SLEEP       = tofSensor.VL53L5CX_POWER_MODE_SLEEP
+    VL53L5CX_POWER_MODE_WAKEUP      = tofSensor.VL53L5CX_POWER_MODE_WAKEUP
+
+'  VL53L5CX_RANG_MODE_CONTINUOUS and
+'  VL53L5CX_RANG_MODE_AUTONOMOUS are used to change the ranging mode.
+'  Autonomous mode can be used to set a precise integration time, whereas
+'  continuous is always maximum.
+    VL53L5CX_RANG_MODE_CONTINUOUS   = tofSensor.VL53L5CX_RANG_MODE_CONTINUOUS
+    VL53L5CX_RANG_MODE_AUTONOMOUS   = tofSensor.VL53L5CX_RANG_MODE_AUTONOMOUS
+
+'  VL53L5CX_TGT_ORDER_STRONGEST or VL53L5CX_TGT_ORDER_CLOSEST
+'    are used to select the target order for data output.
+    VL53L5CX_TGT_ORDER_CLOSEST      = tofSensor.VL53L5CX_TGT_ORDER_CLOSEST
+    VL53L5CX_TGT_ORDER_STRONGEST    = tofSensor.VL53L5CX_TGT_ORDER_STRONGEST
+
+'  VL53L5CX_RESOLUTION_4X4 or VL53L5CX_RESOLUTION_8X8 allows
+'   setting sensor in 4x4 mode or 8x8 mode, using the function
+'   setResolution().
+    VL53L5CX_RESOLUTION_4X4         = tofSensor.VL53L5CX_RESOLUTION_4X4
+    VL53L5CX_RESOLUTION_8X8         = tofSensor.VL53L5CX_RESOLUTION_8X8
+
+
+    VALUE_NOT_SET           = (-1)
+    NBR_VL53L5CX_SENSORS    = 4
+    FIRST_SENSOR_IDX    = 0
+    LAST_SENSOR_IDX    = NBR_VL53L5CX_SENSORS - 1
+
+    STACK_SIZE_LONGS        = 128  ' was 64
+
+DAT { run-time condition vars }
+
+    bUseHDMI            LONG    TRUE        ' set to TRUE to enable HDMI use/output
+    showHDMIDebug       LONG    FALSE
+
+    currentResolution   LONG    VALUE_NOT_SET
+    currentImageWidth   LONG    VALUE_NOT_SET
+
+OBJ { our sensors }
+
+    pcf8575         : "isp_pcf8575"                 ' our device under test
+    tofSensor[4]    : "isp_vl53l5cx"                      ' our device under test
+    tvDebug         : "isp_hdmi_debug"              ' Our HDMI display
+
+pub null()
+'' This is not a top-level object
+
+CON ' ----------------------- SET UP -----------------------
+
+PUB setHDMIBasePin(pHDMIbase)
+'' Assign pins to HDMI Eval Adapter
+    pinHDMIbase := pHDMIbase
+
+PUB setTofPins(nBusNbr, pSDA, pSCL)
+'' Assign pins to I2C Bus #[0-1]
+''  (we have two TOF sensors on each I2C bus)
+    case nBusNbr
+        2:
+            ' devices 1 and 2
+            tofSensor[0].setPinsAndID(pSDA, pSCL, 1)
+            tofSensor[1].setPinsAndID(pSDA, pSCL, 2)
+        1:
+            ' devices 3 and 4
+            tofSensor[2].setPinsAndID(pSDA, pSCL, 3)
+            tofSensor[3].setPinsAndID(pSDA, pSCL, 4)
+        other:
+            debug("180: ERROR bad I2C bus number, aborted!")
+            abort
+
+PUB setExpanderPins(pSDA, pSCL, pinINT)
+'' Assign pins to I2C bus for our PCF8575 I/O Expander
+'' this listens to and controls all 4 TOF sensors
+    pcf8575.setPins(pSDA, pSCL, pinINT)
+
+PUB start() : Ok | nGroups, pGroupTitles, pGroupNames, pGroupVarCts, pGroupVars, imageWidth, bDvcFound, eDvcStatus, bDataReturned, bDataUnloaded, readCt, nResponse
+'' Start all backend objects and our Overall driver Cog
+    if bUseHDMI
+        tvDebug.start(pinHDMIbase, @screenTitle)
+
+        nGroups, pGroupTitles, pGroupNames, pGroupVarCts, pGroupVars := getDebugData()
+        debug("180: Received: ", udec(nGroups), uhex_long(pGroupTitles), uhex_long(pGroupNames), uhex_long(pGroupVarCts), uhex_long(pGroupVars))
+        tvDebug.registerDisplay(nGroups, pGroupTitles, pGroupNames, pGroupVarCts, pGroupVars)
+    else
+        showHDMIDebug := FALSE  ' force this off is not using HDMI
+
+    ok := cog := cogspin(NEWCOG, taskRun180FovSensor(), @taskStack) + 1
+
+    'wait driver running
+    waitDriverStarted()
+
+    ' tell driver to set-up bus 1
+    debug("180: Loading Sensors")
+    dvrCommand := DC_START
+
+    nResponse := waitCommandComplete()
+    if nResponse == DRVR_CMD_OK
+        debug("180: Init Complete!")
+
+    debug("180: start up complete!")
+
+PUB stop()
+'' Stop our driver-Cog and all backend objects
+    ' shtudown sensing
+    dvrCommand := DC_STOP
+    debug("  -- waiting for driver shutdown")
+    repeat until dvrCommand <> DC_STOP
+
+    debug("180: is shutdown. Stopping all")
+    ' stop our cog
+    if cog
+        cogstop(cog - 1)
+        cog := 0
+
+
+CON ' ---------------- COMMAND Interface ----------------
+
+PUB setParameter(nParmId, nParmValue) : nResponse | bError, bTimedOut
+'' set value for given parameter name
+    dvrParameter := nParmId
+    dvrParamValue := nParmValue
+    dvrCommand := DC_SET_PARM
+    ' wait for command to complete
+    nResponse := waitCommandComplete()
+
+PUB getParameter(nParmId) : nResponse, nParmValue | bError, bTimedOut
+'' Get current Value for given parameter name
+    dvrParameter := nParmId
+    dvrCommand := DC_GET_PARM
+
+    ' wait for command to complete
+    nResponse := waitCommandComplete()
+    if nResponse == DRVR_CMD_OK
+        nParmValue := dvrResponse
+
+PUB enableRanging(bEnable) : nResponse | bError, bTimedOut  ' turn sensing on/off
+'' Enable(TRUE) or Disable(false) ranging
+    if bEnable
+        ' TOF sensors are running their code, now hook to display
+        configureVideoDisplays()
+
+    dvrCommand := (bEnable) ? DC_ENABLE_RANGING : DC_DISABLE_RANGING
+    ' wait for command to complete
+    nResponse := waitCommandComplete()
+
+PUB isRanging() : bRangingStatus
+'' Return T/F where T means one or more sensors are ranging
+''  (hopefully, all four since we run them as a set! ;-)
+    bRangingStatus := drvrIsRanging
+
+
+CON ' ------------- PRIVATE (Utility) Methods --------------
+
+PRI waitDriverStarted()
+    debug("  -- waiting for driver started")
+    repeat until dvrCommand == DC_IDLE
+
+PRI waitCommandComplete() : nResponse | bError, bTimedOut
+    bError := FALSE
+    bTimedOut := TRUE
+    debug("  -- waiting for ready")
+    repeat 2000 ' 2 seconds before timeout
+        if dvrCommand == DC_IDLE
+            bTimedOut := FALSE
+            quit
+        waitms(10)
+
+    if bTimedOut
+        debug("180: request timed-out...")
+    if dvrResponse <> RSP_OK
+        bError := TRUE
+        debug("  -- EEEE driver reports fault: ", uhex_(dvrParamValue))
+
+    if bTimedOut
+        nResponse := DRVR_DIDNT_RESPOND
+    elseif not bError
+        if dvrResponse == RSP_OK
+            nResponse := DRVR_CMD_OK
+        else
+            nResponse := dvrResponse
+    else
+        nResponse := dvrResponse
+
+
+
+VAR { driver internal variables }
+    LONG    cog
+    LONG    pinHDMIbase
+
+CON ' ============= TASK in own COG =============
+
+DAT { debug display data }
+
+    screenTitle     BYTE    "-- 180° Field of View Sensor Debug --", 0
+
+    dvrCommand      LONG    DC_UNKNOWN
+    dvrParameter    LONG    0
+    dvrResponse     LONG    0
+    dvrParamValue   LONG    0
+    taskStack       LONG    0[STACK_SIZE_LONGS]
+
+
+    drvrIsRanging   BYTE    FALSE
+
+    bDevicePreset   BYTE    FALSE
+    bDataAvail      BYTE    FALSE
+
+    priorRawIntBits     WORD    $0F00   ' preset to no interrupt on 8-11
+    bIntPending         LONG    0           ' now using bit flags
+
+
+
+PRI taskRun180FovSensor() | nbit, ok, nbrSensorsFound, newCommand, bDataReady, timeNow, timeToProcessCommand
+    'repeat  ' stop here !!!
+
+    Debug("TSK: Starting...")
+    ' init device complex
+    ' ensure PCF8575 is up
+    bDevicePreset := pcf8575.startUsingPins()
+    if NOT bDevicePreset
+        debug("TSK: PCF8575 no answ!")
+
+    ' Condition VL53L5CX device I/O lines driven by PCF8575
+    '   LPn to LOW
+    '   INTb as input
+    '   PWREN to HIGH
+    '   I2C_RST to HIGH
+    repeat nbit from 0 to 15
+        if nbit >= 8 and nbit <= 11
+            pcf8575.setBitDirection(nbit, pcf8575.BIT_IS_INPUT)
+        else
+            pcf8575.setBitDirection(nbit, pcf8575.BIT_IS_OUTPUT)
+            pcf8575.setOutputBitValue(nbit, 1)
+
+    setLPnBits()
+    resetSensors()
+
+    ' quick test to checkour our LA probing...
+    dropLPnBits()
+    clearINTBits()
+
+    ok, nbrSensorsFound := setTOFAddresses()
+    if nbrSensorsFound > 0
+        setLPnBits()
+
+    if not ok and nbrSensorsFound == 0
+        debug("TSK: ERROR: not started")
+    else
+        ' let's do more setup / prep
+
+        ' mark that driver is runnig
+        Debug("TSK: Running...")
+        LONG[@dvrResponse] := RSP_UNKNOWN
+        LONG[@dvrCommand] := DC_IDLE
+
+        ' check for command every 25mS
+        timeToProcessCommand := getms() + 25
+
+        repeat
+
+            if timeToProcessCommand < getms()
+                newCommand := LONG[@dvrCommand]
+
+                ' if legit command arrived...
+                if newCommand <> DC_IDLE and newCommand <> DC_UNKNOWN
+                    ' while we dispatch
+                    LONG[@dvrResponse] := RSP_UNKNOWN
+                    LONG[@dvrCommand] := DC_UNKNOWN
+                    handleDriverCommand(newCommand)
+
+                ' check for command every 25mS
+                timeToProcessCommand := getms() + 25
+
+            elseif drvrIsRanging
+                if pcf8575.isIntPending()
+                    bDataReady := gatherInterruptInfo()
+                    if bDataReady
+                        doPendingUnloads()
+
+            else
+                waitms(125)  ' longer delay since we need a command to start the ranging
+
+
+PRI handleDriverCommand(newCommand) | tofIdx, bDvcPresent, bCanGoIdle, eDvcStatus, bOK, newParam, paramValue, newValue
+    bCanGoIdle := FALSE
+    debug("TSK: Handling ", udec(newCommand))
+    LONG[@dvrResponse] := RSP_PROCESSING_CMD
+
+    newParam := LONG[@dvrParameter]
+    paramValue := LONG[@dvrParamValue]
+    debug("TSK: hndl cmd ", udec(newParam), udec(paramValue))
+    case newCommand
+        DC_STOP:
+            debug("TSK: cmd stop")
+            ' stop our back-end comms
+            repeat tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+                tofSensor[tofIdx].stop()
+            pcf8575.stop()
+            tvDebug.stop()
+            bCanGoIdle := TRUE
+        DC_START:
+            debug("TSK: cmd start")
+            ' init each sensor
+            repeat tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+                bDvcPresent := tofSensor[tofIdx].activateSensor()
+                if not bDvcPresent
+                    rptDriverFault(ERR_INIT_FAIL)
+                    quit
+                elseif tofIdx == LAST_SENSOR_IDX
+                    bCanGoIdle := TRUE
+                else
+                    waitms(10) ' delay to next start
+                ' read settings for display
+            readDefaultSettings()
+
+        DC_ENABLE_RANGING:
+            debug("TSK: cmd enbl ranging")
+            repeat tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+                eDvcStatus := tofSensor[tofIdx].startRanging()
+                if eDvcStatus <> tofSensor.VL53L5CX_STATUS_OK
+                    rptDriverFault(ERR_DVC_CMD_FAIL)
+                    quit
+                elseif tofIdx == LAST_SENSOR_IDX
+                    bCanGoIdle := TRUE
+                    drvrIsRanging := TRUE
+                else
+                    waitms(10) ' delay to next start
+
+        DC_DISABLE_RANGING:
+            debug("TSK: cmd dsbl ranging")
+            repeat tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+                eDvcStatus := tofSensor[tofIdx].stopRanging()
+                if eDvcStatus <> tofSensor.VL53L5CX_STATUS_OK
+                    rptDriverFault(ERR_DVC_CMD_FAIL)
+                    quit
+                elseif tofIdx == LAST_SENSOR_IDX
+                    bCanGoIdle := TRUE
+                    drvrIsRanging := FALSE
+                else
+                    waitms(10) ' delay to next start
+
+        DC_SET_PARM:
+            debug("TSK: cmd set param")
+            ' init each sensor
+            repeat tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+                bOK := handleSetupChange(tofIdx, newParam, paramValue)
+                if not bOK
+                    rptDriverFault(ERR_SET_PARAM_FAIL)
+                    quit
+                elseif tofIdx == LAST_SENSOR_IDX
+                    bCanGoIdle := TRUE
+                else
+                    waitms(10) ' delay to next start
+
+        DC_GET_PARM:
+            debug("TSK: cmd get param")
+            tofIdx := 0 ' let's query only 0 for now...
+            bOK, newValue := handleSetupQuery(tofIdx, newParam)
+            if not bOK
+                rptDriverFault(ERR_GET_PARAM_FAIL)
+            else
+                LONG[@dvrParamValue] := newValue
+                bCanGoIdle := TRUE
+
+        other:
+            debug("TSK: ERROR (cmd) unk cmd enum ", uhex_(newCommand))
+            rptDriverFault(ERR_CMD_UNKNOWN)
+
+    ' if we are allowed to ACK command, do so
+    if bCanGoIdle
+        ' indicate we are done processing command
+        ackDriverCommand()
+
+PRI ackDriverCommand()
+    ' indicate we are done processing command
+    debug("TSK:  -- OK")
+    LONG[@dvrResponse] := RSP_OK
+    LONG[@dvrCommand] := DC_IDLE
+
+PRI rptDriverFault(faultValue)
+    ' indicate we ended with fault and set identifying value
+    LONG[@dvrParamValue] := faultValue
+    if LONG[@dvrResponse] == RSP_PROCESSING_CMD ' it could already be "bad parm id"
+        LONG[@dvrResponse] := RSP_ERROR  ' general error if  NOT already a value
+    LONG[@dvrCommand] := DC_IDLE
+    debug("TSK:  -- ERR")
+
+
+PRI readDefaultSettings() | eDvcStatus, readValue
+
+    eDvcStatus, readValue := tofSensor[0].getRangingFrequencyHz()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        frequencyHz8 := readValue
+
+    eDvcStatus, readValue := tofSensor[0].getRangingMode()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        eRangingMode := readValue
+
+    eDvcStatus, readValue := tofSensor[0].getPowerMode()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        ePowerMode := readValue
+
+    eDvcStatus, readValue := tofSensor[0].getIntegrationTime()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        timeMsec32 := readValue
+
+    eDvcStatus, readValue := tofSensor[0].getSharpenerPercent()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        percent8 := readValue
+
+    eDvcStatus, readValue := tofSensor[0].getTargetOrder()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        targetOrder := readValue
+
+    eDvcStatus, readValue := tofSensor[0].getResolution()
+    if eDvcStatus == tofSensor.VL53L5CX_STATUS_OK
+        resolution := readValue
+        setNewResolution(resolution)
+
+VAR { Interrupt handling support data }
+
+    WORD newBit
+    WORD oldBit
+
+    WORD intRawCache[8]
+
+PRI getAndClearInterrupt(pResultWords, wordCount) : bHaveInt, edgesCount, bNeedClear | limitWordCount, srcWrdIdx, dstWrdIdx, WORD priorBits, WORD currRawIntBits[4]
+    ' have INTb assert? (low?)
+    bHaveInt := FALSE
+    limitWordCount := (wordCount <= 4) ? wordCount : 4
+    priorBits := $000f
+    dstWrdIdx := 0
+    bNeedClear := FALSE
+    wordfill(pResultWords, 0, wordCount)    ' pre-fill with zeros
+    if pcf8575.isIntPending()
+        pcf8575.getInputBitsNTimes(@currRawIntBits, limitWordCount)    ' a read clears pending interrupts
+        'debug("TSK: ints x3 ", ubin_word_array_(@currRawIntBits, limitWordCount))
+        repeat srcWrdIdx from 0 to limitWordCount - 1
+            if (WORD[@currRawIntBits][srcWrdIdx] & $000f) <> $000f
+                bHaveInt := TRUE
+                ' if last value is an interrupt then we need to be cleared
+                if srcWrdIdx == limitWordCount - 1
+                    bNeedClear := TRUE
+                if WORD[@currRawIntBits][srcWrdIdx] <> priorBits
+                    WORD[pResultWords][dstWrdIdx++] := WORD[@currRawIntBits][srcWrdIdx]
+                priorBits := WORD[@currRawIntBits][srcWrdIdx]
+            else
+                ' just cleared rising edge!
+        edgesCount := dstWrdIdx
+
+PRI gatherInterruptInfo() : bfoundAllReady | currRawIntBits, currRawIntBits2, nBit, bitMask, tofIdx, bInterrupt, loadMask, edgesCount, cacheIdx, bHaveInt, bNeedClear, priorEdgesCount
+' NOTE: we get an interrupt for low-to-high as well as high-to-low transitions
+'  our TOF sensor transition high-to-low is what we are looking for..
+'   we need to ignore the low-to-high changes
+    bfoundAllReady := FALSE
+
+    bHaveInt, edgesCount, bNeedClear := getAndClearInterrupt(@intRawCache, 4)
+    if bNeedClear
+        ' and check for 2nd close interrupt
+        priorEdgesCount := edgesCount
+        bHaveInt, edgesCount, bNeedClear := getAndClearInterrupt(@WORD[@intRawCache][edgesCount], 4)
+            edgesCount += priorEdgesCount
+
+    if edgesCount > 0
+        repeat cacheIdx from 0 to edgesCount - 1
+            currRawIntBits := WORD[@intRawCache][cacheIdx]
+            if priorRawIntBits <> currRawIntBits
+                'debug("TSK: ints old=", ubin_word_(priorRawIntBits), ", new=", ubin_word_(currRawIntBits))
+                if currRawIntBits <> $0F00
+                    ' INTb bits for our 4 TOF sensors 1-4 [LPn bits of Expander are 8-11]
+                    repeat nBit from 8 to 11
+                        tofIdx := nBit - 8   ' now [0-3]
+                        bitMask := 1 << nBit ' shifted to 8-11
+                        loadMask := 1 << tofIdx
+                        oldBit :=  priorRawIntBits & bitMask
+                        newBit :=  currRawIntBits & bitMask
+                        ' if the bit changed and it's high to low
+                        bInterrupt := (newBit == 0 and newBit <> oldBit) ? TRUE : FALSE
+                        'debug(" INT: b", uhex_(nBit), " msk=", ubin_word_(bitMask), " ", udec(oldBit), udec(newBit), sdec(bInterrupt))
+                        if bInterrupt
+                            bIntPending |= loadMask
+
+                        ' on arrival of our 4th sensor data, do unloads!
+                        'if bInterrupt and tofIdx == LAST_SENSOR_IDX
+                        if bInterrupt and (bIntPending & $000f) == $000f
+                            'debug("TSK: #", udec_(tofIdx+1), " data rdy!")
+                            bfoundAllReady := TRUE
+                ' set new prior
+                priorRawIntBits := currRawIntBits
+
+PRI doPendingUnloads() | tofIdx, bitsCopy, loadMask
+    ' process interupt pin values
+    if drvrIsRanging
+        bitsCopy := bIntPending
+        bIntPending := 0    ' clear so more can be recorded
+        repeat tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+            loadMask := 1 << tofIdx
+            ' if interrupt is pending for this sensor let's unload it
+            if bitsCopy & loadMask <> 0
+                ' YES unload data
+                tofSensor[tofIdx].unloadRangingData()
+
+DAT { our I2C TOF sensor addresses }
+    '                    TOF #   1    2    3    4
+    '                I2C Bus #   2    2    1    1
+    TOFdeviceAddrTbl   BYTE    $54, $56, $58, $5A
+    '            ADDR in LA #  $2A  $2B  $2C  $2D
+
+PRI setTOFAddresses() : ok, cntFound | nTOFNbr, bDevicePresent, eDvcStatus, tofIdx
+    ok := TRUE
+    cntFound := 0
+    repeat nTOFNbr from 1 to 4
+        tofIdx := nTOFNbr - 1
+        enableLPn(nTOFNbr)
+        'tofSensor[tofIdx].enableDebug(TRUE)
+        bDevicePresent := tofSensor[tofIdx].startUsingPins()
+        if not bDevicePresent
+            debug("TSK: ERROR missing TOF dvc")
+            'tofSensor[tofIdx].enableDebug(FALSE)
+            disableLPn(nTOFNbr)
+            ok := FALSE
+            next
+        eDvcStatus :=tofSensor[tofIdx].setI2CAddress(BYTE[@TOFdeviceAddrTbl][nTOFNbr - 1])
+        'tofSensor[tofIdx].enableDebug(FALSE)
+        if eDvcStatus <> tofSensor.VL53L5CX_STATUS_OK
+            debug("TSK: ERROR fail set dvc i2c addr")
+            ok := FALSE
+            next
+        else
+            cntFound++
+        disableLPn(nTOFNbr)
+    disableLPn(nTOFNbr)
+
+    if ok <> TRUE
+        debug("TSK: dvc(s) missing!")
+
+PRI resetSensors()
+    ' reset the I2C interface for  a  sensors
+    '  in prep for assigning their I2C addresses
+    setLPnBits()
+    dropRSTBits()
+    waitms(10)
+    setRSTBits()
+    waitms(10)
+    dropRSTBits()
+    dropLPnBits()
+    waitms(10)
+
+PRI setLPnBits() | nBit
+' Clear all 4 LPn bits (disables TOF device COMM.)
+    ' LPn port bits are 4-7
+    repeat nbit from 4 to 7
+        pcf8575.setOutputBitValue(nbit, 1)
+
+PRI dropLPnBits() | nBit
+' Clear all 4 LPn bits (disables TOF device COMM.)
+    ' LPn port bits are 4-7
+    repeat nbit from 4 to 7
+        pcf8575.setOutputBitValue(nbit, 0)
+
+PRI setRSTBits() | nbit
+' Set all 4 LPn bits (disables TOF I2C comms)
+    ' I2C_RST port bits are 12-15
+    repeat nbit from 12 to 15
+        pcf8575.setOutputBitValue(nbit, 1)
+
+PRI dropRSTBits() | nbit
+' Clear all 4 I2C_RST bits (enables TOF device COMM.)
+    ' I2C_RST port bits are 12-15
+    repeat nbit from 12 to 15
+        pcf8575.setOutputBitValue(nbit, 0)
+
+PRI enableLPn(nLPnNbr) | nBit
+' LPn bits are numbered 1-4 for our 4 TOF sensors 1-4 [LPn bits of Expander are 4-7]
+    if nLPnNbr >= 1 and nLPnNbr <= 4
+        nBit := (nLPnNbr - 1) + 4   ' +4: LPn port bits are 4-7
+        pcf8575.setOutputBitValue(nbit, 1)
+
+PRI disableLPn(nLPnNbr) | nBit
+' LPn bits are numbered 1-4 for our 4 TOF sensors 1-4 [LPn bits of Expander are 4-7]
+    if nLPnNbr >= 1 and nLPnNbr <= 4
+        nBit := (nLPnNbr - 1) + 4   ' +4: LPn port bits are 4-7
+        pcf8575.setOutputBitValue(nbit, 0)
+
+PRI clearINTBits() | nWordValue
+' read all bits as input...
+'  value is masked to input bits
+    nWordValue := pcf8575.getInputBits()    ' a read clears pending interrupts
+
+PRI reAddressTOFsensors()
+    ' condition all OUTPUT lines to 4 sensors
+    ' set all LPn's low (turn of everybody)
+    ' for ea. sensor
+    '    enable LPn then set I2C address
+    '    ensure TOF now responds at new address
+    ' DONE
+
+PRI handleSetupChange(nTofIdx, arg, argValue) : ok | eDvcStatus
+' configure a single TOF sensor {nTofIdx} parameter {arg} with new {argValue}
+    ok := TRUE
+    case arg
+        PID_RANGING_FREQUENCY:
+            eDvcStatus := tofSensor[nTofIdx].setRangingFrequencyHz(argValue)
+        PID_RANGING_MODE:
+            eDvcStatus := tofSensor[nTofIdx].setRangingMode(argValue)
+        PID_RESOLUTION:
+            eDvcStatus := tofSensor[nTofIdx].setResolution(argValue)
+        PID_POWER_MODE:
+            eDvcStatus := tofSensor[nTofIdx].setPowerMode(argValue)
+        PID_INTEGRATION_TIME:
+            eDvcStatus := tofSensor[nTofIdx].setIntegrationTime(argValue)
+        PID_SHARPENER_PERCENT:
+            eDvcStatus := tofSensor[nTofIdx].setSharpenerPercent(argValue)
+        PID_TARGET_ORDER:
+            eDvcStatus := tofSensor[nTofIdx].setTargetOrder(argValue)
+        other:
+            debug("TSK: ERROR (set) unk PID_ enum ", uhex_(arg))
+            ok := FALSE
+            LONG[@dvrResponse] := RSP_BAD_PARAM_ID
+
+    if ok == TRUE
+        ' still good condition our response
+        if eDvcStatus <> tofSensor.VL53L5CX_STATUS_OK
+            ok := FALSE
+
+    if ok == TRUE and arg == PID_RESOLUTION
+        setNewResolution(argValue)
+
+PRI handleSetupQuery(nTofIdx, parmId) : ok, parmValue | eDvcStatus, valueRead
+' query a single TOF sensor {nTofIdx} parameter {arg} and return the value read
+    ok := TRUE
+    case parmId
+        PID_RANGING_FREQUENCY:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getRangingFrequencyHz()
+        PID_RANGING_MODE:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getRangingMode()
+        PID_RESOLUTION:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getResolution()
+        PID_POWER_MODE:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getPowerMode()
+        PID_INTEGRATION_TIME:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getIntegrationTime()
+        PID_SHARPENER_PERCENT:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getSharpenerPercent()
+        PID_TARGET_ORDER:
+            eDvcStatus, valueRead := tofSensor[nTofIdx].getTargetOrder()
+        other:
+            debug("TSK: ERROR (get) unk PID_ enum ", uhex_(parmId))
+            ok := FALSE
+            LONG[@dvrResponse] := RSP_BAD_PARAM_ID
+
+    if ok == TRUE
+        'debug("TSK:   (DBG) ", udec(eDvcStatus), udec(parmValue))
+        if eDvcStatus <> tofSensor.VL53L5CX_STATUS_OK
+            ok := FALSE
+        else
+            parmValue := valueRead
+
+PRI setNewResolution(resolutionValue)
+' record new resolution value and inform others
+    currentResolution := resolutionValue
+    currentImageWidth := sqrt currentResolution
+
+    ' FIXME: TODO - update display driver, too
+
+
+CON ' ---------------- HDMI Debug Support ----------------
+
+PRI configureVideoDisplays() | tofIdx, pTgtStatus8, pSmplDistanceMM16
+    ' let's hand off data area pointers to our video subsystem
+    repeat  tofIdx from FIRST_SENSOR_IDX to LAST_SENSOR_IDX
+        pTgtStatus8, pSmplDistanceMM16 := tofSensor[tofIdx].targetBufferPointers()
+        'debug("180: set video #", udec_(tofIdx+1), ", ImgWdth: ", udec_(currentImageWidth))
+        tvDebug.registerTofDataSet(tofIdx, currentImageWidth, pTgtStatus8, pSmplDistanceMM16)
+
+CON { Constants for HDMI Debug }
+
+    DBG_GROUPS_CT = 2
+    DBG_MAX_VARS_IN_GROUP = 7
+
+VAR { Data Structure for HDMI Debug }
+
+    LONG    pTitlesAr[DBG_GROUPS_CT + 1]    ' first value is max vars
+    LONG    pVarCtAr[DBG_GROUPS_CT]
+    LONG    pNamesAr[DBG_GROUPS_CT * DBG_MAX_VARS_IN_GROUP]
+    LONG    pValsAr[DBG_GROUPS_CT*DBG_MAX_VARS_IN_GROUP]
+
+DAT { Literals for HDMI Debug }
+
+' TOF setup data
+    nameTitle1  BYTE    "TOF Settings",0
+    name10      BYTE    "Frq Hz",0
+    name11      BYTE    "Rng Mode",0
+    name12      BYTE    "Pwr Mode",0
+    name13      BYTE    "Time mS",0
+    name14      BYTE    "Shrpr %",0
+    name15      BYTE    "Tgt Ordr",0
+    name16      BYTE    "Resol",0
+nextAddr1
+    dataLen1     LONG    @nextAddr1 - @nameTitle1
+
+    nameTitle2  BYTE    "Driver I/F",0
+    name20      BYTE    "Cmd",0
+    name21      BYTE    "Param",0
+    name22      BYTE    "Value",0
+    name23      BYTE    "Response",0
+nextAddr2
+    dataLen2     LONG    @nextAddr2 - @nameTitle2
+
+PRI loadDisplayList() | nGrpOffset, nValsGrpOffset, nVarsInGroup
+' do internal one-time setup of driver debug data
+    nGrpOffset := 0
+    nVarsInGroup := 7
+    LONG[@pTitlesAr][nGrpOffset] := @nameTitle1
+    LONG[@pVarCtAr][nGrpOffset] := nVarsInGroup
+    ' populate the empty name/value ptr tables
+    nValsGrpOffset := nGrpOffset * DBG_MAX_VARS_IN_GROUP
+    LONG[@pNamesAr][nValsGrpOffset + 0] := @name10
+    LONG[@pNamesAr][nValsGrpOffset + 1] := @name11
+    LONG[@pNamesAr][nValsGrpOffset + 2] := @name12
+    LONG[@pNamesAr][nValsGrpOffset + 3] := @name13
+    LONG[@pNamesAr][nValsGrpOffset + 4] := @name14
+    LONG[@pNamesAr][nValsGrpOffset + 5] := @name15
+    LONG[@pNamesAr][nValsGrpOffset + 6] := @name16
+    LONG[@pValsAr][nValsGrpOffset + 0] := @frequencyHz8
+    LONG[@pValsAr][nValsGrpOffset + 1] := @eRangingMode
+    LONG[@pValsAr][nValsGrpOffset + 2] := @ePowerMode
+    LONG[@pValsAr][nValsGrpOffset + 3] := @timeMsec32
+    LONG[@pValsAr][nValsGrpOffset + 4] := @percent8
+    LONG[@pValsAr][nValsGrpOffset + 5] := @targetOrder
+    LONG[@pValsAr][nValsGrpOffset + 6] := @resolution
+
+    nGrpOffset := 1
+    nVarsInGroup := 4
+    LONG[@pTitlesAr][nGrpOffset] := @nameTitle2
+    LONG[@pVarCtAr][nGrpOffset] := nVarsInGroup
+    ' populate the empty name/value ptr tables
+    nValsGrpOffset := nGrpOffset * DBG_MAX_VARS_IN_GROUP
+    LONG[@pNamesAr][nValsGrpOffset + 0] := @name20
+    LONG[@pNamesAr][nValsGrpOffset + 1] := @name21
+    LONG[@pNamesAr][nValsGrpOffset + 2] := @name22
+    LONG[@pNamesAr][nValsGrpOffset + 3] := @name23
+    LONG[@pValsAr][nValsGrpOffset + 0] := @dvrCommand
+    LONG[@pValsAr][nValsGrpOffset + 1] := @dvrParameter
+    LONG[@pValsAr][nValsGrpOffset + 2] := @dvrParamValue
+    LONG[@pValsAr][nValsGrpOffset + 3] := @dvrResponse
+
+    ' reset unused
+    unused0 := 0
+    unused1 := 0
+
+    ' tell our table size to reader
+    nGrpOffset := 2
+    LONG[@pTitlesAr][nGrpOffset] := DBG_MAX_VARS_IN_GROUP
+
+PUB getDebugData() : nGroups, pGroupTitles, pGroupNames, pGroupVarCts, pGroupVars | tmpAbsPtr
+'' Return pointers to HDMI-debug data structures for this motor-object instance
+    loadDisplayList()
+    nGroups := DBG_GROUPS_CT
+    pGroupTitles := @pTitlesAr         ' pStr := LONG[pTitlesAr][grpIdx]
+    pGroupVarCts := @pVarCtAr          ' nNbrGrpVars := LONG[pVarCtAr][grpIdx]
+    pGroupNames := @pNamesAr           ' pGrpNameAr := LONG[pNamesAr][grpIdx], pVarName := LONG[pNameAr][varIdx]  where varIdx is from 0 to nNbrGrpVars - 1
+    pGroupVars := @pValsAr             ' pGrpLongVar := LONG[pValsAr][grpIdx][varIdx]  where varIdx is from 0 to nNbrGrpVars - 1
+
+VAR { captured sensor data }
+
+    LONG    frequencyHz8
+    LONG    eRangingMode
+    LONG    ePowerMode
+    LONG    timeMsec32
+    LONG    percent8
+    LONG    targetOrder
+    LONG    resolution
+
+    LONG    unused0
+    LONG    unused1
+
+CON { license }
+
+{{
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2022 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}

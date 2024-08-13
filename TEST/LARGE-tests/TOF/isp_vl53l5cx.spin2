@@ -1,0 +1,2801 @@
+'' =================================================================================================
+''
+''   File....... isp_vl53l5cx.spin2
+''   Purpose.... Interface to VL53L5CX sensor via I2C
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2022 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Aug 2022
+''   Updated.... 5 Sep 2022
+''
+'' =================================================================================================
+
+ {{
+
+    Satel Breakout Board IO Assignments
+
+            ┌──────────────────┐
+        <-- │ [ ] INT          │
+            │                  │
+        --> │ (*) I2C_RST      │
+            │                  │
+        <-> │ (*) SDA          │
+            │                  │
+        --> │ (*) SCL          │
+            │                  │
+        --> │ (*) LPn          │
+            │                  │
+        --> │ (*) PWREN        │
+            │                  │
+            │ (*) A VDD - 3v3  │
+            │                  │
+            │ (*) IO VDD - 3v3 │
+            │                  │
+            │ [*] GND          │
+            ┌──────────────────┐
+            │                  │
+            │      Sensor      │
+            │                  │
+            └──────────────────/
+
+    REF Board: https://www.mikroe.com/mpu-9dof-click
+    REF MPU9250A Datasheet: https://download.mikroe.com/documents/datasheets/PS-MPU-9250A-01-v1.1.pdf
+    REF User Manual: https://download.mikroe.com/documents/add-on-boards/click/mpu-9dof/mpu-9dof-click-manual-v100.pdf
+    REF Register Manual: https://inertialelements.com/documents/resources_page/MPU-register-manual.pdf
+
+}}
+
+CON { Interface constants }
+
+' devcie found (or not) responses
+#0, DVC_NOT_FOUND, DVC_ADDR0  ' this continues: [1-10]
+
+' method return values
+'  VL53L5CX_STATUS_OK indicates that VL53L5 sensor has no error.
+    VL53L5CX_STATUS_OK              = 0
+'  VL53L5CX_MCU_ERROR indicates an MCU issue.
+    VL53L5CX_MCU_ERROR              = 66
+'  VL53L5CX_STATUS_BAD_DATA indicates an unexpected value was read from the device
+    VL53L5CX_STATUS_BAD_DATA        = 96
+'  VL53L5CX_STATUS_INVALID_PARAM indicates an unexpected value was passed as a parameter
+    VL53L5CX_STATUS_INVALID_PARAM   = 127
+'  VL53L5CX_STATUS_ERROR indicates that something is wrong (value, I2C access, ...)
+    VL53L5CX_STATUS_ERROR           = (-1)
+
+' The default power mode is VL53L5CX_POWER_MODE_WAKEUP. User can choose
+'  the mode VL53L5CX_POWER_MODE_SLEEP to save power consumption is the device
+'  is not used. The low power mode retains the firmware and the configuration.
+'  Both modes can be changed using function setPowerMode().
+    VL53L5CX_POWER_MODE_SLEEP       = 0
+    VL53L5CX_POWER_MODE_WAKEUP      = 1
+
+'  VL53L5CX_RANG_MODE_CONTINUOUS and
+'  VL53L5CX_RANG_MODE_AUTONOMOUS are used to change the ranging mode.
+'  Autonomous mode can be used to set a precise integration time, whereas
+'  continuous is always maximum.
+    VL53L5CX_RANG_MODE_CONTINUOUS   = 1
+    VL53L5CX_RANG_MODE_AUTONOMOUS   = 3
+
+'  VL53L5CX_TGT_ORDER_STRONGEST or VL53L5CX_TGT_ORDER_CLOSEST
+'    are used to select the target order for data output.
+    VL53L5CX_TGT_ORDER_CLOSEST      = 1
+    VL53L5CX_TGT_ORDER_STRONGEST    = 2
+
+'  VL53L5CX_RESOLUTION_4X4 or VL53L5CX_RESOLUTION_8X8 allows
+'   setting sensor in 4x4 mode or 8x8 mode, using the function
+'   setResolution().
+    VL53L5CX_RESOLUTION_4X4         = 16
+    VL53L5CX_RESOLUTION_8X8         = 64
+
+con { Fixed io pins }
+
+  RX1      = 63  { I }                                          ' programming / debug
+  TX1      = 62  { O }
+
+  SF_CS    = 61  { O }                                          ' serial flash
+  SF_SCK   = 60  { O }
+  SF_SDO   = 59  { O }
+  SF_SDI   = 58  { I }
+
+OBJ { Objects this object uses }
+
+    i2c_bus     : "isp_i2c"                                     ' better timing
+
+VAR { Instance Variables - Global }
+
+    LONG    pin_scl
+    LONG    pin_sda
+    LONG    pin_int
+    LONG    pin_rst
+    LONG    pin_lpn
+    LONG    pin_pwren
+    LONG    instanceID
+
+    LONG    bPinsSetUp
+    LONG    bDeviceFound
+    LONG    dvcI2CAddr
+
+    BYTE    bShowDebug
+    BYTE    bShowIODebug
+    BYTE    bShowTestingDebug
+    BYTE    bSensorActive       ' T/F where T means sensor ranging is active
+
+    BYTE    requestedResolution
+
+CON { driver Settings }
+' PU_NONE-nope?, PU_1K5-nope, PU_3K3-(1 dvc), PU_15K-(1 dvc)
+    PULL_UP_VL53L5CX_I2C = i2c_bus.PU_1K5
+    'FREQ_IN_KHZ_VL53L5CX_I2C = 1064              ' use 1 MHZ (1000 KHz) NOTE: at 270MHz clock: 1000 is 950KHz, 1010 is 965KHz, 1035 is 980KHz, 1050 same,
+    FREQ_IN_KHZ_VL53L5CX_I2C = 1000              ' use 1 MHZ (1000 KHz)
+
+    VL53L5CX_I2C_ADDR_0      = $52
+
+CON ' --- Driver Setup ---
+
+PUB null()
+'' This is not a top-level object
+
+PUB setPinsAndID(pSDA, pSCL, nID) : ok
+'' Record PINs for later Deferred Start [startUsingPins()] for use by driver cog
+' SPECIAL for use when in multi-sensor config
+
+    ' condition these on first call to this driver
+    bShowDebug := FALSE     ' no, not til requested
+    bShowIODebug := FALSE   ' no, not til requested
+    bSensorActive := FALSE  ' no, not initially
+
+    ok := true
+
+    ' mark these pins as not provided
+    pin_pwren := -1
+    pin_lpn := -1
+    pin_int := -1
+    pin_rst := -1
+
+    ' remember the pins we are given
+    pin_scl := pSCL
+    pin_sda := pSDA
+
+    ' set this instances' ID
+    instanceID := nID
+
+    ' notify that we do have pins and are ready
+    bPinsSetUp := TRUE
+
+PUB startUsingPins() : bDevicePresent | eDvcStatus, bIsAlive
+'' Deferred Start for use by driver cog
+''  MUST be preceede by setPins()
+' SPECIAL for use when in multi-sensor config
+
+    if bPinsSetUp
+        debugWithInstanceID(@" startUsingPins() ID dvc address...")
+        i2c_bus.setup(pin_scl, pin_sda, FREQ_IN_KHZ_VL53L5CX_I2C, PULL_UP_VL53L5CX_I2C)
+        bDevicePresent := bDeviceFound := (idDevice() <> DVC_NOT_FOUND)
+        if bDeviceFound
+            eDvcStatus, bIsAlive := isAlive()
+            if eDvcStatus == VL53L5CX_STATUS_OK and bIsAlive
+                ' nothing yet...
+            else
+                bDevicePresent := FALSE
+
+PUB activateSensor() : bDevicePresent | eDvcStatus
+'' Deferred Start for use by driver cog
+''  MUST be preceede by setPins() and startUsingPins()
+' SPECIAL for use when in multi-sensor config
+    bDevicePresent := FALSE
+    if bPinsSetUp
+        bDevicePresent := TRUE
+        ' turn off: vl53l5cx_off()
+        ' turn on: vl53l5cx_on()
+        initDriver()    ' extended so we can do run-time config of driver
+
+        ' init device: vl53l5cx_init()
+        '   return VL53L5CX_STATUS_ERROR if failed to init
+        ' return VL53L5CX_STATUS_OK
+        eDvcStatus := vl53l5cxInit()
+        if eDvcStatus <> VL53L5CX_STATUS_OK
+            debugWithInstanceID(@" Init Failed")
+            bDevicePresent := FALSE
+
+
+PUB start(pinINT, pinRST, pinSDA, pinSCL, pinLPN, pinPWREN) : bDevicePresent | eDvcStatus, bIsAlive
+'' Start the device running
+
+    ' condition these on first call to this driver
+    bShowDebug := FALSE     ' no, not til requested
+    bShowIODebug := FALSE   ' no, not til requested
+    bSensorActive := FALSE  ' no, not initially
+    instanceID := 0
+
+    bPinsSetUp := setupPins(pinINT, pinRST, pinSDA, pinSCL, pinLPN, pinPWREN)  ' configure pin numbers if not already
+    if bPinsSetUp
+        i2c_bus.setup(pin_scl, pin_sda, FREQ_IN_KHZ_VL53L5CX_I2C, PULL_UP_VL53L5CX_I2C)
+        'debug("VL53: start() ID dvc address...")
+        bDevicePresent := bDeviceFound := (idDevice() <> DVC_NOT_FOUND)
+        if bDeviceFound
+            eDvcStatus, bIsAlive := isAlive()
+            if eDvcStatus == VL53L5CX_STATUS_OK and bIsAlive
+                ' turn off: vl53l5cx_off()
+                ' turn on: vl53l5cx_on()
+                initDriver()    ' extended so we can do run-time config of driver
+
+                ' init device: vl53l5cx_init()
+                '   return VL53L5CX_STATUS_ERROR if failed to init
+                ' return VL53L5CX_STATUS_OK
+                eDvcStatus := vl53l5cxInit()
+                if eDvcStatus <> VL53L5CX_STATUS_OK
+                    bDevicePresent := FALSE
+            else
+                bDevicePresent := FALSE
+
+        if bShowDebug and bDevicePresent
+            debug("VL53: Started")
+
+PUB stop()
+'' Stop our i2c bus use and float all pins
+    ' no i2c_buss call needed, simply release all our pins
+    if bPinsSetUp
+        floatPins()
+{
+        if bShowDebug
+            debug(`snsLog '* Stopped' 10)
+'}
+
+PUB enableDebug(bEnable)
+'' Turn on/off file internal debug messaging (bEnable = T/F where T means show debug messages from this object)
+    bShowDebug := bEnable
+    if bShowDebug
+        debug("VL53: DBG ON")
+    else
+        debug("VL53: DBG Off")
+
+PUB enableIODebug(bEnable)
+'' Turn on/off file-internal I/O debug messaging (bEnable = T/F where T means show debug messages from this object)
+    bShowIODebug := bEnable
+    if bShowIODebug
+        debug("VL53: I/O DBG ON")
+    else
+        debug("VL53: I/O DBG Off")
+
+PUB enableTestingDebug(bEnable)
+'' Turn on/off file-internal I/O debug messaging (bEnable = T/F where T means show debug messages from this object)
+    bShowTestingDebug := bEnable
+    if bShowTestingDebug
+        debug("VL53: Test DBG ON")
+    else
+        debug("VL53: Test DBG Off")
+
+PUB enableMyIOToo() | pScl, pSda, pnInt, pRst, pLpn, pPwren  ' whoa pInt collides with internal var?!
+'' Allow new cog to do I/O's too
+    'debug("VL53: I/O PINs Setup new COG")
+    if bPinsSetUp
+        pScl    :=  pin_scl    ' copy pins to pasm acccesible location
+        pSda    :=  pin_sda
+        pnInt   :=  pin_int
+        pRst    :=  pin_rst
+        pLpn    :=  pin_lpn
+        pPwren  :=  pin_pwren
+
+        org
+        dirh    pScl    ' set to output
+        dirh    pSda
+        dirh    pRst
+        dirh    pLpn
+        dirh    pPwren
+        dirl    pnInt    ' set to input
+        end
+
+CON ' --- VL53L5CX PUBLIC interface ---
+CON ' --- PUBLIC Device Control ---
+
+PUB isAlive() : eDvcStatus, bIsAlive | device_id, revision_id, bStatusNotOK, bTempStatusNotOK
+'' Returns {bIsAlive} when {eDvcStatus} == VL53L5CX_STATUS_OK
+''  {bIsAlive} contains T/F (where T means the device was found on the i2c bus)
+'' Alternatively returns {eDvcStatus}:
+''   VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+    eDvcStatus := VL53L5CX_STATUS_OK
+    bIsAlive := FALSE
+
+    bStatusNotOK := writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)               ' |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bTempStatusNotOK, device_id := readByte(VL53L5CX_REG_DVC_ID)                           ' |= RdByte(&(p_dev->platform), 0, &device_id)
+    bStatusNotOK |= bTempStatusNotOK
+    bTempStatusNotOK, revision_id := readByte(VL53L5CX_REG_REV_ID)                         ' |= RdByte(&(p_dev->platform), 1, &revision_id)
+    bStatusNotOK |= bTempStatusNotOK
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)                  ' |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+        debug("VL53: chip detect failure!")
+    else
+        if ((device_id == $F0) and (revision_id == $02))
+            bIsAlive := TRUE
+            debugWithInstanceID(@" is alive!")
+        else
+            debug("VL53: chip detect: BAD ID from chip!")
+
+PUB setI2CAddress(i2cAddress) : eDvcStatus | bStatusNotOK
+'' Reconfigure device to respond to new i2c device address
+''  Returns VL53L5CX_STATUS_OK if the sensor's address was correctly changed or VL53L5CX_STATUS_ERROR otherwise.
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    bStatusNotOK := writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)    ' |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_DVC_ADDR, i2cAddress >> 1 & $ff)     ' |= WrByte(&(p_dev->platform), 0x4, (uint8_t)(i2c_address >> 1))
+
+    if not bStatusNotOK ' if status IS ok!
+        dvcI2CAddr := i2cAddress
+
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)       ' |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+    if eDvcStatus == VL53L5CX_STATUS_OK
+        waitus(5)   ' put gap in LA display
+        idDevice()
+        if dvcI2CAddr == DVC_NOT_FOUND
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+        else
+            debug("VL53 #", udec_(instanceID), " addr: ", uhex_(dvcI2CAddr))
+
+PUB getI2CAddress() : nDvcI2CAddr
+'' Return the current i2c device address (or DVC_NOT_FOUND if no device found on i2c bus)
+    nDvcI2CAddr := dvcI2CAddr
+
+CON ' --- PUBLIC Device Configuration ---
+
+PUB setRangingFrequencyHz(newFrequency8) : eDvcStatus | bStatusNotOK, rngMin, rngMax, BYTE deviceValue
+'' Configure sensor for a new ranging frequency in Hz {newFrequency8}
+''  NOTE1: legal range in Hz varies by resolution: [4x4: 1-60 Hz, 8x8: 1-15Hz]
+''  NOTE2: must be called after setRangingMode()
+'' Returns VL53L5CX_STATUS_OK if the sensor's sampling frequency was changed.
+'' Alternatively returns {eDvcStatus}:
+''   VL53L5CX_STATUS_INVALID_PARAM - then curr resolution is yet set or
+''     Hz value if out of range for resolution
+''   VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+    debug("VL53 #", udec_(instanceID), " Set Ranging Freq ", udec_(newFrequency8), " Hz")
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    rngMin := 1
+    ' set limmits based on select resolution
+    case requestedResolution
+        VL53L5CX_RESOLUTION_4X4:
+            rngMax := 60
+        VL53L5CX_RESOLUTION_8X8:
+            rngMax := 15
+        other:
+            eDvcStatus := VL53L5CX_STATUS_INVALID_PARAM
+            debug("VL53: ERROR: setRangingFrequency() bad curr resolution")
+
+    ' set limmits based on select resolution
+    if not (newFrequency8 >= rngMin and newFrequency8 <= rngMax)
+            eDvcStatus := VL53L5CX_STATUS_INVALID_PARAM
+            debug("VL53: ERROR: setRangingFrequency() bad curr resolution")
+
+    if eDvcStatus <> VL53L5CX_STATUS_INVALID_PARAM
+        deviceValue := newFrequency8 & $FF
+        ' status |= vl53l5cx_dci_replace_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_FREQ_HZ, 4, (uint8_t *)&frequency_hz, 1, 0x01);
+        bStatusNotOK := dciReplaceData(@dciWorkBuffer, VL53L5CX_DCI_FREQ_HZ, 4, @deviceValue, 1, $01)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB getRangingFrequencyHz() : eDvcStatus, frequencyHz8 | bStatusNotOK
+'' Returns the current ranging frequency {frequencyHz8} in Hz when {eDvcStatus} == VL53L5CX_STATUS_OK
+''  Ranging frequency corresponds to the time between each measurement.
+'' Alternatively returns {eDvcStatus}:
+''   VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+    debug("VL53: Get Ranging Freq Hz")
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    'status |= vl53l5cx_dci_read_data(p_dev, (uint8_t *)p_dev->temp_buffer, VL53L5CX_DCI_FREQ_HZ, 4)
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_FREQ_HZ, 4)
+    frequencyHz8 := BYTE[@dciWorkBuffer][1]     ' *p_frequency_hz = p_dev->temp_buffer[0x01];
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB setRangingMode(eRangingMode) : eDvcStatus | single_range, bStatusNotOK
+'' Configure sensor ranging mode: [VL53L5CX_RANG_MODE_CONTINUOUS or VL53L5CX_RANG_MODE_AUTONOMOUS]
+''  Returns {eDvcStatus} of VL53L5CX_STATUS_OK if the sensor's ranging mode was changed.
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_INVALID_PARAM if not one of two expected values
+''  VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+    single_range := 0
+
+    ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_RANGING_MODE, 8)
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_RANGING_MODE, 8)
+
+    case eRangingMode
+        VL53L5CX_RANG_MODE_CONTINUOUS:
+            BYTE[@dciWorkBuffer][1] := 1
+            BYTE[@dciWorkBuffer][3] := 3
+            single_range := 0
+
+        VL53L5CX_RANG_MODE_AUTONOMOUS:
+            BYTE[@dciWorkBuffer][1] := 3
+            BYTE[@dciWorkBuffer][3] := 2
+            single_range := 1
+
+        other:
+            eDvcStatus := VL53L5CX_STATUS_INVALID_PARAM
+
+    ' if request is valid, configure our device
+    if eDvcStatus <> VL53L5CX_STATUS_INVALID_PARAM
+        ' status |= vl53l5cx_dci_write_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_RANGING_MODE, (uint16_t)8)
+        bStatusNotOK |= dciWriteData(@dciWorkBuffer, VL53L5CX_DCI_RANGING_MODE, 8)
+        ' status |= vl53l5cx_dci_write_data(p_dev, (uint8_t *)&single_range, VL53L5CX_DCI_SINGLE_RANGE, (uint16_t)sizeof(single_range))
+        bStatusNotOK |= dciWriteData(@single_range, VL53L5CX_DCI_SINGLE_RANGE, 4)
+
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+
+
+PUB getRangingMode() : eDvcStatus, eRangingMode | bStatusNotOK
+'' Return the sensors' current ranging mode when {eDvcStatus} is VL53L5CX_STATUS_OK
+''   {eRangingMode} will be set to [VL53L5CX_RANG_MODE_CONTINUOUS or VL53L5CX_RANG_MODE_AUTONOMOUS]
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    debug("VL53: Get Ranging Mode")
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_RANGING_MODE, 8)
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_RANGING_MODE, 8)
+
+    if (BYTE[@dciWorkBuffer][1] == 1)           ' if (p_dev->temp_buffer[0x01] == (uint8_t)0x1)
+        eRangingMode := VL53L5CX_RANG_MODE_CONTINUOUS
+    else
+        eRangingMode := VL53L5CX_RANG_MODE_AUTONOMOUS
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB setResolution(eResolution) : eDvcStatus | bStatusNotOK
+'' Set the sensors' resolution to [VL53L5CX_RESOLUTION_4X4, or VL53L5CX_RESOLUTION_8X8]
+''  Returns {eDvcStatus} of VL53L5CX_STATUS_OK if the sensor's ranging resolution was changed
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_INVALID_PARAM if not one of two expected values
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+    bStatusNotOK := 0                   ' initially, we are OK
+
+    debug("VL53: Setresolution")
+
+    case (eResolution)
+        VL53L5CX_RESOLUTION_4X4:
+            ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+            bStatusNotOK |= dciReadData(@dciWorkBuffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+            BYTE[@dciWorkBuffer][$04] := 64                    ' p_dev->temp_buffer[0x04] = 64
+            BYTE[@dciWorkBuffer][$06] := 64                    ' p_dev->temp_buffer[0x06] = 64
+            BYTE[@dciWorkBuffer][$09] := 4                     ' p_dev->temp_buffer[0x09] = 4
+            ' status |= vl53l5cx_dci_write_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+            bStatusNotOK |= dciWriteData(@dciWorkBuffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+
+            ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+            bStatusNotOK |= dciReadData(@dciWorkBuffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+            BYTE[@dciWorkBuffer][$00] := 4                     ' p_dev->temp_buffer[0x00] = 4
+            BYTE[@dciWorkBuffer][$01] := 4                     ' p_dev->temp_buffer[0x01] = 4
+            BYTE[@dciWorkBuffer][$04] := 8                     ' p_dev->temp_buffer[0x04] = 8
+            BYTE[@dciWorkBuffer][$05] := 8                     ' p_dev->temp_buffer[0x05] = 8
+            ' status |= vl53l5cx_dci_write_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+            bStatusNotOK |= dciWriteData(@dciWorkBuffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+
+        VL53L5CX_RESOLUTION_8X8:
+            ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+            bStatusNotOK |= dciReadData(@dciWorkBuffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+            BYTE[@dciWorkBuffer][$04] := 16                    ' p_dev->temp_buffer[0x04] = 16
+            BYTE[@dciWorkBuffer][$06] := 16                    ' p_dev->temp_buffer[0x06] = 16
+            BYTE[@dciWorkBuffer][$09] := 1                     ' p_dev->temp_buffer[0x09] = 1
+            ' status |= vl53l5cx_dci_write_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+            bStatusNotOK |= dciWriteData(@dciWorkBuffer, VL53L5CX_DCI_DSS_CONFIG, 16)
+
+            ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+            bStatusNotOK |= dciReadData(@dciWorkBuffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+            BYTE[@dciWorkBuffer][$00] := 8                     ' p_dev->temp_buffer[0x00] = 8
+            BYTE[@dciWorkBuffer][$01] := 8                     ' p_dev->temp_buffer[0x01] = 8
+            BYTE[@dciWorkBuffer][$04] := 4                     ' p_dev->temp_buffer[0x04] = 4
+            BYTE[@dciWorkBuffer][$05] := 4                     ' p_dev->temp_buffer[0x05] = 4
+            ' status |= vl53l5cx_dci_write_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+            bStatusNotOK |= dciWriteData(@dciWorkBuffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+
+        other:
+            eDvcStatus := VL53L5CX_STATUS_INVALID_PARAM
+
+    if eDvcStatus <> VL53L5CX_STATUS_INVALID_PARAM
+        requestedResolution := eResolution
+        ' status |= _vl53l5cx_send_offset_data(p_dev, eResolution)
+        bStatusNotOK |= sendOffsetData(eResolution)
+        ' status |= _vl53l5cx_send_xtalk_data(p_dev, eResolution)
+        bStatusNotOK |= sendXtalkData(eResolution)
+
+        ' don't let _STATUS_INVALID_PARAM be overridden
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB getResolution() : eDvcStatus, eResolution | bStatusNotOK
+'' Return the sensors' currently configured ranging resolution when {eDvcStatus} is VL53L5CX_STATUS_OK
+''  {nResolution8} will be set to [VL53L5CX_RESOLUTION_4X4, or VL53L5CX_RESOLUTION_8X8]
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_BAD_DATA if an unexpected value was read from the sensor
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    ' status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_ZONE_CONFIG, 8)
+
+    eResolution := BYTE[@dciWorkBuffer][0] * BYTE[@dciWorkBuffer][1] '  p_dev->temp_buffer[0x00] * p_dev->temp_buffer[0x01]
+
+    if eResolution <> VL53L5CX_RESOLUTION_4X4 and eResolution <> VL53L5CX_RESOLUTION_8X8
+        debug("VL53: ERROR: getResolution() bad value from dvc! ", udec(eResolution))
+        eDvcStatus := VL53L5CX_STATUS_BAD_DATA
+
+    if bStatusNotOK and eDvcStatus == VL53L5CX_STATUS_OK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+    if eDvcStatus == VL53L5CX_STATUS_OK
+        debug("VL53 #", udec_(instanceID), " Get Resolution = ", udec(eResolution))
+    else
+        debugWithInstanceID(@" Get Resolution FAIL")
+
+PRI debugWithInstanceID(pMessage)
+    debug("VL53 #", udec_(instanceID), zstr_(pMessage))
+
+PUB setPowerMode(ePowerMode) : eDvcStatus | bStatusNotOK, bTempStatusNotOK, eCurrPowerMode
+'' Set the sensors' power-mode to [VL53L5CX_POWER_MODE_SLEEP, or VL53L5CX_POWER_MODE_WAKEUP]
+'' Returns {eDvcStatus} of VL53L5CX_STATUS_OK if the sensor's power-mode was changed
+''   Set the sensor in Low Power mode, for example if the sensor is not used during a long time.
+''   The value VL53L5CX_POWER_MODE_SLEEP can be used to enable the low power mode.
+''   To restart the sensor, use the value VL53L5CX_POWER_MODE_WAKEUP.
+''   NOTE: Please ensure that the device is not streaming before calling the function.
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_INVALID_PARAM if not one of two expected values
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    ' status |= vl53l5cx_get_power_mode(p_dev, &current_power_mode)
+    bStatusNotOK, eCurrPowerMode := getPowerMode()
+    if (ePowerMode <> eCurrPowerMode)
+        debug("VL53: Set Power Mode")
+        case ePowerMode
+            VL53L5CX_POWER_MODE_WAKEUP:
+                bStatusNotOK := writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)    'status |= WrByte(&(p_dev->platform), 0x7FFF, 0x00)
+                bStatusNotOK |= writeByte($0009, $04)                                       ' status |= WrByte(&(p_dev->platform), 0x09, 0x04)
+                    bStatusNotOK |= pollForAnswer(1, 0, VL53L5CX_REG_GO2_STATUS0, $01, $01) ' status |= _vl53l5cx_poll_for_answer(p_dev, 1, 0, 0x06, 0x01, 1)
+
+            VL53L5CX_POWER_MODE_SLEEP:
+                bStatusNotOK := writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)    'status |= WrByte(&(p_dev->platform), 0x7FFF, 0x00)
+                bStatusNotOK |= writeByte($0009, $02)                                       ' status |= WrByte(&(p_dev->platform), 0x09, 0x02)
+                    bStatusNotOK |= pollForAnswer(1, 0, VL53L5CX_REG_GO2_STATUS0, $01, $00) ' status |= _vl53l5cx_poll_for_answer(p_dev, 1, 0, 0x06, 0x01, 0)
+
+            other:
+                eDvcStatus := VL53L5CX_STATUS_INVALID_PARAM
+
+        if eDvcStatus == VL53L5CX_STATUS_OK and not bStatusNotOK ' (yeah, double negative is real!)
+            bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)       'status |= WrByte(&(p_dev->platform), 0x7FFF, 0x02)
+
+        if eDvcStatus <> VL53L5CX_STATUS_INVALID_PARAM and bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB getPowerMode() : eDvcStatus, ePowerMode  | bStatusNotOK, bTempStatusNotOK, dvcPwrVal
+'' Return the sensors' current power-mode when {eDvcStatus} is VL53L5CX_STATUS_OK
+''   {ePowerMode} will be set to [VL53L5CX_POWER_MODE_WAKEUP or VL53L5CX_POWER_MODE_SLEEP]
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+    debug("VL53: Get Power Mode")
+
+    bStatusNotOK := writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)    ' status |= WrByte(&(p_dev->platform), 0x7FFF, 0x00)
+    bTempStatusNotOK, dvcPwrVal := readByte($0009)                    ' status |= RdByte(&(p_dev->platform), 0x009, &tmp)
+    bStatusNotOK |= bTempStatusNotOK
+
+    case dvcPwrVal
+        $04:
+            ePowerMode := VL53L5CX_POWER_MODE_WAKEUP
+        $02:
+            ePowerMode := VL53L5CX_POWER_MODE_SLEEP
+        other:
+            ePowerMode := 0
+            status := VL53L5CX_STATUS_ERROR
+
+    if eDvcStatus == VL53L5CX_STATUS_OK and not bStatusNotOK
+        bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)       ' status |= WrByte(&(p_dev->platform), 0x7FFF, 0x02);
+
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB setIntegrationTime(timeMsec32) : eDvcStatus | bStatusNotOK, integrationUs
+'' Sets a new integration time in ms. [2ms <= {timeMsec32} <= 1000ms]
+''  Returns {eDvcStatus} of VL53L5CX_STATUS_OK if the sensor's integration time was changed
+'' NOTE: Integration time must be computed to be lower than the ranging period, for
+''  the selected resolution.
+'' NOTE: that this setting has NO IMPACT on ranging mode continous.
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_INVALID_PARAM if not within the supported range
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    debug("VL53: Set Integration Time (ms)")
+    eDvcStatus := VL53L5CX_STATUS_OK
+    integrationUs := timeMsec32 * 1000
+
+    ' Integration time must be between 2ms and 1000ms
+    if ((timeMsec32 < 2) || (timeMsec32 > 1000))
+        eDvcStatus |= VL53L5CX_STATUS_INVALID_PARAM
+    else
+        ' status |= vl53l5cx_dci_replace_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_INT_TIME, 20, (uint8_t *)&integration, 4, 0x00)
+        bStatusNotOK := dciReplaceData(@dciWorkBuffer, VL53L5CX_DCI_INT_TIME, 20, @integrationUs, 4, 0)
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB getIntegrationTime() : eDvcStatus, timeMsec32 | bStatusNotOK
+'' Return the sensors' currently configured integration time (in ms) when {eDvcStatus} is VL53L5CX_STATUS_OK
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    debug("VL53: Get Integration Time (ms)")
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    ' status |= vl53l5cx_dci_read_data(p_dev, (uint8_t *)p_dev->temp_buffer, VL53L5CX_DCI_INT_TIME, 20);
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_INT_TIME, 20)
+
+    '(void)memcpy(p_time_ms, &(p_dev->temp_buffer[0x0]), 4);
+    '*p_time_ms /= (uint32_t)1000;
+    timeMsec32 := LONG[@dciWorkBuffer][0] / 1000
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB setSharpenerPercent(percent8) : eDvcStatus | bStatusNotOK, BYTE dvcSharpener
+'' Sets a new sharpener value in percent. [0 <= {percent8} <= 99] - where 0 means disabled
+''  Returns {eDvcStatus} of VL53L5CX_STATUS_OK if the sensor's sharpener value was changed
+''  Change to blur more or less zones depending upon the application
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_INVALID_PARAM if not within the supported range
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+    if (percent8 < 0 or percent8 > 99)
+        status |= VL53L5CX_STATUS_INVALID_PARAM
+    else
+        'sharpener = (sharpener_percent * (uint8_t)255) / (uint8_t)100;
+        dvcSharpener := (percent8 * 255) / 100
+        'status |= vl53l5cx_dci_replace_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_SHARPENER, 16, (uint8_t *)&sharpener, 1, 0xD);
+        bStatusNotOK := dciReplaceData(@dciWorkBuffer, VL53L5CX_DCI_SHARPENER, 16, @dvcSharpener, 1, $0d)
+
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB getSharpenerPercent() : eDvcStatus, percent8 | bStatusNotOK
+'' Return the sensors' currently configured sharpener (in percent) when {eDvcStatus} is VL53L5CX_STATUS_OK
+''  value returned {percent8} will be [0 (disabled) to 99] percent.
+''   NOTE: Sharpener can be changed to blur more or less zones depending of the application.
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    debug("VL53: Get Sharpener %")
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    'status |= vl53l5cx_dci_read_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_SHARPENER, 16)
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_SHARPENER, 16)
+
+    '*p_sharpener_percent = (p_dev->temp_buffer[0xD] * (uint8_t)100) / (uint8_t)255
+    percent8 := (BYTE[@dciWorkBuffer][$0d] * 100) / 255
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+PUB setTargetOrder(eTargetOrder) : eDvcStatus | bStatusNotOK, BYTE dvcTargetOrder
+'' Set the sensors' target order to [VL53L5CX_TGT_ORDER_CLOSEST, or VL53L5CX_TGT_ORDER_STRONGEST]
+'' Returns {eDvcStatus} of VL53L5CX_STATUS_OK if the sensor's target order was changed
+''   NOTE: By default, the sensor is configured with the strongest output.
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_INVALID_PARAM if not within the supported range
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    if ((eTargetOrder == VL53L5CX_TGT_ORDER_CLOSEST) || (eTargetOrder == VL53L5CX_TGT_ORDER_STRONGEST))
+        dvcTargetOrder := eTargetOrder & $ff
+        ' status |= vl53l5cx_dci_replace_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_TARGET_ORDER, 4, (uint8_t *)&target_order, 1, 0x0)
+        bStatusNotOK := dciReplaceData(@dciWorkBuffer, VL53L5CX_DCI_TGT_ORDER, 4, @dvcTargetOrder, 1, 0)
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+    else
+        eDvcStatus |= VL53L5CX_STATUS_INVALID_PARAM
+
+
+PUB getTargetOrder() : eDvcStatus, eTargetOrder | bStatusNotOK
+'' Return the sensors' currently configured target order when {eDvcStatus} is VL53L5CX_STATUS_OK
+''   {eTargetOrder} will be set to [VL53L5CX_TGT_ORDER_CLOSEST or VL53L5CX_TGT_ORDER_STRONGEST]
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_BAD_DATA if an unexpected value was read from the sensor
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    debug("VL53: Get Target Order")
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    ' status |= vl53l5cx_dci_read_data(p_dev, (uint8_t *)p_dev->temp_buffer, VL53L5CX_DCI_TARGET_ORDER, 4);
+    bStatusNotOK := dciReadData(@dciWorkBuffer, VL53L5CX_DCI_TGT_ORDER, 4)
+    ' *p_target_order = (uint8_t)p_dev->temp_buffer[0x0];
+    eTargetOrder := BYTE[@dciWorkBuffer][0]
+
+    if eTargetOrder <> VL53L5CX_TGT_ORDER_CLOSEST and eTargetOrder <> VL53L5CX_TGT_ORDER_STRONGEST
+        debug("VL53: ERROR: getTargetOrder() bad value from device! ", udec(eTargetOrder))
+        eDvcStatus := VL53L5CX_STATUS_BAD_DATA
+
+    if bStatusNotOK and eDvcStatus == VL53L5CX_STATUS_OK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+CON ' --- PUBLIC Device TOF Sensing Control ---
+
+PUB startRanging() : eDvcStatus | nResolution8, i, bhType, bhIdx, bhSize, logicalValue32b, bStatusNotOK, idx, pktLen, address16, readSize
+'' Starts a ranging session.
+''   NOTE: When the sensor is streaming, user cannot change settings 'on-the-fly'.
+''  Returns VL53L5CX_STATUS_OK if the start ranging command was acknowledged by the sensor or VL53L5CX_STATUS_ERROR otherwise.
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    'debugWithInstanceID(@" Start Ranging")
+
+        'init output enables
+    long[@output_bh_enable][0] := $00000007  ' Enable mandatory output (meta and common data)
+    long[@output_bh_enable][1] := $00000000
+    long[@output_bh_enable][2] := $00000000
+    long[@output_bh_enable][3] := $C0000000
+
+    ' Enable/Disable selected outputs in the DAT { start ranging data } section
+    '  (set bit for each section enabled)
+    if enaAmbientPerSpad
+        LONG[@output_bh_enable][0] += 8
+
+    if enaNbSpadsEnabled
+        LONG[@output_bh_enable][0] += 16
+
+    if enaNbTargetDetected
+        LONG[@output_bh_enable][0] += 32
+
+    if enaSignalPerSpad
+        LONG[@output_bh_enable][0] += 64
+
+    if enaRangeSigmaMM
+        LONG[@output_bh_enable][0] += 128
+
+    if enaDistanceMM
+        LONG[@output_bh_enable][0] += 256
+
+    if enaReflectancePrcnt
+        LONG[@output_bh_enable][0] += 512
+
+    if enaTargetStatus
+        LONG[@output_bh_enable][0] += 1024
+
+    if enaMotionIndicator
+        LONG[@output_bh_enable][0] += 2048
+
+    ' load output[] buffer data
+    LONG[@output][0] := startBh
+    LONG[@output][1] := metaDataBh
+    LONG[@output][2] := commonDataBh
+    LONG[@output][3] := ambientRateBh
+    LONG[@output][4] := spadCountBh
+    LONG[@output][5] := nbTargetDetectedBh
+    LONG[@output][6] := signalRateBh
+    LONG[@output][7] := rangeSigmaMMBh
+    LONG[@output][8] := distanceBh
+    LONG[@output][9] := reflectanceBh
+    LONG[@output][10] := targetStatusBh
+    LONG[@output][11] := motionDetectBh
+
+    'debug("VL53: output_bh_enable[] = ", uhex_long_array_(@output_bh_enable, 4))
+    'debug("VL53: output[] = ", uhex_long_array_(@output, 12))
+
+    eDvcStatus, nResolution8 := getResolution()     ' status |= vl53l5cx_get_resolution(p_dev, &resolution)
+    streamcount := 255                              ' p_dev->streamcount := 255 Used by vl53l5cx_check_data_ready()
+
+    ' Update data size
+    dataReadSize := 0
+    'for (i := 0 i < (uint32_t)(sizeof(output) / sizeof(uint32_t)) i++)
+    repeat i from 0 to 12 - 1     ' output_len is 48 (12 longs, 4 bytes ea.)
+        if ((output[i] == 0) || ((output_bh_enable[i / 32] & (1 << (i // 32))) == 0))
+            'debug("VL53: eval SKIP (", udec(i), ") = ", uhex_long_(LONG[@output][i]))
+            next
+
+        ' for each of the 12 longs that is (not zero, or size-bit is set) do
+        ' bh_ptr := (union Block_header *)&(output[i])    ' output[] is 12 longs
+        '
+        'debug("VL53: eval (", udec(i), ") = ", uhex_long_(LONG[@output][i]))
+        bhType, bhIdx, bhSize := longToBHValues(LONG[@output][i])
+        'debug("  --  ", uhex_word(bhIdx), udec(bhSize), uhex(bhType))
+        if (bhType >= $01) and (bhType < $0d)
+            if (bhIdx >= $54d0) and (bhIdx < ($54d0 + 960))
+                bhSize := nResolution8
+            else
+                bhSize := (nResolution8 * VL53L5CX_NB_TGT_PER_ZONE)
+            'debug("  --  NEW ", uhex_word(bhIdx), udec(bhSize), uhex(bhType))
+            LONG[@output][i] := replaceBHSizeInLong(LONG[@output][i], bhSize)
+            dataReadSize += bhType * bhSize
+        else
+            dataReadSize += bhSize
+        dataReadSize += 4
+        'debug("  --  sz ", udec(dataReadSize))
+    dataReadSize += 20
+    debug("VL53 #", udec_(instanceID), " range sz ", udec(dataReadSize))
+
+    'status |= vl53l5cx_dci_write_data(p_dev, (uint8_t *)&(output), VL53L5CX_DCI_OUTPUT_LIST, (uint16_t)sizeof(output))
+    bStatusNotOK := dciWriteData(@output, VL53L5CX_DCI_OUTPUT_LIST, output_len)
+
+    'init our header
+    LONG[@header_config][0] := dataReadSize
+    LONG[@header_config][1] := i + 1
+
+    'status |= vl53l5cx_dci_write_data(p_dev, (uint8_t *)&(header_config), VL53L5CX_DCI_OUTPUT_CONFIG, (uint16_t)sizeof(header_config))
+    bStatusNotOK := dciWriteData(@header_config, VL53L5CX_DCI_OUTPUT_CONFIG, header_config_len)
+
+    'status |= vl53l5cx_dci_write_data(p_dev, (uint8_t *)&(output_bh_enable), VL53L5CX_DCI_OUTPUT_ENABLES, (uint16_t)sizeof(output_bh_enable))
+    bStatusNotOK := dciWriteData(@output_bh_enable, VL53L5CX_DCI_OUTPUT_ENABLES, output_bh_en_len)
+
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)      ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+
+    ' Start xshut bypass (interrupt mode)
+    bStatusNotOK |= writeByte($0009, $05)                                           ' status |= WrByte(&(p_dev->platform), 0x09, 0x05)
+
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)         ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+
+    ' Start ranging session
+    bytefill(@srtRngCmd, 0, DCI_SRTRNG_CMD_LEN_IN_BYTES)        ' uint8_t cmd[] := {0x00, 0x03, 0x00, 0x00}
+    BYTE[@srtRngCmd][1] := $03
+    'status |= WrMulti(&(p_dev->platform), VL53L5CX_UI_CMD_END - (uint16_t)(4 - 1), (uint8_t *)cmd, sizeof(cmd))
+    pktLen := DCI_SRTRNG_CMD_LEN_IN_BYTES
+    address16 := VL53L5CX_UI_CMD_END - pktLen + 1
+    bStatusNotOK |= writeBytes(address16, @srtRngCmd, pktLen)
+    'status |= _vl53l5cx_poll_for_answer(p_dev, 4, 1, VL53L5CX_UI_CMD_STATUS, 0xff, 0x03)
+    bStatusNotOK |= pollForAnswer(4, 1, VL53L5CX_UI_CMD_STATUS, $FF, $03)
+
+    '  Read ui range data content and compare if data size is the correct one
+    ' TEMPORARY code something seen in v1.4 handler
+    ' status |= vl53l5cx_dci_read_data(p_dev, (uint8_t*)p_dev->temp_buffer, 0x5440, 12);
+    bStatusNotOK := dciReadData(@dciWorkBuffer, $5440, 12)
+    '(void)memcpy(&tmp, &(p_dev->temp_buffer[0x8]), sizeof(tmp))
+    readSize := LONG[@BYTE[@dciWorkBuffer][8]]
+    if readSize <> dataReadSize
+    ' FIXME: these read back the same but compare badly!!! WHY!!!
+        ' DEBUG says they are the same value!!!!
+        debug("VL53 #", udec_(instanceID), " readback check fail ", udec(readSize), "/", uhex_(readSize), " vs. ", udec(dataReadSize), "/", uhex_(dataReadSize))
+        'eDvcStatus |= VL53L5CX_STATUS_ERROR
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+    else
+        bSensorActive := TRUE
+
+    if eDvcStatus == VL53L5CX_STATUS_OK
+        debug("VL53 #", udec_(instanceID), " Ranging Started")
+    else
+        debug("VL53 #", udec_(instanceID), " ERROR Ranging Didn't Start")
+
+PUB stopRanging() : eDvcStatus | tmp, timeout, auto_stop_flag, bTempStatusNotOK, bStatusNotOK
+'' Stops the ranging session. It must be used when the sensor is streaming, after calling startRanging().
+''  Returns VL53L5CX_STATUS_OK if the stop ranging command was acknowledged by the sensor or VL53L5CX_STATUS_ERROR otherwise.
+    eDvcStatus := VL53L5CX_STATUS_OK
+    bSensorActive := FALSE
+
+    'debug("VL53: Stop Ranging")
+
+    ' status |= RdMulti(&(p_dev->platform), 0x2FFC, (uint8_t *)&auto_stop_flag, 4)
+    bStatusNotOK := readBytes($2FFC, @auto_stop_flag, 4)
+    'debug("CHP: ", uhex_long(auto_stop_flag), uhex_byte_array(@auto_stop_flag, 4))
+
+    if (longDeviceValue(auto_stop_flag) <> $4FF)
+        bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)            ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+
+        ' Provoke MCU stop
+        bStatusNotOK |= writeByte($0015, $16)                                               ' status |= WrByte(&(p_dev->platform), 0x15, 0x16)
+        bStatusNotOK |= writeByte($0014, $01)                                               ' status |= WrByte(&(p_dev->platform), 0x14, 0x01)
+
+        ' Poll for G02 status 0 MCU stop
+        timeout := 0
+        repeat
+            bTempStatusNotOK, tmp := readByte(VL53L5CX_REG_GO2_STATUS0)                     ' status |= RdByte(&(p_dev->platform), 0x6, &tmp)
+            bStatusNotOK |= bTempStatusNotOK
+            waitms(10)
+            timeout++
+            ' Timeout reached after 5 seconds
+            if timeout > 500
+                eDvcStatus := VL53L5CX_STATUS_ERROR
+                quit
+        while ((tmp & $80) == $00)
+
+    ' if not timed out...
+    if eDvcStatus <> VL53L5CX_STATUS_ERROR
+        bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)            ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+
+        ' Undo MCU stop
+        bStatusNotOK |= writeByte($0014, $00)                                               ' status |= WrByte(&(p_dev->platform), 0x14, 0x00)
+        bStatusNotOK |= writeByte($0015, $00)                                               ' status |= WrByte(&(p_dev->platform), 0x15, 0x00)
+
+        ' Stop xshut bypass
+        bStatusNotOK |= writeByte($0009, $04)                                               ' status |= WrByte(&(p_dev->platform), 0x09, 0x04)
+
+        bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)               ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+    if eDvcStatus == VL53L5CX_STATUS_OK
+        debug("VL53 #", udec_(instanceID), " Ranging Stopped")
+    else
+        debug("VL53 #", udec_(instanceID), " ERROR Ranging Didn't Stop")
+
+PUB isRanging() : bSensorRanging
+'' Return T/F where T means the sensor is actively ranging
+    bSensorRanging := bSensorActive
+
+PUB didInterrupt() : bPinState | rawPin
+'' Return interpreted value of Interrupt pin where 1 = TRUE (did interrupt), 0 = FALSE (did not)
+    rawPin := pinr(pin_int)
+    bPinState := (rawPin == 0) ? false : true
+    'if bShowDebug
+        'debug(`snsLog ' * isIntPending() PinRaw=`(rawPin), state=`(bPinState)' 10)
+
+CON ' --- PUBLIC Routines accessing TOF Ranging Data ---
+
+PUB isDataReadyToUnload() : eDvcStatus, bDataReady | bStatusNotOK, tempBffr, dataReady, WORD go2StatusBytes
+'' Check sensor by polling i2c. Return T/F (where T means data is ready) when {eDvcStatus} is VL53L5CX_STATUS_OK
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    ' status |= RdMulti(&(p_dev->platform), 0x0, p_dev->temp_buffer, 4)
+    bStatusNotOK := readBytes($0000, @tempBffr, 4)
+
+    'if ((p_dev->temp_buffer[0] != p_dev->streamcount) &&
+    '   (p_dev->temp_buffer[0] != (uint8_t)255) &&
+    '   (p_dev->temp_buffer[1] == (uint8_t)0x5) &&
+    '   ((p_dev->temp_buffer[2] & (uint8_t)0x5) == (uint8_t)0x5) &&
+    '    ((p_dev->temp_buffer[3] & (uint8_t)0x10) == (uint8_t)0x10))
+
+    '     $FE        $04        $CA        $81
+    ' b1111_1110 b0000_0100 b1100_1010 b1000_0001    ' sigh
+
+    '     $00        $05        $C5        $81
+    ' b0000_0000 b0000_0101 b1100_0101 b1000_0001    ' sigh
+    ' bxxxx_xxxx b0000_0101 bxxxx_x1x1 bxxx1_xxxx    ' expected
+
+    if BYTE[@tempBffr][0] <> streamcount and BYTE[@tempBffr][0] <> 255 and BYTE[@tempBffr][1] == 5 and ((BYTE[@tempBffr][2] & $05 ==  $05) and (BYTE[@tempBffr][3] & $10 ==  $10))
+        '*p_isReady = (uint8_t)1
+        dataReady := 1
+        'p_dev->streamcount = p_dev->temp_buffer[0]
+        streamcount := BYTE[@tempBffr][0]
+    else
+        '*p_isReady = 0
+        dataReady := 0
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+    bDataReady := (dataReady <> 0 and eDvcStatus == VL53L5CX_STATUS_OK) ? TRUE : FALSE
+
+    debug("VL53: data check bRdy=", uhex_byte_(dataReady), ", eDvcSta=", udec_byte_(eDvcStatus), ", strmCt=", uhex_byte_(streamcount), uhex_byte_array(@tempBffr, 4))
+
+    {
+        if bDataReady
+            debug("VL53: LOCK - good data!")
+            REPEAT
+    '}
+CON
+
+    DEBUG_INDEX_MAX = 50000
+
+PUB unloadRangingData() : eDvcStatus, bDataReturned | bStatusNotOK, bfrByteIdx, entryIdx, entrySubIdx, pData, msize, bhType, bhIdx, bhSize, nextBHUnion
+'' Retrieve ranging data from the sensor. Return T/F (where T means data was retrieved) when {eDvcStatus} is VL53L5CX_STATUS_OK
+'' Alternatively returns {eDvcStatus}:
+''  VL53L5CX_STATUS_ERROR if there was an i2c i/o error
+    'debugWithInstanceID(@" Unload Ranging Data")
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+    'union Block_header *bh_ptr
+
+    ' status |= RdMulti(&(p_dev->platform), 0x0, p_dev->temp_buffer, p_dev->data_read_size)
+    bStatusNotOK := readBytes($0000, @tempBuffer, dataReadSize)
+
+    ' NOTE: tempBuffer now contains data block with interspersed Control Headers (long of "union Block_header *" format)
+    ' the first couple blocks are meta data and common data which are ignored
+    ' the ending block has BHSize of ZERO, BHIndex of ZERO with BHType of $0E
+
+    ' msize for each entry is calculated to be the length of data within each entry so we just interpret header, move data,
+    '  interpret next header, move its data, etc. until we find the ending block header.
+
+    ' stream count is an incrementing value tracked by the sensor, each read this should increment (wrapping at end of range)
+    'p_dev->streamcount = p_dev->temp_buffer[0]
+    streamcount := BYTE[@tempBuffer][0]
+
+    'SwapBuffer(p_dev->temp_buffer, (uint16_t)p_dev->data_read_size)
+    longReplaceDeviceValues(@tempBuffer, dataReadSize)
+
+    'debug("  -- header +1 long: ", uhex_long_array(@tempBuffer, 5))
+
+    ' Start conversion at position 16 to avoid headers
+    'for (i = (uint32_t)16 i < (uint32_t)p_dev->data_read_size i += (uint32_t)4) [i is now bfrByteIdx]
+    bfrByteIdx := 16
+    repeat
+        'bh_ptr = (union Block_header *)&(p_dev->temp_buffer[i])
+        nextBHUnion := LONG[@BYTE[@tempBuffer][bfrByteIdx]]
+        'if bfrByteIdx < DEBUG_INDEX_MAX
+        '    debug("  -- ", udec(bfrByteIdx), uhex_long(nextBHUnion))
+        bhType, bhIdx, bhSize := longToBHValues(nextBHUnion)
+        'if ((bh_ptr->type > (uint32_t)0x1) && (bh_ptr->type < (uint32_t)0xd))
+        if bhType > $01 and bhType < $0d
+            'msize = bh_ptr->type * bh_ptr->size
+            msize := bhType * bhSize
+        else
+            ' msize = bh_ptr->size
+            msize := bhSize
+
+        'if bfrByteIdx < DEBUG_INDEX_MAX
+        '    debug(" -- ", uhex_word(bhIdx), udec(bhType), udec(bhSize), " -> ", udec(msize))
+        '    if bhIdx < $5000 and not bhType == $0E
+        '        debugStopWithMessage(@"ERROR!  bad: BH_index", bhIdx)
+
+        if bhType == $0E and bhIdx == $0000
+        '    debug(" ----  good table end ----")
+            quit
+        ' switch (bh_ptr->idx)
+        pData := @BYTE[@tempBuffer][bfrByteIdx + 4]     ' pointer to data bytes returned from sensor
+        case bhIdx
+            ambientRateIdx:
+                if enaAmbientPerSpad
+                    ' (void)memcpy(p_results->ambient_per_spad, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    longmoveDeviceValues(@rsltAmbientPerSpad32, pData, msize / 4)
+
+            spadCountIdx:
+                if enaNbSpadsEnabled
+                    '(void)memcpy(p_results->nb_spads_enabled, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    longmoveDeviceValues(@rsltNbrSpadsEnabled32, pData, msize / 4)
+
+            nbTargetDetectIdx:
+                if enaNbTargetDetected
+                    '(void)memcpy(p_results->nb_target_detected, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    'debug("  -- Bmdv: ", uhex_byte_array(pData, 4))
+                    bytemove(@rsltNbTgtDetected8, pData, msize)
+
+            signalRateIdx:
+                if enaSignalPerSpad
+                    '(void)memcpy(p_results->signal_per_spad, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    longmoveDeviceValues(@rsltSignalPerSpad32, pData, msize / 4)
+
+            rangeSigmaMMIdx:
+                if enaRangeSigmaMM
+                    '(void)memcpy(p_results->range_sigma_mm, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    wordmoveDeviceValues(@rsltRangeSigmaMM16, pData, msize / 2)
+
+            distanceIdx:
+                if enaDistanceMM
+                    '(void)memcpy(p_results->distance_mm, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    wordmoveDeviceValues(@rsltDistanceMM16, pData, msize / 2)
+
+            reflectancePrcntIdx:
+                if enaReflectancePrcnt
+                    '(void)memcpy(p_results->reflectance, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    'debug("  -- Bmdv: ", uhex_byte_array(pData, 4))
+                    bytemove(@rsltReflectance8, pData, msize)
+
+            targetStatusIdx:
+                if enaTargetStatus
+                    '(void)memcpy(p_results->target_status, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    'debug("  -- Bmdv: ", uhex_byte_array(pData, 4))
+                    bytemove(@rsltTargetStatus8, pData, msize)
+
+            motionDetectIdx:
+                if enaMotionIndicator
+                    '(void)memcpy(&p_results->motion_indicator, &(p_dev->temp_buffer[i + (uint32_t)4]), msize)
+                    'debug("  -- Bmdv: ", uhex_byte_array(pData, 4))
+                    bytemove(@rsltMotionIndicatorStruct, pData, msize)
+                    ' this left a bunch of values in device order let's do fixup
+                    {
+                        rsltMotionIndicatorStruct
+                            LONG    global_indicator_1
+                            LONG    global_indicator_2
+                            BYTE    status
+                            BYTE    nb_of_detected_aggregates
+                            BYTE    nb_of_aggregates
+                            BYTE    spare
+                            LONG    rsltMotionValue32[32]
+                    }
+                    ' just rewrite the byte orders in place...
+                    global_indicator_1 := longDeviceValue(global_indicator_1)
+                    global_indicator_2 := longDeviceValue(global_indicator_2)
+                    repeat entryIdx from 0 to VL53L5CX_NBR_MOTION_ENTRIES - 1
+                        LONG[@rsltMotionValue32][entryIdx] := longDeviceValue(LONG[@rsltMotionValue32][entryIdx])
+            VL53L5CX_METADATA_IDX:
+            VL53L5CX_COMMONDATA_IDX:
+                ' we ignore these header-only indexes
+            other:
+                ' Huh? We don't know what this one is! Report it!
+                debug("  -- ERROR Unkown ", uhex_word(bhIdx))
+
+        bfrByteIdx += msize + 4
+
+        if msize == 0
+           debugStopWithMessage(@"ERROR! bad msize", msize)
+
+    while bfrByteIdx < dataReadSize - 1
+
+    ' #ifndef VL53L5CX_USE_RAW_FORMAT
+    ' if NOT raw
+    '    Convert data into their real format
+    if VL53L5CX_USE_RAW_FORMAT == FALSE
+
+        if enaAmbientPerSpad
+            'for (i = 0 i < (uint32_t)VL53L5CX_RESOLUTION_8X8 i++)
+            repeat entryIdx from 0 to VL53L5CX_RESOLUTION_8X8 - 1
+                ' p_results->ambient_per_spad[i] /= (uint32_t)2048
+                LONG[@rsltAmbientPerSpad32][entryIdx] /= 2048
+
+        'for (i = 0 i < (uint32_t)(VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TARGET_PER_ZONE) i++)
+        repeat entryIdx from 0 to (VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1
+            if enaDistanceMM
+                ' p_results->distance_mm[i] /= 4
+                WORD[@rsltDistanceMM16][entryIdx] /= 4
+                'if (p_results->distance_mm[i] < 0)
+                if WORD[@rsltDistanceMM16][entryIdx] < 4
+                    ' p_results->distance_mm[i] = 0
+                    WORD[@rsltDistanceMM16][entryIdx] := 0
+
+                if enaRangeSigmaMM
+                    'p_results->range_sigma_mm[i] /= (uint16_t)128
+                    WORD[@rsltRangeSigmaMM16][entryIdx] /= 128
+
+                if enaSignalPerSpad
+                    ' p_results->signal_per_spad[i] /= (uint32_t)2048
+                    LONG[@rsltSignalPerSpad32][entryIdx] /= 2048
+
+        ' Set target status to 255 if no target is detected for this zone
+        if enaNbTargetDetected
+            'for (i = 0 i < (uint32_t)VL53L5CX_RESOLUTION_8X8 i++)
+            repeat entryIdx from 0 to VL53L5CX_RESOLUTION_8X8 - 1
+                ' if (p_results->nb_target_detected[i] == (uint8_t)0)
+                if BYTE[@rsltNbTgtDetected8][entryIdx] == 0
+                    ' for (j = 0 j < (uint32_t)VL53L5CX_NB_TARGET_PER_ZONE j++)
+                    repeat entrySubIdx from 0 to VL53L5CX_NB_TGT_PER_ZONE - 1
+                        if enaTargetStatus
+                            'p_results->target_status[((uint32_t)VL53L5CX_NB_TARGET_PER_ZONE * (uint32_t)i) + j] = (uint8_t)255
+                            BYTE[@rsltTargetStatus8][(VL53L5CX_NB_TGT_PER_ZONE * entryIdx) + entrySubIdx] := 255
+
+        if enaMotionIndicator
+            ' for (i = 0 i < (uint32_t)32 i++)
+            repeat entryIdx from 0 to VL53L5CX_NBR_MOTION_ENTRIES - 1
+                'p_results->motion_indicator.motion[i] /= (uint32_t)65535
+                LONG[@rsltMotionValue32][entryIdx] /= 65535
+
+    'debug("VL53: rsltAmbientPerSpad32[] ", uhex_long_array(@rsltAmbientPerSpad32, 64))
+    'debug("VL53: rsltNbTgtDetected8[] ", uhex_byte_array(@rsltNbTgtDetected8, 64))
+    'waitms(2)
+    'debug("VL53: rsltNbrSpadsEnabled32[] ", uhex_long_array(@rsltNbrSpadsEnabled32, 64))
+    'debug("VL53: rsltSignalPerSpad32[] ", uhex_long_array(@rsltSignalPerSpad32, 64))
+    'waitms(2)
+    'debug("VL53: rsltRangeSigmaMM16[] ", uhex_word_array(@rsltRangeSigmaMM16, 64))
+    'debug("VL53: rsltDistanceMM16[] ", uhex_word_array(@rsltDistanceMM16, 64))
+    'waitms(2)
+    'debug("VL53: rsltReflectance8[] ", uhex_byte_array(@rsltReflectance8, 64))
+    'debug("VL53: rsltTargetStatus8[] ", uhex_byte_array(@rsltTargetStatus8, 64))
+    'reportOnData()
+
+    if not bStatusNotOK ' is status ok?! (yeah, double negative!)
+        bDataReturned := TRUE
+
+PRI debugStopWithMessage(pmesg, valInError)
+    debug("   ---> STOP: ", zstr_(pmesg), ": (", uhex_word_(valInError), ")")
+    waitms(10)
+    repeat ' hold on ERROR
+
+{
+'   UNCOMMENT this block to turn on diagnostic reporting of data arrival
+PRI reportOnData()
+    debug(" ")
+    reportEmptyLongArray(@rsltAmbientPerSpad32, VL53L5CX_RESOLUTION_8X8, @"AmbientPerSpad")
+    reportEmptyByteArray(@rsltNbTgtDetected8, VL53L5CX_RESOLUTION_8X8, @"NbTgtDetected")
+    reportEmptyLongArray(@rsltNbrSpadsEnabled32, VL53L5CX_RESOLUTION_8X8, @"NbrSpadsEnabled")
+    reportEmptyLongArray(@rsltSignalPerSpad32, (VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE), @"SignalPerSpad")
+    reportEmptyWordArray(@rsltRangeSigmaMM16, VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE, @"RangeSigmaMM")
+    reportEmptyWordArray(@rsltDistanceMM16, VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE, @"DistanceMM")
+    reportEmptyByteArray(@rsltReflectance8, VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE, @"Reflectance")
+    reportEmptyByteArray(@rsltTargetStatus8, VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE, @"TargetStatus")
+    debug(" ")
+
+PRI reportEmptyByteArray(pBytes, nCount, pArrayId) | result, idx, pStatus
+    result := BYTE[pBytes][0]
+    if result == 0
+        repeat idx from 1 to nCount - 1
+            result |= BYTE[pBytes][idx]
+            if result <> 0
+                quit
+    reportFindings(result, pArrayId)
+
+PRI reportEmptyWordArray(pWords, nCount, pArrayId) | result, idx
+    result := WORD[pWords][0]
+    if result == 0
+        repeat idx from 1 to nCount - 1
+            result |= WORD[pWords][idx]
+            if result <> 0
+                quit
+    reportFindings(result, pArrayId)
+
+PRI reportEmptyLongArray(pLongs, nCount, pArrayId) | result, idx
+    result := LONG[pLongs][0]
+    if result == 0
+        repeat idx from 1 to nCount - 1
+            result |= LONG[pLongs][idx]
+            if result <> 0
+                quit
+    reportFindings(result, pArrayId)
+'}
+
+PRI reportFindings(result, pArrayId) | pStatus
+    pStatus := (result <> 0) ? @"has Data" : @"{is empty}"
+    debug("VL53: ", zstr_(pArrayId), " ", zstr_(pStatus))
+
+PUB targetBufferPointers() : pTgtStatus8, pDistanceMM16
+'' Return pointers to internal data arrays
+''  that is: @DistanceMM[0] (WORD[]) and @TargetStatus[0] (BYTE[])
+    pTgtStatus8 := @rsltTargetStatus8
+    pDistanceMM16 := @rsltDistanceMM16
+
+PUB sampleDistanceMM(index) : nValue16 | validIndex
+'' Return DistanceMM[{index}] value
+'' NOTE {index} will be coerced into legal value
+''  but if so debug message will be emitted
+    validIndex := 0 #> index <# (VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1
+    if validIndex <> index
+        debug("sampleDistanceMM(", udec(index), ": index out of range 0-", udec((VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1))
+    nValue16 := rsltDistanceMM16[validIndex]
+
+PUB sampleReflectance(index) : nValue8 | validIndex
+'' Return Reflectance[{index}] value
+'' NOTE {index} will be coerced into legal value
+''  but if so debug message will be emitted
+    validIndex := 0 #> index <# (VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1
+    if validIndex <> index
+        debug("sampleReflectance(", udec(index), ": index out of range 0-", udec((VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1))
+    nValue8 := rsltReflectance8[validIndex]
+
+PUB sampleTargetStatus(index) : nValue8 | validIndex
+'' Return TargetStatus[{index}] value
+'' NOTE {index} will be coerced into legal value
+''  but if so debug message will be emitted
+    validIndex := 0 #> index <# (VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1
+    if validIndex <> index
+        debug("sampleTargetStatus(", udec(index), ": index out of range 0-", udec((VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1))
+    nValue8 := rsltTargetStatus8[validIndex]
+
+PUB sampleNbTgtDetected(index) : nValue8 | validIndex
+'' Return Reflectance[{index}] value
+'' NOTE {index} will be coerced into legal value
+''  but if so debug message will be emitted
+    validIndex := 0 #> index <# VL53L5CX_RESOLUTION_8X8 - 1
+    if validIndex <> index
+        debug("sampleNbTgtDetected(", udec(index), ": index out of range 0-", udec((VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE) - 1))
+    nValue8 := rsltNbTgtDetected8[validIndex]
+
+
+CON '  --- Tunable DRIVER CONSTANTs ---
+
+'  VL53L5CX_NB_TGT_PER_ZONE is used to define the number of targets per zone sent
+'   through I2C. This value can be changed by user, in order to tune I2C
+'   transaction, and also the total memory size (a lower number of targets per
+'   zone means a lower RAM). The value must be between 1 and 4.
+'  (driver tunable)
+    VL53L5CX_NB_TGT_PER_ZONE     = 1
+    ' Inner internal number of targets.
+    ' NOTE if you set VL53L5CX_NB_TGT_PER_ZONE > 1 then
+    '   set VL53L5CX_FW_NBTAR_RANGING = VL53L5CX_NB_TGT_PER_ZONE
+    '   if VL53L5CX_NB_TGT_PER_ZONE == 1 then VL53L5CX_FW_NBTAR_RANGING = 2
+    VL53L5CX_FW_NBTAR_RANGING   = 2
+
+
+' VL53L5CX_USE_RAW_FORMAT can be used to avoid data conversion upon sensor unload.
+'  By default there is a conversion during unload from the sensor. Setting this to TRUE
+'  prevents this conversion, allowing use of the firmware format instead of converted format.
+'  The firmware format allows increased precision.
+'  (driver tunable)
+    VL53L5CX_USE_RAW_FORMAT = FALSE
+
+
+DAT '   --- Tunable DRIVER DATA ---
+
+' ----------------------------------------------------------------------------------
+' The bytes below (T/F) are used to configure the sensor output. User can
+'   set to FALSE if he wants to disable selected output, in order to reduce
+'   I2C access.  These are enabled by default.
+
+    ' driver tunables: (T/F where F is disabled)
+    enaAmbientPerSpad      BYTE    TRUE    ' false = VL53L5CX_DISABLE_AMBIENT_PER_SPAD
+    enaNbSpadsEnabled      BYTE    TRUE    ' false = VL53L5CX_DISABLE_NB_SPADS_ENABLED
+    enaNbTargetDetected    BYTE    TRUE    ' false = VL53L5CX_DISABLE_NB_TARGET_DETECTED
+    enaSignalPerSpad       BYTE    TRUE    ' false = VL53L5CX_DISABLE_SIGNAL_PER_SPAD
+    enaRangeSigmaMM        BYTE    TRUE    ' false = VL53L5CX_DISABLE_RANGE_SIGMA_MM
+    enaDistanceMM          BYTE    TRUE    ' false = VL53L5CX_DISABLE_DISTANCE_MM
+    enaReflectancePrcnt    BYTE    TRUE    ' false = VL53L5CX_DISABLE_REFLECTANCE_PERCENT
+    enaTargetStatus        BYTE    TRUE    ' false = VL53L5CX_DISABLE_TARGET_STATUS
+    enaMotionIndicator     BYTE    TRUE    ' false = VL53L5CX_DISABLE_MOTION_INDICATOR
+' ----------------------------------------------------------------------------------
+
+CON '  --- PRIVATE: DO NOT ADJUST BELOW HERE ---
+
+CON { PRIVATE (Utility) Methods }
+
+PRI setupPins(pinINT, pinRST, pinSDA, pinSCL, pinLPN, pinPWREN) : ok
+    ' Configure pin numbers if not already
+    '   return T/F where T means SUCCESS and F means FAILED - bad basepin value
+
+    ' NOTE: this is for a dedicated single sensor (not part of our 4-sensor array)
+
+    ok := true
+
+    pin_scl := pinSCL
+    pin_sda := pinSDA
+    pin_int := pinINT
+
+    ' I2C_RST: I2C interface reset pin, active high. Toggle this pin from 0 to 1, then back to 0 to reset the I2C
+    pin_rst := pinRST
+
+    ' LPn: Comms enable. Drive this pin to logic 0 to disable the I2C comms when the device is in
+    '  LP mode. Drive this pin to logic 1 to enable I2C comms in LP mode. Typically used when
+    '  it is required to change the I2C adress in multidevice systems.
+    pin_lpn := pinLPN
+      '
+    pin_pwren := pinPWREN
+
+    ' float our inputs
+    floatPins()
+
+    ' enable 5v to 3.3v power supply
+    pinh(pin_pwren)             ' assert PWR enable
+
+    ' condition the chip drive
+    pinh(pin_lpn)               ' assert LPn (enable device selection)
+
+    resetI2C()
+
+PRI resetI2C()
+' reset the I2C interface controller of the vl53l5cx
+    pinl(pin_rst)               ' De-assert reset
+    waitus(10)
+    pinh(pin_rst)               ' Assert reset  (reset the I2C I/F)
+    waitus(10)
+    pinl(pin_rst)               ' De-assert reset
+    waitus(10)
+
+PRI resetSensor()
+' reset vl53l5cx sensor
+    pinl(pin_lpn)               ' De-assert device enable
+    waitus(10)
+    pinh(pin_lpn)               ' Assert device enable
+    waitus(10)
+
+PRI floatPins()
+    ' pre-condition the click I/O pins
+    pinf(pin_rst)    ' de-assert
+    pinf(pin_int)    ' de-assert
+    pinf(pin_scl)    ' de-assert
+    pinf(pin_sda)    ' de-assert
+    pinf(pin_lpn)    ' de-assert
+    pinf(pin_pwren)  ' de-assert
+
+PRI idDevice() : eDevice | bFoundAddr, possI2Caddr, dvcDiff
+    ' Identify the address our device is at on the i2c bus
+
+    ' if we are running as single TOF chip then condition lines
+    if pin_pwren <> -1 and pin_lpn <> -1
+        floatPins()
+        ' enable 5v to 3.3v power supply
+        pinh(pin_pwren)             ' assert pwr enable
+        waitus(2)
+
+        ' condition the chip drive
+        pinh(pin_lpn)               ' assert LPn (enable device selection)
+
+    bFoundAddr := false
+    ' scan a range of 10 addresses ($52, $54, etc.)
+    possI2Caddr := VL53L5CX_I2C_ADDR_0
+    repeat 10
+        if(i2c_bus.present((possI2Caddr & $fe | I2C_MODE_WRITE)))
+            bFoundAddr := true
+            quit
+        possI2Caddr += 2
+    i2c_bus.stop()
+
+    dvcI2CAddr := DVC_NOT_FOUND
+    eDevice := DVC_NOT_FOUND
+
+    dvcDiff := (possI2Caddr - VL53L5CX_I2C_ADDR_0) >> 1
+    if(bFoundAddr)
+        eDevice := DVC_ADDR0 + dvcDiff
+        dvcI2CAddr := possI2Caddr
+
+    if (bFoundAddr)
+        if bShowDebug
+            debug("VL53: idDvc() found Addr: ", uhex_byte_(dvcI2CAddr))
+    else
+        debug("VL53:  idDvc() NOT found")
+
+
+PRI initDriver()
+' initialize our variables based upon number targets / zone compile value
+' this is our new driver RUN-TIME configuration (was compile-time in example drivers)
+
+    ' initialize lengths which reside in VAR space (since they can't be done at compile time)
+    output_len                  := @output_end - @output                   ' number of output[] bytes
+    output_bh_en_len            := @output_bh_en_end - @output_bh_enable   ' number of output_bh_enable[] bytes
+    header_config_len           := @header_config_end - @header_config     ' number of header_config[] bytes
+
+    if VL53L5CX_NB_TGT_PER_ZONE == 1
+        ' 32-bit values
+        startBh                 := VL53L5CX_T1_START_BH
+        metaDataBh              := VL53L5CX_T1_METADATA_BH
+        commonDataBh            := VL53L5CX_T1_COMMONDATA_BH
+        ambientRateBh           := VL53L5CX_T1_AMBIENT_RATE_BH
+        spadCountBh             := VL53L5CX_T1_SPAD_COUNT_BH
+        nbTargetDetectedBh      := VL53L5CX_T1_NB_TGT_DTEKT_BH
+        signalRateBh            := VL53L5CX_T1_SIGNAL_RATE_BH
+        rangeSigmaMMBh          := VL53L5CX_T1_RNG_SIGMA_MM_BH
+        distanceBh              := VL53L5CX_T1_DISTANCE_BH
+        reflectanceBh           := VL53L5CX_T1_RFLCTNC_BH
+        targetStatusBh          := VL53L5CX_T1_TGT_STATUS_BH
+        motionDetectBh          := VL53L5CX_T1_MOTN_DTEKT_BH
+        ' 16-bit values
+        metaDataIdx             := VL53L5CX_T1_METADATA_IDX
+        spadCountIdx            := VL53L5CX_T1_SPAD_COUNT_IDX
+        ambientRateIdx          := VL53L5CX_T1_AMBIENT_RATE_IDX
+        nbTargetDetectIdx       := VL53L5CX_T1_NB_TGT_DTEKT_IDX
+        signalRateIdx           := VL53L5CX_T1_SIGNAL_RATE_IDX
+        rangeSigmaMMIdx         := VL53L5CX_T1_RNG_SIGMA_MM_IDX
+        distanceIdx             := VL53L5CX_T1_DISTANCE_IDX
+        reflectancePrcntIdx     := VL53L5CX_T1_RFLCTNC_EST_PC_IDX
+        targetStatusIdx         := VL53L5CX_T1_TGT_STATUS_IDX
+        motionDetectIdx         := VL53L5CX_T1_MOTN_DETEC_IDX
+
+    else    ' (else) if Target Per Zone <> 1
+        ' 32-bit values
+        startBh                 := VL53L5CX_START_BH
+        metaDataBh              := VL53L5CX_METADATA_BH
+        commonDataBh            := VL53L5CX_COMMONDATA_BH
+        ambientRateBh           := VL53L5CX_AMBIENT_RATE_BH
+        spadCountBh             := VL53L5CX_SPAD_COUNT_BH
+        nbTargetDetectedBh      := VL53L5CX_NB_TGT_DTEKT_BH
+        signalRateBh            := VL53L5CX_SIGNAL_RATE_BH
+        rangeSigmaMMBh          := VL53L5CX_RNG_SIGMA_MM_BH
+        distanceBh              := VL53L5CX_DISTANCE_BH
+        reflectanceBh           := VL53L5CX_RFLCTNC_BH
+        targetStatusBh          := VL53L5CX_TGT_STATUS_BH
+        motionDetectBh          := VL53L5CX_MOTN_DTEKT_BH
+        ' 16-bit values
+        metaDataIdx             := VL53L5CX_METADATA_IDX
+        spadCountIdx            := VL53L5CX_SPAD_COUNT_IDX
+        ambientRateIdx          := VL53L5CX_AMBIENT_RATE_IDX
+        nbTargetDetectIdx       := VL53L5CX_NB_TGT_DTEKT_IDX
+        signalRateIdx           := VL53L5CX_SIGNAL_RATE_IDX
+        rangeSigmaMMIdx         := VL53L5CX_RNG_SIGMA_MM_IDX
+        distanceIdx             := VL53L5CX_DISTANCE_IDX
+        reflectancePrcntIdx     := VL53L5CX_RFLCTNC_EST_PC_IDX
+        targetStatusIdx         := VL53L5CX_TGT_STATUS_IDX
+        motionDetectIdx         := VL53L5CX_MOTN_DETEC_IDX
+
+    if enaAmbientPerSpad
+        ambSize	:= 256 + 4
+
+    if enaNbSpadsEnabled
+        spadSize := 256 + 4
+
+    if enaNbTargetDetected
+        ntarSize := 64 + 4
+
+    if enaSignalPerSpad
+        spsSize := ((256 * VL53L5CX_NB_TGT_PER_ZONE) + 4)
+
+    if enaRangeSigmaMM
+        sigrSize := ((128 * VL53L5CX_NB_TGT_PER_ZONE) + 4)
+
+    if enaDistanceMM
+        distSize := ((128 * VL53L5CX_NB_TGT_PER_ZONE) + 4)
+
+    if enaReflectancePrcnt
+        rflestSize := ((64 *VL53L5CX_NB_TGT_PER_ZONE) + 4)
+
+    if enaTargetStatus
+        staSize := ((64  *VL53L5CX_NB_TGT_PER_ZONE) + 4)
+
+    if enaMotionIndicator
+        motSize := 140  + 4
+
+    ' maxResultsSize indicates the maximum size used by output through I2C.
+    '   (1440 w/VL53L5CX_NB_TGT_PER_ZONE = 1, +640 for ea. incre of VL53L5CX_NB_TGT_PER_ZONE)
+    '  Value 40 corresponds to headers + meta-data + common-data and 8 corresponds to the footer.
+    maxResultsSize := (40 + ambSize + spadSize + ntarSize + spsSize + sigrSize + distSize + rflestSize + staSize + motSize + 8)
+
+    if maxResultsSize > VL53L5CX_TEMP_BUFFER_SIZE
+        debug("initDriver() ERROR need buffer: ", udec_(maxResultsSize), ", which exceeds allocated: ", udec_(VL53L5CX_TEMP_BUFFER_SIZE))
+
+
+PRI vl53l5cxInit() : eDvcStatus | pipe_ctrl, single_range, bStatusNotOK, bTempStatusNotOK, BYTE tmp
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    debug("VL53: Init")
+
+
+    single_range := 1
+
+    ' SW reboot sequence
+
+    bStatusNotOK := writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= writeByte($0009, 4)                                        ' status |= WrByte(&(p_dev->platform), 0x0009, 0x04)
+    bStatusNotOK |= writeByte($000F, $40)                                      ' status |= WrByte(&(p_dev->platform), 0x000F, 0x40)
+    bStatusNotOK |= writeByte($000A, 3)                                        ' status |= WrByte(&(p_dev->platform), 0x000A, 0x03)
+    bTempStatusNotOK, tmp := readByte(VL53L5CX_REG_CONTROL)                    ' status |= RdByte(&(p_dev->platform), 0x7fff, &tmp)
+    bStatusNotOK |= bTempStatusNotOK
+    bStatusNotOK |= writeByte($000C, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x000C, 0x01)
+    bStatusNotOK |= writeByte($0101, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x0101, 0x00)
+    bStatusNotOK |= writeByte($0102, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x0102, 0x00)
+    bStatusNotOK |= writeByte($010A, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x010A, 0x01)
+    bStatusNotOK |= writeByte($4002, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x4002, 0x01)
+    bStatusNotOK |= writeByte($4002, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x4002, 0x00)
+    bStatusNotOK |= writeByte($010A, 3)                                        ' status |= WrByte(&(p_dev->platform), 0x010A, 0x03)
+    bStatusNotOK |= writeByte($0103, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x0103, 0x01)
+    bStatusNotOK |= writeByte($000C, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x000C, 0x00)
+    bStatusNotOK |= writeByte($000F, $43)                                      ' status |= WrByte(&(p_dev->platform), 0x000F, 0x43)
+    waitms(1)                                                                  ' status |= WaitMs(&(p_dev->platform), 1)
+
+    bStatusNotOK |= writeByte($000F, $40)                                      ' status |= WrByte(&(p_dev->platform), 0x000F, 0x40)
+    bStatusNotOK |= writeByte($000A, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x000A, 0x01)
+    waitms(100)                                                                ' status |= WaitMs(&(p_dev->platform), 100)
+
+    ' Wait for sensor booted (several ms required to get sensor ready )
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= pollForAnswer(1, 0, VL53L5CX_REG_GO2_STATUS0, $FF, 1)      ' status |= _vl53l5cx_poll_for_answer(p_dev, 1, 0, 0x06, 0xff, 1)
+
+    bStatusNotOK |= writeByte($000E, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x000E, 0x01)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)      ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+
+    ' Enable FW access
+    bStatusNotOK |= writeByte($0003, $0D)                                      ' status |= WrByte(&(p_dev->platform), 0x03, 0x0D)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FW)       ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x01)
+    bStatusNotOK |= pollForAnswer(1, 0, $0021, $10, $10)                       ' status |= _vl53l5cx_poll_for_answer(p_dev, 1, 0, 0x21, 0x10, 0x10)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+
+    ' Enable host access to GO1
+    bStatusNotOK |= writeByte($0C, 1)                                          ' status |= WrByte(&(p_dev->platform), 0x0C, 0x01)
+
+    ' Power ON status
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= writeByte($101, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x101, 0x00)
+    bStatusNotOK |= writeByte($102, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x102, 0x00)
+    bStatusNotOK |= writeByte($10A, 1)                                         ' status |= WrByte(&(p_dev->platform), 0x010A, 0x01)
+    bStatusNotOK |= writeByte($4002, 1)                                        ' status |= WrByte(&(p_dev->platform), 0x4002, 0x01)
+    bStatusNotOK |= writeByte($4002, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x4002, 0x00)
+    bStatusNotOK |= writeByte($10A, 3)                                         ' status |= WrByte(&(p_dev->platform), 0x010A, 0x03)
+    bStatusNotOK |= writeByte($103, 1)                                         ' status |= WrByte(&(p_dev->platform), 0x103, 0x01)
+    bStatusNotOK |= writeByte($400F, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x400F, 0x00)
+    bStatusNotOK |= writeByte($21A, $43)                                       ' status |= WrByte(&(p_dev->platform), 0x21A, 0x43)
+    bStatusNotOK |= writeByte($21A, 3)                                         ' status |= WrByte(&(p_dev->platform), 0x21A, 0x03)
+    bStatusNotOK |= writeByte($21A, 1)                                         ' status |= WrByte(&(p_dev->platform), 0x21A, 0x01)
+    bStatusNotOK |= writeByte($21A, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x21A, 0x00)
+    bStatusNotOK |= writeByte($219, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x219, 0x00)
+    bStatusNotOK |= writeByte($21B, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x21B, 0x00)
+
+    ' Wake up MCU
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= writeByte($000C, 0)                                        ' status |= WrByte(&(p_dev->platform), 0x000C, 0x00)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FW)       ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x01)
+    bStatusNotOK |= writeByte($0020, 7)                                        ' status |= WrByte(&(p_dev->platform), 0x0020, 0x07)
+    bStatusNotOK |= writeByte($0020, 6)                                        ' status |= WrByte(&(p_dev->platform), 0x0020, 0x06)
+    ' Download FW into VL53L5
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FWBANK0)  ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x09)
+    bStatusNotOK |= writeBytes(0, @BYTE[@VL53L5CX_FIRMWARE][$00000], $8000)    ' status |= WrMulti(&(p_dev->platform), 0, (uint8_t *) &VL53L5CX_FIRMWARE[0], 0x8000)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FWBANK1)  ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x0a)
+    bStatusNotOK |= writeBytes(0, @BYTE[@VL53L5CX_FIRMWARE][$08000], $8000)    ' status |= WrMulti(&(p_dev->platform), 0, (uint8_t *) & VL53L5CX_FIRMWARE[0x8000], 0x8000)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FWBANK2)  ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x0b)
+    bStatusNotOK |= writeBytes(0, @BYTE[@VL53L5CX_FIRMWARE][$10000], $5000)    ' status |= WrMulti(&(p_dev->platform), 0, (uint8_t *) & VL53L5CX_FIRMWARE[0x10000], 0x5000)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FW)       ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x01)
+
+    ' Check if FW correctly downloaded
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)      ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+    bStatusNotOK |= writeByte($03, $0D)                                        ' status |= WrByte(&(p_dev->platform), 0x03, 0x0D)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_FW)       ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x01)
+    bStatusNotOK |= pollForAnswer(1, 0, $0021, $10, $10)                         ' status |= _vl53l5cx_poll_for_answer(p_dev, 1, 0, 0x21, 0x10, 0x10) //0x10
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= writeByte($0C, 1)                                          ' status |= WrByte(&(p_dev->platform), 0x0C, 0x01)
+
+    ' Reset MCU and wait boot
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_CONFIG)   ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x00)
+    bStatusNotOK |= writeByte($114, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x114, 0x00)
+    bStatusNotOK |= writeByte($115, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x115, 0x00)
+    bStatusNotOK |= writeByte($116, $42)                                       ' status |= WrByte(&(p_dev->platform), 0x116, 0x42)
+    bStatusNotOK |= writeByte($117, 0)                                         ' status |= WrByte(&(p_dev->platform), 0x117, 0x00)
+    bStatusNotOK |= writeByte($0B, 0)                                          ' status |= WrByte(&(p_dev->platform), 0x0B, 0x00)
+    bStatusNotOK |= writeByte($0C, 0)                                          ' status |= WrByte(&(p_dev->platform), 0x0C, 0x00)
+    bStatusNotOK |= writeByte($0B, 1)                                          ' status |= WrByte(&(p_dev->platform), 0x0B, 0x01)
+    bStatusNotOK |= pollForAnswer(1, 0, VL53L5CX_REG_GO2_STATUS0, $ff, $00)    ' status |= _vl53l5cx_poll_for_answer(p_dev, 1, 0, 0x06, 0xff, 0x00)
+    bStatusNotOK |= writeByte(VL53L5CX_REG_CONTROL, VL53L5CX_VAL_CTL_RUN)      ' status |= WrByte(&(p_dev->platform), 0x7fff, 0x02)
+
+    'debug(">>  CHECK: VL53L5CX_GET_NVM_CMD_LEN = ", udec_(VL53L5CX_GET_NVM_CMD_LEN))
+    'debug(">>  CHECK: VL53L5CX_DEFAULT_CONFIG_LEN = ", udec_(VL53L5CX_DEFAULT_CONFIG_LEN))
+    'debug(">>  CHECK: VL53L5CX_DEFAULT_XTALK_LEN = ", udec_(VL53L5CX_DEFAULT_XTALK_LEN))
+    'debug(">>  CHECK: VL53L5CX_FIRMWARE_LEN = ", udec_(VL53L5CX_FIRMWARE_LEN))
+
+    ' Get offset NVM data and store them into the offset buffer
+
+    'status |= WrMulti(&(p_dev->platform), 0x2fd8, (uint8_t *)VL53L5CX_GET_NVM_CMD, sizeof(VL53L5CX_GET_NVM_CMD))
+    bStatusNotOK |= writeBytes($2fd8, @VL53L5CX_GET_NVM_CMD, VL53L5CX_GET_NVM_CMD_LEN)
+
+    'status |= _vl53l5cx_poll_for_answer(p_dev, 4, 0, VL53L5CX_UI_CMD_STATUS, 0xff, 2)
+    bStatusNotOK |= pollForAnswer(4, 0, VL53L5CX_UI_CMD_STATUS, $FF, $02)
+
+    ' status |= RdMulti(&(p_dev->platform), VL53L5CX_UI_CMD_START, p_dev->temp_buffer, VL53L5CX_NVM_DATA_SIZE)
+    bStatusNotOK |= readBytes(VL53L5CX_UI_CMD_START, @tempBuffer, VL53L5CX_NVM_DATA_SIZE)
+
+    ' (void)memcpy(p_dev->offset_data, p_dev->temp_buffer, VL53L5CX_OFFSET_BUFFER_SIZE)
+    ' preserve master copy of Offset 8x8 buffer
+    BYTEMOVE(@ofsMasterBuffer, @tempBuffer, VL53L5CX_OFFSET_BUFFER_SIZE)
+    ' 	status |= _vl53l5cx_send_offset_data(p_dev, VL53L5CX_RESOLUTION_4X4);
+    bStatusNotOK |= sendOffsetData(VL53L5CX_RESOLUTION_4X4)
+
+    ' Set default Xtalk shape. Send Xtalk to sensor
+
+    ' (void)memcpy(p_dev->xtalk_data, (uint8_t *)VL53L5CX_DEFAULT_XTALK, VL53L5CX_XTALK_BUFFER_SIZE)
+    ' preserve master copy of Xtalk 8x8 buffer
+    BYTEMOVE(@xtalkMasterBuffer, @VL53L5CX_DEFAULT_XTALK, VL53L5CX_XTALK_BUFFER_SIZE)
+    ' NOTE: the following copies the default into place... -> xtalk_data buffer
+    ' status |= _vl53l5cx_send_xtalk_data(p_dev, VL53L5CX_RESOLUTION_4X4);
+    bStatusNotOK |= sendXtalkData(VL53L5CX_RESOLUTION_4X4)
+
+    ' Send default configuration to VL53L5CX firmware
+
+    ' status |= WrMulti(&(p_dev->platform), 0x2c34, (uint8_t *)VL53L5CX_DEFAULT_CONFIGURATION, sizeof(VL53L5CX_DEFAULT_CONFIGURATION))
+    bStatusNotOK |= writeBytes($2c34, @VL53L5CX_DEFAULT_CONFIGURATION, VL53L5CX_DEFAULT_CONFIG_LEN)
+
+    ' status |= _vl53l5cx_poll_for_answer(p_dev, 4, 1, VL53L5CX_UI_CMD_STATUS, 0xff, 0x03)
+    bStatusNotOK |= pollForAnswer(4, 1, VL53L5CX_UI_CMD_STATUS, $FF, $03)
+
+    ' uint8_t pipe_ctrl[] = {VL53L5CX_NB_TGT_PER_ZONE, 0x00, 0x01, 0x00}
+    BYTE [@pipe_ctrl][0] := VL53L5CX_NB_TGT_PER_ZONE
+    BYTE [@pipe_ctrl][1] := 0
+    BYTE [@pipe_ctrl][2] := 1
+    BYTE [@pipe_ctrl][3] := 0
+
+    ' status |= vl53l5cx_dci_write_data(p_dev, (uint8_t *)&pipe_ctrl, VL53L5CX_DCI_PIPE_CONTROL, (uint16_t)sizeof(pipe_ctrl))
+    bStatusNotOK := dciWriteData(@pipe_ctrl, VL53L5CX_DCI_PIPE_CONTROL, 4)
+
+    if VL53L5CX_NB_TGT_PER_ZONE <> 1
+        tmp := VL53L5CX_NB_TGT_PER_ZONE
+        ' status |= vl53l5cx_dci_replace_data(p_dev, p_dev->temp_buffer, VL53L5CX_DCI_FW_NB_TARGET, 16, (uint8_t *)&tmp, 1, 0x0C);
+        bStatusNotOK |= dciReplaceData(@dciWorkBuffer, VL53L5CX_DCI_FW_NB_TARGET, 16, @tmp, 1, $0C)
+
+    ' status |= vl53l5cx_dci_write_data(p_dev, (uint8_t *)&single_range, VL53L5CX_DCI_SINGLE_RANGE, (uint16_t)sizeof(single_range))
+    bStatusNotOK := dciWriteData(@single_range, VL53L5CX_DCI_SINGLE_RANGE, 4)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+
+PRI sendOffsetData(eResolution) : eDvcStatus | j, i, k, bStatusNotOK, idx4x4, idx8x8
+' Inner function, not available outside this file. This function is used
+'  to set the offset data gathered from NVM.
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    debug("VL53: Send OFFSET Data")
+
+    ' get copy of Offset-Buffer 8x8 image
+    BYTEMOVE(@tempBuffer, @ofsMasterBuffer, VL53L5CX_OFFSET_BUFFER_SIZE)             ' (void)memcpy(p_dev->temp_buffer, p_dev->offset_data, VL53L5CX_OFFSET_BUFFER_SIZE)
+
+    ' Data extrapolation is required for 4X4 offset
+    if eResolution == VL53L5CX_RESOLUTION_4X4
+        BYTEMOVE(@BYTE[@tempBuffer][$10], @dss4x4_ofst, 8)                        ' (void)memcpy(&(p_dev->temp_buffer[0x10]), dss4x4_ofst, sizeof(dss4x4_ofst))
+        ' convert tempBuffer from device byte-order to propeller order (buffer is known to be an array of uint32_t or LONGs)
+        longReplaceDeviceValues(@tempBuffer, VL53L5CX_OFFSET_BUFFER_SIZE)
+
+        ' extract signal grid
+        LONGMOVE(@signalGrid32, @BYTE[@tempBuffer][$03c], SIGNAL_GRID_SIZE_LONGS)  ' (void)memcpy(signal_grid, &(p_dev->temp_buffer[0x3C]), sizeof(signal_grid))
+        'debug("VL53: signalGrid32(", udec(SIGNAL_GRID_SIZE_LONGS), ") ", uhex_long_array(@signalGrid32, SIGNAL_GRID_SIZE_LONGS))
+
+        ' extract range grid
+        WORDMOVE(@rangeGrid16, @BYTE[@tempBuffer][$140], RANGE_GRID_SIZE_WORDS)   ' (void)memcpy(range_grid, &(p_dev->temp_buffer[0x140]), sizeof(range_grid))
+        'debug("VL53: rangeGrid16(", udec(RANGE_GRID_SIZE_WORDS), ") ", uhex_word_array(@rangeGrid16, RANGE_GRID_SIZE_WORDS))
+
+        ' average 2x2 values (of 8x8) into single value in (4x4)
+        repeat j from 0 to 4 - 1                                                    ' for (j = 0 j < (int8_t)4 j++)
+            repeat i from 0 to 4 - 1                                                ' for (i = 0 i < (int8_t)4 i++)
+                idx4x4 := i + (4 * j)
+                idx8x8 := (2 * i) + (16 * j)
+                {
+                    LONG[@signal_grid][i + (4 * j)] :=
+                        (LONG[@signal_grid][(2 * i) + (16 * j) + 0] +
+                        LONG[@signal_grid][(2 * i) + (16 * j) + 1] +
+                        LONG[@signal_grid][(2 * i) + (16 * j) + 8] +
+                        LONG[@signal_grid][(2 * i) + (16 * j) + 9]) / 4
+                }
+                LONG[@signalGrid32][idx4x4] := (LONG[@signalGrid32][idx8x8 + 0] + LONG[@signalGrid32][idx8x8 + 1] + LONG[@signalGrid32][idx8x8 + 8] + LONG[@signalGrid32][idx8x8 + 9]) / 4
+                {
+                    WORD[@range_grid][i + (4 * j)] :=
+                        (WORD[@range_grid][(2 * i) + (16 * j) + 0] +
+                        WORD[@range_grid][(2 * i) + (16 * j) + 1] +
+                        WORD[@range_grid][(2 * i) + (16 * j) + 8] +
+                        WORD[@range_grid][(2 * i) + (16 * j) + 9]) / 4
+                '}
+                WORD[@rangeGrid16][idx4x4] := (WORD[@rangeGrid16][idx8x8 + 0] + WORD[@rangeGrid16][idx8x8 + 1] + WORD[@rangeGrid16][idx8x8 + 8] + WORD[@rangeGrid16][idx8x8 + 9]) / 4
+
+        ' clear rangeGrid16 leaving only the new 4x4 values [0-15]
+        WORDFILL(@WORD[@rangeGrid16][16], 0, 48)                                    ' (void)memset(&range_grid[0x10], 0, (uint16_t)96)
+        ' clear signalGrid32 leaving only the new 4x4 values [0-15]
+        LONGFILL(@LONG[@signalGrid32][16], 0, 48)                                  ' (void)memset(&signal_grid[0x10], 0, (uint16_t)192)
+
+        'debug("VL53: 2 signalGrid32(", udec(SIGNAL_GRID_SIZE_LONGS), ") ", uhex_long_array(@signalGrid32, SIGNAL_GRID_SIZE_LONGS))
+        'debug("VL53: 2 rangeGrid16(", udec(RANGE_GRID_SIZE_WORDS), ") ", uhex_word_array(@rangeGrid16, RANGE_GRID_SIZE_WORDS))
+
+        ' replace signal grid
+        LONGMOVE(@BYTE[@tempBuffer][$03c], @signalGrid32, SIGNAL_GRID_SIZE_LONGS)  ' (void)memcpy(&(p_dev->temp_buffer[0x3C]), signal_grid, sizeof(signal_grid))
+        ' replace range grid
+        WORDMOVE(@BYTE[@tempBuffer][$140], @rangeGrid16, RANGE_GRID_SIZE_WORDS)   ' (void)memcpy(&(p_dev->temp_buffer[0x140]), range_grid, sizeof(range_grid))
+
+        ' convert tempBuffer back into device byte-order - NOTE: yep, this 2nd call reversed out the changes (buffer is known to be an array of uint32_t or LONGs)
+        longReplaceDeviceValues(@tempBuffer, VL53L5CX_OFFSET_BUFFER_SIZE)
+
+    ' shift buffer up 8 bytes ?! (removing first 8 bytes, leaving copy of last 8 bytes!)
+    '  FIXME: this seems broken as we are moving up 8 but our length is (max - 4) ?? this should be max - 8, right?
+    repeat k from 0 to (VL53L5CX_OFFSET_BUFFER_SIZE - 4) - 1                    ' for (k = 0 k < (VL53L5CX_OFFSET_BUFFER_SIZE - (uint16_t)4) k++)
+        BYTE[@tempBuffer][k] := BYTE[@tempBuffer][k + 8]                        ' p_dev->temp_buffer[k] = p_dev->temp_buffer[k + 8]
+
+    BYTEMOVE(@BYTE[@tempBuffer][$1e0], @footer_ofst, 8)                         ' (void)memcpy(&(p_dev->temp_buffer[0x1E0]), footer, 8)
+
+    ' status |= WrMulti(&(p_dev->platform), 0x2e18, p_dev->temp_buffer, VL53L5CX_OFFSET_BUFFER_SIZE)
+    bStatusNotOK := writeBytes($2e18, @tempBuffer, VL53L5CX_OFFSET_BUFFER_SIZE)
+
+    ' status |= _vl53l5cx_poll_for_answer(p_dev, 4, 1, VL53L5CX_UI_CMD_STATUS, 0xff, 0x03)
+    bStatusNotOK |= pollForAnswer(4, 1, VL53L5CX_UI_CMD_STATUS, $FF, $03)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+
+PRI sendXtalkData(eResolution) : eDvcStatus | j, i, bStatusNotOK, cntBytesToCopy, idx4x4, idx8x8
+' Inner function, not available outside this file. This function is used
+'   to set the Xtalk data from generic configuration, or user's calibration.
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    debug("VL53: Send XTALK Data")
+
+    ' get copy of Xtalk-Buffer 8x8 image
+    BYTEMOVE(@tempBuffer, @xtalkMasterBuffer, VL53L5CX_XTALK_BUFFER_SIZE)             ' (void)memcpy(p_dev->temp_buffer, &(p_dev->xtalk_data[0]), VL53L5CX_XTALK_BUFFER_SIZE)
+
+    ' Data extrapolation is required for 4X4 Xtalk
+    if (eResolution == VL53L5CX_RESOLUTION_4X4)
+        ' overlay new values into tempBuffer
+        BYTEMOVE(@BYTE[@tempBuffer][$008], @res4x4_xtalk, 8)                        ' (void)memcpy(&(p_dev->temp_buffer[0x8]), res4x4_xtalk, sizeof(res4x4_xtalk))
+        BYTEMOVE(@BYTE[@tempBuffer][$020], @dss4x4_xtalk, 8)                        ' (void)memcpy(&(p_dev->temp_buffer[0x020]), dss4x4_xtalk, sizeof(dss4x4_xtalk))
+
+        ' convert tempBuffer from device byte-order to propeller order (buffer is known to be an array of uint32_t's/LONG's)
+        longReplaceDeviceValues(@tempBuffer, VL53L5CX_XTALK_BUFFER_SIZE)
+
+        ' extract copy of ordered signal grid
+        LONGMOVE(@signalGrid32, @BYTE[@tempBuffer][$034], SIGNAL_GRID_SIZE_LONGS)   ' (void)memcpy(signal_grid, &(p_dev->temp_buffer[0x34]), sizeof(signal_grid))
+        'debug("VL53: signalGrid32(", udec(SIGNAL_GRID_SIZE_LONGS), ") ", uhex_long_array(@signalGrid32, SIGNAL_GRID_SIZE_LONGS))
+
+        ' average 2x2 values (of 8x8) into single value in (4x4)
+        repeat j from 0 to 4 - 1                                                    ' for (j = 0 j < (int8_t)4 j++)
+            repeat i from 0 to 4 - 1                                                ' for (i = 0 i < (int8_t)4 i++)
+                idx4x4 := i + (4 * j)
+                idx8x8 := (2 * i) + (16 * j)
+                {
+                    LONG[@signal_grid][i + (4 * j)] :=
+                    (LONG[@signal_grid][(2 * i) + (16 * j) + 0] +
+                     LONG[@signal_grid][(2 * i) + (16 * j) + 1] +
+                     LONG[@signal_grid][(2 * i) + (16 * j) + 8] +
+                     LONG[@signal_grid][(2 * i) + (16 * j) + 9]) / 4
+                '}
+                LONG[@signalGrid32][idx4x4] := (LONG[@signalGrid32][idx8x8 + 0] + LONG[@signalGrid32][idx8x8 + 1] + LONG[@signalGrid32][idx8x8 + 8] + LONG[@signalGrid32][idx8x8 + 9]) / 4
+
+        ' clear signalGrid32 leaving only the new 4x4 values [0-15]
+        LONGFILL(@LONG[@signalGrid32][16], 0, 48)                                   ' (void)memset(&signal_grid[0x10], 0, (uint16_t)192)
+
+        'debug("VL53: 2 signalGrid32(", udec(SIGNAL_GRID_SIZE_LONGS), ") ", uhex_long_array(@signalGrid32, SIGNAL_GRID_SIZE_LONGS))
+
+        ' copy updated signal grid back into temp buffer
+        LONGMOVE(@BYTE[@tempBuffer][$034], @signalGrid32, SIGNAL_GRID_SIZE_LONGS)   ' (void)memcpy(&(p_dev->temp_buffer[0x34]), signal_grid, sizeof(signal_grid))
+
+        ' convert tempBuffer back into device byte-order - NOTE: yep, this 2nd call reversed out the changes (buffer is known to be an array of uint32_t or LONGs)
+        longReplaceDeviceValues(@tempBuffer, VL53L5CX_XTALK_BUFFER_SIZE)
+
+        ' copy profile4x4_xtalk into temp buffer
+        BYTEMOVE(@BYTE[@tempBuffer][$134], @profile4x4_xtalk, 4)                    ' (void)memcpy(&(p_dev->temp_buffer[0x134]), profile4x4_xtalk, sizeof(profile4x4_xtalk))
+
+        ' clear 4 bytes within temp buffer
+        BYTEFILL(@BYTE[@tempBuffer][$078], 0, 4)                                    ' (void)memset(&(p_dev->temp_buffer[0x078]), 0, (uint32_t)4 * sizeof(uint8_t))
+
+    ' write temp buffer out to device
+    ' status |= WrMulti(&(p_dev->platform), 0x2cf8, p_dev->temp_buffer, VL53L5CX_XTALK_BUFFER_SIZE)
+    bStatusNotOK := writeBytes($2cf8, @tempBuffer, VL53L5CX_XTALK_BUFFER_SIZE)
+    ' status |= _vl53l5cx_poll_for_answer(p_dev, 4, 1, VL53L5CX_UI_CMD_STATUS, 0xff, 0x03)
+    bStatusNotOK |= pollForAnswer(4, 1, VL53L5CX_UI_CMD_STATUS, $FF, $03)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+
+PRI pollForAnswer(size8, posn8, addr16, mask8, expected8) : eDvcStatus | timeout, bStatusNotOK, bTimedOut, bFaulted, fwErrByte, bffrLong
+
+    if bShowIODebug
+        DEBUG("  pollForAnswer() ", udec_byte(size8), udec_byte(posn8), uhex_word(addr16), uhex_byte(mask8), uhex_byte(expected8))
+    timeout := 0
+    bTimedOut := FALSE
+    bFaulted := FALSE
+    fwErrByte := FALSE
+    bStatusNotOK := 0
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    if posn8 >= size8
+        DEBUG("  -- pollForAnswer() ERROR bad PARAM! posn vs. size: ", udec_byte(size8), udec_byte(posn8))
+
+    repeat
+        'status |= RdMulti(&(p_dev->platform), addr16, p_dev->temp_buffer, size8)
+        bStatusNotOK |= readBytes(addr16, @bffrLong, size8)
+        ' NOPE, do below....      status |= WaitMs(&(p_dev->platform), 10)
+
+        '  2s timeout
+        if (timeout >= 200)
+            bTimedOut := TRUE
+            eDvcStatus := VL53L5CX_MCU_ERROR
+            ' FW error
+            if size8 >= 3
+                fwErrByte := BYTE[@bffrLong][2]          ' status |= p_dev->temp_buffer[2]
+                debug("  - TIMEOUT: ", uhex(eDvcStatus), uhex(fwErrByte), ", read=", uhex_byte_(BYTE[@bffrLong][posn8]), ", bufERRbyt=", uhex_byte_(BYTE[@bffrLong][2]))
+            else
+                debug("  - TIMEOUT: ", uhex(eDvcStatus), "read=", uhex_byte_(BYTE[@bffrLong][posn8]))
+            debug("  -- BYTES READ(", udec_(size8), ") ", uhex_byte_array(@bffrLong, size8))
+            quit
+        elseif ((size8 >= 3) and (BYTE[@bffrLong][2] >= $7f))
+            bFaulted := TRUE
+            eDvcStatus := VL53L5CX_MCU_ERROR
+            debug("  - ABORT: ", uhex(eDvcStatus), ", read=", uhex_byte_(BYTE[@bffrLong][posn8]), ", bufERRbyt=", uhex_byte_(BYTE[@bffrLong][2]))
+            debug("  -- BYTES READ(", udec_(size8), ") ", uhex_byte_array(@bffrLong, size8))
+            quit
+
+        if ((BYTE[@bffrLong][posn8] & mask8) == expected8)
+            quit
+
+        timeout++
+
+        ' status |= WaitMs(&(p_dev->platform), 10) (was ABOVE moved to here)
+        waitms(10)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+    if eDvcStatus <> VL53L5CX_STATUS_OK and not bTimedOut
+        debug("  - ERROR: read fault  ", uhex_byte(eDvcStatus), uhex_byte(bStatusNotOK), udec_byte(timeout), ", read=", uhex_byte_(BYTE[@bffrLong][posn8]), ", [", uhex_byte_(BYTE[@bffrLong][posn8] & mask8), " == ", uhex_byte_(expected8), "]")
+    elseif not bTimedOut and not bFaulted and bShowIODebug
+        debug("  - FOUND it!  ", uhex_byte(eDvcStatus), udec_byte(timeout), ", read=", uhex_byte_(BYTE[@bffrLong][posn8]), ", [", uhex_byte_(BYTE[@bffrLong][posn8] & mask8), " == ", uhex_byte_(expected8), "]")
+
+    waitms(10) ' wait 10ms no matter the outcome...
+
+CON { Device Registers - best we can tell }
+
+    VL53L5CX_REG_CONTROL        = $7fff
+    VL53L5CX_VAL_CTL_CONFIG     = $00
+    VL53L5CX_VAL_CTL_FW         = $01
+    VL53L5CX_VAL_CTL_RUN        = $02
+    VL53L5CX_VAL_CTL_FWBANK0    = $09
+    VL53L5CX_VAL_CTL_FWBANK1    = $0A
+    VL53L5CX_VAL_CTL_FWBANK2    = $0B
+
+    VL53L5CX_REG_DVC_ID         = $0000
+    VL53L5CX_REG_REV_ID         = $0001
+
+    VL53L5CX_REG_DVC_ADDR       = $0004
+
+    VL53L5CX_REG_GO2_STATUS0    = $0006
+    VL53L5CX_REG_GO2_STATUS1    = $0007
+
+    TMP_SIZE_IN_BYTES           = 30
+
+CON { fixed driver values }
+
+    ' Inner Macro for API. Not for user, only for development.
+
+    VL53L5CX_NVM_DATA_SIZE		            = 492
+    VL53L5CX_CONFIGURATION_SIZE	            = 972
+    VL53L5CX_OFFSET_BUFFER_SIZE	            = 488
+    VL53L5CX_XTALK_BUFFER_SIZE	            = 776
+
+    VL53L5CX_DCI_ZONE_CONFIG	            = $5450
+    VL53L5CX_DCI_FREQ_HZ		            = $5458
+    VL53L5CX_DCI_INT_TIME		            = $545C
+    VL53L5CX_DCI_FW_NB_TARGET	            = $5478
+    VL53L5CX_DCI_RANGING_MODE	            = $AD30
+    VL53L5CX_DCI_DSS_CONFIG		            = $AD38
+    VL53L5CX_DCI_TGT_ORDER	                = $AE64
+    VL53L5CX_DCI_SHARPENER		            = $AED8
+
+    VL53L5CX_DCI_MOTN_DETECTOR_CFG          = $BFAC
+    VL53L5CX_DCI_SINGLE_RANGE	            = $CD5C
+    VL53L5CX_DCI_OUTPUT_CONFIG	            = $CD60
+    VL53L5CX_DCI_OUTPUT_ENABLES	            = $CD68
+    VL53L5CX_DCI_OUTPUT_LIST	            = $CD78
+    VL53L5CX_DCI_PIPE_CONTROL	            = $CF78
+
+    VL53L5CX_UI_CMD_STATUS		            = $2C00
+    VL53L5CX_UI_CMD_START		            = $2C04
+    VL53L5CX_UI_CMD_END		                = $2FFF
+
+
+VAR { driver uninitialized data }
+
+    LONG        ambSize
+    LONG        spadSize
+    LONG        ntarSize
+    LONG        spsSize
+    LONG        sigrSize
+    LONG        distSize
+    LONG        rflestSize
+    LONG        staSize
+    LONG        motSize
+
+    ' NOTE initDriver() must be called to init these variables before use!
+        ' 32-bit values
+    LONG    startBh
+    LONG    metaDataBh
+    LONG    commonDataBh
+    LONG    ambientRateBh
+    LONG    spadCountBh
+    LONG    nbTargetDetectedBh
+    LONG    signalRateBh
+    LONG    rangeSigmaMMBh
+    LONG    distanceBh
+    LONG    reflectanceBh
+    LONG    targetStatusBh
+    LONG    motionDetectBh
+        ' 16-bit values
+    WORD    metaDataIdx
+    WORD    spadCountIdx
+    WORD    ambientRateIdx
+    WORD    nbTargetDetectIdx
+    WORD    signalRateIdx
+    WORD    rangeSigmaMMIdx
+    WORD    distanceIdx
+    WORD    reflectancePrcntIdx
+    WORD    targetStatusIdx
+    WORD    motionDetectIdx
+
+' maxResultsSize indicates the maximum size used by output through I2C.
+    LONG    maxResultsSize      ' was VL53L5CX_MAX_RESULTS_SIZE
+
+VAR { driver Unloaded RESULT DATA }
+
+' This contains the ranging results of VL53L5CX.
+'  If user wants more than 1 target per zone, the results can be split
+'  into 2 sub-groups:
+'
+' - Per zone results. These results are common to all targets (rsltAmbientPerSpad32,
+'    nb_target_detected and nb_spads_enabled).
+'
+' - Per target results : These results are different relative to the detected
+'    target (signal_per_spad, range_sigma_mm, distance_mm, reflectance,
+'    target_status).
+
+'  Per zone results:
+'  ------------------
+    '  Ambiant noise in kcps/spads
+    LONG    rsltAmbientPerSpad32[VL53L5CX_RESOLUTION_8X8]
+
+    '  Number of spads enabled for this ranging
+    LONG    rsltNbrSpadsEnabled32[VL53L5CX_RESOLUTION_8X8]
+
+    '  Number of valid target detected for 1 zone
+    BYTE    rsltNbTgtDetected8[VL53L5CX_RESOLUTION_8X8]
+
+'  Per target results:
+'  -------------------
+    '  Signal returned to the sensor in kcps/spads
+    LONG    rsltSignalPerSpad32[VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE]
+
+    '  Sigma of the current distance in mm
+    WORD    rsltRangeSigmaMM16[VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE]
+
+    '  Measured distance in mm
+    WORD    rsltDistanceMM16[VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE]
+
+    '  Estimated reflectance in percent
+    BYTE    rsltReflectance8[VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE]
+
+    '  Status indicating the measurement validity (5 & 9 means ranging OK)
+    BYTE    rsltTargetStatus8[VL53L5CX_RESOLUTION_8X8 * VL53L5CX_NB_TGT_PER_ZONE]
+
+'  Motion detector results
+'  -----------------------
+    '    struct {
+    rsltMotionIndicatorStruct
+        LONG    global_indicator_1
+        LONG    global_indicator_2
+        BYTE    status
+        BYTE    nb_of_detected_aggregates
+        BYTE    nb_of_aggregates
+        BYTE    spare
+        LONG    rsltMotionValue32[VL53L5CX_NBR_MOTION_ENTRIES]
+    '    } motion_indicator
+' -----------------------------------
+
+
+CON { Device Literals for register load }
+
+    ' if TARGET_PER_ZONE == 1
+    ' 32-bit values
+    VL53L5CX_T1_START_BH			        = $0000000D
+    VL53L5CX_T1_METADATA_BH			        = $54B400C0
+    VL53L5CX_T1_COMMONDATA_BH			    = $54C00040
+    VL53L5CX_T1_AMBIENT_RATE_BH		        = $54D00104
+    VL53L5CX_T1_SPAD_COUNT_BH			    = $55D00404
+    VL53L5CX_T1_NB_TGT_DTEKT_BH	            = $CF7C0401
+    VL53L5CX_T1_SIGNAL_RATE_BH			    = $CFBC0404
+    VL53L5CX_T1_RNG_SIGMA_MM_BH		        = $D2BC0402
+    VL53L5CX_T1_DISTANCE_BH			        = $D33C0402
+    VL53L5CX_T1_RFLCTNC_BH			        = $D43C0401
+    VL53L5CX_T1_TGT_STATUS_BH		        = $D47C0401
+    VL53L5CX_T1_MOTN_DTEKT_BH		        = $CC5008C0
+
+    ' 16-bit values
+    VL53L5CX_T1_METADATA_IDX			    = $54B4
+    VL53L5CX_T1_COMMONDATA_IDX			    = $54C0
+    VL53L5CX_T1_AMBIENT_RATE_IDX		    = $54D0
+    VL53L5CX_T1_SPAD_COUNT_IDX			    = $55D0
+    VL53L5CX_T1_NB_TGT_DTEKT_IDX	        = $CF7C
+    VL53L5CX_T1_SIGNAL_RATE_IDX		        = $CFBC
+    VL53L5CX_T1_RNG_SIGMA_MM_IDX		    = $D2BC
+    VL53L5CX_T1_DISTANCE_IDX			    = $D33C
+    VL53L5CX_T1_RFLCTNC_EST_PC_IDX	        = $D43C
+    VL53L5CX_T1_TGT_STATUS_IDX		        = $D47C
+    VL53L5CX_T1_MOTN_DETEC_IDX		        = $CC50
+
+    ' (else) if Target Per Zone <> 1
+    ' 32-bit values
+    VL53L5CX_START_BH			            = $0000000D
+    VL53L5CX_METADATA_BH			        = $54B400C0
+    VL53L5CX_COMMONDATA_BH			        = $54C00040
+    VL53L5CX_AMBIENT_RATE_BH		        = $54D00104
+    VL53L5CX_SPAD_COUNT_BH			        = $55D00404
+    VL53L5CX_NB_TGT_DTEKT_BH		        = $57D00401
+    VL53L5CX_SIGNAL_RATE_BH			        = $58900404
+    VL53L5CX_RNG_SIGMA_MM_BH		        = $64900402
+    VL53L5CX_DISTANCE_BH			        = $66900402
+    VL53L5CX_RFLCTNC_BH			            = $6A900401
+    VL53L5CX_TGT_STATUS_BH		            = $6B900401
+    VL53L5CX_MOTN_DTEKT_BH		            = $CC5008C0
+
+    ' 16-bit values
+    VL53L5CX_METADATA_IDX			        = $54B4
+    VL53L5CX_COMMONDATA_IDX			        = $54C0
+    VL53L5CX_AMBIENT_RATE_IDX		        = $54D0
+    VL53L5CX_SPAD_COUNT_IDX			        = $55D0
+    VL53L5CX_NB_TGT_DTEKT_IDX		        = $57D0
+    VL53L5CX_SIGNAL_RATE_IDX		        = $5890
+    VL53L5CX_RNG_SIGMA_MM_IDX		        = $6490
+    VL53L5CX_DISTANCE_IDX			        = $6690
+    VL53L5CX_RFLCTNC_EST_PC_IDX		        = $6A90
+    VL53L5CX_TGT_STATUS_IDX		            = $6B90
+    VL53L5CX_MOTN_DETEC_IDX		            = $CC50
+
+{
+    if enaAmbientPerSpad
+        ambSize	:= 260
+    if enaNbSpadsEnabled
+        spadSize := 260
+    if enaNbTargetDetected
+        ntarSize := 68
+    if enaSignalPerSpad
+        spsSize := ((256 * VL53L5CX_NB_TGT_PER_ZONE) + 4)
+    if enaRangeSigmaMM
+        sigrSize := ((128 * VL53L5CX_NB_TGT_PER_ZONE) + 4)
+    if enaDistanceMM
+        distSize := ((128 * VL53L5CX_NB_TGT_PER_ZONE) + 4)
+    if enaReflectancePrcnt
+        rflestSize := ((64 *VL53L5CX_NB_TGT_PER_ZONE) + 4)
+    if enaTargetStatus
+        staSize := ((64  *VL53L5CX_NB_TGT_PER_ZONE) + 4)
+
+    if enaMotionIndicator
+        motSize := 144
+
+    NOTES: decodeing our BH values by entry
+
+    (this is number of targets == 1 case)
+
+    VL53L5CX_T1_START_BH			        = $0000000D
+      Index = $0000
+      Size = 0
+      Type = 13
+    VL53L5CX_T1_METADATA_BH			        = $54B400C0 (12 = 12 bytes)
+      Index = $54B4
+      Size = 12
+      Type = 0
+    VL53L5CX_T1_COMMONDATA_BH			    = $54C00040 (4 = 4 bytes) [$54D0-$54C0]=16 bytes
+      Index = $54C0
+      Size = 4
+      Type = 0
+    VL53L5CX_T1_AMBIENT_RATE_BH		        = $54D00104 (4 * 16 = 64 bytes: 256/4=64 longs) [$55D0-$54D0]=256 bytes
+      Index = $54D0
+      Size = 16
+      Type = 4
+    VL53L5CX_T1_SPAD_COUNT_BH			    = $55D00404 (4 * 64 = 256 bytes: 256/4=64 longs) [$CF7C-$55D0]=512 bytes (2x 256?)
+      Index = $55D0
+      Size = 64
+      Type = 4
+    VL53L5CX_T1_NB_TGT_DTEKT_BH	            = $CF7C0401 (64 = 64 bytes: 64=64 bytes)
+      Index = $CF7C
+      Size = 64
+      Type = 1
+    VL53L5CX_T1_SIGNAL_RATE_BH			    = $CFBC0404 (4 * 64 = 256 bytes: 256/4=64 longs)
+      Index = $CFBC
+      Size = 64
+      Type = 4
+    VL53L5CX_T1_RNG_SIGMA_MM_BH		        = $D2BC0402 (2 * 64 = 128 bytes: 128/2=64 words)
+      Index = $D2BC
+      Size = 64
+      Type = 2
+    VL53L5CX_T1_DISTANCE_BH			        = $D33C0402 (2 * 64 = 128 bytes: 128/2=64 words)
+      Index = $D33C
+      Size = 64
+      Type = 2
+    VL53L5CX_T1_RFLCTNC_BH			        = $D43C0401 (64 = 64 bytes: 64=64 bytes)
+      Index = $D43C
+      Size = 64
+      Type = 1
+    VL53L5CX_T1_TGT_STATUS_BH		        = $D47C0401 (64 = 64 bytes: 64=64 bytes)
+      Index = $D47C
+      Size = 64
+      Type = 1
+    VL53L5CX_T1_MOTN_DTEKT_BH		        = $CC5008C0 (140 = 140 bytes: 140=140 bytes)
+      Index = $CC50
+      Size = 140
+      Type = 0
+
+    (this is number of targets == 2 thru 4 case)
+
+    VL53L5CX_START_BH			            = $0000000D
+      Index = $0000
+      Size = 0
+      Type = 13
+    VL53L5CX_METADATA_BH			        = $54B400C0 (12 = 12 bytes) [$54C0-$54B4]=12 bytes
+      Index = $54B4
+      Size = 12
+      Type = 0
+    VL53L5CX_COMMONDATA_BH			        = $54C00040 (4 = 4 bytes) [$54D0-$54C0]=16 bytes
+      Index = $54C0
+      Size = 4
+      Type = 0
+    VL53L5CX_AMBIENT_RATE_BH		        = $54D00104 (4 * 64 = 256 bytes: 256/4=64 longs) [$55D0-$54D0]=256 bytes
+      Index = $54D0
+      Size = 16
+      Type = 4
+    VL53L5CX_SPAD_COUNT_BH			        = $55D00404 (4 * 64 = 256 bytes: 256/4=64 longs) [$57D0-$55D0]=512 bytes (2x 256?)
+      Index = $55D0
+      Size = 64
+      Type = 4
+    VL53L5CX_NB_TGT_DTEKT_BH		        = $57D00401 (64 = 64 bytes: 64=64 bytes) [$5890-$57D0]=192 bytes (3x 64?)
+      Index = $57D0
+      Size = 64
+      Type = 1
+    VL53L5CX_SIGNAL_RATE_BH			        = $58900404 (4 * 64 = 256 bytes: 256/4=64 longs) [$6490-$5890]=3072 bytes (12x 256?)
+      Index = $5890
+      Size = 64
+      Type = 4
+    VL53L5CX_RNG_SIGMA_MM_BH		        = $64900402 (2 * 64 = 128 bytes: 128/2=64 words) [$6690-$6490]=512 bytes (4x 128?)
+      Index = $6490
+      Size = 64
+      Type = 2
+    VL53L5CX_DISTANCE_BH			        = $66900402 (2 * 64 = 128 bytes: 128/2=64 words) [$6A90-$6690]=1024 bytes (8x 128?)
+      Index = $6690
+      Size = 64
+      Type = 2
+    VL53L5CX_RFLCTNC_BH			            = $6A900401 (64 = 64 bytes: 64=64 bytes) [$6B90-$6A90]=256 bytes (4x 64?)
+      Index = $6A90
+      Size = 64
+      Type = 1
+    VL53L5CX_TGT_STATUS_BH		            = $6B900401 (64 = 64 bytes: 64=64 bytes) [$CC50-$6B90]=24,832 bytes (no meaning)
+      Index = $6B90
+      Size = 64
+      Type = 1
+    VL53L5CX_MOTN_DTEKT_BH		            = $CC5008C0 (140 = 140 bytes: 140=140 bytes) [??? we don't know end]
+      Index = $CC50
+      Size = 140
+      Type = 0
+
+}
+CON { Byte-order conversions }
+
+' ---------------------------------------------------------
+' ARDUINO NOTEs (for my peace of mind ;-)
+' ---------------------------------------------------------
+' uint32_t      waveHeaderSampleRate = -1;
+' waveHeaderSampleRate = (uint32_t)byteBuffer[27] << 24 + (uint32_t)byteBuffer[26] << 16 + (uint32_t)byteBuffer[25] << 8 + byteBuffer[24];
+'
+' waveHeaderSampleRate =
+'   ((uint32_t)byteBuffer[27] << 24) +
+'   ((uint32_t)byteBuffer[26] << 16) +
+'   ((uint32_t)byteBuffer[25] << 8) +
+'   byteBuffer[24];
+
+' ---------------------------------------------------------
+' the Propeller physical storage vs. logical is as follows:
+' ---------------------------------------------------------
+' NOTE:     LOGICAL STORE (VALUE): $1234_5678 (bytes in register)
+'    while PHYSICAL STORE(IN-RAM): $7856_3412 (bytes in RAM)
+'
+' REAL: Read returned $95 $A1 $23 $4B
+' Expect Value of:    $4B $23 $A1 $95
+'
+' ---------------------------------------------------------
+PRI longDeviceValue(nDeviceOrderedValue) : logicalValue32b
+' convert LONG from device to logical order
+    logicalValue32b.byte[0] := nDeviceOrderedValue.byte[3]
+    logicalValue32b.byte[1] := nDeviceOrderedValue.byte[2]
+    logicalValue32b.byte[2] := nDeviceOrderedValue.byte[1]
+    logicalValue32b.byte[3] := nDeviceOrderedValue.byte[0]
+    'debug("longDeviceValue(", uhex_long_(nDeviceOrderedValue), ") returns ", uhex_long_(logicalValue32b))
+
+PRI longReplaceDeviceValues(pByteArray, nbrBytes) | tmp, i
+' rewrite device LONGS converting their byte order in-place
+    repeat i from 0 to nbrBytes - 1 step 4                              ' for (i = 0 i < size i = i + 4)
+        'tmp := (BYTE[pByteArray][i] << 24) | (BYTE[pByteArray][i + 1] << 16) | (BYTE[pByteArray][i + 2] << 8) | (BYTE[pByteArray][i + 3])
+        ' memcpy(&(LONG[pByteArray][i]), &tmp, 4)
+        LONG[@BYTE[pByteArray][i]] := longDeviceValue(LONG[@BYTE[pByteArray][i]]) ' yep, this is reversable...
+
+PRI wordmoveDeviceValues(pDestWords, pDvcWords, wordCount) | wdIdx, dumpCount, WORD logicalWord, WORD dvcWord
+' copy device WORDS to destination but converting their byte order enroute
+    'dumpCount := min(4, wordCount)
+    'debug("  -- Wmdv: ", uhex_word_array(pDvcWords, dumpCount))
+    repeat wdIdx from 0 to wordCount - 1
+        dvcWord := WORD[pDvcWords][wdIdx]
+        logicalWord.byte[0] := dvcWord.byte[1]
+        logicalWord.byte[1] := dvcWord.byte[0]
+        WORD[pDestWords][wdIdx] := logicalWord
+
+PRI longmoveDeviceValues(pDestLongs, pDvcLongs, longCount) | longIdx, dumpCount
+' copy device LONGS to destination but converting their byte order enroute
+    'dumpCount := min(4, longCount)
+    'debug("  -- Lmdv: ", uhex_long_array(pDvcLongs, dumpCount))
+    repeat longIdx from 0 to longCount - 1
+        LONG[pDestLongs][longIdx] := longDeviceValue(LONG[pDvcLongs][longIdx])
+
+
+' ---------------------------------------------------------------
+    ' NOTE: union interp:
+    '   union Block_header {
+    '   	uint32_t bytes             ' bytes is the full long
+    '   	struct {
+    '   		uint32_t type : 4      ' type is bits 31-28
+    '   		uint32_t size : 12     ' size is bits 27-16
+    '   		uint32_t idx : 16      ' type is bits 15-0
+    '   	}
+    '   }
+' ---------------------------------------------------------------
+PRI longToBHValues(logicalValue32b) : bhType, bhIdx, bhSize
+' Return three field values from within the long
+'
+    ' each following line: take logical, mask it and shift value into place...
+    '   Physical:  21436587         Logical:  87654321
+    ' - bhType physical store: $0800_0000, logical store $0000_0001
+    bhType := (logicalValue32b & $0000_000f)                                ' build $0000_0001
+    ' - bhSize physical store: $7056_0000, logical store $0000_4320
+    bhSize := ((logicalValue32b & $0000_fff0) >> 4)                           ' build $0000_0432
+    ' - bhIdx physical store: $0000_3412, logical store $8765_0000
+    bhIdx := ((logicalValue32b & $ffff_0000)) >> 16                           ' build $0000_8765
+
+PRI replaceBHSizeInLong(logicalValue32, bhSize) : newLogicalValue32
+' Replace the BHSize value within the long
+'
+    '   Physical:  21436587         Logical:  87654321
+    ' - bhSize physical store: $2043_0000, logical store $0000_4320
+    newLogicalValue32 := logicalValue32
+    newLogicalValue32 &= !$0000_fff0                 ' clear size field
+    newLogicalValue32 |= ((bhSize & $0000_0fff) << 4)      ' place new size value in field
+    'debug("  -- replaceBHSizeInLong() was: ", uhex_long_(logicalValue32))
+    'debug("  --                        is: ", uhex_long_(newLogicalValue32))
+
+PRI min(a, b) : minVal
+    minVal := (a < b) ? a : b
+
+
+CON { CONSTANTS for dci/ranging subCommands }
+
+    DCI_SRTRNG_CMD_LEN_IN_BYTES = 4
+
+    DCI_RD_CMD_LEN_IN_BYTES = 12
+    DCI_WR_HEADER_SIZE_IN_BYTES = 4
+    DCI_WR_FOOTER_SIZE_IN_BYTES = 8
+    DCI_WR_OVERHEAD_SIZE_IN_BYTES = DCI_WR_HEADER_SIZE_IN_BYTES + DCI_WR_FOOTER_SIZE_IN_BYTES
+
+    ' Macro VL53L5CX_TEMP_BUFFER_SIZE can be used to know the size of
+    '  the temporary buffer. The minimum size is 1024, and the maximum depends of
+    '  the output configuration.
+
+    '#if VL53L5CX_MAX_RESULTS_SIZE < 1024U
+    '#define VL53L5CX_TEMP_BUFFER_SIZE ((uint32_t) 4096U)
+    '#else
+    '#define VL53L5CX_TEMP_BUFFER_SIZE ((uint32_t) VL53L5CX_MAX_RESULTS_SIZE)
+    '#endif
+
+    VL53L5CX_TEMP_BUFFER_SIZE = 4096
+
+    OVERALL_BUFFER_SIZE_BYTES   = (VL53L5CX_XTALK_BUFFER_SIZE > VL53L5CX_OFFSET_BUFFER_SIZE) ? VL53L5CX_XTALK_BUFFER_SIZE : VL53L5CX_OFFSET_BUFFER_SIZE
+    SIGNAL_GRID_SIZE_LONGS      = 64
+    RANGE_GRID_SIZE_WORDS       = 64
+
+    VL53L5CX_NBR_MOTION_ENTRIES = 32
+
+VAR { Variables for dci/ranging & configurattion commands }
+
+    ' NOTE: it seems that read side maxes out at 20 bytes: getIntegrationTime()
+    '       while write side maxes out at 16 bytes: setResolution()
+    BYTE    dciWorkBuffer[32]   ' workspace for getting/modifying sensor values (32 bytes for safety?)
+
+    LONG    output_bh_enable[4]     ' uint32_t
+    output_bh_en_end
+    LONG    output_bh_en_len        ' NOTE: runtime initilized since in VAR space
+
+    ' set addresses of possible output
+    LONG    output[12]              ' uint32_t
+    output_end
+    LONG    output_len              ' NOTE: runtime initilized since in VAR space
+
+    LONG    header_config[2]        ' uint32_t
+    header_config_end
+    LONG    header_config_len       ' NOTE: runtime initilized since in VAR space
+
+' -----------------------------------
+' Structure VL53L5CX_Configuration contains the sensor configuration.
+'   User MUST not manually change these fields, except for the sensor address.
+' -----------------------------------
+    ' Platform, filled by customer into the 'platform.h' file
+    '    VL53L5CX_Platform	platform
+    ' Results streamcount, value auto-incremented at each range
+    BYTE		    streamcount
+    ' Size of data read though I2C
+    LONG	        dataReadSize
+    ' Address of default configuration buffer
+    'LONG	        pDefaultConfigurationBytes
+    ' Address of default Xtalk buffer
+    'LONG		    pDefaultXtalkBytes
+    ' Offset buffer
+    BYTE    ofsMasterBuffer[VL53L5CX_OFFSET_BUFFER_SIZE]          ' 488 bytes was offset_data[]
+    ' Xtalk buffer
+    BYTE    xtalkMasterBuffer[VL53L5CX_XTALK_BUFFER_SIZE]           ' 776 bytes was xtalk_data[]
+    ' Temporary buffer used for internal driver processing
+    'BYTE	        temp_buffer[VL53L5CX_TEMP_BUFFER_SIZE]
+    BYTE            tempBuffer[VL53L5CX_TEMP_BUFFER_SIZE]
+' -----------------------------------
+
+    LONG    signalGrid32[SIGNAL_GRID_SIZE_LONGS]
+    WORD    rangeGrid16[RANGE_GRID_SIZE_WORDS]
+
+    BYTE    srtRngCmd[DCI_SRTRNG_CMD_LEN_IN_BYTES]
+    BYTE    dciCmd[DCI_RD_CMD_LEN_IN_BYTES]
+    BYTE    dciHeader[DCI_WR_HEADER_SIZE_IN_BYTES]
+    BYTE    dciFooter[DCI_WR_FOOTER_SIZE_IN_BYTES]
+
+
+PRI dciReadData(pBuffer, dciMemAddr16, sizeInBytes16) : eDvcStatus | bStatusNotOK, i, rd_size, pktLen, address16
+' REF vl53l5cx_dci_read_data(*data, index, data_size)
+'  Read 'extra data' from DCI. Using a known index, the function fills the casted structure passed in argument.
+'   NOTE that the FW only accept data of 32 bits. So field data can only have a size of 32, 64, 96, 128, bits ....
+'  Returns {eDvcStatus}:
+'    VL53L5CX_STATUS_OK - read success (returned value length of {sizeInBytes16} is in memory at {pBuffer})
+'    VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+    rd_size := sizeInBytes16 + DCI_WR_OVERHEAD_SIZE_IN_BYTES
+
+    if sizeInBytes16 & $0003 <> 0
+        debug("VL53: dciReadData(", uhex_word_(dciMemAddr16), ") ERROR length of ", udec(sizeInBytes16), " is NOT multiple of 4, fixed!")
+        sizeInBytes16 := (sizeInBytes16 & $FFFC) + 4
+
+    'uint8_t cmd[] = {0x00, 0x00, 0x00, 0x00,
+    '				 0x00, 0x00, 0x00, 0x0f,
+    '				 0x00, 0x02, 0x00, 0x08};
+    bytefill(@dciCmd, 0, DCI_RD_CMD_LEN_IN_BYTES)
+    BYTE[@dciCmd][7] := $0f
+    BYTE[@dciCmd][9] := $02
+    BYTE[@dciCmd][11] := $08
+
+    ' Check if tmp buffer is large enough
+    if (rd_size > VL53L5CX_TEMP_BUFFER_SIZE)
+        status |= VL53L5CX_STATUS_ERROR
+    else
+        ' grab basic command
+        bytemove(@tempBuffer, @dciCmd, DCI_RD_CMD_LEN_IN_BYTES)
+        ' fill-in our actual request
+        'cmd[0] = (uint8_t)(index >> 8)
+        BYTE[@tempBuffer][0] := (dciMemAddr16 >> 8) & $ff
+        'cmd[1] = (uint8_t)(index & (uint32_t)0xff)
+        BYTE[@tempBuffer][1] := dciMemAddr16 & $ff
+        'cmd[2] = (uint8_t)((data_size & (uint16_t)0xff0) >> 4)
+        BYTE[@tempBuffer][2] := (sizeInBytes16 & $ff0) >> 4
+        'cmd[3] = (uint8_t)((data_size & (uint16_t)0xf) << 4)
+        BYTE[@tempBuffer][3] := (sizeInBytes16 & $00f) << 4
+
+        ' Request data reading from FW
+        'status |= WrMulti(&(p_dev->platform), (VL53L5CX_UI_CMD_END - (uint16_t)11), cmd, sizeof(cmd))
+        pktLen := DCI_RD_CMD_LEN_IN_BYTES
+        address16 := VL53L5CX_UI_CMD_END - pktLen + 1
+        bStatusNotOK := writeBytes(address16, @tempBuffer, pktLen)
+        'status |= _vl53l5cx_poll_for_answer(p_dev, 4, 1, VL53L5CX_UI_CMD_STATUS, 0xff, 0x03)
+        bStatusNotOK |= pollForAnswer(4, 1, VL53L5CX_UI_CMD_STATUS, $FF, $03)
+
+        ' Read new data sent (4 bytes header + data_size + 8 bytes footer)
+        'status |= RdMulti(&(p_dev->platform), VL53L5CX_UI_CMD_START, p_dev->temp_buffer, rd_size)
+        bStatusNotOK |= readBytes(VL53L5CX_UI_CMD_START, @tempBuffer, rd_size)
+        'SwapBuffer(p_dev->temp_buffer, data_size + (uint16_t)12)
+        longReplaceDeviceValues(@tempBuffer, rd_size)
+
+        ' Copy data from FW into input structure (-4 bytes to remove header)
+        'repeat i from 0 to sizeInBytes16 - 1            'for (i = 0; i < (int16_t)data_size; i++)
+        '	data[i] = p_dev->temp_buffer[i + 4]
+        '    BYTE[pBuffer][i] := BYTE[@tempBuffer][i + 4]
+        bytemove(@BYTE[pBuffer][0], @BYTE[@tempBuffer][0 + 4], sizeInBytes16)
+
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+        elseif bShowTestingDebug or bShowIODebug
+            debug("  dciReadData(", uhex_word_(dciMemAddr16), ") ", uhex_byte_array(pBuffer, sizeInBytes16))
+
+
+PRI dciWriteData(pBuffer, dciMemAddr16, sizeInBytes16) : eDvcStatus | bStatusNotOK, i, wr_size, pktLen, WORD address16
+' REF uint8_t vl53l5cx_dci_write_data(*data, index, data_size)
+'  Write 'extra data' to DCI. The data can be simple data, or casted structure.
+'  NOTE that the DCI FW only accept data of 32 bits. So field data can only have a size of 32, 64, 96, 128, bits ..
+'  Returns {eDvcStatus}:
+'    VL53L5CX_STATUS_OK - write success (wrote value length of {sizeInBytes16} bytes from memory at {pBuffer})
+'    VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+
+    if sizeInBytes16 & $0003 <> 0
+        debug("VL53: dciWriteData(", uhex_word_(dciMemAddr16), ") ERROR length of ", udec(sizeInBytes16), " is NOT multiple of 4, fixed!")
+        sizeInBytes16 := (sizeInBytes16 & $FFFC) + 4
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+    wr_size := sizeInBytes16 + DCI_WR_FOOTER_SIZE_IN_BYTES
+
+    'uint8_t footer[] = {0x00, 0x00, 0x00, 0x0f, 0x05, 0x01,
+    '					(uint8_t)((data_size + (uint16_t)8) >> 8),
+    '					(uint8_t)((data_size + (uint16_t)8) & (uint8_t)0xFF)}
+    BYTE[@dciFooter][0] := 0
+    BYTE[@dciFooter][1] := 0
+    BYTE[@dciFooter][2] := 0
+    BYTE[@dciFooter][3] := $0f
+    BYTE[@dciFooter][4] := $05
+    BYTE[@dciFooter][5] := $01
+    BYTE[@dciFooter][6] := (wr_size >> 8) & $ff
+    BYTE[@dciFooter][7] := wr_size & $ff
+
+    ' Check if cmd buffer is large enough
+    if (sizeInBytes16 + DCI_WR_OVERHEAD_SIZE_IN_BYTES > VL53L5CX_TEMP_BUFFER_SIZE)     ' if ((data_size + (uint16_t)12) > (uint16_t)VL53L5CX_TEMPORARY_BUFFER_SIZE)
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+    else
+        'headers[0] = (uint8_t)(index >> 8)
+        BYTE[@dciHeader][0] := (dciMemAddr16 >> 8) & $ff
+        'headers[1] = (uint8_t)(index & (uint32_t)0xff)
+        BYTE[@dciHeader][1] := dciMemAddr16 & $ff
+        'headers[2] = (uint8_t)(((data_size & (uint16_t)0xff0) >> 4))
+        BYTE[@dciHeader][2] := (sizeInBytes16 & $ff0) >> 4
+        'headers[3] = (uint8_t)((data_size & (uint16_t)0xf) << 4)
+        BYTE[@dciHeader][3] := (sizeInBytes16 & $00f) << 4
+
+        'Copy data from structure to FW format (+4 bytes to add header)
+        longReplaceDeviceValues(pBuffer, sizeInBytes16)        ' SwapBuffer(data, data_size) convert to device order
+        'repeat i from sizeInBytes16 - 1 to 0        'for (i = (int16_t)data_size - (int16_t)1; i >= 0; i--)
+        '	p_dev->temp_buffer[i + 4] = data[i]
+        '    BYTE[@tempBuffer][i + DCI_WR_HEADER_SIZE_IN_BYTES] := BYTE[pBuffer][i]
+        bytemove(@BYTE[@tempBuffer][0 + DCI_WR_HEADER_SIZE_IN_BYTES], @BYTE[pBuffer][0], sizeInBytes16)
+
+        ' Add headers and footer\
+        '(void)memcpy(&p_dev->temp_buffer[0], headers, sizeof(headers))
+        bytemove(@BYTE[@tempBuffer][0], @dciHeader, DCI_WR_HEADER_SIZE_IN_BYTES)
+        '(void)memcpy(&p_dev->temp_buffer[data_size + (uint16_t)4], footer, sizeof(footer))
+        bytemove(@BYTE[@tempBuffer][sizeInBytes16 + DCI_WR_HEADER_SIZE_IN_BYTES], @dciFooter, DCI_WR_FOOTER_SIZE_IN_BYTES)
+
+        ' Send data to FW
+        'uint16_t address = (uint16_t)VL53L5CX_UI_CMD_END - (data_size + (uint16_t)12) + (uint16_t)1
+        pktLen := sizeInBytes16 + DCI_WR_OVERHEAD_SIZE_IN_BYTES
+        address16 := VL53L5CX_UI_CMD_END - pktLen + 1
+        'status |= WrMulti(&(p_dev->platform), address, p_dev->temp_buffer, (uint32_t)((uint32_t)data_size + (uint32_t)12))
+        bStatusNotOK := writeBytes(address16, @tempBuffer, pktLen)
+        'status |= _vl53l5cx_poll_for_answer(p_dev, 4, 1, VL53L5CX_UI_CMD_STATUS, 0xff, 0x03)
+        bStatusNotOK |= pollForAnswer(4, 1, VL53L5CX_UI_CMD_STATUS, $FF, $03)
+
+        longReplaceDeviceValues(pBuffer, sizeInBytes16)        ' SwapBuffer(data, data_size)   (flip it back)
+
+        if bStatusNotOK
+            eDvcStatus := VL53L5CX_STATUS_ERROR
+        elseif bShowTestingDebug or bShowIODebug
+            debug("  dciWriteData(", uhex_word_(dciMemAddr16), ") ", uhex_byte_array(pBuffer, sizeInBytes16))
+
+
+PRI dciReplaceData(pDataBffr, dciMemAddr16, dataBffrSize, pNewData, newDataSize, newDataOfst) : eDvcStatus | bStatusNotOK
+' REF uint8_t vl53l5cx_dci_replace_data(*data, index, data_size, *new_data, new_data_size, new_data_pos)
+'  Replace 'extra data' in DCI. The data can be a casted structure, or a simple array.
+'   NOTE that the FW only accept data of 32 bits. So field data can only have a size of 32, 64, 96, 128, bits ..
+'  Returns {eDvcStatus}:
+'    VL53L5CX_STATUS_OK - write success (wrote value length of {sizeInBytes16} bytes from memory at {pBuffer})
+'    VL53L5CX_STATUS_ERROR - if there was an I2C communications error
+
+    if dataBffrSize & $0003 <> 0
+        debug("VL53: dciReplaceData() ERROR length of ", udec(dataBffrSize), " is NOT multiple of 4, fixed!")
+        dataBffrSize := (dataBffrSize & $FFFC) + 4
+
+    eDvcStatus := VL53L5CX_STATUS_OK
+
+    bStatusNotOK := dciReadData(pDataBffr, dciMemAddr16, dataBffrSize)        ' status |= vl53l5cx_dci_read_data(p_dev, data, index, data_size)
+    if bShowTestingDebug or bShowIODebug
+        debug("VL53: dciReplaceData() replace ", uhex_byte_array_(@BYTE[pDataBffr][newDataOfst], newDataSize))
+
+    BYTEMOVE(@BYTE[pDataBffr][newDataOfst], pNewData, newDataSize)          ' (void)memcpy(&(data[new_data_pos]), new_data, new_data_size)
+
+    if bShowTestingDebug or bShowIODebug
+        debug("VL53: dciReplaceData()    with ", uhex_byte_array_(@BYTE[pDataBffr][newDataOfst], newDataSize))
+
+    bStatusNotOK |= dciWriteData(pDataBffr, dciMemAddr16, dataBffrSize)       ' status |= vl53l5cx_dci_write_data(p_dev, data, index, data_size)
+
+    if bStatusNotOK
+        eDvcStatus := VL53L5CX_STATUS_ERROR
+
+
+CON { Device reads & writes }
+
+    I2C_MODE_READ               = %0000_0001
+    I2C_MODE_WRITE              = %0000_0000
+
+PRI writeByte(regAddr16, dataValue8) : ok | ackbit, BYTE requestPlusByte[4]
+    ' Write {dataValue8} to register {regAddr16}
+    i2c_bus.start()
+    ' write block
+    BYTE[@requestPlusByte][0] := (dvcI2CAddr & $fe) | I2C_MODE_WRITE
+    BYTE[@requestPlusByte][1] := regAddr16.byte[1]
+    BYTE[@requestPlusByte][2] := regAddr16.byte[0]
+    BYTE[@requestPlusByte][3] := dataValue8
+    ackBit := i2c_bus.wr_block(@requestPlusByte, 4)
+    ok |= ackbit
+    i2c_bus.stop()
+
+    if ok <> 0
+        debug("writeByte() ERROR ", uhex(ok), uhex_byte(regAddr16))
+    else
+        if bShowIODebug
+            debug(" -wrByt: ", udec(ok), uhex_word(regAddr16), uhex_byte(dataValue8))
+
+
+PRI writeBytes(regAddr16, pByteStore, byteCount) : ok | ackbit, byteIndex, endAckNak, result8, BYTE request[3]
+    ' Write {byteCount} BYTEs from BYTE array located at {pByteStore} -  to {regAddr16}+0, to {regAddr16}+1,
+    '  to {regAddr16}+2 and so on
+    i2c_bus.start()
+    ' write block
+    BYTE[@request][0] := (dvcI2CAddr & $fe) | I2C_MODE_WRITE
+    BYTE[@request][1] := regAddr16.byte[1]
+    BYTE[@request][2] := regAddr16.byte[0]
+    ackBit := i2c_bus.wr_block(@request, 3)
+    ok |= ackbit
+    ' write block
+    ackBit := i2c_bus.wr_block(pByteStore, byteCount)
+    ok |= ackbit
+    i2c_bus.stop()
+
+    if ok <> 0
+        debug("writeBytes() ERROR ", uhex(ok), uhex_word(regAddr16), ", ", uhex_(byteCount), " bytes")
+    else
+        if bShowIODebug
+            debug(" -wrByts: ", udec(ok), uhex_word(regAddr16), ", ", uhex_(byteCount), " bytes")
+
+
+PRI readByte(regAddr16) : ok, result8 | ackbit, BYTE request[3]
+    ' Read {result16} from register {regAddr16}
+    i2c_bus.start()
+    ' write block
+    BYTE[@request][0] := (dvcI2CAddr & $fe) | I2C_MODE_WRITE
+    BYTE[@request][1] := regAddr16.byte[1]
+    BYTE[@request][2] := regAddr16.byte[0]
+    ackBit := i2c_bus.wr_block(@request, 3)
+    ok |= ackbit
+    i2c_bus.stop()
+
+    i2c_bus.start()
+    ok |= ackbit := i2c_bus.write((dvcI2CAddr & $fe) | I2C_MODE_READ)
+    result8 := i2c_bus.read(i2c_bus.NAK)    ' (want NAK and STOP, NOT needed)
+    i2c_bus.stop()
+    if ok <> 0
+        debug("readByte() ERROR ", uhex(ok), uhex_word(regAddr16))
+    else
+        if bShowIODebug
+            debug(" -rdByt: ", udec(ok), uhex_word(regAddr16), uhex_byte(result8))
+
+
+PRI readBytes(regAddr16, pByteStore, byteCount) : ok | ackbit, byteIndex, endAckNak, result8, BYTE request[3]
+    ' Read {byteCount} BYTEs starting from register {regAddr16} - byte from {regAddr16},
+    '  byte from {regAddr16}+1, byte from {regAddr16}+2, byte from {regAddr16}+3 and so on
+    '  placing them into BYTE array located at {pByteStore}
+    i2c_bus.start()
+    ' write block
+    BYTE[@request][0] := (dvcI2CAddr & $fe) | I2C_MODE_WRITE
+    BYTE[@request][1] := regAddr16.byte[1]
+    BYTE[@request][2] := regAddr16.byte[0]
+    ackBit := i2c_bus.wr_block(@request, 3)
+    ok |= ackbit
+    i2c_bus.stop()
+
+    i2c_bus.start()
+    ok |= ackbit := i2c_bus.write((dvcI2CAddr & $fe) | I2C_MODE_READ)
+    ' read block
+    i2c_bus.rd_block(pByteStore, byteCount, i2c_bus.NAK)
+    i2c_bus.stop()
+    if ok <> 0
+        debug("readBytes() ERROR ", uhex(ok), uhex_word(regAddr16))
+    else
+        if bShowIODebug
+            debug(" -rdByts: ", udec(ok), uhex_word(regAddr16), uhex_byte_array(pByteStore, byteCount))
+
+
+DAT { fixed driver tables }
+
+    '  when loading offset
+    dss4x4_ofst         BYTE    $0F, $04, $04, $00, $08, $10, $10, $07  ' literals to load to device
+    footer_ofst         BYTE    $00, $00, $00, $0F, $03, $01, $01, $E4  ' literals to load to device
+
+    '  when loading xtalk
+    res4x4_xtalk        BYTE    $0F, $04, $04, $17, $08, $10, $10, $07  ' literals to load to device
+    dss4x4_xtalk        BYTE    $00, $78, $00, $08, $00, $00, $00, $08  ' literals to load to device
+    profile4x4_xtalk    BYTE    $A0, $FC, $01, $00                      ' literals to load to device
+
+' This buffer contains the VL53L5CX default Xtalk data.
+    VL53L5CX_DEFAULT_XTALK          BYTE     $9f,  $d8,  $00,  $c0, $03,  $20,  $09,  $60, $0b,  $08,  $08,  $17, $08,  $08,  $08,  $03     ' $00000 - $0000f
+                                    BYTE     $9f,  $e4,  $01,  $40, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00010 - $0001f
+                                    BYTE     $01,  $e0,  $00,  $20, $00,  $00,  $00,  $20, $9f,  $f8,  $00,  $40, $17,  $17,  $17,  $17     ' $00020 - $0002f
+                                    BYTE     $9f,  $fc,  $04,  $04, $00,  $00,  $46,  $a4, $00,  $00,  $37,  $66, $00,  $00,  $26,  $60     ' $00030 - $0003f
+                                    BYTE     $00,  $00,  $1c,  $bc, $00,  $00,  $17,  $73, $00,  $00,  $11,  $25, $00,  $00,  $11,  $07     ' $00040 - $0004f
+                                    BYTE     $00,  $00,  $0e,  $63, $00,  $00,  $8b,  $4c, $00,  $00,  $60,  $a2, $00,  $00,  $3d,  $c0     ' $00050 - $0005f
+                                    BYTE     $00,  $00,  $26,  $aa, $00,  $00,  $1b,  $c2, $00,  $00,  $18,  $04, $00,  $00,  $14,  $97     ' $00060 - $0006f
+                                    BYTE     $00,  $00,  $10,  $ed, $00,  $01,  $28,  $1b, $00,  $00,  $93,  $f0, $00,  $00,  $57,  $61     ' $00070 - $0007f
+                                    BYTE     $00,  $00,  $30,  $2b, $00,  $00,  $20,  $aa, $00,  $00,  $1a,  $b6, $00,  $00,  $15,  $c3     ' $00080 - $0008f
+                                    BYTE     $00,  $00,  $16,  $0e, $00,  $01,  $7f,  $bb, $00,  $00,  $ad,  $58, $00,  $00,  $71,  $af     ' $00090 - $0009f
+                                    BYTE     $00,  $00,  $36,  $d9, $00,  $00,  $22,  $fb, $00,  $00,  $1c,  $96, $00,  $00,  $18,  $83     ' $000a0 - $000af
+                                    BYTE     $00,  $00,  $17,  $96, $00,  $01,  $90,  $00, $00,  $00,  $97,  $d6, $00,  $00,  $66,  $3b     ' $000b0 - $000bf
+                                    BYTE     $00,  $00,  $33,  $0a, $00,  $00,  $20,  $cd, $00,  $00,  $19,  $38, $00,  $00,  $16,  $a5     ' $000c0 - $000cf
+                                    BYTE     $00,  $00,  $14,  $bb, $00,  $00,  $af,  $cf, $00,  $00,  $65,  $7d, $00,  $00,  $3d,  $93     ' $000d0 - $000df
+                                    BYTE     $00,  $00,  $29,  $d1, $00,  $00,  $19,  $4e, $00,  $00,  $15,  $ba, $00,  $00,  $11,  $c6     ' $000e0 - $000ef
+                                    BYTE     $00,  $00,  $12,  $7f, $00,  $00,  $73,  $1d, $00,  $00,  $42,  $2c, $00,  $00,  $2e,  $82     ' $000f0 - $000ff
+                                    BYTE     $00,  $00,  $1e,  $80, $00,  $00,  $18,  $1c, $00,  $00,  $13,  $2d, $00,  $00,  $0f,  $c6     ' $00100 - $0010f
+                                    BYTE     $00,  $00,  $0f,  $85, $00,  $00,  $4f,  $04, $00,  $00,  $33,  $e9, $00,  $00,  $1f,  $06     ' $00110 - $0011f
+                                    BYTE     $00,  $00,  $18,  $40, $00,  $00,  $13,  $2c, $00,  $00,  $12,  $97, $00,  $00,  $0e,  $01     ' $00120 - $0012f
+                                    BYTE     $00,  $00,  $0d,  $ac, $a0,  $fc,  $01,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $03     ' $00130 - $0013f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $a1,  $0c,  $01,  $00, $00,  $00,  $00,  $80     ' $00140 - $0014f
+                                    BYTE     $00,  $00,  $00,  $03, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $a1,  $1c,  $00,  $c0     ' $00150 - $0015f
+                                    BYTE     $00,  $00,  $70,  $eb, $0c,  $80,  $01,  $e0, $00,  $00,  $00,  $26, $a1,  $28,  $09,  $02     ' $00160 - $0016f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $01,  $00,  $00     ' $00170 - $0017f
+                                    BYTE     $00,  $36,  $00,  $03, $01,  $d9,  $01,  $43, $02,  $33,  $02,  $17, $02,  $4b,  $02,  $41     ' $00180 - $0018f
+                                    BYTE     $01,  $17,  $02,  $22, $00,  $27,  $00,  $5d, $00,  $05,  $00,  $11, $00,  $00,  $00,  $01     ' $00190 - $0019f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $001a0 - $001af
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $001b0 - $001bf
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $001c0 - $001cf
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $001d0 - $001df
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $001e0 - $001ef
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $001f0 - $001ff
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00200 - $0020f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00210 - $0021f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00220 - $0022f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00230 - $0023f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00240 - $0024f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00250 - $0025f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00260 - $0026f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00270 - $0027f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00280 - $0028f
+                                    BYTE     $a2,  $48,  $00,  $40, $00,  $00,  $00,  $00, $a2,  $4c,  $00,  $81, $00,  $00,  $00,  $00     ' $00290 - $0029f
+                                    BYTE     $00,  $00,  $00,  $00, $a2,  $54,  $00,  $81, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $002a0 - $002af
+                                    BYTE     $a2,  $5c,  $00,  $81, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $a2,  $64,  $00,  $81     ' $002b0 - $002bf
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $a2,  $6c,  $00,  $84, $00,  $00,  $00,  $00     ' $002c0 - $002cf
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $002d0 - $002df
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $a2,  $8c,  $00,  $82     ' $002e0 - $002ef
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $002f0 - $002ff
+                                    BYTE     $00,  $00,  $00,  $0F, $05,  $01,  $03,  $04                                                   ' $00300 - $00307
+    VL53L5CX_DEFAULT_XTALK_END
+    VL53L5CX_DEFAULT_XTALK_LEN  LONG   @VL53L5CX_DEFAULT_XTALK_END - @VL53L5CX_DEFAULT_XTALK                    ' $308 / 776
+
+    ' This buffer is used to get NVM data.
+    VL53L5CX_GET_NVM_CMD            BYTE   $54,  $00,  $00,  $40, $9E,  $14,  $00,  $C0, $9E,  $20,  $01,  $40, $9E,  $34,  $00,  $40       ' $00000 - $0000f
+                                    BYTE   $9E,  $38,  $04,  $04, $9F,  $38,  $04,  $02, $9F,  $B8,  $01,  $00, $9F,  $C8,  $01,  $00       ' $00010 - $0001f
+                                    BYTE   $00,  $00,  $00,  $0F, $02,  $02,  $00,  $24                                                     ' $00020 - $00027
+    VL53L5CX_GET_NVM_CMD_END
+    VL53L5CX_GET_NVM_CMD_LEN        LONG   @VL53L5CX_GET_NVM_CMD_END - @VL53L5CX_GET_NVM_CMD                    ' $28 / 40
+
+    ' This buffer contains the VL53L5CX default configuration.
+    VL53L5CX_DEFAULT_CONFIGURATION  BYTE     $54,  $50,  $00,  $80, $00,  $04,  $04,  $04, $00,  $00,  $08,  $08, $AD,  $30,  $00,  $80     ' $00000 - $0000f
+                                    BYTE     $02,  $01,  $03,  $03, $00,  $00,  $03,  $00, $AD,  $38,  $01,  $00, $01,  $E0,  $01,  $40     ' $00010 - $0001f
+                                    BYTE     $00,  $40,  $00,  $40, $01,  $00,  $04,  $00, $00,  $00,  $00,  $01, $54,  $58,  $00,  $40     ' $00020 - $0002f
+                                    BYTE     $04,  $1A,  $01,  $00, $54,  $5C,  $01,  $40, $00,  $00,  $27,  $10, $00,  $00,  $0F,  $A0     ' $00030 - $0003f
+                                    BYTE     $0F,  $A0,  $03,  $E8, $02,  $80,  $1F,  $40, $00,  $00,  $05,  $00, $54,  $70,  $00,  $80     ' $00040 - $0004f
+                                    BYTE     $03,  $20,  $03,  $20, $00,  $00,  $00,  $08, $54,  $78,  $01,  $00, $01,  $13,  $00,  $29     ' $00050 - $0005f
+                                    BYTE     $00,  $33,  $00,  $00, $02,  $00,  $00,  $01                                                   ' $00060 - $00067
+                                    BYTE     $04,  $01,  $08, VL53L5CX_FW_NBTAR_RANGING, $54,  $88,  $01,  $40                              ' $00068 - $0006f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00070 - $0007f
+                                    BYTE     $00,  $00,  $0C,  $00, $AD,  $48,  $01,  $00, $01,  $F4,  $00,  $00, $03,  $06,  $00,  $10     ' $00080 - $0008f
+                                    BYTE     $08,  $07,  $08,  $07, $00,  $00,  $00,  $08, $AD,  $60,  $01,  $00, $00,  $00,  $00,  $80     ' $00090 - $0009f
+                                    BYTE     $00,  $00,  $00,  $00, $20,  $1F,  $01,  $F4, $00,  $00,  $1D,  $0A, $AD,  $70,  $00,  $80     ' $000a0 - $000af
+                                    BYTE     $08,  $00,  $1F,  $40, $00,  $00,  $00,  $01, $AD,  $78,  $00,  $80, $00,  $A0,  $03,  $20     ' $000b0 - $000bf
+                                    BYTE     $00,  $01,  $01,  $90, $AD,  $80,  $00,  $40, $00,  $00,  $28,  $00, $AD,  $84,  $00,  $80     ' $000c0 - $000cf
+                                    BYTE     $00,  $00,  $32,  $00, $03,  $20,  $00,  $00, $AD,  $8C,  $00,  $80, $02,  $58,  $FF,  $38     ' $000d0 - $000df
+                                    BYTE     $00,  $00,  $00,  $0C, $AD,  $94,  $01,  $00, $00,  $01,  $90,  $00, $FF,  $FF,  $FC,  $00     ' $000e0 - $000ef
+                                    BYTE     $00,  $00,  $04,  $00, $00,  $00,  $01,  $01, $AD,  $A4,  $00,  $C0, $04,  $80,  $06,  $1A     ' $000f0 - $000ff
+                                    BYTE     $00,  $40,  $05,  $80, $00,  $00,  $01,  $06, $AD,  $B0,  $00,  $C0, $04,  $80,  $06,  $1A     ' $00100 - $0010f
+                                    BYTE     $19,  $00,  $05,  $80, $00,  $00,  $01,  $90, $AD,  $BC,  $04,  $40, $00,  $00,  $00,  $00     ' $00110 - $0011f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $12,  $00,  $25, $00,  $00,  $00,  $06, $00,  $00,  $00,  $05     ' $00120 - $0012f
+                                    BYTE     $00,  $00,  $00,  $05, $00,  $00,  $00,  $06, $00,  $00,  $00,  $04, $00,  $00,  $00,  $0F     ' $00130 - $0013f
+                                    BYTE     $00,  $00,  $00,  $5A, $00,  $00,  $00,  $00, $00,  $00,  $00,  $09, $0B,  $0C,  $0B,  $0B     ' $00140 - $0014f
+                                    BYTE     $03,  $03,  $11,  $05, $01,  $01,  $01,  $01, $00,  $00,  $00,  $00, $00,  $0D,  $00,  $00     ' $00150 - $0015f
+                                    BYTE     $AE,  $00,  $01,  $04, $00,  $00,  $00,  $04, $00,  $00,  $00,  $08, $00,  $00,  $00,  $0A     ' $00160 - $0016f
+                                    BYTE     $00,  $00,  $00,  $0C, $00,  $00,  $00,  $0D, $00,  $00,  $00,  $0E, $00,  $00,  $00,  $08     ' $00170 - $0017f
+                                    BYTE     $00,  $00,  $00,  $08, $00,  $00,  $00,  $10, $00,  $00,  $00,  $10, $00,  $00,  $00,  $20     ' $00180 - $0018f
+                                    BYTE     $00,  $00,  $00,  $20, $00,  $00,  $00,  $06, $00,  $00,  $05,  $0A, $02,  $00,  $0C,  $08     ' $00190 - $0019f
+                                    BYTE     $00,  $00,  $00,  $00, $AE,  $40,  $00,  $40, $00,  $00,  $01,  $FF, $AE,  $44,  $00,  $40     ' $001a0 - $001af
+                                    BYTE     $00,  $10,  $04,  $01, $AE,  $48,  $00,  $40, $00,  $00,  $10,  $00, $AE,  $4C,  $00,  $40     ' $001b0 - $001bf
+                                    BYTE     $00,  $00,  $00,  $01, $AE,  $50,  $01,  $40, $00,  $00,  $00,  $14, $04,  $00,  $28,  $00     ' $001c0 - $001cf
+                                    BYTE     $03,  $20,  $6C,  $00, $00,  $00,  $00,  $00, $00,  $00,  $25,  $80, $AE,  $64,  $00,  $40     ' $001d0 - $001df
+                                    BYTE     $00,  $00,  $00,  $02, $AE,  $D8,  $01,  $00, $00,  $C8,  $05,  $DC, $00,  $00,  $0C,  $CD     ' $001e0 - $001ef
+                                    BYTE     $01,  $04,  $00,  $00, $00,  $00,  $26,  $01, $B5,  $50,  $02,  $82, $00,  $00,  $00,  $00     ' $001f0 - $001ff
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00200 - $0020f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00210 - $0021f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00220 - $0022f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00230 - $0023f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $B5,  $A0,  $02,  $82     ' $00240 - $0024f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00250 - $0025f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00260 - $0026f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00270 - $0027f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00280 - $0028f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00290 - $0029f
+                                    BYTE     $B5,  $F0,  $00,  $40, $00,  $FF,  $00,  $00, $B3,  $9C,  $01,  $00, $40,  $00,  $05,  $1E     ' $002a0 - $002af
+                                    BYTE     $02,  $1B,  $08,  $7C, $80,  $01,  $12,  $01, $00,  $00,  $08,  $00, $B6,  $C0,  $00,  $C0     ' $002b0 - $002bf
+                                    BYTE     $00,  $00,  $60,  $00, $00,  $00,  $20,  $00, $00,  $00,  $00,  $00, $AE,  $A8,  $00,  $40     ' $002c0 - $002cf
+                                    BYTE     $00,  $00,  $04,  $05, $AE,  $AC,  $00,  $80, $01,  $00,  $01,  $00, $00,  $02,  $00,  $00     ' $002d0 - $002df
+                                    BYTE     $AE,  $B4,  $00,  $40, $00,  $00,  $00,  $00, $AE,  $B8,  $00,  $81, $00,  $00,  $00,  $00     ' $002e0 - $002ef
+                                    BYTE     $00,  $00,  $00,  $00, $AE,  $C0,  $00,  $81, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $002f0 - $002ff
+                                    BYTE     $AE,  $C8,  $00,  $81, $08,  $01,  $01,  $08, $00,  $00,  $00,  $08, $AE,  $D0,  $00,  $81     ' $00300 - $0030f
+                                    BYTE     $01,  $08,  $08,  $08, $00,  $00,  $00,  $01, $B5,  $F4,  $00,  $80, $00,  $00,  $00,  $00     ' $00310 - $0031f
+                                    BYTE     $00,  $00,  $00,  $00, $B5,  $FC,  $00,  $80, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00320 - $0032f
+                                    BYTE     $B6,  $04,  $00,  $40, $00,  $00,  $00,  $00, $B6,  $08,  $00,  $44, $00,  $00,  $00,  $00     ' $00330 - $0033f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $B6,  $18,  $00,  $44     ' $00340 - $0034f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00350 - $0035f
+                                    BYTE     $B6,  $28,  $00,  $44, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00360 - $0036f
+                                    BYTE     $00,  $00,  $00,  $00, $B6,  $38,  $00,  $44, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $00370 - $0037f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $B6,  $48,  $01,  $00, $00,  $00,  $00,  $00     ' $00380 - $0038f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $B6,  $58,  $01,  $00     ' $00390 - $0039f
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $002a0 - $003af
+                                    BYTE     $B6,  $68,  $01,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00, $00,  $00,  $00,  $00     ' $003b0 - $003bf
+                                    BYTE     $00,  $00,  $00,  $00, $00,  $00,  $00,  $0F, $00,  $01,  $03,  $c8                            ' $003c0 - $003cb
+    VL53L5CX_DEFAULT_CONFIG_END
+    VL53L5CX_DEFAULT_CONFIG_LEN  LONG    @VL53L5CX_DEFAULT_CONFIG_END - @VL53L5CX_DEFAULT_CONFIGURATION         ' $3cc / 972
+
+' This buffer contains the VL53L5CX firmware (MM1.1)
+    VL53L5CX_FIRMWARE     BYTE
+    FILE  "vl53l5cx_mm1_1_fw.dat"   ' load binary data here 86,016 bytes ($15_000)
+    VL53L5CX_FIRMWARE_END
+    VL53L5CX_FIRMWARE_LEN  LONG    @VL53L5CX_FIRMWARE_END - @VL53L5CX_FIRMWARE                                  ' $15000 / 86016
+
+CON { --- license --- }
+
+{{
+
+ -------------------------------------------------------------------------------------------------
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ =================================================================================================
+}}

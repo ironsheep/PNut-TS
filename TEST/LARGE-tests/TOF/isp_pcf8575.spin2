@@ -1,0 +1,416 @@
+'' =================================================================================================
+''
+''   File....... isp_pcf8575.spin2
+''   Purpose.... Interface to PCF8575 I/O Port Expander via I2C
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2022 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Aug 2022
+''   Updated.... 20 Aug 2022
+''
+'' This object provides direct bit access to PCF8575 as well as an upper layer providing individual
+'' bit direction controls along with bit set/get access methods.
+''
+'' =================================================================================================
+
+ {{
+
+    PCF8575 Board IO Assignments
+
+            ┌──────────────────┐
+            │                  │
+            │                  │
+        <-- │ [ ] INT          │
+            │                  │
+        <-> │ (*) SDA          │
+            │                  │
+        --> │ (*) SCL          │
+            │                  │
+            │ (*) VDD - 3v3    │
+            │                  │
+            │ [*] GND          │
+            │                  │
+            │                  │
+            └──────────────────/
+
+    REF PCF8575 Datasheet: https://www.nxp.com/products/interfaces/ic-spi-i3c-interface-devices/general-purpose-i-o-gpio/remote-16-bit-i-o-expander-for-ic-bus:PCF8575?linkline=Data%20Sheet&fpsp=1#documentation
+               BUY Amazon: https://www.amazon.com/ACEIRMC-PCF8575-Expander-Extension-Arduino/dp/B09DFWS722
+}}
+
+CON { Interface constants }
+
+' devcie found (or not) responses
+#0, DVC_NOT_FOUND, DVC_ADDR0
+
+    READ_ERROR = $DEAD
+
+' valid PCF8575 port bit directions
+#0, BIT_UNKNOWN, BIT_IS_INPUT, BIT_IS_OUTPUT
+
+' valid PCF8575 port bit numbers
+#0, BIT_P00, BIT_P01, BIT_P02, BIT_P03, BIT_P04, BIT_P05, BIT_P06, BIT_P07, BIT_P10, BIT_P11, BIT_P12, BIT_P13, BIT_P14, BIT_P15, BIT_P16, BIT_P17
+
+
+CON { fixed io pins }
+
+  RX1      = 63  { I }                                          ' programming / debug
+  TX1      = 62  { O }
+
+  SF_CS    = 61  { O }                                          ' serial flash
+  SF_SCK   = 60  { O }
+  SF_SDO   = 59  { O }
+  SF_SDI   = 58  { I }
+
+OBJ { external objects used }
+
+    i2c_bus     : "jm_i2c"                                  ' i2c coms
+
+DAT { pre-initialized }
+
+    bShowDebug  BYTE    FALSE
+
+VAR { globals }
+
+    LONG    pingroup_base
+    LONG    pin_scl
+    LONG    pin_sda
+    LONG    pin_int
+    LONG    dvcI2CAddr
+
+    LONG    bPinsSetUp
+    LONG    bDeviceFound
+
+CON { device/driver constants }
+
+    PULL_UP_PCF8575_I2C     = i2c_bus.PU_15K
+    FREQ_KHZ_PCF8575_I2C    = 480                 ' 400 KHz @270_000_000 sysclk?!
+
+    MODE_READ               = %0000_0001
+    MODE_WRITE              = %0000_0000
+
+    PCF8575_I2C_ADDR_0      = $20
+
+    INT_PULL_UP             = i2c_bus.PU_NONE
+
+PUB null()
+'' This is not a top-level object
+
+PUB enableDebug(bEnable)
+    '' Turn on/off file internal debug messaging (bEnable = T/F where T means show debug messages from this object)
+    bShowDebug := bEnable
+    if bShowDebug
+        'debug("*PCF: DBG ON")
+    else
+        'debug("*PCF: DBG off")
+
+PUB setPins(pSDA, pSCL, pinINT)
+'' Record PINs for later Deferred Start [startUsingPins()] for use by driver cog
+    bPinsSetUp := setupPins(pSCL, pSDA, pinINT)  ' configure pin numbers if not already
+
+PUB startUsingPins() : bDevicePresent | pullup, intPin
+'' Deferred Start for use by driver cog
+''  MUST be preceede by setPins()
+    if bPinsSetUp
+        i2c_bus.setup(pin_scl, pin_sda, FREQ_KHZ_PCF8575_I2C, PULL_UP_PCF8575_I2C)
+        bDevicePresent := bDeviceFound := (idDevice() <> DVC_NOT_FOUND)
+
+        ' per our data sheet let's put a pull up on our int pin
+        pullup := INT_PULL_UP                        ' 15K
+        intPin :=  pin_int                          ' amke accessible to PASM
+
+        org
+                wrpin     pullup, intPin           ' configure PULL-UP for INTb pin
+                dirl      intPin                   ' and set it as input
+        end
+
+        'if bShowDebug
+        '    debug("* PCF8575 Started")
+
+PUB start(pinSCL, pinSDA, pinINT) : bDevicePresent | pullup, intPin
+'' Start the device running
+    bPinsSetUp := setupPins(pinSCL, pinSDA, pinINT)  ' configure pin numbers if not already
+    if bPinsSetUp
+        i2c_bus.setup(pin_scl, pin_sda, FREQ_KHZ_PCF8575_I2C, PULL_UP_PCF8575_I2C)
+        bDevicePresent := bDeviceFound := (idDevice() <> DVC_NOT_FOUND)
+
+        ' per our data sheet let's put a pull up on our int pin
+        pullup := INT_PULL_UP                        ' 15K
+        intPin :=  pin_int                          ' amke accessible to PASM
+
+        org
+                wrpin     pullup, intPin           ' configure PULL-UP for INTb pin
+                dirl      intPin                   ' and set it as input
+        end
+
+        'if bShowDebug
+        '    debug("* PCF8575 Started")
+
+PUB stop()
+'' Stop our i2c bus use and float all pins
+    ' no i2c_buss call needed, simply release all our pins
+    if bPinsSetUp
+        floatDvcPins()
+        'if bShowDebug
+        '    debug("* PCF8575 Stopped")
+
+PUB deviceID() : eDevice
+'' Return indication (enum value) of if and which device we found on i2c bus
+    eDevice := dvcI2CAddr
+
+CON  { ---- Synthesized Pin Direction Control ---- }
+
+PUB setBitDirection(bitNbr, eDirection) | valBitNbr
+'' Set output bit direction (eDirection, bits are 0-15)
+''  Where eDirection = BIT_IS_INPUT or BIT_IS_OUTPUT
+    valBitNbr := validBitNumber(bitNbr)
+
+    ' NOTE initially, all are inputs, set to zero. Def'n = (0-in, 1-out)
+    case eDirection
+        BIT_IS_INPUT:
+            dirBits &= !(1 << valBitNbr)    ' clear a bit to make it an input
+        BIT_IS_OUTPUT:
+            dirBits |= (1 << valBitNbr)     ' set a bit to make it an output
+        other:
+            'debug("*PCF: ERROR invalid bit direction")
+            abort
+
+    'debug("*PCF: dir bits: ", uhex_word(dirBits))
+
+PUB setOutputBitValue(bitNbr, bitValue) | valBitNbr
+'' Set output bit value (0 or 1, bits are 0-15)
+    valBitNbr := validBitNumber(bitNbr)
+
+    if NOT isOutputBit(valBitNbr)
+        'debug("*PCF: ERROR attempt to set bit that is NOT an output")
+        abort
+
+    case bitValue
+        0:
+            outBits &= !(1 << valBitNbr)
+        1:
+            outBits |= (1 << valBitNbr)
+        other:
+            'debug("*PCF: ERROR invalid bit direction")
+            abort
+
+    writeWord(outBits)
+
+PUB getInputBitValue(bitNbr) : nBitValue | valBitNbr, nWordValue, bStatusOK
+'' Return [0,1] the value of the desired input bit (0-15)
+    valBitNbr := validBitNumber(bitNbr)
+
+    if isOutputBit(valBitNbr)
+        'debug("*PCF: ERROR attempt to get value of bit that is NOT an input")
+        abort
+
+    bStatusOK, nWordValue := readWord()     ' get the value
+    if NOT bStatusOK
+        nBitValue := 0                      ' error kill all bits
+        'debug("*PCF: ERROR reading from dvc: getInputBitValue()")
+        abort
+
+    nBitValue := (nWordValue >> valBitNbr) & $01 ' isolate the desired bit
+
+PUB getInputBits() : nWordValue | bStatusOK
+'' Return word that is all bits read from device
+''  NOTE: Output bits are zero'd
+    bStatusOK, nWordValue := readWord()    ' get the value
+    'debug("*PCF: DBG reading from device: ", uhex_long(nWordValue))
+    nWordValue &= !dirBits      ' mask off output bits
+    if NOT bStatusOK
+        nWordValue := READ_ERROR ' error kill all bits
+        'debug("*PCF: ERROR reading from dvc: getInputBits()")
+        abort
+
+PUB getInputBitsNTimes(pWordPointer, nWordCount) | bStatusOK, nWordIndex
+'' Read all 16 port pin values from device {nWordCount} times consecutively,
+''  all 16 port pin values, from device - placing them into WORD array located at {pWordPtr}
+'' NOTE: Each value has output bits zero'd
+    wordfill(pWordPointer, 0, nWordCount)                                    ' prefill w/zeros
+
+    bStatusOK := readWords(pWordPointer, nWordCount)    ' get the value
+    'debug("*PCF: DBG reading from device: ", UHEX_WORD_ARRAY_(pWordPointer, nWordCount))
+    repeat nWordIndex from 0 to nWordCount - 1
+        WORD[pWordPointer][nWordIndex] &= !dirBits      ' mask off output bits
+    if NOT bStatusOK
+        wordfill(pWordPointer, READ_ERROR, nWordCount)                                    ' prefill w/zeros
+        'debug("*PCF: ERROR reading from dvc: getInputBitsNTimes()")
+        abort
+
+PUB toggleOutputBit(bitNbr) | valBitNbr, newBitValue
+'' Toggle the output bit value (bits are 0-15)
+    valBitNbr := validBitNumber(bitNbr)
+
+    if NOT isOutputBit(valBitNbr)
+        'debug("*PCF: ERROR attempt to toggle bit that is NOT an output")
+        abort
+
+    newBitValue := ((outBits & (1 << valBitNbr)) <> 0) ? 0 : 1
+    setOutputBitValue(bitNbr, newBitValue)
+
+PUB isOutputBit(bitNbr) : bIsOutput | valBitNbr
+'' Return T/F where T means numbered bit is set to output!
+    valBitNbr := validBitNumber(bitNbr)
+    bIsOutput := ((dirBits & (1 << valBitNbr)) <> 0) ? TRUE : FALSE
+
+CON  { ---- Device reads & writes ---- }
+
+PUB isIntPending() : bPinState | rawPin
+    '' Return interpreted value of Interrupt pin where 0 = TRUE, 1 = FALSE
+    rawPin := pinr(pin_int)
+    bPinState := (rawPin == 0) ? TRUE : FALSE
+    'if bShowDebug
+        'debug(`8575log ' * isIntPending() PinRaw=`(rawPin), state=`(bPinState)' 10)
+
+
+PUB readWord() : bStatusOK, result16 | ackbit, WORD dvcResult16
+'' Read {result16}, all 16 port pin values, from device
+''  returning both {bStatusOK} - T/F where TRUE = SUCCESS and
+''  {result16} - the WORD value read from the device
+    i2c_bus.start()
+    ackBit := i2c_bus.write((dvcI2CAddr << 1) | MODE_READ)
+    bStatusOK |= ackbit
+    'result16.byte[0] := i2c_bus.read(i2c_bus.ACK)
+    'result16.byte[1] := i2c_bus.read(i2c_bus.NAK)
+    i2c_bus.rd_block(@dvcResult16, 2, i2c_bus.NAK)
+
+    i2c_bus.stop()
+    result16.byte[0] := dvcResult16.byte[1]
+    result16.byte[1] := dvcResult16.byte[0]
+    result16 := result16 signx 15   ' sign extend
+    'debug("*PCF: wds x1 ", ubin_word_(result16))
+    'if bShowDebug
+    '    term.fstr5(string("*PCF: readWord(0x%.02x) bStatusOK:%d, hi 0x%.02x, lo 0x%.02x, ret %d' 10), regAddr, bStatusOK, result16.byte[1], result16.byte[0], result16)
+    'debug(" -rdWd: ", udec(bStatusOK), uhex_word(result16))
+    bStatusOK := (bStatusOK <> 0) ? FALSE : TRUE
+
+'                       WRD0    WRD1
+' REAL: Read returned $95 $A1 $23 $4B
+' Expect Value of:    $4B $23 $A1 $95
+
+PUB writeWord(dataValue16) : bStatusOK | ackbit, BYTE sendBffr[3]
+'' Write {dataValue16} to our 16 port pins
+''  returns {bStatusOK} - T/F where TRUE = SUCCESS
+    i2c_bus.start()
+    ' write block
+    BYTE[@sendBffr][0] := (dvcI2CAddr << 1) | MODE_WRITE
+    BYTE[@sendBffr][1] := dataValue16.byte[0]
+    BYTE[@sendBffr][2] := dataValue16.byte[1]
+    ackBit := i2c_bus.wr_block(@sendBffr, 3)
+    bStatusOK |= ackbit
+    i2c_bus.stop()
+
+    'if bShowDebug
+    ' following is more than 10ms...
+    '    term.fstr3(string("*PCF: writeWord(0x%.02x)=0x%.04x bStatusOK:%d' 10), regAddr, dataValue16, bStatusOK)
+    bStatusOK := (bStatusOK <> 0) ? FALSE : TRUE
+
+PUB readWords(pWordPointer, nWordCount) : bStatusOK | ackbit, wordIndex, result16
+'' Read all 16 port pin values from device {nWordCount} times consecutively,
+''  all 16 port pin values, from device - placing them into WORD array located at {pWordPointer}
+''  returns {bStatusOK} - T/F where TRUE = SUCCESS
+    'if bShowDebug
+    '    term.fstr2(string("*PCF: readWords(0x%.02x, ct=%d)' 10), regAddr, nWordCount)
+    i2c_bus.start()
+    ackBit := i2c_bus.write((dvcI2CAddr << 1) | MODE_READ)
+    bStatusOK |= ackbit
+    i2c_bus.rd_block(pWordPointer, nWordCount * 2, i2c_bus.NAK)
+
+    ' and flip from device order
+    repeat wordIndex from 0 to nWordCount - 1
+        result16 := WORD[pWordPointer][wordIndex]
+        WORD[pWordPointer][wordIndex] := result16.byte[0] | result16.byte[1] << 8
+        'if bShowDebug
+        '    term.fstr7(string(" -- readWords(0x%.02x) bStatusOK:%d, hi:0x%.02x, lo:0x%.02x, WORD[%d]ret 0x%.04x(%d)' 10), regAddr + (wordIndex * 2), bStatusOK, result16.byte[1], result16.byte[0], wordIndex, result16, result16)
+    i2c_bus.stop()
+    'if bShowDebug
+    '    term.fstr3(string(" -- readWords(ct=%d) bStatusOK:%d' 10), nWordCount, bStatusOK)
+    'debug("readWords: ", udec_long(nWordCount))
+    'repeat wordIndex from 0 to nWordCount - 1
+    '    debug("  #", udec_byte_(wordIndex), " ", uhex_word_(WORD [pWordPointer][wordIndex]))
+    bStatusOK := (bStatusOK <> 0) ? FALSE : TRUE
+
+CON { --- PRIVATE (Utility) Methods --- }
+
+DAT { driver internal data }
+
+    dirBits     WORD    0           ' all are inputs (0-in, 1-out)
+    outBits     WORD    $FFFF       ' last written output bit values (1 bit means bit is input)
+
+    ' dirBits value of 1 allows write to outBits
+    '  outbits is written to port at each output write
+
+
+PRI setupPins(pinSCL, pinSDA, pinINT) : bStatusOK | maskedBasepin
+    ' Configure pin numbers if not already
+    '   return T/F where T means SUCCESS and F means FAILED - bad basepin value
+    pin_scl := pinSCL
+    pin_sda := pinSDA
+    pin_int := pinINT
+    floatDvcPins()
+    bStatusOK := TRUE
+
+PRI floatDvcPins()
+    ' pre-condition the click I/O pins
+    pinf(pin_int)    ' de-assert
+    pinf(pin_scl)    ' de-assert
+    pinf(pin_sda)    ' de-assert
+
+PRI idDevice() : eDevice | bFoundAddr0, nAddrFound
+    ' Identify the address our device is at on the i2c bus
+    'debug("*PCF: idDevice() ENTRY")
+
+    bFoundAddr0 := FALSE
+    if(i2c_bus.present((PCF8575_I2C_ADDR_0 << 1 | MODE_WRITE)))
+        bFoundAddr0 := true
+    '    debug("*PCF: idDevice() found ", uhex(PCF8575_I2C_ADDR_0))
+    'else
+    '    debug("*PCF: idDevice() NOTHING present()")
+    i2c_bus.stop()
+
+    dvcI2CAddr := DVC_NOT_FOUND
+    eDevice := DVC_NOT_FOUND
+    if(bFoundAddr0)
+        dvcI2CAddr := PCF8575_I2C_ADDR_0
+        eDevice := DVC_ADDR0
+
+    'if bShowDebug
+    '    if (bFoundAddr0)
+    '        debug("*PCF: idDevice() Addr: ", udec(eDevice - 1), uhex(dvcI2CAddr))
+    '    else
+    '        debug("*PCF: idDevice() NOT found")
+    'debug("*PCF: idDevice() EXIT")
+
+PRI validBitNumber(bitNbr) : validBitNbr
+    validBitNbr := 0 #> bitNbr <# 15
+    if validBitNbr <> bitNbr
+        'debug("*PCF: ERROR invalid bit # [0-15]: given ", udec(bitNbr))
+        abort
+
+
+CON { --- license --- }
+
+{{
+
+ -------------------------------------------------------------------------------------------------
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ =================================================================================================
+}}

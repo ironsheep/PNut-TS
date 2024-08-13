@@ -13,7 +13,6 @@ import {
   compareExceptionFiles,
   compareListingFiles,
   compareObjOrBinFiles,
-  fileEmpty,
   fileExists,
   removeExistingFiles,
   topLevel,
@@ -119,7 +118,8 @@ describe('PNut_ts detects .spin2 exceptions w/debug() & without correctly', () =
           const existingFiles: string[] = [listingFSpec, objectFSpec, binaryFSpec, elementsFSpec, errorFSpec];
           removeExistingFiles(existingFiles);
 
-          const compileDebug: boolean = fileBase.startsWith('flash_') || fileBase.startsWith('demo_octo');
+          const compileDebug: boolean =
+            fileBase.startsWith('flash_') || fileBase.startsWith('demo_octo') || fileBase.startsWith('demo_p2gw') || fileBase.startsWith('demo_180');
 
           // compile our file generating output files
           const testArguments: string[] = ['node', 'pnut-ts.js', '-O', '-l', '--regression', 'element', '--', `${file}`];
