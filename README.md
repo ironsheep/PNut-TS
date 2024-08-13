@@ -26,30 +26,32 @@ On this Page:
 
 Additional pages:
 
+- [Pnut-TS Command-line Reference](CommandLine.md) 
 - [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
+- [PNut-TS repository notes](BuildTest.md) - how to build, run tests, etc.
 - [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
 
 ## Simplified project goals
 
-**Question**? This will be both P1 and P2 compiler, right?
-- Actually, this will be P2 until it is released then we'll contemplate adding P1
+**Question**? This will only be a p2 compiler, right?
+- Yes, this will be P2 at initial release. 
 
 - Replace all use of Delphi/Pascal, x86 assembly, and SmallBASIC with pure typescript.
 - Produce a command line tool (command line options may be slightly different)
 - Omit editor component - this is a command line compiler only
-- Provides downloader command line tool
-- More -TBA-
+- Be listing, object and binary compatible with PNut of same version. (PNut v43, initially, upgraded to PNut v45 before formal release.)
 
 ### Accomplishments of this port effort
 
-- Remove internal table-size-limits
+- Remove internal table-size-limits (or make easy to adjust table limits)
 - Simplify the file handling
 - Provide opportunity to generate more reports and/or info about each loadable image build
 - Provide opportunity to add light-weight preprocessor
 
 ### Possible Futures
 
-Now that we have a compiler, how much more would it take to port:
+Now that we have a compiler, how much more would it take to port?
+*(We are not committing to doing these, just mentioning these as they are the next most beneficial steps, we think.)*
 
 - The debug display serial port listener that interprets the serial data and presents the debug windows and terms.
 - The Debugger itself.
