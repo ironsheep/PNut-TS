@@ -1,8 +1,11 @@
-# Pnut reimplementation in TypeScript (Pnut-TS)
+# Pnut-TS Repository Build and test Notes
 
 ![Project Maintenance][maintenance-shield]
+
 [![License][license-shield]](LICENSE)
+
 [![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
+
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
 
 A joint project between Chip Gracey and Stephen M Moraco.
@@ -19,18 +22,19 @@ Lifecycle Scripts:
 | Command | Description
 | --- | --- |
 | start | compile and run pnut-ts.js
-| test | run all the tests
-
+| build | lighter-weight build
+| test | run the regression tests to ensure all the files still build and the results are correct as compared against the golden files
 
 
  These commands are run with `npm run {command}`.
 
 | Command | Description
 | --- | --- |
-| compile | compile all the typescript source in project
+| build | compile all the typescript source in project
 | watch | watch for typescript files and recompile when any change
-| prettier-format | reformat all the typescript source in project
-We will keep this list up-to-date as more commands are added.
+| prettier-format | reformat all the typescript source in project<br>We will keep this list up-to-date as more commands are added.
+| build-dist | build the distribution packages
+
 
 ### Internal Commands
 
@@ -40,6 +44,19 @@ These are used by other commands:
 | --- | --- |
 | lint | run lint against all the typescript source in project
 | pretest | runs compile and lint before the tests start
+
+### Coverage Testing
+
+The coverage environment must be setup for running the coverage tests. 
+
+| Coverage Commands | Description
+| --- | --- |
+| npm run cov-setup | prepare scripts and folders in order to run coverage
+| npm run coveage | run the coverage tests and generate HTML reports
+| npm run cov-teardown | restore scripts and folder to their non-coverage state
+
+
+
 
 ## Reminder getting latest from repository
 
@@ -73,6 +90,9 @@ Follow these links for more information:
 ### [Copyright](copyright) | [License](LICENSE)
 
 [maintenance-shield]: https://img.shields.io/badge/maintainer-stephen%40ironsheep%2ebiz-blue.svg?style=for-the-badge
-[license-shield]: https://camo.githubusercontent.com/bc04f96d911ea5f6e3b00e44fc0731ea74c8e1e9/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f6c6963656e73652f69616e74726963682f746578742d646976696465722d726f772e7376673f7374796c653d666f722d7468652d6261646765
+
+[license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
+
 [Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
+
 [Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg

@@ -82,7 +82,7 @@ export class PNutInTypeScript {
       })
       //      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
       //.option('-c, --compile', 'Compile file')
-      .option('-44, --ver44', 'Listings compatible with PNut_v44')
+      .option('-44, --ver44', 'Listings compatible with PNut_v44 and later')
       .option('-d, --debug', 'Compile with DEBUG')
       //      .option('-f, --flash', 'Download to FLASH and run')
       //.option('-f, --flash', 'Generate binary with incorporated flash loader')
@@ -132,7 +132,6 @@ export class PNutInTypeScript {
     let processArgv: string[] = process.argv;
     const runningCoverageTesting: boolean = processArgv.includes('--coverage') || path.basename(processArgv[1]) == 'processChild.js';
     const foundJest: boolean = path.basename(processArgv[1]) == 'jest';
-    this.context.logger.progressMsg(`(DBG) foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
     if (foundJest && !runningCoverageTesting) {
       processArgv = processArgv.slice(0, 2);
     }
@@ -149,11 +148,6 @@ export class PNutInTypeScript {
       //process.exit(0);
     }
     //*/
-    //this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
-    if (!foundJest && runningCoverageTesting) {
-      this.context.reportOptions.coverageTesting = true;
-    }
-
     try {
       this.program.parse(combinedArgs);
     } catch (error: unknown) {
@@ -179,6 +173,12 @@ export class PNutInTypeScript {
         return Promise.resolve(-1);
       }
     }
+
+    //this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
+    if (!foundJest && runningCoverageTesting) {
+      this.context.reportOptions.coverageTesting = true;
+    }
+
     //this.context.logger.progressMsg(`after parse()`);
     //console.log('arguments: %o', this.program.args);  // should be just filespec to compile
     //console.log('combArguments: %o', combinedArgs);
@@ -186,7 +186,11 @@ export class PNutInTypeScript {
 
     this.options = { ...this.options, ...this.program.opts() };
 
-    const showingHelp: boolean = this.program.args.includes('--help');
+    const showingHelp: boolean = this.program.args.includes('--help') || this.program.args.includes('-h');
+
+    if (!showingHelp) {
+      this.context.logger.progressMsg(`(DBG) foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
+    }
 
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
