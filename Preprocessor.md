@@ -19,6 +19,8 @@ A couple of command line options affect the proprocessing:
 | <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements |
 | <PRE>-U \<symbol></PRE>  | Prevents a subsequent `#define <symbol>` found in the .spin2 code from having any effect
 | <PRE>-I \<directory></PRE>  | set the folder to search within for `#include "filename(.spin2)" statements
+| -- **Diagnostic Use** -- | 
+| <PRE>-i, --intermediate | Generate *-pre.spin2 after preprocessing - so you can review what preprocessed source was fed to the compiler
 
 **NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means that the compilation of all #included files and all files specified in the OBJ block of each object will be affected by the -D and -U options.
 
@@ -185,3 +187,4 @@ Follow these links for more information:
 [Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
+
