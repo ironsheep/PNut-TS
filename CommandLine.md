@@ -38,8 +38,8 @@ Options:
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
          
 
-pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.
-pnut-ts: * Version 0.43.0, {buildDateHere}
+pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC., Parallax Inc.
+pnut-ts: * Version 0.43.0,  Build date: 8/14/24
 ```
 
 These options should already make sense but here's a light-weight recap:

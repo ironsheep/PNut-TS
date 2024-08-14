@@ -233,7 +233,7 @@ export class PNutInTypeScript {
     */
 
     if (!this.options.quiet && !foundJest && !runningCoverageTesting) {
-      const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC.";
+      const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC., Parallax Inc.";
       this.context.logger.infoMsg(`* ${signOnCompiler}`);
       const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
       this.context.logger.infoMsg(`* ${signOnVersion}`);
