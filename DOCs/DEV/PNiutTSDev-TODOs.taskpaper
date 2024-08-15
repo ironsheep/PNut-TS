@@ -1,9 +1,15 @@
 PNut TS Dev NOTEs:
+	TODAYs issues w/Chip helping to find:
+		- code generation in BLDC
+		- long runtime in iOTgw
+		- TOF out files too big?
+	
+	
 	NESTED PreProc work:
 		- ifSideEmits = false
 		- elseSideEmits = false
 		- inIfSide = false
-	
+		
 		#ifdef USE_PSRAM16
 			- ifSideEmits = if(USE_PSRAM16 is defined)
 			- inIfSide = true
@@ -94,7 +100,7 @@ PNut TS Dev NOTEs:
 					- Linux keymap works
 					
 					
-
+				
 				
 				
 				Talk with Eric 18 Jun 12:45-13:15L: serial loader approaches:
