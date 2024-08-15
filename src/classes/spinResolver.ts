@@ -305,7 +305,7 @@ export class SpinResolver {
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
     this.spinElements = this.srcFile.elementList;
-    this.logMessageOutline(`++ Resolver.setSourceFile([${spinCode.fileName}])`);
+    //this.logMessageOutline(`++ Resolver.setSourceFile([${spinCode.fileName}])`);
   }
 
   public getSymbol(symbolName: string): iSymbol | undefined {
@@ -402,10 +402,11 @@ export class SpinResolver {
       mov [info_count],0    ;reset info count
     */
     this.overrideSymbolTable = overrideSymbolTable;
+    const filename: string = this.srcFile === undefined ? '?unk?' : this.srcFile.fileName;
     if (overrideSymbolTable === undefined) {
-      this.logMessageOutline(`++ compile1() No CON Overrides provided`);
+      this.logMessageOutline(`++ compile1(${filename}) No CON Overrides provided`);
     } else {
-      this.logMessageOutline(`++ compile1() Using ${this.overrideSymbolTable?.length} CON Overrides`);
+      this.logMessageOutline(`++ compile1(${filename}) Using ${this.overrideSymbolTable?.length} CON Overrides`);
     }
     this.mainSymbols.reset();
     this.localSymbols.reset();
@@ -429,7 +430,8 @@ export class SpinResolver {
 
   public compile2(isTopLevel: boolean) {
     //this.isLogging = true;
-    this.logMessageOutline(`++ compile2(isTopLevel=(${isTopLevel}))- ENTRY`);
+    const filename: string = this.srcFile === undefined ? '?unk?' : this.srcFile.fileName;
+    this.logMessageOutline(`++ compile2(${filename}, isTopLevel=(${isTopLevel}))- ENTRY`);
     this.logMessage(
       `  -- OPTS elem(${this.context.logOptions.logElementizer}), parse(${this.context.logOptions.logParser}), comp(${this.context.logOptions.logCompile}), resolv(${this.context.logOptions.logResolver}), preproc(${this.context.logOptions.logPreprocessor})`
     );
@@ -451,7 +453,7 @@ export class SpinResolver {
       this.compile_final();
       //this.compile_done();  // XYZZY do we need this?
     }
-    this.logMessageOutline(`++ compile2(isTopLevel=(${isTopLevel}))- EXIT`);
+    this.logMessageOutline(`++ compile2(${filename}, isTopLevel=(${isTopLevel}))- EXIT`);
   }
 
   public testResolveExp(mode: eMode, resolve: eResolve, precedence: number) {
@@ -9759,6 +9761,7 @@ private checkDec(): boolean {
       this.context.logger.logMessage(message);
     }
   }
+
   private logMessage(message: string): void {
     if (this.isLogging) {
       this.context.logger.logMessage(message);

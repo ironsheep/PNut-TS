@@ -139,8 +139,12 @@ export class Compiler {
             for (let index = 0; index < objFileList.length; index++) {
               const objFile = objFileList[index];
               const fileSpec: string = objFile.fileSpec;
-              const childObjSourceFile = new SpinDocument(this.context, fileSpec);
-              this.context.sourceFiles.addFile(childObjSourceFile);
+              // reuse existing document if present
+              let childObjSourceFile = this.context.sourceFiles.getFile(fileSpec);
+              if (childObjSourceFile === undefined) {
+                childObjSourceFile = new SpinDocument(this.context, fileSpec);
+                this.context.sourceFiles.addFile(childObjSourceFile);
+              }
               objFile.setSpinSourceFileId(childObjSourceFile.fileId);
               const overrideSymbolTable: SymbolTable | undefined = objFile.parameterSymbolTable;
               this.compileRecursively(depth + 1, childObjSourceFile, overrideSymbolTable);

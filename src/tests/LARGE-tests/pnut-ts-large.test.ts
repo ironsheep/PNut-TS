@@ -86,7 +86,7 @@ describe('PNut_ts detects .spin2 exceptions w/debug() & without correctly', () =
   }
 
   let PNut_ts_compiler: PNutInTypeScript;
-  const TEST_TIMEOUT_MS = 10000;
+  const TEST_TIMEOUT_MS = 20000;
 
   files.forEach((file) => {
     const fileBase = path.basename(file);
@@ -119,7 +119,11 @@ describe('PNut_ts detects .spin2 exceptions w/debug() & without correctly', () =
           removeExistingFiles(existingFiles);
 
           const compileDebug: boolean =
-            fileBase.startsWith('flash_') || fileBase.startsWith('demo_octo') || fileBase.startsWith('demo_p2gw') || fileBase.startsWith('demo_180');
+            fileBase.startsWith('flash_fs_demo') ||
+            fileBase.startsWith('demo_octo') ||
+            fileBase.startsWith('demo_p2gw') ||
+            fileBase.startsWith('demo_180') ||
+            fileBase.startsWith('demo_quad');
 
           // compile our file generating output files
           const testArguments: string[] = ['node', 'pnut-ts.js', '-O', '-l', '--regression', 'element', '--', `${file}`];

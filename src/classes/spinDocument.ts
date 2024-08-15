@@ -458,9 +458,13 @@ export class SpinDocument {
               replaceCurrent = this.commentOut(currLine);
               currLine = '';
               // load file into spinDoc
-              const incSpinDocument = new SpinDocument(this.context, filespec);
-              // record this new file in our master list of files we compiled to buid the binary
-              this.context.sourceFiles.addFile(incSpinDocument);
+              // reuse existing document if present
+              let incSpinDocument = this.context.sourceFiles.getFile(filespec);
+              if (incSpinDocument === undefined) {
+                incSpinDocument = new SpinDocument(this.context, filespec);
+                // record this new file in our master list of files we compiled to buid the binary
+                this.context.sourceFiles.addFile(incSpinDocument);
+              }
               // get parsed content from spinDoc inserting into current content after / -or / in-place-of this line
               insertTextLines = incSpinDocument.allTextLines;
             } else {

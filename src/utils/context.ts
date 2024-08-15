@@ -78,6 +78,18 @@ export class SourceFiles {
     }
   }
 
+  public getFile(fileSpec: string): SpinDocument | undefined {
+    let desiredDocument: SpinDocument | undefined = undefined;
+    const filename = path.basename(fileSpec);
+    for (let srcFileIndex = 0; srcFileIndex < this._srcFiles.length; srcFileIndex++) {
+      const fileReference = this._srcFiles[srcFileIndex];
+      if (fileReference.fileName == filename) {
+        desiredDocument = fileReference;
+      }
+    }
+    return desiredDocument;
+  }
+
   public getTopFile(): SpinDocument {
     if (this._srcFiles.length == 0) {
       throw new Error(`CODE CONSTRUCTION ERROR: getTopFile() this._srcFiles[] shouldn't be empty`);

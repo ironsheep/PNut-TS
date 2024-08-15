@@ -40,6 +40,7 @@ enum eDebugStringState {
 export class SpinElementizer {
   private context: Context;
   private isLogging: boolean = false;
+  private isLoggingOutline: boolean = false;
   private srcFile: SpinDocument;
   private currLineIndex: number = -1;
   private currCharacterIndex: number = 0;
@@ -60,6 +61,7 @@ export class SpinElementizer {
   constructor(ctx: Context) {
     this.context = ctx;
     this.isLogging = this.context.logOptions.logElementizer;
+    this.isLoggingOutline = this.context.logOptions.logOutline;
     this.srcFile = new SpinDocument(ctx, '');
     this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     this.symbol_tables = new SpinSymbolTables(ctx);
@@ -94,6 +96,8 @@ export class SpinElementizer {
 
     // if we have a new source file then generate its element list
     if (spinCode.elementList.length == 0) {
+      const filename = this.srcFile.fileName;
+      this.logMessageOutline(`++ Elementizer Elementize(${filename})`);
       const elementList = this.getFileElements();
       spinCode.setElementList(elementList);
     }
@@ -594,6 +598,12 @@ export class SpinElementizer {
 
   private isDigit(line: string): boolean {
     return /^\d$/.test(line);
+  }
+
+  private logMessageOutline(message: string): void {
+    if (this.isLoggingOutline) {
+      this.context.logger.logMessage(message);
+    }
   }
 
   private logMessage(message: string): void {
