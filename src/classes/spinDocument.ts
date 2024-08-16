@@ -20,7 +20,8 @@ import { SpinElement } from './spinElement';
 export enum eEOLType {
   EOL_Unknown,
   EOL_CRLF,
-  EOL_LF_ONLY
+  EOL_LF_ONLY,
+  EOL_CR_ONLY
 }
 
 export enum eLangaugeId {
@@ -151,8 +152,16 @@ export class SpinDocument {
       if (this.langId == eLangaugeId.LID_SPIN2) {
         // load file and record line-ending type then split into lines (removing endings)
         const fileContents: string = loadFileAsString(fileSpec);
-        this.eolType = fileContents.includes('\r\n') ? eEOLType.EOL_CRLF : eEOLType.EOL_LF_ONLY;
-        this.rawLines = fileContents.split(/\r?\n/);
+        if (fileContents.includes('\r\n')) {
+          this.eolType = eEOLType.EOL_CRLF;
+          this.rawLines = fileContents.split(/\r\n/);
+        } else if (fileContents.includes('\n')) {
+          this.eolType = eEOLType.EOL_LF_ONLY;
+          this.rawLines = fileContents.split(/\n/);
+        } else {
+          this.eolType = eEOLType.EOL_CR_ONLY;
+          this.rawLines = fileContents.split(/\r/);
+        }
         this.logMessage(`CODE: loaded [${this.fileBaseName}] from [${this.docFolder}]`);
       }
     } else {

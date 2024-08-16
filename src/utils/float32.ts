@@ -66,7 +66,8 @@ export function bigIntFloat32ToNumber(float32BigInt: bigint): number {
   // Create a new DataView from the ArrayBuffer
   const dataView = new DataView(buffer);
   // Get the least significant 32 bits of the BigInt and set into the DataView
-  dataView.setUint32(0, Number(float32BigInt & BigInt(0xffffffff)), true); // true for little-endian
+  //   (note true is for little - endian)
+  dataView.setUint32(0, Number(float32BigInt & BigInt(0xffffffff)), true);
   // Create a new Float32Array from the ArrayBuffer
   const float32Array = new Float32Array(buffer);
   // Return the first element of the Float32Array
