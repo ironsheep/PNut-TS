@@ -1,8 +1,12 @@
 PNut TS Dev NOTEs:
 	TODAYs issues w/Chip helping to find:
-		- code generation in BLDC
+		- code generation in BLDC - this is floating point diff issue @done(2024-08-15)
 		- long runtime in iOTgw
 		- TOF out files too big?
+		
+		LIMITATION OF PNUT-TS:
+			- NOTE: floating point constants: The mantissa (bits 22:0) can be +/- 1 ls-bit off in value
+		
 	
 	
 	NESTED PreProc work:

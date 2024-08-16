@@ -244,7 +244,8 @@ CON ' ============= TASK in own COG =============
 
 DAT { debug display data }
 
-    screenTitle     BYTE    "-- 180° Field of View Sensor Debug --", 0
+    screenTitle     BYTE    "-- 180* Field of View Sensor Debug --", 0
+    'screenTitle     BYTE    "-- 180° Field of View Sensor Debug --", 0
 
     dvrCommand      LONG    DC_UNKNOWN
     dvrParameter    LONG    0

@@ -1,0 +1,350 @@
+'' =================================================================================================
+''
+''   File....... isp_measure_panel.spin2
+''   Purpose.... Utility to measure HUB75 RGB LED Matrix Panel light output using mounted sensors
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2021 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Mar 2021
+''   Updated.... 19 Mar 2021
+''
+'' =================================================================================================
+
+CON { timing }
+
+  'CLK_FREQ = 200_000_000                                        ' system freq as a constant
+  CLK_FREQ = 335_000_000                                        ' system freq as a constant 2.985 nSec
+  MS_001   = CLK_FREQ / 1_000                                   ' ticks in 1ms
+  US_001   = CLK_FREQ / 1_000_000                               ' ticks in 1us
+
+  BR_TERM  = 230_400                                            ' terminal baud rate
+
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+
+CON { fixed io pins }
+
+  RX1      = 63  { I }                                          ' programming / debug
+  TX1      = 62  { O }
+
+  SF_CS    = 61  { O }                                          ' serial flash
+  SF_SCK   = 60  { O }
+  SF_SDO   = 59  { O }
+  SF_SDI   = 58  { I }
+
+  SD_SCK   = 61  { O }                                          ' sd card
+  SD_CS    = 60  { O }
+  SD_SDI   = 59  { O }
+  SD_SDO   = 58  { I }
+
+  SDA1     = 57  { IO }                                         ' i2c (optional)
+  SCL1     = 56  { IO }
+
+CON { app io pins }
+
+    PIN_BH1750_SCL  = 8     '16    ' blue      | Orange
+    PIN_BH1750_SDA  = 9     ' 17    ' yellow    | Yellow
+    PIN_BH1750_ADDR0 = 10   ' 18    ' dk grn    | Green
+    PIN_BH1750_ADDR1 = 11   ' 19    ' dk grn    | Green
+    PIN_BH1750_ADDR2 = 12   ' 20    ' dk grn    | Green
+
+    MAX_BH1750s = 3
+
+CON { basic constants }
+
+  #true, ON, OFF                                                ' digital control
+  #0, NO, YES
+
+  TRIES = 1                                                     ' should not be needed!
+
+  #0, S_LIST, S_MATRIX                                          ' display styles
+
+  STYLE = S_MATRIX                                              ' selected style
+
+
+VAR { meas sys global vars }
+    long    cog
+
+OBJ { our devices }
+
+    term                        : "jm_serial"                                            ' terminal output
+    color                       : "isp_hub75_color"
+    pixels                      : "isp_hub75_screenUtils"
+    screen                      : "isp_hub75_screenAccess"
+    display                     : "isp_hub75_display"
+    lightSensor[MAX_BH1750s]    : "isp_bh1750"
+
+PUB main() | success, red, green, blue
+
+    setup()
+    display.clearScreen()
+    wait_for_terminal(true)
+
+    quietSensor() ' set pins to output low... so we can set LA trigger
+
+    term.fstr0(string("\r\nMeasure Panel Started!\r\n\r\n"))
+
+    term.fstr0(string("Start()\r\n"))
+    initSensors()    ' start our i2c light sensor
+    powerOnSensors()
+
+    term.fstr0(string("Pattern, Color, # Bits, Bits, Count, LumenAvg, Lumen0, Lumen1, Lumen2\r\n"))
+    measurePatternSet(@justified, string("justified"))
+    measurePatternSet(@spread, string("spread"))
+    measurePatternSet(@grouped2, string("grouped2"))
+
+    display.clearScreen()
+    term.fstr0(string("DONE()\r\n"))
+
+CON { color enums }
+
+#0, BFR_RED, BFR_GREEN, BFR_BLUE, BFR_WHITE
+
+PRI measurePatternSet(pPatternSet, patternName) | patternIndex, pwmBits, colorIndex, pColorName
+    'term.fstr1(string("\r\n\r\n====<  %s  >====\r\n"), patternName)
+    repeat colorIndex from 0 to 3
+        case colorIndex
+            BFR_RED:
+                pColorName := string("Red")
+            BFR_GREEN:
+                pColorName := string("Green")
+            BFR_BLUE:
+                pColorName := string("Blue")
+            other:
+                pColorName := string("White")
+        'term.fstr1(string("---- %s ----\r\n"), pColorName)
+        repeat patternIndex from 0 to 16
+            pwmBits := word[pPatternSet][patternIndex]
+            'term.fstr1(string("- \%%16b\r\n"), pwmBits)
+            case colorIndex
+                BFR_RED:
+                    display.testSetPWMbitsforRGB(pwmBits, 0, 0)
+                BFR_GREEN:
+                    display.testSetPWMbitsforRGB(0, pwmBits, 0)
+                BFR_BLUE:
+                    display.testSetPWMbitsforRGB(0, 0, pwmBits)
+                other:
+                    display.testSetPWMbitsforRGB(pwmBits, pwmBits, pwmBits)
+            waitms(30)  ' allow time for screen to paint
+            measureNLogSensorValues(patternName, pColorName, patternIndex, pwmBits)
+        'term.fstr0(string("\r\n"))  ' blank line
+
+PUB mainTest() | success, red, green, blue
+
+    setup()
+
+    'demoAlignmentText()
+    display.clearScreen()
+    'display.drawBoxOfColor(0, 0, 64, 16, TRUE, color.cFullBlue)
+    'display.drawBoxOfColor(16, 0, 64, 16, TRUE, color.cFullRed)
+    'display.fillScreen(color.cGray)    ' full single color panel w/PWM
+    'display.commitScreenToPanel()
+
+    red := %0000_0000_0000_0011
+    green := %0000_0000_0000_0011
+    blue := %0000_0000_0000_0011
+
+    display.testSetPWMbitsforRGB(red, green, blue)
+
+    wait_for_terminal(true)
+
+    quietSensor() ' set pins to output low... so we can set LA trigger
+
+    term.fstr0(string("\r\nMeasure Panel Started!\r\n\r\n"))
+
+    term.fstr0(string("Start()\r\n"))
+    initSensors()    ' start our i2c light sensor
+    'drivePinsForLATest()
+
+    'term.fstr0(string("\r\nDone\r\n"))
+    'return
+
+    powerOnSensors()
+    measureSensors()
+
+    term.fstr0(string("\r\nDone\r\n"))
+
+PRI powerOnSensors() | sensorIndex, success
+
+    repeat sensorIndex from 0 to 2
+        term.fstr1(string("power-on sensor #%d\r\n"), sensorIndex)
+        success := lightSensor[sensorIndex].powerOn()
+        if(success)
+            term.fstr1(string(" - Power-on #%d worked\r\n"), sensorIndex)
+        else
+            term.fstr1(string(" - Power-on #%d ERROR\r\n"), sensorIndex)
+
+PRI measureSensors() | sensorIndex, success, rawValue, lumen
+
+    repeat sensorIndex from 0 to 2
+        term.fstr1(string("Measure then read sensor #%d\r\n"), sensorIndex)
+        success, rawValue, lumen := lightSensor[sensorIndex].readOnceHiRes2()
+        term.fstr1(string(" - Success: %d\r\n"), success)
+        term.fstr1(string(" - rawValue: 0x%0.8x\r\n"), rawValue)
+        term.fstr1(string(" - lumen: %d\r\n\r\n"), lumen)
+
+PRI measureNLogSensorValues(patternName, pColorName, bitCount, pwmBits) : desiredLumen | sensorIndex, success, lumen, lumen0, lumen1, lumen2, lumenSum, rawValue, successCt
+    successCt := 0
+    lumenSum := 0
+    lumen0 := lumen1 := lumen2 := desiredLumen := 0
+    repeat sensorIndex from 0 to 2
+        'term.fstr1(string("Measure then read sensor #%d\r\n"), sensorIndex)
+        success, rawValue, lumen := lightSensor[sensorIndex].readOnceHiRes2()
+        if success
+            successCt += 1
+            lumenSum += lumen
+            case sensorIndex
+                0:
+                    lumen0 := lumen
+                1:
+                    lumen1 := lumen
+                other:
+                    lumen2 := lumen
+        'else
+        '    term.fstr1(string(" - READ FAILED: %d\r\n"), success)
+        'term.fstr1(string(" - Success: %d\r\n"), success)
+        'term.fstr1(string(" - rawValue: 0x%0.8x\r\n"), rawValue)
+        'term.fstr1(string(" - lumen: %d\r\n\r\n"), lumen)
+    if successCt > 0
+        desiredLumen := lumenSum / successCt
+        term.fstr9(string("%s, %s, 0b%0.16b, %d, \'%d of 3\', %d, %d, %d, %d\r\n"), patternName, pColorName, pwmBits, bitCount, successCt, desiredLumen, lumen0, lumen1, lumen2)
+
+
+PRI stop()
+    ' Stop the driver
+    if cog
+        display.stop()
+        cog := 0
+
+
+PRI quietSensor()
+    lightSensor[0].init(PIN_BH1750_SDA, PIN_BH1750_SCL, PIN_BH1750_ADDR0)  ' set pins to output low... so we can set LA trigger
+    lightSensor[1].init(PIN_BH1750_SDA, PIN_BH1750_SCL, PIN_BH1750_ADDR1)  ' set pins to output low... so we can set LA trigger
+    lightSensor[2].init(PIN_BH1750_SDA, PIN_BH1750_SCL, PIN_BH1750_ADDR2)  ' set pins to output low... so we can set LA trigger
+
+
+PRI initSensors() | device0Found, device1Found, device2Found, freqValue, freqValue2
+
+    term.fstr0(string("Setup...\r\n"))
+    lightSensor[0].setup()                                           ' i2c @ 100kHz, external pull-ups
+    lightSensor[1].setup()                                           ' i2c @ 100kHz, external pull-ups
+    lightSensor[2].setup()                                           ' i2c @ 100kHz, external pull-ups
+
+    freqValue, freqValue2 := lightSensor[0].getClockFreq()
+    term.fstr1(string(" - Freq1: %d\r\n"), freqValue)
+    term.fstr1(string(" - Tix: %d\r\n"), freqValue2)
+
+    term.fstr0(string("ID Slave...\r\n"))
+    device0Found := lightSensor[0].idDevice()
+    describeDevice(string("sensor0"), device0Found)
+    device1Found := lightSensor[1].idDevice()
+    describeDevice(string("sensor1"), device0Found)
+    device2Found := lightSensor[2].idDevice()
+    describeDevice(string("sensor2"), device0Found)
+
+PRI describeDevice(message, deviceFound) | findingMessage
+    ' present info on device we found
+    if(deviceFound == lightSensor.DVC_SLAVE0)
+        findingMessage := string("Found SLAVE0")
+
+    elseif(deviceFound == lightSensor.DVC_SLAVE1)
+        findingMessage := string("Found SLAVE1")
+
+    else
+        findingMessage := string("NO slaves Found")
+
+    term.fstr2(string(" - %s: %s\r\n"), message, findingMessage)
+
+PRI drivePinsForLATest() | index
+    ' see if we have LA wired up correctly...
+    repeat index from 0 to 1000
+        pintoggle(PIN_BH1750_SCL)
+        if (index // 2 == 0)
+            pintoggle(PIN_BH1750_SDA)
+        if (index // 3 == 0)
+            pintoggle(PIN_BH1750_ADDR0)
+        if (index // 4 == 0)
+            pintoggle(PIN_BH1750_ADDR1)
+        if (index // 5 == 0)
+            pintoggle(PIN_BH1750_ADDR2)
+
+PRI demoAlignmentText()
+    ' put some text on screen
+    display.setTextFont(display.TEXT_FONT_5x7)    ' font size
+    display.setCursor(0, 0)   ' start at top left, with one pixel of spacing
+    display.setColoredTextAtLnCol(0, 0, string("Line 1"), color.cBlue)
+    display.setColoredTextAtLnCol(1, 0, string("Propeller"), color.cBlue)
+    display.setColoredTextAtLnCol(2, 0, string("Propeller2"), color.cBlue)
+    display.setColoredTextAtLnCol(3, 0, string("Line 4"), color.cBlue)
+    display.commitScreenToPanel()
+
+
+PRI setup(): ok
+    ' setup our devices
+    term.start(BR_TERM)                                           ' start terminal io
+
+    ok := cog := display.start()   ' send buffer to driver
+    if ok == -1
+        debug("- Measure: underlying drivers failed!")
+        abort
+
+
+PRI wait_for_terminal(clear)
+  ' Download to RAM with F10
+  ' F12 to open PST
+  ' Click [Enable]
+  ' Press Enter
+
+  term.rxflush()
+  term.rx()
+  if (clear)
+    term.tx(term.CLS)
+
+DAT { pwm test bit-patterns }
+
+justified   word    %0000_0000_0000_0000, %0000_0000_0000_0001, %0000_0000_0000_0011, %0000_0000_0000_0111
+            word    %0000_0000_0000_1111, %0000_0000_0001_1111, %0000_0000_0011_1111, %0000_0000_0111_1111
+            word    %0000_0000_1111_1111, %0000_0001_1111_1111, %0000_0011_1111_1111, %0000_0111_1111_1111
+            word    %0000_1111_1111_1111, %0001_1111_1111_1111, %0011_1111_1111_1111, %0111_1111_1111_1111
+            word    %1111_1111_1111_1111
+
+spread      word    %0000_0000_0000_0000, %0000_0000_0000_0001, %0000_0001_0000_0001, %0000_0100_0010_0001
+            word    %0001_0001_0001_0001, %0010_0100_0100_1001, %0010_0101_0010_0101, %0101_0100_1010_0101
+            word    %0101_0101_0101_0101, %0101_0101_1101_0101, %0101_1101_0101_1101, %0101_1101_1101_1101
+            word    %1101_1101_1101_1101, %1101_1101_1111_1101, %1111_1101_1111_1101, %1101_1111_1111_1111
+            word    %1111_1111_1111_1111
+
+grouped2    word    %0000_0000_0000_0000, %0000_0000_0000_0001, %0000_0001_0000_0001, %0000_0001_0000_0011
+            word    %0000_0011_0000_0011, %0000_0011_0000_0111, %0000_0111_0000_0111, %0000_0111_0000_1111
+            word    %0000_1111_0000_1111, %0000_1111_0001_1111, %0001_1111_0001_1111, %0001_1111_0011_1111
+            word    %0011_1111_0011_1111, %0011_1111_0111_1111, %0111_1111_0111_1111, %0111_1111_1111_1111
+            word    %1111_1111_1111_1111
+
+CON { license }
+
+{{
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2020 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}
