@@ -23,8 +23,7 @@ import { ObjectSymbols } from './objectSymbols';
 import { DistillerList, DistillerRecord } from './distillerList';
 import { DebugData, DebugRecord } from './debugData';
 import { SpinDocument } from './spinDocument';
-import { hexByte, hexLong, hexWord } from '../utils/formatUtils';
-import { skip } from 'node:test';
+import { hexByte, hexLong } from '../utils/formatUtils';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -158,6 +157,8 @@ export class SpinResolver {
   private context: Context;
   private isLogging: boolean = false;
   private isLoggingOutline: boolean = false;
+  private isLoggingDistill: boolean = true;
+  //private logBlockOptimizeDepth: number = 0;
   // data from our elemtizer and navigation variables
   private spinElements: SpinElement[] = [];
   private nextElementIndex: number = 0;
@@ -305,7 +306,6 @@ export class SpinResolver {
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
     this.spinElements = this.srcFile.elementList;
-    //this.logMessageOutline(`++ Resolver.setSourceFile([${spinCode.fileName}])`);
   }
 
   public getSymbol(symbolName: string): iSymbol | undefined {
@@ -430,6 +430,7 @@ export class SpinResolver {
 
   public compile2(isTopLevel: boolean) {
     //this.isLogging = true;
+    const startTime = Date.now();
     const filename: string = this.srcFile === undefined ? '?unk?' : this.srcFile.fileName;
     this.logMessageOutline(`++ compile2(${filename}, isTopLevel=(${isTopLevel}))- ENTRY`);
     this.logMessage(
@@ -453,7 +454,9 @@ export class SpinResolver {
       this.compile_final();
       //this.compile_done();  // XYZZY do we need this?
     }
-    this.logMessageOutline(`++ compile2(${filename}, isTopLevel=(${isTopLevel}))- EXIT`);
+    const endTime = Date.now();
+    const elapsedTimeMS = endTime - startTime;
+    this.logMessageOutline(`++ compile2(${filename}, isTopLevel=(${isTopLevel}))- EXIT (executed in ${elapsedTimeMS} ms)`);
   }
 
   public testResolveExp(mode: eMode, resolve: eResolve, precedence: number) {
@@ -652,12 +655,12 @@ export class SpinResolver {
 
   private getFilename(): string {
     let filename: string = '';
-    //const savedLogState: boolean = this.isLogging;
+    const savedLogState: boolean = this.isLogging;
     this.logMessage(`* getFilename() - ENTRY`);
     do {
       //this.isLogging = false;
       this.getElement();
-      //this.isLogging = savedLogState; // so exceptions have logging in good state...
+      this.isLogging = savedLogState; // so exceptions have logging in good state...
       if (this.currElement.type != eElementType.type_con) {
         // [error_ifufiq]
         throw new Error('Invalid filename, use "FilenameInQuotes"');
@@ -671,9 +674,9 @@ export class SpinResolver {
         // [error_ftl]
         throw new Error('Filename too long');
       }
-      //this.isLogging = false; // disable again for checkComma()
+      this.isLogging = false; // disable again for checkComma()
     } while (this.checkComma());
-    //this.isLogging = savedLogState;
+    this.isLogging = savedLogState; // restore so we can exit
     this.logMessage(`* getFilename() - EXIT`);
     return filename;
   }
@@ -1012,7 +1015,8 @@ export class SpinResolver {
    */
   private compile_dat_blocks(inLineMode: boolean = false, inLineCogOrg: number = 0, inLineCogOrgLimit: number = 0) {
     // compile all DAT blocks in file
-    this.logMessageOutline(`++ compile_dat_blocks(inLineMode=(${inLineMode}))`);
+    //const startTime = Date.now();
+    //this.logMessageOutline(`++ compile_dat_blocks(inLineMode=(${inLineMode})) - ENTRY`);
     this.logMessage(`*==* COMPILE_dat_blocks() inLineMode=(${inLineMode})`);
     this.inlineModeForGetConstant = inLineMode;
     if (inLineMode) {
@@ -1402,6 +1406,9 @@ export class SpinResolver {
     }
     // clear so no lingering side-effects
     this.inlineModeForGetConstant = false;
+    //const endTime = Date.now();
+    //const elapsedTimeMS = endTime - startTime;
+    //this.logMessageOutline(`++ compile_dat_blocks(inLineMode=(${inLineMode})) - EXIT (executed in ${elapsedTimeMS} ms)`);
   }
 
   private advanceToNextCogLong() {
@@ -2824,7 +2831,7 @@ export class SpinResolver {
     // Compile sub blocks
     // PNut compile_sub_blocks:
     if (this.pasmMode == false) {
-      this.logMessage('*==* COMPILE_sub_blocks()');
+      this.logMessageOutline('++ compile_sub_blocks()');
       // compile PUB blocks
       const lastPubSymbolValue = this.compilePubPriBlocks(eBlockType.block_pub);
       // compile PRI blocks
@@ -2840,16 +2847,21 @@ export class SpinResolver {
 
   private compilePubPriBlocks(blockType: eBlockType): number {
     // here is compile_sub_blocks: @@compile
+    //const startTime = Date.now();
     let localOffset: number = 0;
     let localVariableOffset: number = 0;
     let methodDetails: number = 0; // this is @@sub
+
+    this.logMessageOutline(`++ compilePubPriBlocks(${eBlockType[blockType]}) - ENTRY`);
 
     this.restoreElementLocation(0); // start from first in list
     while (this.nextBlock(blockType)) {
       // here is @@nextblock:
       this.activeSymbolTable = eSymbolTableId.STI_LOCAL;
+      //const blockStartTime = Date.now();
 
       this.getElement();
+      const methodElement = this.currElement;
       methodDetails = Number(this.currElement.bigintValue); // this is @@sub
       localOffset = 0;
 
@@ -2945,7 +2957,13 @@ export class SpinResolver {
       // TODO: this is where INFO data would be recorded FIXME: do we want to do this? add later
       this.localSymbols.reset();
       this.activeSymbolTable = eSymbolTableId.STI_MAIN;
+      //const blockEndTime = Date.now();
+      //const blockElapsedTimeMS = blockEndTime - blockStartTime;
+      //this.logMessageOutline(`  -- compile (${eBlockType[blockType]}) ${methodElement.toString()} --  (executed in ${blockElapsedTimeMS} ms)`);
     }
+    //const endTime = Date.now();
+    //const elapsedTimeMS = endTime - startTime;
+    //this.logMessageOutline(`++ compilePubPriBlocks(${eBlockType[blockType]}) - EXIT (executed in ${elapsedTimeMS} ms)`);
     return methodDetails;
   }
 
@@ -4100,7 +4118,7 @@ export class SpinResolver {
     //   moves data from objects into our output binary image
     // PNut compile_obj_blocks:
     if (this.pasmMode == false) {
-      this.logMessage('*==* COMPILE_obj_blocks()');
+      this.logMessageOutline('++ compile_obj_blocks()');
       this.pad_obj_long();
       // 1st pass
 
@@ -4181,7 +4199,6 @@ export class SpinResolver {
     if (this.pasmMode == false) {
       // here is distill_objects:
       this.logMessageOutline(`++ distill_obj_blocks() objImgLen=${this.objImage.offset}(${hexLong(this.objImage.offset, '0x')}) - ENTRY`);
-      this.logMessage(`* distill_obj_blocks()`);
       //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
       const startingOffset: number = this.objImage.offset;
       this.distillPtr = 0;
@@ -4190,7 +4207,6 @@ export class SpinResolver {
       this.distillDumpRecords('post_build');
       //if (recordCount > 1) {
       this.distill_scrub(); // damages object IDs in objImage
-      //const removeObjectCount: number = this.distill_eliminate();
 
       let recordWasEliminated: boolean;
       do {
@@ -4199,7 +4215,6 @@ export class SpinResolver {
 
       this.distill_rebuild();
       this.distill_reconnect();
-      //}
       //}
       //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
       // NOTE: PNut v43 has this as an assign, we are moving to sum from assign
@@ -4233,8 +4248,10 @@ export class SpinResolver {
 
   private distillDumpRecords(callerId: string) {
     const recordCount: number = this.distillRecordCount(callerId);
-    this.logMessage('  -- ------------------------------');
-    this.logMessage(`  -- [${callerId}]: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
+    const savedOutlineLogState = this.isLoggingOutline;
+    this.isLoggingOutline = false; // DON'T LOG FOR NOW...
+    this.logMessageDistill('  -- ------------------------------');
+    this.logMessageDistill(`  -- [${callerId}]: rcdCt=(${recordCount}), this.distillPtr=(${this.distillPtr})`);
     if (this.distiller.length > 0) {
       let recordOffset: number = 0;
       let recordNbr: number = 1;
@@ -4253,24 +4270,25 @@ export class SpinResolver {
         }
         const recordIdStr: string = `#${recordNbr}[${recordOffset}](${5 + subObjCount})`;
         const extraIDBit: string = (objID & 0x80000000) != 0 ? `+` : ``;
-        this.logMessage(
-          `  -- ${recordIdStr} id=(${extraIDBit}${objID & 0x7fffffff}), offset=(${objOffset}), subCt=(${subObjCount}), mthdCt=(${methodCount}), objSz=(${objectSize}) subObjIDs=[${subObjIDs}]`
+        const objSizeLongs: number = (objectSize + 3) & 0xfffffffc;
+        this.logMessageDistill(
+          `  -- ${recordIdStr} id=(${extraIDBit}${objID & 0x7fffffff}), offset=(${objOffset}), subCt=(${subObjCount}), mthdCt=(${methodCount}), objSz=(${objectSize}) [${objSizeLongs} -> ${objOffset + objSizeLongs}] subObjIDs=[${subObjIDs}]`
         );
         recordOffset += 5 + subObjCount;
         recordNbr++;
       } while (recordOffset < this.distillPtr);
     } else {
-      this.logMessage('     {emtpy distiller record list}');
+      this.logMessageDistill('     {emtpy distiller record list}');
     }
-    this.logMessage('  -- ------------------------------');
+    this.logMessageDistill('  -- ------------------------------');
+    this.isLoggingOutline = savedOutlineLogState; // restore outline log state
   }
 
   private distill_build(objectId: number = 0, objectOffset: number = 0, subObjectId: number = 1): number {
     // Build initial object list
     // PNut distill_build:
     // record object Id
-    //this.logMessageOutline(`++ distillBuild(id=(${objectId}), ofs=(${hexLong(objectOffset, '0x')}), subObjId=(${subObjectId}))`);
-    this.logMessage(`* distillBuild(objId=(id=(${objectId}), ofs=(${objectOffset}), subObjId=(${subObjectId}))`);
+    this.logMessageOutline(`* distillBuild(id=(${objectId}), ofs=(${objectOffset}), subObjId=(${subObjectId}))`);
     // here is @@record:
     this.distillBuildEnter(objectId);
     this.distillBuildEnter(objectOffset);
@@ -4409,28 +4427,29 @@ export class SpinResolver {
   private distill_scrub() {
     // Scrub sub-object offsets within objects to enable comparison of redundant objects
     // PNut distill_scrub:
-    this.logMessage(`* distill_scrub()`);
+    this.logMessageDistill(`* distill_scrub()`);
     let recordOffset = 0; // this is [ebx]
     let recordID = 0;
-    //this.objImage.setLogging(true); // REMOVE BEFORE FLIGHT
+    const savedObjLoggingState: boolean = this.objImage.isLoggingEnabled;
+    this.objImage.setLogging(this.isLoggingDistill); // REMOVE BEFORE FLIGHT
     do {
       recordID++;
       const objectOffset = this.distiller[recordOffset + 1]; // [esi]
       const subObjectCount = this.distiller[recordOffset + 2]; // [ecx]
-      this.logMessage(`distill_scrub() #${recordID} subCnt-(${subObjectCount})`);
+      this.logMessageDistill(`  -- #${recordID} subCnt-(${subObjectCount})`);
       for (let subObjIndex = 0; subObjIndex < subObjectCount; subObjIndex++) {
         // clear subOjbectOffsets - facilitating later compare
         this.objImage.replaceLong(0, objectOffset + subObjIndex * 8);
       }
       recordOffset += 5 + subObjectCount;
     } while (recordOffset < this.distillPtr);
-    //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
+    this.objImage.setLogging(savedObjLoggingState); // REMOVE BEFORE FLIGHT
   }
 
   private distill_eliminate_old(): number {
     // Eliminate redundant objects
     // PNut distill_eliminate:
-    this.logMessage(`* distill_eliminate()`);
+    this.logMessageDistill(`* distill_eliminate_old()`);
     let recordOffset = 0; // this is [ebx]
     let recordID = 0;
     let eliminationCount: number = 0;
@@ -4448,7 +4467,7 @@ export class SpinResolver {
         }
       }
 
-      this.logMessage(`distill_eliminate() allSubsComplete=(${areAllSubObjectsCompleted})`);
+      this.logMessageDistill(`distill_eliminate_old() allSubsComplete=(${areAllSubObjectsCompleted})`);
       // if this record's subObjects are marked as complete...
       if (areAllSubObjectsCompleted) {
         let elimRecordOffset = 0;
@@ -4467,8 +4486,8 @@ export class SpinResolver {
             // (id is no longer referenced by any record)
             this.distillDumpRecords('preDelete');
             const elimRcdLength = 5 + this.distiller[elimRecordOffset + 2];
-            this.logMessage(
-              `DR: [${recordOffset}] DELETE len=(${elimRcdLength})  distPtr (${this.distillPtr}) -> (${this.distillPtr - elimRcdLength})`
+            this.logMessageDistill(
+              `  -- [${recordOffset}] DELETE len=(${elimRcdLength})  distPtr (${this.distillPtr}) -> (${this.distillPtr - elimRcdLength})`
             );
             this.distiller.splice(elimRecordOffset, elimRcdLength);
             this.distillPtr -= elimRcdLength;
@@ -4485,14 +4504,14 @@ export class SpinResolver {
       // here is @@nextobject:
       recordOffset += 5 + subObjectCount;
     } while (recordOffset < this.distillPtr);
-    this.logMessage(`  -- distElim EXIT (return) eliminationCount=(${eliminationCount})`);
+    this.logMessageDistill(`  -- distElimOld() EXIT (return) eliminationCount=(${eliminationCount})`);
     return eliminationCount;
   }
 
   private distill_eliminate(): boolean {
     // Eliminate redundant objects
     // PNut distill_eliminate:
-    this.logMessage(`* distill_eliminate()`);
+    this.logMessageDistill(`* distill_eliminate()`);
     let recordOffset = 0; // this is [ebx]
     let recordID = 0;
     let didEliminateStatus: boolean = false;
@@ -4510,7 +4529,7 @@ export class SpinResolver {
         }
       }
 
-      this.logMessage(`distill_eliminate() allSubsComplete=(${areAllSubObjectsCompleted})`);
+      this.logMessageDistill(`  -- allSubsComplete=(${areAllSubObjectsCompleted})`);
       // if this record's subObjects are marked as complete...
       if (areAllSubObjectsCompleted) {
         let elimRecordOffset = 0;
@@ -4529,8 +4548,8 @@ export class SpinResolver {
             // (id is no longer referenced by any record)
             this.distillDumpRecords('preDelete');
             const elimRcdLength = 5 + this.distiller[elimRecordOffset + 2];
-            this.logMessage(
-              `DR: [${recordOffset}] DELETE len=(${elimRcdLength})  distPtr (${this.distillPtr}) -> (${this.distillPtr - elimRcdLength})`
+            this.logMessageDistill(
+              `  -- [${recordOffset}] DELETE len=(${elimRcdLength})  distPtr (${this.distillPtr}) -> (${this.distillPtr - elimRcdLength})`
             );
             this.distiller.splice(elimRecordOffset, elimRcdLength);
             this.distillPtr -= elimRcdLength;
@@ -4545,7 +4564,7 @@ export class SpinResolver {
       // here is @@nextobject:
       recordOffset += 5 + subObjectCount;
     } while (didEliminateStatus == false && recordOffset < this.distillPtr);
-    this.logMessage(`  -- distElim EXIT (return) didEliminateStatus=(${didEliminateStatus})`);
+    this.logMessageDistill(`  -- distElim EXIT (return) didEliminateStatus=(${didEliminateStatus})`);
     return didEliminateStatus;
   }
 
@@ -4630,7 +4649,7 @@ export class SpinResolver {
   private distillEliminateUpdate(objectId: number, newObjectId: number) {
     // PNut distill_eliminate: @@update:
     // update sub-object id's in records
-    this.logMessage(`* distillEliminateUpdate(${objectId}, ${newObjectId})`);
+    this.logMessageDistill(`* distillEliminateUpdate(${objectId}, ${newObjectId})`);
     let recordOffset: number = 0;
     do {
       const subObjectCount = this.distiller[recordOffset + 2];
@@ -4639,8 +4658,8 @@ export class SpinResolver {
         let subObjectId = this.distiller[subObjectOffset] & 0x7fffffff;
         if (subObjectId == objectId || subObjectId == newObjectId) {
           const bitFlag: string = (this.distiller[subObjectOffset] & 0x80000000) != 0 ? '+' : '';
-          this.logMessage(
-            `DR: [${recordOffset}+5+${subObjectIndex}] subObjID (${bitFlag}${this.distiller[subObjectOffset] & 0x7fffffff}) -> (+${newObjectId})`
+          this.logMessageDistill(
+            `  -- [${recordOffset}+5+${subObjectIndex}] subObjID (${bitFlag}${this.distiller[subObjectOffset] & 0x7fffffff}) -> (+${newObjectId})`
           );
           this.distiller[subObjectOffset] = newObjectId | 0x80000000;
         }
@@ -4653,8 +4672,7 @@ export class SpinResolver {
     // Rebuild distilled object with sub-objects
     // PNut distill_rebuild:
     const savedOffset = this.objImage.offset;
-    //this.logMessageOutline(`++ distill_rebuild() imgOfs=(${hexLong(savedOffset, '0x')})`);
-    this.logMessage(`* distill_rebuild()`);
+    this.logMessageDistill(`* distill_rebuild() imgOfs=(${savedOffset})(${hexLong(savedOffset, '0x')})`);
     let recordOffset: number = 0;
     let rebuildObjImage: ObjectImage = new ObjectImage(this.context, 'rebuildImage');
     rebuildObjImage.setOffsetTo(0);
@@ -4662,12 +4680,13 @@ export class SpinResolver {
       // read the source object offset
       const objectOffset = this.distiller[recordOffset + 1];
       // replace with destination-object offset
-      this.logMessage(`DR: [${recordOffset}+1] OBJ-OFS (${this.distiller[recordOffset + 1]}) -> (${rebuildObjImage.offset})`);
       this.distiller[recordOffset + 1] = rebuildObjImage.offset;
       // get object length in bytes then convert to long count rounded up
       const objectSizeInBytes = this.distiller[recordOffset + 4];
       const objSizeInLongs = (objectSizeInBytes + 3) >> 2;
-      this.logMessage(`  -- objectSize=(${objectSizeInBytes}),(${objSizeInLongs}) longs, ofs=(${objectOffset})`);
+      this.logMessageDistill(
+        `  -- [${recordOffset}+1] OBJ-OFS:(${this.distiller[recordOffset + 1]}) -> (${rebuildObjImage.offset}), ofs=(${objectOffset}), objSz=(${objectSizeInBytes}), (${objSizeInLongs * 4} -> ${objectOffset + objSizeInLongs * 4})`
+      );
       // copy our longs from source to dest
       for (let longIndex = 0; longIndex < objSizeInLongs; longIndex++) {
         const sourceLong = this.objImage.readLong(objectOffset + longIndex * 4);
@@ -4681,14 +4700,16 @@ export class SpinResolver {
     // now replace objImage content with rebuildObjImage content
     this.objImage.rawUint8Array.set(rebuildObjImage.rawUint8Array.subarray(0, rebuildObjImage.offset));
     this.objImage.setOffsetTo(rebuildObjImage.offset);
-    this.logMessage(`*distill_rebuild() imgOfs=(${hexLong(this.objImage.offset, '0x')})`);
-    //this.logMessageOutline(`++ distill_rebuild() exit imgOfs=(${hexLong(savedOffset, '0x')}) -> (${hexLong(this.objImage.offset, '0x')})`);
+    this.logMessageDistill(
+      `  -- distRebld EXIT imgOfs=(${savedOffset})(${hexLong(savedOffset, '0x')}) -> (${this.objImage.offset})(${hexLong(this.objImage.offset, '0x')})`
+    );
   }
 
-  private distill_reconnect(recordOffset: number = 0) {
+  private distill_reconnect(recordOffset: number = 0, callerId: string = '') {
     // Reconnect any sub-objects
     // PNut distill_reconnect:
-    this.logMessage(`* distill_reconnect(${recordOffset})`);
+    const prefix: string = callerId == '' ? '* distill_reconnect' : '  try with ';
+    this.logMessageDistill(`${prefix}(rcdOfs=${recordOffset})`);
     if (recordOffset == 0) {
       //this.logMessage(`  -- reconn raw record longs=[${this.distiller}](${this.distiller.length})`);
       this.distillDumpRecords('reconnect');
@@ -4699,7 +4720,7 @@ export class SpinResolver {
       // here is @@sub:
       // get sub object ID
       const subObjId = this.distiller[recordOffset + 5 + subObjectIndex] & 0x7fffffff;
-      this.logMessage(`  -- ofs=(${objOffset}), subObjId=(${subObjId})`);
+      this.logMessageDistill(`    -- ofs=(${objOffset}), subObjId=(${subObjId})`);
       let searchRcdOffset = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -4718,7 +4739,7 @@ export class SpinResolver {
       // enter relative offset of sub-object into object SubObjectId Fields
       const relativeSubObjOffset = (matchSubObjOffset - objOffset) & 0x7fffffff;
       this.objImage.replaceLong(relativeSubObjOffset, objOffset + subObjectIndex * 8);
-      this.distill_reconnect(searchRcdOffset);
+      this.distill_reconnect(searchRcdOffset, 'recursed');
     }
   }
 
@@ -4934,10 +4955,10 @@ export class SpinResolver {
   private compile_final() {
     // PNut compile_final:
     this.logMessageOutline(`++ compile_final()`);
-    this.logMessage(`*==* COMPILE_final()`);
     // TODO: place code for flash_loader file size and interpreter file size
     this.sizeFlashLoader = 0; // for now
     this.sizeInterpreter = 0;
+    const startingSize: number = this.objImage.offset;
     this.sizeObj = this.objImage.offset;
     this.sizeVar = 0;
     if (this.pasmMode == false) {
@@ -4973,6 +4994,7 @@ export class SpinResolver {
       const checkSum = this.objImage.calculateChecksum(0, this.objImage.offset - 1);
       this.objImage.replaceByte(checkSum, checksumOffset + 8);
     }
+    this.logMessageOutline(`++ compile_final()  (${startingSize}) + (${this.objImage.offset - startingSize}) -> now (${this.objImage.offset}) bytes`);
   }
 
   private verifySameValue(symbolName: string, currentValue: SpinElement, expectedValue: iValueReturn) {
@@ -5044,18 +5066,21 @@ export class SpinResolver {
     let foundStatus: boolean = false;
     let element: SpinElement;
     this.logMessage(`* nextBlock huntFor=[${eBlockType[blockType]}] stop log at elem=[${this.currElement.toString()}]`);
+    const savedLogState: boolean = this.isLogging;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      //const savedLogState: boolean = this.isLogging;
-      //this.isLogging = false;
+      this.isLogging = false;
       this.getElement();
-      //this.isLogging = savedLogState;
+      this.isLogging = savedLogState;
+
       if (this.currElement.type == eElementType.type_block && Number(this.currElement.value) == blockType) {
         this.logMessage(`  -- nextBlock() found element=[${this.currElement.toString()}]  Found!`);
+        //this.logMessageOutline(`  -- nextBlock() found element=[${this.currElement.toString()}]  Found!`);
         foundStatus = true;
         break;
       }
       if (this.currElement.type == eElementType.type_end_file) {
+        //this.logMessageOutline(`  -- nextBlock() at EOF, NOT found!`);
         break;
       }
     }
@@ -6857,7 +6882,12 @@ export class SpinResolver {
   private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
     // Optimizing block compiler
     // PNut optimize_block:
+    //this.logMessageOutline('');
     this.logMessage(`* optimizeBlock(${eOptimizerMethod[methodId]}, (${subType})) elem=[${this.currElement.toString()}]`);
+    //this.logMessageOutline(
+    //  `* optimizeBlock(${eOptimizerMethod[methodId]}, (${subType})) elem=[${this.currElement.toString()}], depth=(${this.logBlockOptimizeDepth})`
+    //);
+    //this.logBlockOptimizeDepth++;
     const savedElementIndex = this.saveElementLocation();
     const savedObjOffset = this.objImage.offset;
     let lastOffset: number = 0;
@@ -6905,8 +6935,13 @@ export class SpinResolver {
       }
       notDone = lastOffset != this.objImage.offset;
       this.logMessage(`* optimizeBlock() lastOffset=(${lastOffset}), this.objImage.offset=(${this.objImage.offset})`);
+      //this.logMessageOutline(
+      //  `  -- optimizeBlock() depth=(${this.logBlockOptimizeDepth}) lastOffset=(${lastOffset}), this.objImage.offset=(${this.objImage.offset}) notDone=(${notDone})`
+      //);
       lastOffset = this.objImage.offset;
     } while (notDone);
+    //this.logBlockOptimizeDepth--;
+    //this.logMessageOutline('');
   }
 
   private ct_cogspin(byteCode: eByteCode) {
@@ -9255,8 +9290,10 @@ private checkDec(): boolean {
         // WARNING this result MAY cause binary differences in our output file! WARNING
         //  consider this code if we see problems in our regression tests
         //  it's all a matter of precision...
+        //   Following is +/- 2 bits
         if (a) {
-          a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27))); // +/- 2 bits
+          // WAS a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
+          a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27) + 0.5));
         }
         break;
 
@@ -9264,7 +9301,9 @@ private checkDec(): boolean {
         // WARNING this result MAY cause binary differences in our output file! WARNING
         //  consider this code if we see problems in our regression tests
         //  it's all a matter of precision...
-        a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)))); //  +/- 3 bits  // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
+        //   Following is +/- 3 bits  // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
+        // WAS a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27))));
+        a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)) + 0.25));
         break;
 
       case eOperationType.op_shr: //  >>
@@ -9754,6 +9793,12 @@ private checkDec(): boolean {
       result = -((result ^ BigInt(0xffffffff)) + 1n);
     }
     return result;
+  }
+
+  private logMessageDistill(message: string): void {
+    if (this.isLoggingDistill) {
+      this.context.logger.logMessage(message);
+    }
   }
 
   private logMessageOutline(message: string): void {

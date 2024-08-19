@@ -105,7 +105,6 @@ export class Compiler {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private compileRecursively(depth: number, srcFile: SpinDocument, overrideParameters: SymbolTable | undefined = undefined) {
     this.logMessageOutline(`++ compileRecursively(${depth}, [${srcFile.fileName}]) - ENTRY ---------------------------------------`);
-    this.logMessage(`* compileRecursively(${depth}, [${srcFile.fileName}]) - ENTRY ---------------------------------------`);
     if (this.spin2Parser !== undefined) {
       if (depth > OBJ_STACK_LIMIT) {
         throw new Error(`Object nesting exceeds ${OBJ_STACK_LIMIT} levels - illegal circular reference may exist`);
@@ -216,7 +215,6 @@ export class Compiler {
           //
           // perform second pass of compilation
           this.logMessageOutline(`  -- compRecur(${depth}).compile2 ENTRY`);
-          this.logMessage(`  -- compRecur(${depth}) - compile2 ENTRY`);
           this.spin2Parser.P2Compile2(depth == 0); // NOTE: if at zero  (see above note...)
 
           // now copy obj data to output
@@ -239,13 +237,11 @@ export class Compiler {
           //dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
           this.logMessageOutline(`  -- objFiCnt=(${this.objectFileCount}), objLen=(${objectLength}), new objEndOffset=(${this.objectFileOffset})`);
           this.logMessageOutline(`  -- compRecur(${depth}).compile2 EXIT`);
-          this.logMessage(`  -- compRecur(${depth}) - compile2 EXIT`);
         }
       }
     }
     this.logMessageOutline(`++ compileRecursively(${depth}, [${srcFile.fileName}]) - EXIT ----------------------------------------`);
     this.logMessageOutline(``);
-    this.logMessage(`* compileRecursively(${depth}) - EXIT ----------------------------------------`);
   }
 
   private uniqueObjectName(depth: number, dirSpec: string, filename: string, structId: string): string {

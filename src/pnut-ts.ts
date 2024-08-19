@@ -99,7 +99,16 @@ export class PNutInTypeScript {
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
       .addOption(
-        new Option('--log <objectName...>', 'objectName').choices(['all', 'outline', 'compiler', 'elementizer', 'parser', 'preproc', 'resolver'])
+        new Option('--log <objectName...>', 'objectName').choices([
+          'all',
+          'outline',
+          'compiler',
+          'elementizer',
+          'parser',
+          'distiller',
+          'preproc',
+          'resolver'
+        ])
       )
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
       .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
@@ -299,6 +308,10 @@ export class PNutInTypeScript {
       if (choices.includes('outline') || wantsAll) {
         this.context.logOptions.logOutline = true;
         this.context.logger.verboseMsg('  Outline');
+      }
+      if (choices.includes('distiller') || wantsAll) {
+        this.context.logOptions.logDistiller = true;
+        this.context.logger.verboseMsg('  Distiller');
       }
       if (choices.includes('elementizer') || wantsAll) {
         this.context.logOptions.logElementizer = true;

@@ -30,6 +30,7 @@ export interface LogOptions {
   logPreprocessor: boolean; // write preprocessor log
   logCompile: boolean;
   logOutline: boolean; // write overview of operation log
+  logDistiller: boolean; // write distiller log
 }
 
 export interface ReportOptions {
@@ -136,7 +137,15 @@ export class Context {
   public runEnvironment: RuntimeEnvironment;
 
   constructor() {
-    this.logOptions = { logElementizer: false, logParser: false, logResolver: false, logPreprocessor: false, logCompile: false, logOutline: false };
+    this.logOptions = {
+      logElementizer: false,
+      logParser: false,
+      logResolver: false,
+      logPreprocessor: false,
+      logCompile: false,
+      logOutline: false,
+      logDistiller: false
+    };
     this.reportOptions = {
       writeTablesReport: false,
       writeElementsReport: false,

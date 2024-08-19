@@ -182,7 +182,8 @@ export function loadFileAsString(fspec: string): string {
     // ctx.logger.log(`TRC: loadFileAsString() attempt load of [${fspec}]`);
     try {
       fileContent = fs.readFileSync(fspec, 'utf-8');
-      if (fileContent.includes('\x00')) {
+      //fileContent = fs.readFileSync(fspec, 'latin1');  // NO THIS IS REALLY BAD!!!
+      if (fileContent.includes('\x00') || fileContent.includes('\xC0')) {
         fileContent = fs.readFileSync(fspec, 'utf16le');
       }
     } catch (err) {

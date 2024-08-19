@@ -32,6 +32,9 @@ export class ObjectImage {
   public setLogging(enable: boolean) {
     this.isLogging = enable;
   }
+  get isLoggingEnabled(): boolean {
+    return this.isLogging;
+  }
 
   get rawUint8Array(): Uint8Array {
     return this._objImage;
