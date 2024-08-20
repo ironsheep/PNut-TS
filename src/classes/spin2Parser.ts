@@ -23,6 +23,7 @@ import { hexLong } from '../utils/formatUtils';
 export class Spin2Parser {
   private context: Context;
   private isLogging: boolean = false;
+  private isLoggingOutline: boolean = false;
   private srcFile: SpinDocument | undefined;
   private elementizer: SpinElementizer;
   private spinSymbolTables: SpinSymbolTables;
@@ -35,6 +36,7 @@ export class Spin2Parser {
   constructor(ctx: Context) {
     this.context = ctx;
     this.isLogging = this.context.logOptions.logParser;
+    this.isLoggingOutline = this.context.logOptions.logOutline;
     this.elementizer = new SpinElementizer(this.context);
     this.spinSymbolTables = new SpinSymbolTables(this.context);
     this.spinResolver = new SpinResolver(this.context);
@@ -523,13 +525,17 @@ export class Spin2Parser {
     this.logMessage(`  -- set new sizes`);
     // set pbase_init
     let computedSize: number = interpreterLength;
+    this.logMessageOutline(`++ interp patch pbase (${hexLong(pbase_init, '0x')}) = (${hexLong(computedSize, '0x')})(${computedSize})`);
     this.objImage.replaceLong(computedSize, pbase_init);
     // set vbase_init
     const firstPubIndex: number = pubIndex << 20;
     computedSize += this.spinResolver.executableSize;
-    this.objImage.replaceLong(firstPubIndex | computedSize, vbase_init); // index of first pub in vbase_init[31:20]
+    const patchValue: number = firstPubIndex | computedSize;
+    this.logMessageOutline(`++ interp patch vbase (${hexLong(vbase_init, '0x')}) = (${hexLong(patchValue, '0x')})(${patchValue})`);
+    this.objImage.replaceLong(patchValue, vbase_init); // index of first pub in vbase_init[31:20]
     // set dbase_init
     computedSize += this.spinResolver.variableSize;
+    this.logMessageOutline(`++ interp patch dbase (${hexLong(dbase_init, '0x')}) = (${hexLong(computedSize, '0x')})(${computedSize})`);
     this.objImage.replaceLong(computedSize, dbase_init);
     // add stackSize
     computedSize += 0x400; // ensure dbase has $100 longs of stack headroom
@@ -544,6 +550,7 @@ export class Spin2Parser {
     this.logMessage(`  -- patch interpreter`);
     // set var_longs
     const newVarLongs: number = ((this.spinResolver.variableSize + 0x400) >> 2) - 1;
+    this.logMessageOutline(`++ interp patch varSize (${hexLong(var_longs, '0x')}) = (${hexLong(newVarLongs, '0x')})(${newVarLongs})`);
     this.objImage.replaceLong(newVarLongs, var_longs);
     // set clkmode_hub
     this.objImage.replaceLong(this.spinResolver.clockMode, clkmode_hub);
@@ -775,6 +782,12 @@ export class Spin2Parser {
 
   private logMessage(message: string): void {
     if (this.isLogging) {
+      this.context.logger.logMessage(message);
+    }
+  }
+
+  private logMessageOutline(message: string): void {
+    if (this.isLoggingOutline) {
       this.context.logger.logMessage(message);
     }
   }

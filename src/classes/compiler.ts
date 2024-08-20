@@ -258,14 +258,14 @@ export class Compiler {
     return newFileSpec;
   }
 
-  private logMessageOutline(message: string): void {
-    if (this.isLoggingOutline) {
+  private logMessage(message: string): void {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }
 
-  private logMessage(message: string): void {
-    if (this.isLogging) {
+  private logMessageOutline(message: string): void {
+    if (this.isLoggingOutline) {
       this.context.logger.logMessage(message);
     }
   }

@@ -278,6 +278,7 @@ export class SpinResolver {
     this.debug_data = new DebugData(this.context);
     this.isLogging = this.context.logOptions.logResolver;
     this.isLoggingOutline = this.context.logOptions.logOutline;
+    this.isLoggingDistill = this.context.logOptions.logDistiller;
     // get references to the single global data
     this.objImage = ctx.compileData.objImage;
     this.datFileData = ctx.compileData.datFileData;
@@ -517,7 +518,7 @@ export class SpinResolver {
 
   private compile_var_blocks() {
     // Compile var blocks
-    this.logMessage('*==* COMPILE_var_blocks()');
+    this.logMessageOutline('++ compile_var_blocks()');
     this.varPtr = 4; // leave room for the long pointer to object
     this.restoreElementLocation(0); // start from first in list
 
@@ -587,6 +588,7 @@ export class SpinResolver {
       } while (this.nextElementType() != eElementType.type_block);
     }
     this.alignVar(0b11); // align to next long for start of next instance
+    this.logMessageOutline(`  -- compile_var_blocks() EXIT w/varPtr=(${this.varPtr})(${hexLong(this.varPtr, '0x')})`);
   }
 
   private checkAlign(): [boolean, number] {
@@ -4217,6 +4219,7 @@ export class SpinResolver {
       this.distill_reconnect();
       //}
       //this.objImage.setLogging(false); // REMOVE BEFORE FLIGHT
+
       // NOTE: PNut v43 has this as an assign, we are moving to sum from assign
       this.distilledBytes += startingOffset - this.objImage.offset;
       this.logMessageOutline(`++ distill_obj_blocks() - EXIT`);
@@ -4284,6 +4287,15 @@ export class SpinResolver {
     this.isLoggingOutline = savedOutlineLogState; // restore outline log state
   }
 
+  // -------------------------------------
+  // 0: object id
+  // 1: object offset
+  // 2: sub-object count
+  // 3: method count
+  // 4: object size
+  // 5+:        sub-object id's (if any)
+  // -------------------------------------
+
   private distill_build(objectId: number = 0, objectOffset: number = 0, subObjectId: number = 1): number {
     // Build initial object list
     // PNut distill_build:
@@ -4294,6 +4306,7 @@ export class SpinResolver {
     this.distillBuildEnter(objectOffset);
 
     // count sub-objects
+    // -----------------
     let tableEntry: number;
     let subObjectCount: number = 0;
     let loopCt: number = 0; // INTERNAL DEBUG use
@@ -4301,19 +4314,22 @@ export class SpinResolver {
     while (true) {
       // here is @@countobjects:
       tableEntry = this.objImage.readLong(objectOffset + subObjectCount * 8);
+      // LOG the first 15 things found...
       if (loopCt++ < 15) {
         // DEBUG Logging...
         this.logMessage(`  -- tableEntry=(${hexLong(tableEntry, '0x')}), subObjectCount=(${subObjectCount})`);
       }
+      // if not at end of table....
       if ((tableEntry & 0x80000000) == 0) {
         subObjectCount++;
       } else {
-        break;
+        break; // found last, exit
       }
     }
     this.distillBuildEnter(subObjectCount);
 
     // count methods
+    // -------------
     let methodCount: number = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -4339,11 +4355,13 @@ export class SpinResolver {
 
       // here is @@sub:
       newSubObjectId = subObjectId + subObjectCount;
+      // index is [ebx]
       for (let index = 0; index < subObjectCount; index++) {
+        //                                              [esi]     + [ebx] * 8
         let subObjectOffset = this.objImage.readLong(objectOffset + index * 8);
         // recursively call distill_build to enter any sub-objects' sub-object records
         // call ourself with new  [objectId, objectOffset, and subObjectId]
-        //                                  [eax] + [edx]=index,        [esi] + subObjectOffset,  [edi]
+        //       [edi]                                    [edx],        [esi] + subObjectOffset,  [edi]
         newSubObjectId = this.distill_build(subObjectId + index, objectOffset + subObjectOffset, newSubObjectId);
       }
     }
@@ -4429,7 +4447,8 @@ export class SpinResolver {
     // PNut distill_scrub:
     this.logMessageDistill(`* distill_scrub()`);
     let recordOffset = 0; // this is [ebx]
-    let recordID = 0;
+    let recordID = 0; // for LOGGING
+    // LOG: if distiller is being logged then turn on object logging for this routine
     const savedObjLoggingState: boolean = this.objImage.isLoggingEnabled;
     this.objImage.setLogging(this.isLoggingDistill); // REMOVE BEFORE FLIGHT
     do {
@@ -4443,9 +4462,11 @@ export class SpinResolver {
       }
       recordOffset += 5 + subObjectCount;
     } while (recordOffset < this.distillPtr);
+    // LOG: restore object logging as we leave
     this.objImage.setLogging(savedObjLoggingState); // REMOVE BEFORE FLIGHT
   }
 
+  /*
   private distill_eliminate_old(): number {
     // Eliminate redundant objects
     // PNut distill_eliminate:
@@ -4507,6 +4528,7 @@ export class SpinResolver {
     this.logMessageDistill(`  -- distElimOld() EXIT (return) eliminationCount=(${eliminationCount})`);
     return eliminationCount;
   }
+  */
 
   private distill_eliminate(): boolean {
     // Eliminate redundant objects
@@ -4538,11 +4560,12 @@ export class SpinResolver {
           // check for match
           const matchingRecordOffset = this.findMatchForRecord(elimRecordOffset);
           if (matchingRecordOffset !== undefined) {
-            // objects match, update all related sub-object id's
+            // records match...
             didEliminateStatus = true;
             // set msb's of id's
             const oldObjectId = this.distiller[elimRecordOffset + 0];
             const newObjectId = this.distiller[matchingRecordOffset + 0];
+            // records match, update all related sub-object id's
             this.distillEliminateUpdate(oldObjectId, newObjectId);
             // remove redundant object record from list
             // (id is no longer referenced by any record)
@@ -4642,14 +4665,14 @@ export class SpinResolver {
       //this.logMessage(`  -- srchRcdOfs=(${searchRecordOffset}), srchSubObjCt=(${searchSubObjectCount})`);
       searchRecordOffset += 5 + searchSubObjectCount;
     }
-    this.logMessage(`* (distill) findMatchForRecord(${matchRecordOffset}) -> (${matchingRecordOffset})`);
+    this.logMessageDistill(`* (distill) findMatchForRecord(${matchRecordOffset}) -> (${matchingRecordOffset})`);
     return matchingRecordOffset;
   }
 
   private distillEliminateUpdate(objectId: number, newObjectId: number) {
     // PNut distill_eliminate: @@update:
     // update sub-object id's in records
-    this.logMessageDistill(`* distillEliminateUpdate(${objectId}, ${newObjectId})`);
+    this.logMessageDistill(` - distillEliminateUpdate(${objectId}, ${newObjectId})`);
     let recordOffset: number = 0;
     do {
       const subObjectCount = this.distiller[recordOffset + 2];
@@ -4708,6 +4731,9 @@ export class SpinResolver {
   private distill_reconnect(recordOffset: number = 0, callerId: string = '') {
     // Reconnect any sub-objects
     // PNut distill_reconnect:
+    // LOG: if distiller is being logged then turn on object logging for this routine
+    const savedObjLoggingState: boolean = this.objImage.isLoggingEnabled;
+    this.objImage.setLogging(this.isLoggingDistill); // REMOVE BEFORE FLIGHT
     const prefix: string = callerId == '' ? '* distill_reconnect' : '  try with ';
     this.logMessageDistill(`${prefix}(rcdOfs=${recordOffset})`);
     if (recordOffset == 0) {
@@ -4739,8 +4765,12 @@ export class SpinResolver {
       // enter relative offset of sub-object into object SubObjectId Fields
       const relativeSubObjOffset = (matchSubObjOffset - objOffset) & 0x7fffffff;
       this.objImage.replaceLong(relativeSubObjOffset, objOffset + subObjectIndex * 8);
+      // LOG: restore object logging as we leave
+      this.objImage.setLogging(savedObjLoggingState); // REMOVE BEFORE FLIGHT
       this.distill_reconnect(searchRcdOffset, 'recursed');
     }
+    // LOG: restore object logging as we leave
+    this.objImage.setLogging(savedObjLoggingState); // REMOVE BEFORE FLIGHT
   }
 
   private pad_obj_long() {
@@ -9795,8 +9825,8 @@ private checkDec(): boolean {
     return result;
   }
 
-  private logMessageDistill(message: string): void {
-    if (this.isLoggingDistill) {
+  private logMessage(message: string): void {
+    if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
   }
@@ -9807,8 +9837,8 @@ private checkDec(): boolean {
     }
   }
 
-  private logMessage(message: string): void {
-    if (this.isLogging) {
+  private logMessageDistill(message: string): void {
+    if (this.isLoggingDistill) {
       this.context.logger.logMessage(message);
     }
   }

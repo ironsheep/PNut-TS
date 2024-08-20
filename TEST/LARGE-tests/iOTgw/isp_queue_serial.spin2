@@ -762,7 +762,7 @@ PRI statusParse(pRxBffr) : nStatus, pStatusMsg | lenRemaining, sep, nIdx, fullId
                     ' also copy string form into status msg buffer to hold it
                     lenRemaining := strsize(pValue)
                     if lenRemaining > RX_BFFR_LEN
-                    lenRemaining := RX_BFFR_LEN   ' ensure fits in buffer
+                      lenRemaining := RX_BFFR_LEN   ' ensure fits in buffer
                     bytemove(@statusMsg, pValue, lenRemaining)
                 else
                     matchStatus, ignore := indexOfStr(string("ct"), pName)
