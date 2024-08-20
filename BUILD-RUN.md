@@ -11,7 +11,46 @@
 A joint project between Chip Gracey and Stephen M Moraco.
 We are re-implemting Pnut for Windows in a platform agnostic language.
 
-## Project Built-in Commands
+## Starting with this Repository
+
+## Prerequisites
+
+This repositor uses docker container as the work environment. Make sure you have docker desktop installed and running.
+
+### Step 1
+- Clone this repository.  
+- Open root directory in VSCode. 
+- When prompted by VSCode, press [Reopen in container]
+
+I use:
+
+```bash
+$ cd {workingFolder} # folder in which to place new cloneFolder
+$ git clone git@github.com:ironsheep/Pnut-ts-dev.git
+$ cd {workingFolder}/{cloneFolder}
+$ code .  # to open cloneFolder
+```
+
+### Step 2
+Install necessary modules
+
+```bash
+$ npm install
+```
+
+### Step 3
+Do a test lint & build on the project. 
+
+```bash
+$ npm run build
+```
+You can see available scripts in the package.json by entering:
+
+```bash
+$ npm run
+```
+
+## Container Built-in Commands
 
 We have a number of built-in commands we use to build code, lint our code, format our code, run tests, etc.
 
