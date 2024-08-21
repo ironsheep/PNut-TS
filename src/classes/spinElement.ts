@@ -2,6 +2,7 @@
 'use strict';
 
 import { float32ToHexString } from '../utils/float32';
+import { hexByte } from '../utils/formatUtils';
 // src/classes/parseUtils.ts
 
 import { eBlockType, eByteCode, eElementType, eOperationType, eValueType, getElementTypeString } from './types';
@@ -471,6 +472,8 @@ export class SpinElement {
       if (this.isInstruction || this.isDatVar) {
         const valueBigInt: bigint = typeof this._value === 'bigint' ? this._value : 0n;
         valueInterp = `(${float32ToHexString(valueBigInt)})`;
+      } else if (this.bigintValue < 256n && this.bigintValue != 0n) {
+        valueInterp = `(${this.value})(${hexByte(Number(this.value), '0x')})`;
       } else {
         valueInterp = `(${this.value})`;
       }

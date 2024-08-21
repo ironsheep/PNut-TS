@@ -230,14 +230,9 @@ export class SpinElementizer {
         this.logMessage(`* EmitTickString --  at(${stringOffset}), end(${stringEndOffset}), charCount=(${stringLength})`);
         if (stringLength > 0) {
           for (let charIndex = 0; charIndex < stringEndOffset; charIndex++) {
-            const char = this.unprocessedLine.charAt(charIndex);
-            const elementChar: SpinElement = this.buildElement(eElementType.type_con, char, charOffset);
-            elementsFound.push(elementChar);
-            if (charIndex < stringEndOffset - 1) {
-              const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
-              elementComma.midStringComma = true;
-              elementsFound.push(elementComma);
-            }
+            const charCode: number = this.unprocessedLine.charCodeAt(charIndex);
+            const elementsToAdd = this.elementsForStringCharacter(charCode, charOffset, charIndex < stringEndOffset - 1);
+            elementsFound.push(...elementsToAdd); // push 1 to four new elements
             stringOffset += 1;
             charOffset += 1;
           }
@@ -261,19 +256,14 @@ export class SpinElementizer {
       const endQuoteOffset = this.unprocessedLine.substring(1).indexOf('"');
       // if we have an end and not an empty string
       if (endQuoteOffset != -1 && endQuoteOffset != 0) {
+        //const tmpDblQuotedString: string = this.unprocessedLine.substring(0, endQuoteOffset + 2);
+        //this.dumpStringBytes(tmpDblQuotedString, 'Quoted String');
         returningSingleEntry = false;
         let charOffset = this.currCharacterIndex;
         for (let charIndex = 1; charIndex < endQuoteOffset + 1; charIndex++) {
-          const charCode = this.unprocessedLine.charCodeAt(charIndex);
-          const isString = charCode == 0x09 || (charCode >= 0x20 && charCode <= 0x7f);
-          const char = isString ? this.unprocessedLine.charAt(charIndex) : BigInt(charCode);
-          const elementChar: SpinElement = this.buildElement(eElementType.type_con, char, charOffset);
-          elementsFound.push(elementChar);
-          if (charIndex != endQuoteOffset) {
-            const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
-            elementComma.midStringComma = true;
-            elementsFound.push(elementComma);
-          }
+          const charCode: number = this.unprocessedLine.charCodeAt(charIndex);
+          const elementsToAdd = this.elementsForStringCharacter(charCode, charOffset, charIndex != endQuoteOffset);
+          elementsFound.push(...elementsToAdd); // push 1 to four new elements
           charOffset += 1;
         }
         this.unprocessedLine = this.skipAhead(endQuoteOffset + 2, this.unprocessedLine);
@@ -437,6 +427,69 @@ export class SpinElementizer {
       this.logMessage(''); // blank line
     }
     return elementsFound;
+  }
+
+  private elementsForStringCharacter(charCodeValue: number, charOffset: number, notLastChar: boolean): SpinElement[] {
+    //  In UTF-8 encoding, characters in the range U+0080 to U+00FF are represented using two bytes.
+    //  The first byte is either 0xC2 or 0xC3, depending on the character's code point. Specifically:
+    //
+    //  Characters in the range U+0080 to U+00BF use 0xC2 as the first byte.
+    //  Characters in the range U+00C0 to U+00FF use 0xC3 as the first byte.
+    //
+    //  Here is the breakdown:
+    //
+    //  Characters using 0xC2
+    //     U+0080 to U+00BF
+    //
+    //  Examples:
+    //  U+0080 (Control character) -> 0xC2 0x80
+    //  U+00A0 (Non-breaking space) -> 0xC2 0xA0
+    //  U+00B0 (°) -> 0xC2 0xB0
+    //  U+00BF (¿) -> 0xC2 0xBF
+    //
+    //  Characters using 0xC3
+    //     U+00C0 to U+00FF
+    //  Examples:
+    //
+    //  U+00C0 (À) -> 0xC3 0x80
+    //  U+00C1 (Á) -> 0xC3 0x81
+    //  U+00C2 (Â) -> 0xC3 0x82
+    //  U+00C3 (Ã) -> 0xC3 0x83
+    //  ...
+    //  ...
+    //  U+00FE (þ) -> 0xC3 0xBE
+    //  U+00FF (ÿ) -> 0xC3 0xBF
+    //
+    const newElements: SpinElement[] = [];
+    let charCode: number = charCodeValue;
+    const isString: boolean = charCode == 0x09 || (charCode >= 0x20 && charCode <= 0x7f);
+    const shouldBe2ByteCode: boolean = charCode >= 0x80 && charCode <= 0xff;
+    let prefixByte: bigint = BigInt(0xc2);
+    if (shouldBe2ByteCode && charCode >= 0xc0) {
+      prefixByte = BigInt(0xc3);
+    }
+    if (shouldBe2ByteCode) {
+      // push two prefix elements
+      const prefixChar: SpinElement = this.buildElement(eElementType.type_con, prefixByte, charOffset);
+      newElements.push(prefixChar);
+      const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
+      elementComma.midStringComma = true;
+      newElements.push(elementComma);
+      if (prefixByte == BigInt(0xc3)) {
+        charCode -= 0x40; // rebias from 0xC0-0xFF to 0x80-0xBF
+      }
+    }
+    // now puch our character element
+    const char = isString ? String.fromCharCode(charCode) : BigInt(charCode);
+    const elementChar: SpinElement = this.buildElement(eElementType.type_con, char, charOffset);
+    newElements.push(elementChar);
+    // if this is not the last character of the string push a trailing comma element
+    if (notLastChar) {
+      const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
+      elementComma.midStringComma = true;
+      newElements.push(elementComma);
+    }
+    return newElements;
   }
 
   private skipLeadingWhiteSpace() {
@@ -910,5 +963,30 @@ export class SpinElementizer {
     } else {
       this.logMessage('- WARNING: loadNextLine() not advancing, at end of file!');
     }
+  }
+
+  public dumpStringBytes(stringData: string, dumpId: string) {
+    /// dump hex and ascii data
+    let displayOffset: number = 0;
+    let currOffset = 0;
+    const messageHdr = `-- -------- ${dumpId} ------------------ --`;
+    this.logMessageOutline(messageHdr);
+    while (displayOffset < stringData.length) {
+      let hexPart = '';
+      let asciiPart = '';
+      const remainingBytes = stringData.length - displayOffset;
+      const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
+      for (let i = 0; i < lineLength; i++) {
+        const byteValue = stringData.charCodeAt(currOffset + i);
+        hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
+        asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
+      }
+      const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
+
+      this.logMessageOutline(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'`);
+      currOffset += lineLength;
+      displayOffset += lineLength;
+    }
+    this.logMessageOutline(`-- ${'-'.repeat(messageHdr.length - 6)} --`);
   }
 }
