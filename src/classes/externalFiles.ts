@@ -113,7 +113,7 @@ export class ExternalFiles {
   private loadImage(fileSpec: string): Uint8Array | undefined {
     let desiredImage: Uint8Array | undefined = undefined;
     if (fileExists(fileSpec)) {
-      const tmpImage = loadFileAsUint8Array(fileSpec);
+      const tmpImage = loadFileAsUint8Array(fileSpec, this.context);
       if (loadUint8ArrayFailed(tmpImage) == false) {
         desiredImage = tmpImage;
       }

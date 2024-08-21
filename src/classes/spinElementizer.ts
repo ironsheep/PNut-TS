@@ -264,7 +264,9 @@ export class SpinElementizer {
         returningSingleEntry = false;
         let charOffset = this.currCharacterIndex;
         for (let charIndex = 1; charIndex < endQuoteOffset + 1; charIndex++) {
-          const char = this.unprocessedLine.charAt(charIndex);
+          const charCode = this.unprocessedLine.charCodeAt(charIndex);
+          const isString = charCode == 0x09 || (charCode >= 0x20 && charCode <= 0x7f);
+          const char = isString ? this.unprocessedLine.charAt(charIndex) : BigInt(charCode);
           const elementChar: SpinElement = this.buildElement(eElementType.type_con, char, charOffset);
           elementsFound.push(elementChar);
           if (charIndex != endQuoteOffset) {

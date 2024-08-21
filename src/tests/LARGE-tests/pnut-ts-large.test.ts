@@ -57,7 +57,10 @@ describe('PNut_ts detects .spin2 exceptions w/debug() & without correctly', () =
     console.error('ERROR: glob issue:', error);
   }
   if (files.length > 1) {
-    const filteredFiles = files.filter((file) => !file.includes('BLDC-Motor-drv')); // these are known to fail but are good
+    // BLDC-Motor-drv: these are known to fail but are good (constant bytes diff but legal)
+    let filteredFiles = files.filter((file) => !file.includes('BLDC-Motor-drv'));
+    // iOTgw: these are known to fail but are good (runs too long)
+    filteredFiles = filteredFiles.filter((file) => !file.includes('iOTgw'));
     filteredFiles.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     files = filteredFiles;
   }

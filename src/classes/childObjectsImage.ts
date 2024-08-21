@@ -9,6 +9,7 @@ import { Context } from '../utils/context';
 //const SYMBOL_LIMIT: number = 30;
 
 export interface iFileDetails {
+  name: string;
   offset: number;
   length: number;
 }
@@ -26,11 +27,15 @@ export class ChildObjectsImage {
   constructor(ctx: Context, idString: string) {
     this.context = ctx;
     this._id = idString;
-    this.isLogging = this.context.logOptions.logCompile;
+    this.isLogging = this.context.logOptions.logCompile || this.context.logOptions.logOutline;
   }
 
   get rawUint8Array(): Uint8Array {
     return this._objImage;
+  }
+
+  get id(): string {
+    return this._id;
   }
 
   public clear() {
@@ -57,7 +62,7 @@ export class ChildObjectsImage {
   public recordLengthOffsetForFile(expectedFileIndex: number, newOffset: number, newLength: number) {
     // set object file region info [offset, length] for fileIndex
     this.logMessage(`* [${this._id}] recordLengthOffsetForFile([${expectedFileIndex}] ofs(${newOffset}), len(${newLength}))`);
-    const details: iFileDetails = { offset: newOffset, length: newLength };
+    const details: iFileDetails = { name: '', offset: newOffset, length: newLength };
     this._fileDetails.push(details);
     // flying monkeys throw exception on dupe entry
     const latestIndex: number = this._fileDetails.length - 1;
@@ -66,15 +71,44 @@ export class ChildObjectsImage {
     }
   }
 
+  public recordLengthOffsetForFilename(fileBasename: string, newOffset: number, newLength: number) {
+    // set object file region info [offset, length] for fileIndex
+    this.logMessage(`* [${this._id}] recordLengthOffsetForFile([${fileBasename}] ofs(${newOffset}), len(${newLength}))`);
+    const details: iFileDetails = { name: fileBasename, offset: newOffset, length: newLength };
+    let fileIsUnknown = true;
+    for (let fileIndex = 0; fileIndex < this._fileDetails.length; fileIndex++) {
+      const currDetail: iFileDetails = this._fileDetails[fileIndex];
+      if (currDetail.name == fileBasename) {
+        fileIsUnknown = false;
+      }
+    }
+    if (fileIsUnknown) {
+      this._fileDetails.push(details);
+    }
+  }
+
   public getOffsetAndLengthForFile(fileIndex: number): [number, number] {
     // get object file region info for fileIndex
-    let details: iFileDetails = { offset: -1, length: -1 };
+    let details: iFileDetails = { name: '', offset: -1, length: -1 };
     if (fileIndex >= 0 && fileIndex < this._fileDetails.length) {
       details = this._fileDetails[fileIndex];
       this.logMessage(`* [${this._id}] getOffsetAndLengthForFile([${fileIndex}] -> ofs(${details.offset}), len(${details.length}))`);
     } else {
       // TODO: flying monkeys throw exception on entry not found
       this.logMessage(`getOffsetAndLengthForFile(${fileIndex}) ERROR: no such index on file`);
+    }
+    return [details.offset, details.length];
+  }
+
+  public getOffsetAndLengthForFilename(fileBasename: string): [number, number] {
+    // get object file region info for fileIndex
+    const details: iFileDetails = { name: '', offset: -1, length: -1 };
+    for (let fileIndex = 0; fileIndex < this._fileDetails.length; fileIndex++) {
+      const currDetail: iFileDetails = this._fileDetails[fileIndex];
+      if (currDetail.name == fileBasename) {
+        details.offset = currDetail.offset;
+        details.length = currDetail.length;
+      }
     }
     return [details.offset, details.length];
   }

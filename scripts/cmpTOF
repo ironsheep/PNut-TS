@@ -1,0 +1,17 @@
+#!/bin/bash
+TEST_DIR=TEST/LARGE-tests/TOF
+echo "- w/HDMI"
+md5sum ${TEST_DIR}/demo_180degrFOV.obj  ${TEST_DIR}/demo_180degrFOV.obj.GOLD | sort
+echo ""
+md5sum ${TEST_DIR}/demo_180degrFOV.bin  ${TEST_DIR}/demo_180degrFOV.bin.GOLD | sort
+exit 0
+
+echo "- w/HDMI"
+md5sum ${TEST_DIR}/isp_180degrFOV_TOFsensor.obj  ${TEST_DIR}/isp_180degrFOV_TOFsensor.obj.GOLD | sort
+echo ""
+md5sum ${TEST_DIR}/isp_180degrFOV_TOFsensor.bin  ${TEST_DIR}/isp_180degrFOV_TOFsensor.bin.GOLD | sort
+echo ""
+echo "- Non HDMI"
+md5sum ${TEST_DIR}/isp_180degrFOV_TOFsensorSmall.obj  ${TEST_DIR}/isp_180degrFOV_TOFsensorSmall.obj.GOLD | sort
+echo ""
+md5sum ${TEST_DIR}/isp_180degrFOV_TOFsensorSmall.bin  ${TEST_DIR}/isp_180degrFOV_TOFsensorSmall.bin.GOLD | sort

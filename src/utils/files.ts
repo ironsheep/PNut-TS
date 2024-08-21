@@ -69,6 +69,16 @@ export function fileExists(pathSpec: string): boolean {
   }
   return existsStatus;
 }
+
+export function fileSize(fileSpec: string) {
+  let fileSize: number = 0;
+  if (fileExists(fileSpec)) {
+    const stats = fs.statSync(fileSpec);
+    fileSize = stats.size;
+  }
+  return fileSize;
+}
+
 /**
  * locate named include .spin2 file which can be in current directory
  *  NOTE: searches include directory first then the current directory
@@ -198,19 +208,27 @@ export function loadFileAsString(fspec: string): string {
 const EMPTY_CONTENT_MARKER: string = 'XY$$ZZY';
 
 export function loadFileAsUint8Array(fspec: string, ctx: Context | undefined = undefined): Uint8Array {
-  let fileContent: Uint8Array = new Uint8Array();
+  let fileContent: Uint8Array | undefined = undefined;
   if (fs.existsSync(fspec)) {
     try {
       const buffer = fs.readFileSync(fspec);
-      fileContent = new Uint8Array(buffer);
-      if (ctx) {
-        // nothing
-      }
-      //if (ctx) ctx.logger.logMessage(`loaded (${fileContent.length}) bytes from [${path.basename(fspec)}]`);
+      fileContent = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      //if (ctx) ctx.logger.logMessage(`TRC: loadFileAsUint8Array() loaded (${fileContent.length}) bytes from [${path.basename(fspec)}]`);
     } catch (err) {
-      //ctx.logger.log(`TRC: loadFileAsString() fspec=[${fspec}] NOT FOUND!`);
-      const encoder = new TextEncoder();
-      fileContent = new Uint8Array(encoder.encode(EMPTY_CONTENT_MARKER));
+      if (ctx) ctx.logger.logMessage(`TRC: loadFileAsUint8Array() ERROR: [${err}]!`);
+    }
+  } else {
+    if (ctx) ctx.logger.logMessage(`TRC: loadFileAsUint8Array() fspec=[${fspec}] NOT FOUND!`);
+  }
+
+  if (fileContent === undefined) {
+    const encoder = new TextEncoder();
+    fileContent = new Uint8Array(encoder.encode(EMPTY_CONTENT_MARKER));
+  } else {
+    const fileSizeInBytes = fileSize(fspec);
+    if (fileSizeInBytes != fileContent.length) {
+      if (ctx)
+        ctx.logger.logMessage(`TRC: loadFileAsUint8Array() loaded but SIZE MISMATCH stat=(${fileSizeInBytes}), loaded=(${fileContent.length})`);
     }
   }
   return fileContent;

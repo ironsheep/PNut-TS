@@ -1370,8 +1370,11 @@ export class SpinResolver {
             }
             const [foundFile, fileIndex] = this.spinFiles.getIndexForDat(filename);
             if (foundFile) {
-              const [offset, dataLength] = this.datFileData.getOffsetAndLengthForFile(fileIndex);
+              const [offset, dataLength] = this.datFileData.getOffsetAndLengthForFilename(filename);
               if (dataLength > 0) {
+                this.logMessageOutline(
+                  `++ DAT FILE Resolver [dfd=${this.datFileData.id}] [${filename}], idx=(${fileIndex}), ofs=(${offset}), len=(${dataLength})(${hexLong(dataLength, '0x')})`
+                );
                 this.datFileData.setOffset(offset);
                 for (let byteCount = 0; byteCount < dataLength; byteCount++) {
                   this.enterDataByte(BigInt(this.datFileData.read()));

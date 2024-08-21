@@ -148,20 +148,20 @@ export class Compiler {
               const overrideSymbolTable: SymbolTable | undefined = objFile.parameterSymbolTable;
               this.compileRecursively(depth + 1, childObjSourceFile, overrideSymbolTable);
               // get sub-object's obj file index
-              this.logMessage(
+              this.logMessageOutline(
                 `  -- push [objectCountsPerChild] depth(${depth}) entry[${objectCountsPerChild.length}] = fileIndex=[${this.objectFileCount - 1}] file=[${path.basename(fileSpec)}]`
               );
               objectCountsPerChild.push(this.objectFileCount - 1);
             }
           }
 
-          this.logMessage(`  -- compRecur(${depth}) - compile1 - pass 2 ----------------------------------------`);
+          this.logMessageOutline(`  -- compRecur(${depth}) - compile1 - pass 2 ----------------------------------------`);
           this.spin2Parser.setSourceFile(srcFile);
           this.spin2Parser.P2Compile1(overrideParameters);
           //
           // load sub-objects' .obj files
           //  move  ObjFileBuff (this.childImages) into P2.ObjData (this.objectData)
-          this.logMessage(`* compRecur(${depth}) processing ${objectFiles} OBJ file(s)`);
+          this.logMessageOutline(`* compRecur(${depth}) processing ${objectFiles} OBJ file(s)`);
           if (objectFiles > 0) {
             let objDataOffset: number = 0; // pascal p
             this.objectData.clear();
@@ -169,7 +169,7 @@ export class Compiler {
               const fileIdx = objectCountsPerChild[childIdx]; // pascal j
               // pascal inline       s
               const [objOffset, objLength] = this.childImages.getOffsetAndLengthForFile(fileIdx);
-              this.logMessage(
+              this.logMessageOutline(
                 `  -- compRecur(${depth}) obj loop childIdx=(${childIdx}), fileIdx=(${fileIdx}), objOffset=(${objOffset}), objLength=(${objLength})`
               );
               this.childImages.setOffset(objOffset); // set read start
@@ -183,31 +183,35 @@ export class Compiler {
               //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data'); // REMOVE BEFORE FLIGHT
               //dumpUniqueChildObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
               // DEBUG dump object records for inspection
-              this.logMessage(`* - -------------------------------`);
+              this.logMessageOutline(`* - -------------------------------`);
               for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
                 const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
-                this.logMessage(`  -- compObjSyms() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
+                this.logMessageOutline(`  -- compObjSyms() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
               }
-              this.logMessage(`* - -------------------------------`);
+              this.logMessageOutline(`* - -------------------------------`);
             }
           }
           //
           // load any data files
-          this.logMessage(`* compRecur(${depth}) processing ${dataFiles} DAT file(s)`);
+          this.logMessageOutline(`* compRecur(${depth}) processing ${dataFiles} DAT file(s)`);
           if (dataFiles > 0) {
             let fileDataOffset: number = 0; // pascal p
             //const datFileList: DatFile[] = this.spinFiles.datFiles;
+            this.logMessageOutline(`++ DAT FILE Compiler have (${dataFiles}) data files listLen=(${datFileList.length})`);
             for (let datFileIdx = 0; datFileIdx < datFileList.length; datFileIdx++) {
               this.datFileData.setOffset(fileDataOffset); // set write start
               const datFile: DatFile = datFileList[datFileIdx];
               const datImage: Uint8Array = loadFileAsUint8Array(datFile.fileSpec, this.context);
+              const filename: string = path.basename(datFile.fileSpec);
               const failedToLoad: boolean = loadUint8ArrayFailed(datImage) ? true : false;
               if (failedToLoad == false) {
-                this.logMessage(`  -- DatFile idx=(${datFileIdx}) len=(${datImage.length}) `);
+                this.logMessageOutline(
+                  `++ DAT FILE Compiler [dfd=${this.datFileData.id}]  [${filename}], idx=(${datFileIdx}) len=(${datImage.length})`
+                );
                 for (let byteIndex = 0; byteIndex < datImage.length; byteIndex++) {
                   this.datFileData.write(datImage[byteIndex]);
                 }
-                this.datFileData.recordLengthOffsetForFile(datFileIdx, fileDataOffset, datImage.length);
+                this.datFileData.recordLengthOffsetForFilename(filename, fileDataOffset, datImage.length);
                 fileDataOffset += datImage.length;
               }
             }
