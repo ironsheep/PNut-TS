@@ -80,7 +80,17 @@ Download these extensions then close all VSCode instances then open VSCode and t
 
 This project is configured to run in a docker instance. Docker is essentially a way to run stuff in a local sandboxed environment. The environment is specified by a docker image, and its main component is a snapshot of all files that are needed to run.
 
-Linting and formatting of TypeScript is setup usong **Prettier** formatter and **ESLint**.
+Wanting to clone the PNut_TS repository locally and run regression tests, or even maybe contribute to this compiler? Then start with Installing Docker Desktop to your machine. See [Overview of Docker Desktop](https://docs.docker.com/desktop/) at the Docker website.
+
+In general if you've not used docker before you'll follow these steps to get up and running:
+
+- Install [docker desktop](https://docs.docker.com/desktop/) - see install links on left panel
+- [Clone our repository](BUILD-RUN.md)
+- Open the repo in VSCode (also shown in above "clone..." page)
+
+VSCode will tell docker what image needs to be downloaded and then it will start the container and then ask you to [Reopen in Container]. Once you do reopen VSCode will then install the NPM packages to get your local copy ready to build and run.
+
+Linting and formatting of TypeScript is setup using **Prettier** formatter and **ESLint**.
 See [How to use Prettier with ESLint and TypeScript in VSCode](https://khalilstemmler.com/blogs/tooling/prettier/)
 
 ---
