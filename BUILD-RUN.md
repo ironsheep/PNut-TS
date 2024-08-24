@@ -147,7 +147,7 @@ available via `npm run-script`:
 lastly make sure you have a working repo copy. Run the entire regression test suite:
 
 ```bash
-$ npm run test
+$ npm test
 ```
 
 ## Container Built-in Commands
@@ -210,9 +210,15 @@ Assuming you don't havve any uncommitted changes in your workspace then the foll
 5. In the VSCode terminal window, run `npm test` to ensure the latest code is building and all the tests are running
 6. You are ready to resume work with the newest repo content
 
-### Steps if you have local changes
+## Contributing changes to PNut-TS
 
-This section TBA (to be added)
+There are conventional procedures to follow when preparing then contributing changes to an open source project:
+
+Please refer to GitHub Document: [Contributing to a project](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project) - an easy to follow process for creating your own local copy of this code, making changes, then filing a "pull-request" (PR) informing the authors the you have a working change-set to be merged into the compiler.
+
+We're excited to see what changes you would like to contribute!
+
+\- Chip & Stephen
 
 ---
 
