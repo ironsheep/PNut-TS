@@ -163,7 +163,7 @@ To determine which mode the container is in you can always run:
 # npm run cov-chk
 ```
 
-For more about container modes and running coverage, see: [Running Coverage](Coverage.md)
+For more about container modes and running coverage, see: [Running Coverage](Coverage.md#running-coverage)
 
 
 ## Reference: Container Built-in Commands
