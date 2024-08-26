@@ -2,4 +2,5 @@ _clkfreq = 10_000_000
 
 PUB Go()
 
+  'debug(`term MyJunk SIZE 254 84)
   debug(`MyJunk `zstr_(@"This is a ))) string"))
