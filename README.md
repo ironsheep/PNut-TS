@@ -26,9 +26,10 @@ On this Page:
 
 Additional pages:
 
-- [Pnut-TS Command-line Reference](CommandLine.md) 
+- [Pnut-TS Command-line](CommandLine.md) - command line reference
 - [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
 - [PNut-TS repository notes](BUILD-RUN.md) - how to build, run tests, etc.
+- [PNut-TS coverage notes](Coverage.md) - latest coverage status, how to run coverage, etc.
 - [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
 
 ## Simplified project goals

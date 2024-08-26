@@ -6,7 +6,7 @@ NEW_TEST_DIR="TEST/ALLCODE-tests"
 
 if [ "$(ls -A "${NEW_TEST_DIR}")" ]; then
     echo ""
-    echo "${SCRIPT}: ${NEW_TEST_DIR} is set up!  (NEW coverage)"
+    echo "${SCRIPT}: ${NEW_TEST_DIR} is set up!  (Coverage Mode)"
     echo ""
     exit 0
 fi
@@ -14,7 +14,7 @@ fi
 # Check if the directory is empty
 if [ -z "$(ls -A ${NEW_TEST_DIR}/)" ]; then
     echo ""
-    echo "${SCRIPT}: ${NEW_TEST_DIR} is torn down!  (OLD coverage)"
+    echo "${SCRIPT}: ${NEW_TEST_DIR} is torn down!  (Regression Mode)"
     echo ""
     exit 0
 fi

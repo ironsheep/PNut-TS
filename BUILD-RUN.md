@@ -150,7 +150,23 @@ lastly make sure you have a working repo copy. Run the entire regression test su
 $ npm test
 ```
 
-## Container Built-in Commands
+## Container Modes
+
+The container is configured by scripts to be in one of two modes.
+
+1. **Regression Mode**: normal everday state, ready for work, regression testing, and committing changes
+2. **Coverage Mode**: special state only used for running the coverage tests. <BR>**WARNING do not commit changes to repository while in this Coverage Mode!**
+
+To determine which mode the container is in you can always run:
+
+```bash
+# npm run cov-chk
+```
+
+For more about container modes and running coverage, see: [Running Coverage](Coverage.md)
+
+
+## Reference: Container Built-in Commands
 
 We have a number of built-in commands we use to build code, lint our code, format our code, run tests, etc.
 
@@ -195,6 +211,7 @@ The coverage environment must be setup for running the coverage tests.
 | npm run cov-setup | prepare scripts and folders in order to run coverage
 | npm run coveage | run the coverage tests and generate HTML reports
 | npm run cov-teardown | restore scripts and folder to their non-coverage state
+| npm run cov-chk | determine if the container is in coverage mode (**Coverage Mode**) or not (**Regression Mode**)
 
 
 
