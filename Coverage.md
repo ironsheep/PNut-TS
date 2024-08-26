@@ -12,17 +12,19 @@
 
 ## Coverage Status (each release)
 
-This is our coverage stataus at the v1.43.0 testing release.  
+This is our coverage stataus at the v1.43.0 testing release.  In this first coverage effort we focused on the most important areas which would yield the best certification of the compiler in general. We didn't test many of the more extreme (infrequently exercided cases.) We did try to cover all regions that affect actual code generation.
 
 ### Page: Top level
 Here are the coverage categories:
 
-![Patreon](./DOCs/images/v1.43.0-top.png)
+![Patreon](./DOCs/images/v1.43.0-top.png)<br>**FIGURE 1**: v1.43.0 `top-level` coverage report view.
+
+This page shows that there are three pages below this one (`src`, `src/classes`, and `src/Utils` each with their own page of details.  Click on one of the three names to view the page for that group.
 
 ### Page: src/classes
 Here is the `src/classes` status:
 
-![Patreon](./DOCs/images/v1.43.0-classes.png)
+![Patreon](./DOCs/images/v1.43.0-classes.png)<br>**FIGURE 2**: v1.43.0 `src/classes` coverage report view.
 
 Again, this is our results at v1.43.0 our initial test release.
 

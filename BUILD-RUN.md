@@ -158,6 +158,13 @@ lastly make sure you have a working repo copy. Run the entire regression test su
 $ npm test
 ```
 
+The regression test output should end with somthing like this:
+
+![Patreon](./DOCs/images/v1.43.0-regressionTestResult.png)
+<br>**FIGURE 1**: example Regression Test output.
+
+NOTE: the last test `Compile file: TOF/demo_180degrFOV.spin2 (11056 ms)` actually takes a long time to compile. The test suite has a built-in max time for a test to run. On slower machines this test will fail with exceeded timeout of 20000 ms. If this happens you are just on a slower machine, you should not have to worry about this failure.  *The time on 11056 ms cited above is on my 26-core Mac Studio. Most of us do not have this kind of machine!*
+
 ## Container Modes
 
 The container is configured by scripts to be in one of two modes.
