@@ -34,11 +34,17 @@ $ code .  # to open cloneFolder
 # npm install will start # loads all needed npm packages
 ```
 
+After starting VScode then you will be prompted first for [**Reopen in Container**] - **Yes, you need to do this**.  
+
+Once you reopen in the new container, If it's the first time (the container was just created,) then `npm install` will run automatically which installes the supporting npm modules.
+
+Next you will be prompted to install suggested extensions in the new container with a dialog presenting an [**Install**] button. - **Yes, you also want to do this**.
+
 ### Step 2
-Update npm itself (if suggested in terminal output)
+Occasionally, npm itself will be updated. If this happens before you install this repository the terminal output from the `npm install` command will end with a line suggesting that a new version of `npm` is available. When this happens just update npm itself with the following command:
 
 ```bash
-$ npm install -g npm@10.8.2 # (use version shown in terminal output)
+$ npm install -g npm@10.8.2 # (this is an example, use version shown in terminal output, instead.)
 ```
 
 ### Step 3
@@ -142,6 +148,8 @@ available via `npm run-script`:
   bld-dist
     npm run build && npm run esbuild && npm pack && pkg .
 ```
+
+Commands in this list are described in more detail below. See the "**Container Built-in Commands**" reference.
 
 ### Step 4
 lastly make sure you have a working repo copy. Run the entire regression test suite:
