@@ -1,4 +1,4 @@
-# Pnut reimplementation in TypeScript (Pnut-TS)
+# PNut Reimplementation in TypeScript (PNut-TS)
 
 ![Project Maintenance][maintenance-shield]
 
@@ -6,76 +6,52 @@
 
 ![NodeJS][node-badge]
 
-[![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
+[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS-dev/releases)
 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS-dev/issues)
 
 A joint project between Chip Gracey and Stephen M Moraco.
-We are re-implemting Pnut for Windows in a platform agnostic language.
+Reimplementation Pnut for Windows in a platform agnostic language.
+
+## We are inviting testing help
+
+v1.43.0 is an early release inviting testing of the v43 compaitbility. The hope is that our community can help us expand our initial testing beyond what we've been able to do to help us
+find any compilation issues we may not have found.
+
+The page [Testing PNut-TS v1.43.0](Testing.md) will help you learn how to test and identify what to report when you find an issue. 
+
 
 ## Table of Contents
 
 On this Page:
 
-- [Simplified project goals](#simplified-project-goals)
-- [Accomplishments of this port effort](#accomplishments-of-this-port-effort)
-- [Possible Futures](#possible-futures)
-- [Typescript References](#typescript-references) - good references for studying TypeScript
-- [Extensions for viewing X86 code](#extensions-for-viewing-x86-code) - during the project we are porting x86 code. These extensions help us view the x86 code
+- [PNut-TS Features](#simplified-project-goals)
+- [Installing PNut-TS](#possible-futures) installation notes for the supported platforms
 - [Repository Configuration](#repository-configuration) - more about this Repo.
 
 Additional pages:
 
-- [Pnut-TS Command-line](CommandLine.md) - command line reference
-- [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
+- [PNut-TS Command-line](CommandLine.md) - command line reference
+- [PNut-TS Preprocessor](Preprocessor.md) - conditional compilation support
 - [PNut-TS repository notes](BUILD-RUN.md) - how to build, run tests, etc.
 - [PNut-TS coverage notes](Coverage.md) - latest coverage status, how to run coverage, etc.
+- [PNut-TS project Goals](Goals.md) - our thoughts as we started this project
 - [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
 
-## Simplified project goals
+## PNut-TS Features
 
-**Question**? This will only be a p2 compiler, right?
-- Yes, this will be P2 at initial release. 
+The features of this new implementation are:
 
-- Replace all use of Delphi/Pascal, x86 assembly, and SmallBASIC with pure typescript.
-- Produce a command line tool (command line options may be slightly different)
-- Omit editor component - this is a command line compiler only
-- Be listing, object and binary compatible with PNut of same version. (PNut v43, initially, upgraded to PNut v45 before formal release.)
+- A full P2 Compiler (equivalent to PNut on Windows) for all platforms
+- Written in a language which is relatively easy to maintain 
+- A command line tool with standard option processing
+- Has a full featured light-weight [preprocessor](Preprocessor.md)
+- Listing, object, and binary compatible with PNut of same version.<BR>(PNut v43, initially (at testing release), upgraded to PNut v45 before formal release.)
+- Internal table-size-limits are now easy to adjust if we find a need.
 
-### Accomplishments of this port effort
+## Installing PNut-TS
 
-- Remove internal table-size-limits (or make easy to adjust table limits)
-- Simplify the file handling
-- Provide opportunity to generate more reports and/or info about each loadable image build
-- Provide opportunity to add light-weight preprocessor
-
-### Possible Futures
-
-Now that we have a compiler, how much more would it take to port?
-*(We are not committing to doing these, just mentioning these as they are the next most beneficial steps, we think.)*
-
-- The debug display serial port listener that interprets the serial data and presents the debug windows and terms.
-- The Debugger itself.
-- Port the P1 compiler, auto selecting it from this compiler when asked to process .spin files.
-
-## Typescript References
-
-I'm usually learning as I go. I'm searching the web for best patterns of how to do "such and such". Here are a couple of quick links for getting good answers and for finding reference docs along with a few more that look to be useful:
-
-- This is my go-to for most "remind me how to..." questions: [W3 Typescript Tutorial](https://www.w3schools.com/typescript/)
-- Huh? it says this is a free course (**codeacademy.com**): [Master Typescript - Learn by Doing](https://www.codecademy.com/learn/learn-typescript) - could be good.
-- The TypeScript Doc site [TypeScript Documentation](https://www.typescriptlang.org/docs/)
-- If you looking for a book "**O'Reilly - Learning TypeScript**" seems to be a good one [Book Website](https://www.learningtypescript.com/) - this website provides links to bying the book and provides accompanying exercises
-
-## Extensions for viewing X86 code
-
-I'm using the following extensions which make the viewing of the .asm Pnut .asm file more readable.
-
-- [x86_64 Assembly Pro](https://marketplace.visualstudio.com/items?itemName=EhlKr.x86-64-assembly-pro)
-- [ASM Code Lens](https://marketplace.visualstudio.com/items?itemName=maziac.asm-code-lens)
-- [Intel x86 Instruction Reference](https://marketplace.visualstudio.com/items?itemName=whiteout2.x86ex)
-
-Download these extensions then close all VSCode instances then open VSCode and they'll be working.
+{C*oming soon*}
 
 ## Repository Configuration
 
@@ -114,8 +90,8 @@ Follow these links for more information:
 
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS-dev/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS-dev.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
