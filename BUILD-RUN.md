@@ -1,4 +1,5 @@
 # Pnut-TS Repository Build and test Notes
+A re-implementation of PNut for Windows in a platform agnostic language.
 
 ![Project Maintenance][maintenance-shield]
 
@@ -8,26 +9,47 @@
 
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
 
-A joint project between Chip Gracey and Stephen M Moraco.
-We are re-implemting Pnut for Windows in a platform agnostic language.
+
+Creating and using your own copy of this repository.
+
+## Table of Contents
+
+On this Page:
+
+- [Starting with this Repository](#starting-with-this-repository) - creating your own local copy of this repo so you can build and test the compiler and any changes you make.<br>(See also [Contributing...]() below.)
+- [Container Modes](#container-modes) - understanding the two modes this contain can be in: Coverage and Otherwise (Regression)
+- [Reference: Container Built-in Commands](#reference-container-built-in-commands) - the build and test commands used in this container.
+- [Reminder: getting latest from repository](#reminder-getting-latest-from-repository) - steps to updating your local copy from the main repostory.
+- [Contributing changes to PNut-TS](#contributing-changes-to-pnut-ts) - how to contribute changes you've made back to the PNut-TS project.
+
+Additional pages:
+
+- [Repository README](README.md) - top level page
+- [Pnut-TS Command-line](CommandLine.md) - command line reference
+- [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
+- [PNut-TS coverage notes](Coverage.md) - latest coverage status, how to run coverage, etc.
+- [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
 
 ## Starting with this Repository
 
-## Prerequisites
 
 This repository uses a docker container as the work environment. Make sure you have docker desktop installed and running.
 
 ### Step 1
-- Clone this repository.  
-- Open root directory in VSCode. 
-- When prompted by VSCode, press [Reopen in container]
 
-I use:
+Make work local copy of the PNut-TS repository. Here are the overall steps:
+
+- Clone this [repository](https://github.com/ironsheep/PNut-TS).  
+- Open root directory in VSCode. 
+- When prompted by VSCode, press [Reopen in container] and [Install] extensions.
+- Lastly, run build and regression suite to make sure everying is running.
+
+...and here are the actual commands I use (as an example):
 
 ```bash
 $ mkdir {workingFolder} # folder in which to place new cloneFolder
 $ cd {workingFolder}
-$ git clone git@github.com:ironsheep/Pnut-ts-dev.git. #FIXME use public URL
+$ git clone git@github.com:ironsheep/PNut-TS.git.
 $ cd {workingFolder}/{cloneFolder}
 $ code .  # to open cloneFolder
 # then in VSCode press [**Reopen in Container**]
@@ -231,7 +253,7 @@ The coverage environment must be setup for running the coverage tests.
 
 
 
-## Reminder getting latest from repository
+## Reminder: getting latest from repository
 
 Assuming you don't havve any uncommitted changes in your workspace then the following steps will make sure you have the latest and greatest contents.
 
