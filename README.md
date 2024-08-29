@@ -51,7 +51,17 @@ The features of this new implementation are:
 
 ## Installing PNut-TS
 
-{C*oming soon*}
+Installation is pretty easy for PNut-TS.
+
+- Identify and download the .zip file for your platform and architecture (from the latest release.)
+- unzip the file, creates a folder (or .dmg)
+- On **Windows**, **Linux** move the folder to the install location.<BR>On **macOS** double-click on the .dmg then from within the window drag the folder to the /Applications folder.
+- Setup and enviroment variable (typically PATH) so that the **pnut_ts** executable can be referenceed from anywhere.
+- Run VSCode with the **Spin2 v2.3.0 extension** (when it's released) to ensure that the installed **pnut_ts** was found.
+
+See detailed installation instructions for; **macOS**, **Windows**, and **Linux/RPi**. (*These will be links to pages, shortly*)
+
+That's really all there is to it!
 
 ## Repository Configuration
 
