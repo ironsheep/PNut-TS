@@ -22,13 +22,13 @@ With each compiler you generate .obj, .bin and .lst files. The files you generat
 
 You then compare each of the file types to their .GOLD counterpart expecting them to match.
 
-By way of example here is what I do:
+By way of example, here is what I do:
 
-With the listing (.lst) files I use a simple diff tool. There are a couple regions that can be different and is an **expected difference**.  
+With the listing (.lst) files I use a simple diff tool. There are a couple regions that can be different and is an **expected difference**.
 
-With the binary files (.obj, .bin) I first calculate a sum for each file and if the sums are different then i do a visual hex difference to inspect the differences. The floating point constant **expected difference**, in addition to appearing in the listing files can also appear in the binary files.
+With the binary files (.obj, .bin) I first calculate a sum for each file and if the sums are different then i do a visual hex difference to inspect the differences. The "floating point constant" **expected difference**, in addition to appearing in the listing files can also appear in the binary files.
 
-This is all discussed in more detail in "**Verifying that files are the same**" below. But first lets be more specific about how we test.
+This is all discussed in more detail in "**Verifying that files are the same**" below. But first, lets be more specific about how we test.
 
 
 ## Testing Steps
