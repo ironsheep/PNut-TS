@@ -14,11 +14,15 @@
 
 *Thank you for considering helping us do further testing of our new PNut-TS compiler!*
 
-Testing consists of locating projects that can be compiled with PNut v43 on Windows and then compiling the same source code using our new PNut-TS v1.43.0 compiler.
+Here's an overview of the process to use for testing. More detailed descriptions, follow.
+
+Testing consists of locating projects that can be compiled with PNut v43 on Windows, compiling the code on Windows and then compiling the same code using our new PNut-TS v1.43.0 compiler.
 
 With each compiler you generate .obj, .bin and .lst files. The files you generated from PNut v43 you rename as .obj.GOLD, .bin.GOLD and .lst.GOLD.  The .GOLD suffix connotes that these are the expected golden output that our new PNut-TS compiler much also generate to be working correctly.
 
-You then conpare each of the file types to their .GOLD counterpart expecting them to match.
+You then compare each of the file types to their .GOLD counterpart expecting them to match.
+
+By way of example here is what I do:
 
 With the listing (.lst) files I use a simple diff tool. There are a couple regions that can be different and is an **expected difference**.  
 
