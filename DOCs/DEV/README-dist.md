@@ -13,13 +13,6 @@
 A joint project between Chip Gracey and Stephen M Moraco.
 Reimplementation Pnut for Windows in a platform agnostic language.
 
-## We are inviting testing help
-
-v1.43.0 is an early release inviting testing of the v43 compaitbility. The hope is that our community can help us expand our initial testing beyond what we've been able to do to help us
-find any compilation issues we may not have found.
-
-The page [Testing PNut-TS v1.43.0](Testing.md) will help you learn how to test and identify what to report when you find an issue. 
-
 
 ## Table of Contents
 
@@ -27,17 +20,13 @@ On this Page:
 
 - [PNut-TS Features](#pnut-ts-features)
 - [Installing PNut-TS](#installing-pnut-ts) installation notes for the supported platforms
-- [Repository Configuration](#repository-configuration) - more about this Repo.
 
 Additional pages:
 
 - [PNut-TS Command-line](CommandLine.md) - command line reference
 - [PNut-TS Preprocessor](Preprocessor.md) - conditional compilation support
-- [PNut-TS Repository notes](BUILD-RUN.md) - how to build, run tests, etc.
-- [PNut-TS Coverage notes](Coverage.md) - latest coverage status, how to run coverage, etc.
-- [PNut-TS Project Goals](Goals.md) - our thoughts as we started this project
 - [PNut-TS ChangeLog](CHANGELOG.md) - history of releases
-- [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
+
 
 ## PNut-TS Features
 
@@ -64,22 +53,6 @@ See detailed installation instructions for; **macOS**, **Windows**, and **Linux/
 
 That's really all there is to it!
 
-## Repository Configuration
-
-This project is configured to run in a docker instance. Docker is essentially a way to run stuff in a local sandboxed environment. The environment is specified by a docker image, and its main component is a snapshot of all files that are needed to run.
-
-Wanting to clone the PNut_TS repository locally and run regression tests, or even maybe contribute to this compiler? Then start with Installing Docker Desktop to your machine. See [Overview of Docker Desktop](https://docs.docker.com/desktop/) at the Docker website.
-
-In general if you've not used docker before you'll follow these steps to get up and running:
-
-- Install [docker desktop](https://docs.docker.com/desktop/) - see install links on left panel
-- [Clone our repository](BUILD-RUN.md)
-- Open the repo in VSCode (also shown in above "clone..." page)
-
-VSCode will tell docker what image needs to be downloaded and then it will start the container and then ask you to [Reopen in Container]. Once you do reopen VSCode will then install the NPM packages to get your local copy ready to build and run.
-
-Linting and formatting of TypeScript is setup using **Prettier** formatter and **ESLint**.
-See [How to use Prettier with ESLint and TypeScript in VSCode](https://khalilstemmler.com/blogs/tooling/prettier/)
 
 ---
 
