@@ -52,6 +52,17 @@ The features of this new implementation are:
 
 ## Installing PNut-TS
 
+Install .zip files available for each release:
+
+| Archive Name | Operating System | Architecture | Unpack Leaves
+| --- | --- | --- | --- |
+| linux-arm64.zip | Linux, RPi | Arm 64 bit | pnut_ts/
+| linux-x64.zip| Linux, RPi | Intel x86-64 bit | pnut_ts/
+| macos-arm64.zip| MacOS | Arm 64 bit | macos-arm64.dmg
+| macos-x64.zip| MacOS | Intel x86-64 bit | macos-x64.dmg
+| win-arm64.zip| Windows | Arm 64 bit | pnut_ts/
+| win-x64.zip| Windows | Intel x86-64 bit | pnut_ts/
+
 Installation is pretty easy for PNut-TS.
 
 - Identify and download the .zip file for your platform and architecture (from the latest release.)
