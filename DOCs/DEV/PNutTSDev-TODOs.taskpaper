@@ -1,14 +1,32 @@
+REPO Preparation to go pubic:
+		- update npm package list versions to what our main local container is using! @done(2024-08-29)
+		- test on remote machine and fix anything
+		
+PACKAGING Prep:
+		- study ditto to figure out command-line for following script
+		- build script to create .zips for upload
+		- figure out signing to use (create in apple-developer)
+		- test signed packages on remote machine
+		- create for .dmg files to use for testing (and .zip them)
+		- upload all .zips as v0.43.0
+	
+PACKAGING for testing RELEASE:
+		- bump version number to 1.43.0
+		- retag repo
+		- generate packages, run script and sign macOS .exe and .dmg
+		- run script to create upload stuff
+		- upload to release page
+		
+LIMITATION OF PNUT-TS:
+	- NOTE: floating point constants: The mantissa (bits 22:0) can be +/- 1 ls-bit off in value
+		
+		
 PNut TS Dev NOTEs:
 	TODAYs issues w/Chip helping to find:
 		- code generation in BLDC - this is floating point diff issue @done(2024-08-15)
 		- long runtime in iOTgw - exprected with nested flow control in spin @done
 		- TOF out files too big? @done
 		
-		LIMITATION OF PNUT-TS:
-			- NOTE: floating point constants: The mantissa (bits 22:0) can be +/- 1 ls-bit off in value
-		
-	REPO Preparation to go pubic:
-		- update npm package list versions to what our main local container is using!
 	
 	
 	NESTED PreProc work:
