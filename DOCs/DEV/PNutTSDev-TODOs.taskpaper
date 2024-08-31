@@ -25,17 +25,17 @@ PACKAGING Prep:
 		- Figue out dropdmg run and signing... @done(2024-08-30)
 		- Create for .dmg files to use for testing (and .zip them) @done(2024-08-30)
 		- Figure out notary of .dmg (should do contents, too) @done(2024-08-30)
+		- Upload all .zips as v0.43.0 @done(2024-08-30)
 		- Test signed packages on remote machine
-		- Upload all .zips as v0.43.0
 		- Write PNut-TS installation for mscOS, Windows, and Linux/RPi in extension repo
 		- Link these installtion notes to PNut-TS installation section in README.md
 	
 	
 PACKAGING for testing RELEASE:
 		- bump version number to 1.43.0
-		- retag repo
 		- generate packages, run script and sign macOS .exe and .dmg
 		- run script to create upload stuff
+		- retag repo
 		- upload to release page
 		
 LIMITATION OF PNUT-TS:
