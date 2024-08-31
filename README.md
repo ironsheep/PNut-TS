@@ -57,7 +57,7 @@ Install .zip files available for each release:
 | Archive Name | Operating System | Architecture | Unpack Leaves
 | --- | --- | --- | --- |
 | linux-arm64.zip | Linux, RPi | Arm 64 bit | pnut_ts/
-| linux-x64.zip| Linux, RPi | Intel x86-64 bit | pnut_ts/
+| linux-x64.zip| Linux | Intel x86-64 bit | pnut_ts/
 | macos-arm64.zip| MacOS | Arm 64 bit | macos-arm64.dmg
 | macos-x64.zip| MacOS | Intel x86-64 bit | macos-x64.dmg
 | win-arm64.zip| Windows | Arm 64 bit | pnut_ts/
@@ -71,7 +71,7 @@ Installation is pretty easy for PNut-TS.
 - Setup and enviroment variable (typically PATH) so that the **pnut_ts** executable can be referenceed from anywhere.
 - Run VSCode with the **Spin2 v2.3.0 extension** (when it's released) to ensure that the installed **pnut_ts** was found.
 
-See detailed installation instructions for; **macOS**, **Windows**, and **Linux/RPi**. (*These will be links to pages, shortly*)
+See detailed installation instructions for; **[macOS](https://github.com/ironsheep/P2-vscode-langserv-extension/blob/main/TASKS-User-macOS.md#installing-pnut-ts-on-macos)**, **[Windows](https://github.com/ironsheep/P2-vscode-langserv-extension/blob/main/TASKS-User-win.md#installing-pnut-ts-on-windows)**, and **[Linux/RPi](https://github.com/ironsheep/P2-vscode-langserv-extension/blob/main/TASKS-User-RPi.md#installing-pnut-ts-on-rpilinux)**. 
 
 That's really all there is to it!
 
