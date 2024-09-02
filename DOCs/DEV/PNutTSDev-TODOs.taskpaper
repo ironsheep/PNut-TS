@@ -33,6 +33,8 @@ PACKAGING Prep:
 			- https://eclecticlight.co/2023/06/05/what-to-do-when-an-app-crashes-as-it-opens/
 			- https://developer.apple.com/documentation/xcode/diagnosing-issues-using-crash-reports-and-device-logs
 			- and... x64 version runs on macOS Apple Silicon but not the DMG installed version??s
+			- NEW: neither x64 or amr64 runs on macOS?
+				- this has nothing to do with packaging (it happens before packaging!)
 PACKAGING for testing RELEASE:
 		- bump version number to 1.43.0
 		- generate packages, run script and sign macOS .exe and .dmg

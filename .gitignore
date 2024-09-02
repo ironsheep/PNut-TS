@@ -237,3 +237,4 @@ TEST/LARGE-tests/TOF/isp_hdmi_debug.lst.GOLD
 TEST/LARGE-tests/TOF/isp_hdmi_debug.obj.GOLD
 TEST/LARGE-tests/TOF/Error.txt
 /TEST/.vscode
+/scripts-pkg/_unzipped
