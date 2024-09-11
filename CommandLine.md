@@ -1,4 +1,4 @@
-# Pnut-TS - Command Line
+# PNut-TS - Command Line
 
 ![Project Maintenance][maintenance-shield]
 

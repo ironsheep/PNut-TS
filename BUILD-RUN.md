@@ -1,4 +1,4 @@
-# Pnut-TS Repository Build and test Notes
+# PNut-TS Repository Build and test Notes
 A re-implementation of PNut for Windows in a platform agnostic language.
 
 ![Project Maintenance][maintenance-shield]

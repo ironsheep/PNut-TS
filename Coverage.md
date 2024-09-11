@@ -1,4 +1,4 @@
-# Pnut-TS - Coverage Testing
+# PNut-TS - Coverage Testing
 
 ![Project Maintenance][maintenance-shield]
 

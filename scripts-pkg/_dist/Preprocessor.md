@@ -1,4 +1,4 @@
-# Pnut reimplementation in TypeScript (Pnut-TS)<br>The Pnut-TS Preprocessor
+# Pnut reimplementation in TypeScript (Pnut-TS)<br>The PNut-TS Preprocessor
 
 ![Project Maintenance][maintenance-shield]
 
@@ -10,7 +10,7 @@
 
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
 
-## Pnut-TS Preprocessor Comamnd line options
+## PNut-TS Preprocessor Comamnd line options
 
 A couple of command line options affect the proprocessing:
 

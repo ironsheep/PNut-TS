@@ -15,7 +15,7 @@ Work to appear in upcoming releases:
 - First formal release
 - Compatible with PNut_v45.exe
 
-## [1.43.0] 2024-??-??
+## [1.43.0] 2024-09-11
 
 - Initial Release for Testing
 - Compatible with PNut_v43.exe
