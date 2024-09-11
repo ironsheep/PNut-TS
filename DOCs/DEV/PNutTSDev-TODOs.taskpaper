@@ -36,7 +36,7 @@ RE-PACKAGING PNut-TS (External Node.js):
 REPO Preparation to go pubic:
 		- update npm package list versions to what our main local container is using! @done(2024-08-29)
 		- test on remote machine and fix anything
-		- FIx install  ofr MAC citing new install of Node.js need!
+		
 		
 PNut_TS PACKAGING Prep:
 	- Study ditto to figure out command-line for following script @done(2024-08-30)
@@ -61,10 +61,11 @@ PNut_TS PACKAGING Prep:
 				- JVM issue?
 	- Hrmf... use non-standalone build for now in .dmg for macOS @done(2024-09-04)
 PNut_TS PACKAGING for testing RELEASE:
-		- bump version number to 1.43.0
+		- bump version number to 1.43.0 @done(2024-09-11)
+		- INSTALL DOC MAC (.md) Fix install  ofr MAC citing new install of Node.js need! (spin2 ext)
+		- retag repo
 		- generate packages, run script and sign macOS .exe and .dmg
 		- run script to create upload stuff
-		- retag repo
 		- upload to release page
 		
 
