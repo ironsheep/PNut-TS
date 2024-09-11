@@ -9,6 +9,7 @@ import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { SpinDocument } from './classes/spinDocument';
 import path from 'path';
+import { exec } from 'child_process';
 //import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
@@ -483,6 +484,14 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
       this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
       this.context.logger.verboseMsg(''); // blank line
+      runCommand('node -v').then((result) => {
+        if (result.error) {
+          this.context.logger.errorMsg(`Error: ${result.error}`);
+        } else {
+          this.context.logger.verboseMsg(`Node version: ${result.value}`);
+          this.context.logger.verboseMsg(''); // blank line
+        }
+      });
     }
 
     if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
@@ -641,6 +650,22 @@ export class PNutInTypeScript {
     const bHexGrouped = bHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
     this.context.logger.logMessage(`   b: 0x${bHexGrouped.toUpperCase()} b=(${b})`);
   }
+}
+
+function runCommand(command: string): Promise<{ value: string | null; error: string | null }> {
+  return new Promise((resolve) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        resolve({ value: null, error: error.message });
+        return;
+      }
+      if (stderr) {
+        resolve({ value: null, error: stderr });
+        return;
+      }
+      resolve({ value: stdout.trim(), error: null });
+    });
+  });
 }
 
 // --------------------------------------------------
