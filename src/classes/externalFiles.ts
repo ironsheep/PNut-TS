@@ -78,6 +78,7 @@ export class ExternalFiles {
       this._flashLoaderImage = tmpImage;
     }
     //const ignore_v44: boolean = false;
+    /*
     if (this.context.compileOptions.v44FormatListing) {
       //if (ignore_v44) {
       // version v44 built-in files
@@ -94,19 +95,19 @@ export class ExternalFiles {
         this._spinInterpreterImage = tmpImage;
       }
     } else {
-      // version v43 built-in files
-      tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger.obj');
-      tmpImage = this.loadImage(tmpFSpec);
-      if (tmpImage) {
-        this.logMessage(`Spin2_debugger v43 is ${tmpImage.length} bytes long`);
-        this._spinDebuggerImage = tmpImage;
-      }
-      tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_interpreter.obj');
-      tmpImage = this.loadImage(tmpFSpec);
-      if (tmpImage) {
-        this.logMessage(`Spin2_interpreter v43 is ${tmpImage.length} bytes long`);
-        this._spinInterpreterImage = tmpImage;
-      }
+    */
+    // version v43 built-in files
+    tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_debugger.obj');
+    tmpImage = this.loadImage(tmpFSpec);
+    if (tmpImage) {
+      this.logMessage(`Spin2_debugger v43 is ${tmpImage.length} bytes long`);
+      this._spinDebuggerImage = tmpImage;
+    }
+    tmpFSpec = path.join(this.context.extensionFolder, 'Spin2_interpreter.obj');
+    tmpImage = this.loadImage(tmpFSpec);
+    if (tmpImage) {
+      this.logMessage(`Spin2_interpreter v43 is ${tmpImage.length} bytes long`);
+      this._spinInterpreterImage = tmpImage;
     }
   }
 

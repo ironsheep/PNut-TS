@@ -19,6 +19,7 @@ jest.config.ts
 old.*
 smm.*
 # don't include these folders
+scripts-pkg/
 .devcontainer/
 jest-*/
 .github/

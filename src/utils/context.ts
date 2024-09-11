@@ -57,6 +57,7 @@ export interface CompileOptions {
   outputFilename: string; // override output filename with this name
   writeListing: boolean; // write compile report (.lst file)
   v44FormatListing: boolean; // write compile report (.lst file) use v44 style
+  //v43Compile: boolean; // compile emitting v43 compatible code (maybe)
   writeObj: boolean; // write object file (.obj file)
   writeBin: boolean; // write binary file (.bin file)
   listFilename: string; // write compile report to this file
