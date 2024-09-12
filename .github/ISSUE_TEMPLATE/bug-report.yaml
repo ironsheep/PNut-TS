@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report an issue you are experiencing with the Pnut TypeScript Implementation.
+description: Report an issue you are experiencing with the PNut TypeScript Implementation.
 labels:
   - bug
 
@@ -15,9 +15,7 @@ body:
       label: and have you...
       description: Have you accomplished the following before submitting this issue?
       options:
-        - label: I updated to the latest spin2 version available
-          required: true
-        - label: I have restarted VSCode and the problem still exists
+        - label: I updated to the latest PNut-TS version available
           required: true
 
   - type: input
@@ -25,10 +23,10 @@ body:
     validations:
       required: true
     attributes:
-      label: Version of Pnut TypeScript Implementation with the issue
-      description: Please specify which version of Pnut TypeScript Implementation you are using, and if this is a regression, what is the last known version that worked?
+      label: Version of PNut TypeScript Implementation with the issue
+      description: Please specify which version of PNut TypeScript Implementation you are using, and if this is a regression, what is the last known version that worked?
       placeholder: |
-        Failing in v1.4.1, last worked in v1.4.0
+        Failing in v1.43.0, last worked in v0.43.1
 
   - type: dropdown
     id: regression
@@ -46,19 +44,21 @@ body:
     validations:
       required: true
     attributes:
-      label: Hardware, Operating System, Operating System version, VSCode version
+      label: Hardware, Operating System, Operating System version, PNut-TS version, Node version
       description: |
         Provide details about the machine/software you are running on,
-        which operating system this is on, and what VSCode version you are using.
+        which operating system this is on, and what PNut-TS & Node version you are using.
         If possible try to replicate the issue in other installations and include your findings here.
       placeholder: |
         Hardware: Mac Pro
         OS Ver: macOS Monterey v12.6.6
-        VSCode Ver: 1.79.1 (Fm Code->About)
+        PNut-TS Ver: 1.79.1 (Fm: pnut-ts --help -v)
+        Node Ver: 16.13.0
       value: |
         Hardware:
         OS Ver:
-        VSCode Ver:
+        PNut-TS Ver:
+        Node Ver:
 
   - type: textarea
     id: problem
@@ -84,4 +84,4 @@ body:
 
   - type: markdown
     attributes:
-      value: 'Thank you for taking the time to report this issue! By doing so you are helping us make the Pnut TypeScript Implementation better.'
+      value: 'Thank you for taking the time to report this issue! By doing so you are helping us make the PNut TypeScript Implementation better.'
