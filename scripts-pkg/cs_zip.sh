@@ -2,6 +2,9 @@
 SCRIPT=${0##*/}
 SCRIPT_VERSION="1.0"
 
+#              v1.43.0
+BUILD_VERSION="014300"
+
 
 # =============================================================================
 # Usage info
@@ -148,7 +151,7 @@ if [ "${PWD##*/}" != "scripts-pkg" ]; then
 fi
 
 
-# zip command: ditto -ck --norsrc pnut_ts linux-x64.zip
+# zip command: ditto -ck --norsrc pnut_ts linux-x64-014300.zip
 
 # The zip_folder_contents function takes a folder path and an output zip file name, then zips the contents of the folder.
 # The script defines an array base_dirs containing the base directories linux, macos, and win.
@@ -184,7 +187,7 @@ for base_dir in "${base_dirs[@]}"; do
         if [ ${#subfolders[@]} -eq 2 ]; then
             for subfolder in "${subfolders[@]}"; do
                 folder_name=$(basename "$subfolder")
-                output_zip="${out_dir}/${folder_name}.zip"
+                output_zip="${out_dir}/${folder_name}-${BUILD_VERSION}.zip"
 
                 # Zip the contents of the folder
                 zip_folder_contents "$subfolder" "$output_zip"

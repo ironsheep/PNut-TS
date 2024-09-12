@@ -19,6 +19,9 @@ RE-PACKAGING PNut-TS (Self-contained):
 	
 RE-PACKAGING PNut-TS (External Node.js):
 	- in vscode run:    npm run bld-dist
+	- Replace version with new   BUILD_VERSION=MMmmSS  where 014300 is v1.43.00
+		- in cs_zip.dmgs.sh
+		- in cs_zip.sh
 	- run     cs_pack_ext.sh  # to fill _unzipped with correctly shaped folders with signed macos exe's
 	- run     cs_zip.sh    # to put initial .zip files in _UPLOAD
 	- run manually DropDMG to build dmg's for each of two macOS arch's

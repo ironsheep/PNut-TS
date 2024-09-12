@@ -49,7 +49,7 @@ mkdir -p ${dist_folder}/pnut_ts
 dist_folder="${build_folder}/linux/linux-x64"
 rm -rf ${dist_folder}/*
 mkdir -p ${dist_folder}/pnut_ts
-(set -x;cp -p ${pkg_src_folder}/p2-pnut-ts-linux-arm64 ${dist_folder}/pnut_ts/pnut_ts)
+(set -x;cp -p ${pkg_src_folder}/p2-pnut-ts-linux-x64 ${dist_folder}/pnut_ts/pnut_ts)
 (set -x;cp -pr ${extras_dist_folder}/* ${dist_folder}/pnut_ts)
 # prepare Linux arm64
 dist_folder="${build_folder}/linux/linux-arm64"
