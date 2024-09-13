@@ -6,9 +6,9 @@
 
 ![NodeJS][node-badge]
 
-[![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
+[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS/releases)
 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS/issues)
 
 ## PNut-TS Preprocessor Comamnd line options
 
@@ -26,7 +26,7 @@ A couple of command line options affect the proprocessing:
 
 ## Preprocessor Directives
 
-Pnut-TS has a pre-processor that understands a few primitive directives:
+PNut-TS has a pre-processor that understands a few primitive directives:
 
 - `#define`
 - `#undef`
@@ -153,11 +153,11 @@ There are several predefined symbols:
 | `__propeller__`    | defined as 2 (for Propeller 2)                        
 | `__P2__`           | defined as 1 (compiling for Propeller 2)                          
 | `__propeller2__`   | defined as 1 (compiling for Propeller 2)                            
-| `__PNUTTS__`       | defined as 1 indicating that the `Pnut-TS` compiler is used                           
+| `__PNUTTS__`       | defined as 1 indicating that the `PNut-TS` compiler is used                           
 | `__DATE__`         | a string containing the date when compilation was begun                 
 | `__FILE__`         | a string giving the current file being compiled                         
 | `__TIME__`         | a string containing the time when compilation was begun                 
-| `__VERSION__`      | a string containing the full version of Pnut-TS in use                  
+| `__VERSION__`      | a string containing the full version of PNut-TS in use                  
 | `__DEBUG__`        | defined as 1 only if copmpiling debug() statements is enabled (-d given)                     
 
 ---
@@ -180,9 +180,9 @@ Follow these links for more information:
 
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
 

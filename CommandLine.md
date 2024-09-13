@@ -6,9 +6,9 @@
 
 ![NodeJS][node-badge]
 
-[![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
+[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS/releases)
 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS/issues)
 
 ## Everyday Use of PNut-TS
 
@@ -98,8 +98,8 @@ Follow these links for more information:
 
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white

@@ -6,9 +6,9 @@
 
 ![NodeJS][node-badge]
 
-[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS-dev/releases)
+[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS/releases)
 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS-dev/issues)
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS/issues)
 
 ## Testing v1.43.0
 
@@ -116,8 +116,8 @@ Follow these links for more information:
 
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS-dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS-dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
