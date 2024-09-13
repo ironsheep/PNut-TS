@@ -18,11 +18,11 @@ A couple of command line options affect the proprocessing:
 | --- | --- |
 | <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements |
 | <PRE>-U \<symbol></PRE>  | Prevents a subsequent `#define <symbol>` found in the .spin2 code from having any effect
-| <PRE>-I \<directory></PRE>  | set the folder to search within for `#include "filename(.spin2)" statements
+| <PRE>-I \<directory></PRE>  | Specify the folder to search within for `#include "filename(.spin2)" statements
 | -- **Diagnostic Use** -- | 
 | <PRE>-i, --intermediate | Generate *-pre.spin2 after preprocessing - so you can review what preprocessed source was fed to the compiler
 
-**NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means that the compilation of all #included files and all files specified in the OBJ block of each object will be affected by the -D and -U options.
+**NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means that the compilation of all #included files and all files specified in the OBJ block of each object will be affected by these -D and -U options.
 
 ## Preprocessor Directives
 
@@ -132,7 +132,7 @@ NOTE: if the .spin2 suffix is not present on the filename provide in the include
 
 #### \#undef {symbol}
 
-Removes the definition of a symbol, e.g. to undefine `FOO` do:
+Removes a prior definition of a symbol, e.g. to undefine `FOO` do:
 
 ```c++
 #undef FOO
@@ -147,20 +147,18 @@ Note that #undef will do anything if one of our built-in symbols was named.
 
 There are several predefined symbols:
 
-This is TBD but here's the placeholder / initial thought...
 
 | Symbol             | When Defined                                                            |
 | ------------------ | ----------------------------------------------------------------------- |
-| `__propeller__`    | always defined to 1 (for P1) or 2 (for P2)                              |
-| `__P1__`           | only defined if compiling for Propeller 1`                              |
-| `__P2__`           | only defined if compiling for Propeller 2                               |
-| `__propeller2__`   | only defined if compiling for Propeller 2                               |
-| `__PNUTTS__`       | indicates that the `Pnut-TS` compiler is used                           |
-| `__DATE__`         | a string containing the date when compilation was begun                 |
-| `__FILE__`         | a string giving the current file being compiled                         ||
-| `__TIME__`         | a string containing the time when compilation was begun                 |
-| `__VERSION__`      | a string containing the full version of Pnut-TS in use                  |
-| `__DEBUG__`        | only if debugging is enabled (-g or -gbrk given)                        |
+| `__propeller__`    | defined as 2 (for Propeller 2)                        
+| `__P2__`           | defined as 1 (compiling for Propeller 2)                          
+| `__propeller2__`   | defined as 1 (compiling for Propeller 2)                            
+| `__PNUTTS__`       | defined as 1 indicating that the `Pnut-TS` compiler is used                           
+| `__DATE__`         | a string containing the date when compilation was begun                 
+| `__FILE__`         | a string giving the current file being compiled                         
+| `__TIME__`         | a string containing the time when compilation was begun                 
+| `__VERSION__`      | a string containing the full version of Pnut-TS in use                  
+| `__DEBUG__`        | defined as 1 only if copmpiling debug() statements is enabled (-d given)                     
 
 ---
 
