@@ -6,16 +6,16 @@
 
 ![NodeJS][node-badge]
 
-[![Release][Release-shield]](https://github.com/ironsheep/Pnut-ts-dev/releases)
+[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS/releases)
 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/Pnut-ts-dev/issues)
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS/issues)
 
 ## Everyday Use of PNut-TS
 
 Our new PNut-TS compiler will show you the following when you speicfy `-h` or `--help`:
 
 
-```text 
+```text
 PNut-TS: Usage: pnut-ts [optons] filename
 
 Propeller Spin2 compiler/downloader - v0.43.0
@@ -36,7 +36,7 @@ Options:
       Example:
          $ pnut-ts my-top-level.spin2         # compile leaving .bin file
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
-         
+
 
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC., Parallax Inc.
 pnut-ts: * Version 0.43.0,  Build date: 8/14/24
@@ -74,7 +74,7 @@ The `--log {option(s)}` produce very detailed output from different sections of 
 
 The `--regression {option(s)}` produce additional reports we use for testing/verifing the compiler.
 
-and 
+and
 
 The `--pass {option(s)}` are how we instruct the compiler to end after a given pass.
 
@@ -98,8 +98,8 @@ Follow these links for more information:
 
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/Pnut-ts-dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/Pnut-ts-dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white

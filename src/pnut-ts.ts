@@ -7,7 +7,7 @@
 import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
-import { SpinDocument } from './classes/spinDocument';
+import { eTextSub, SpinDocument } from './classes/spinDocument';
 import path from 'path';
 import { exec } from 'child_process';
 //import { UsbSerial } from './utils/usb.serial';
@@ -26,7 +26,7 @@ export class PNutInTypeScript {
   private readonly program = new Command();
   //static isTesting: boolean = false;
   private options: OptionValues = this.program.opts();
-  private version: string = '1.43.0';
+  private version: string = '1.43.1';
   private argsArray: string[] = [];
   private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
@@ -454,8 +454,8 @@ export class PNutInTypeScript {
       } else {
         // record this new file in our master list of files we compiled to buid the binary
         this.context.sourceFiles.addFile(this.spinDocument);
-        // TODO post symbols to conext object instead of top-level doc??
-        this.spinDocument.defineSymbol('__VERSION__', this.version);
+        // TODO post symbols to context object instead of top-level doc??
+        this.spinDocument.defineSymbol('__VERSION__', this.version, eTextSub.SA_TEXT_YES);
         this.context.currentFolder = this.spinDocument.dirName;
         // set up output filespec in case we are writing a listing file
         const lstFilespec = filename.replace('.spin2', '.lst');
@@ -470,9 +470,11 @@ export class PNutInTypeScript {
       }
     } else {
       if (this.requiresFilename) {
-        console.log('arguments: %o', this.program.args);
-        console.log('combArguments: %o', combinedArgs);
-        console.log('options: %o', this.program.opts());
+        if (!this.options.verbose) {
+          console.log('arguments: %o', this.program.args);
+          console.log('combArguments: %o', combinedArgs);
+          console.log('options: %o', this.program.opts());
+        }
         this.context.logger.errorMsg('Missing filename argument');
         this.shouldAbort = true;
       }

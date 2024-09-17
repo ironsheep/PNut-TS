@@ -19,7 +19,7 @@ A couple of command line options affect the proprocessing:
 | <PRE>-D \<symbol></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements |
 | <PRE>-U \<symbol></PRE>  | Prevents a subsequent `#define <symbol>` found in the .spin2 code from having any effect
 | <PRE>-I \<directory></PRE>  | Specify the folder to search within for `#include "filename(.spin2)" statements
-| -- **Diagnostic Use** -- | 
+| -- **Diagnostic Use** -- |
 | <PRE>-i, --intermediate | Generate *-pre.spin2 after preprocessing - so you can review what preprocessed source was fed to the compiler
 
 **NOTE:** these directives apply to all .spin2 files processed in the compile effort, not just the top-level file.  This means that the compilation of all #included files and all files specified in the OBJ block of each object will be affected by these -D and -U options.
@@ -140,7 +140,7 @@ Removes a prior definition of a symbol, e.g. to undefine `FOO` do:
 
 Removes the user-defined symbol FOO if it was defined.
 
-Note that #undef will do anything if one of our built-in symbols was named.
+Note that #undef will not do anything if one of our built-in symbols was named.
 
 
 ## Predefined Symbols
@@ -150,15 +150,15 @@ There are several predefined symbols:
 
 | Symbol             | When Defined                                                            |
 | ------------------ | ----------------------------------------------------------------------- |
-| `__propeller__`    | defined as 2 (for Propeller 2)                        
-| `__P2__`           | defined as 1 (compiling for Propeller 2)                          
-| `__propeller2__`   | defined as 1 (compiling for Propeller 2)                            
-| `__PNUTTS__`       | defined as 1 indicating that the `PNut-TS` compiler is used                           
-| `__DATE__`         | a string containing the date when compilation was begun                 
-| `__FILE__`         | a string giving the current file being compiled                         
-| `__TIME__`         | a string containing the time when compilation was begun                 
-| `__VERSION__`      | a string containing the full version of PNut-TS in use                  
-| `__DEBUG__`        | defined as 1 only if copmpiling debug() statements is enabled (-d given)                     
+| `__propeller__`    | defined as 2 (for Propeller 2)
+| `__P2__`           | defined as 1 (compiling for Propeller 2)
+| `__propeller2__`   | defined as 1 (compiling for Propeller 2)
+| `__PNUTTS__`       | defined as 1 indicating that the `PNut-TS` compiler is used
+| `__DATE__`         | a string containing the date when compilation was begun
+| `__FILE__`         | a string giving the current file being compiled
+| `__TIME__`         | a string containing the time when compilation was begun
+| `__VERSION__`      | a string containing the full version of PNut-TS in use (e.g., 'v1.43.0')
+| `__DEBUG__`        | defined as 1 only if copmpiling debug() statements is enabled (-d given)
 
 ---
 
@@ -185,4 +185,3 @@ Follow these links for more information:
 [Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
-

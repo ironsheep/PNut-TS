@@ -87,13 +87,14 @@ export class Compiler {
           const filename: string = srcDocument !== undefined ? srcDocument.fileSpec : this.srcFile.fileSpec;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
           const compilerErrorText: string = `${filename}:${sourceLineNumber}:error:${error.message}`;
-          this.context.logger.logMessage(`EEEE: About to report:   ${compilerErrorText}`);
+          //this.context.logger.logMessage(`EEEE: About to report:   ${compilerErrorText}`);
+          this.context.logger.logMessage(`${compilerErrorText}`);
           //this.context.logger.logMessage(` DBG filename=[${filename}], sourceLineNumber=(${sourceLineNumber}), errTxt=[${compilerErrorText}]`);
           const underTestStatus: boolean = this.context.reportOptions.regressionTesting;
           this.context.logger.compilerErrorMsg(compilerErrorText, underTestStatus);
-          if (error.stack !== undefined && !underTestStatus) {
-            this.context.logger.errorMsg(error.stack);
-          }
+          //if (error.stack !== undefined && !underTestStatus) {
+          //  this.context.logger.errorMsg(error.stack);
+          //}
         } else {
           // If it's not an Error object, it could be a string, null, etc.
           this.context.logger.errorMsg(error);

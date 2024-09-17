@@ -6,13 +6,12 @@
 
 ![NodeJS][node-badge]
 
-[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS-dev/releases)
+[![Release][Release-shield]](https://github.com/ironsheep/PNut-TS/releases)
 
-[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS-dev/issues)
+[![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS/issues)
 
 A joint project between Chip Gracey and Stephen M Moraco.
 Reimplementation Pnut for Windows in a platform agnostic language.
-
 
 ## Table of Contents
 
@@ -27,13 +26,12 @@ Additional pages:
 - [PNut-TS Preprocessor](Preprocessor.md) - conditional compilation support
 - [PNut-TS ChangeLog](CHANGELOG.md) - history of releases
 
-
 ## PNut-TS Features
 
 The features of this new implementation are:
 
 - A full P2 Compiler (equivalent to PNut on Windows) for all platforms
-- Written in a language which is relatively easy to maintain 
+- Written in a language which is relatively easy to maintain
 - A command line tool with standard option processing
 - Has a full featured light-weight [preprocessor](Preprocessor.md)
 - Listing, object, and binary compatible with PNut of same version.<BR>(PNut v43, initially (at testing release), upgraded to PNut v45 before formal release.)
@@ -52,7 +50,6 @@ Installation is pretty easy for PNut-TS.
 See detailed installation instructions for; **macOS**, **Windows**, and **Linux/RPi**. (*These will be links to pages, shortly*)
 
 That's really all there is to it!
-
 
 ---
 
@@ -74,8 +71,8 @@ Follow these links for more information:
 
 [license-shield]: https://img.shields.io/badge/License-MIT-yellow.svg
 
-[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS-dev/all.svg
+[Release-shield]: https://img.shields.io/github/release/ironsheep/PNut-TS/all.svg
 
-[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS-dev.svg
+[Issues-shield]: https://img.shields.io/github/issues/ironsheep/PNut-TS.svg
 
 [node-badge]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white

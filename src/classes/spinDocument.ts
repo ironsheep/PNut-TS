@@ -30,6 +30,11 @@ export enum eLangaugeId {
   LID_SPIN2
 }
 
+export enum eTextSub {
+  SA_TEXT_YES,
+  SA_NUMBER_NO
+}
+
 export interface iError {
   sourceLineIndex: number;
   characterOffset: number;
@@ -114,6 +119,8 @@ export class SpinDocument {
   // preprocessor data
   private incFolders: string[] = [];
   private preProcSymbols: SymbolTable = new SymbolTable();
+  // these can be used for text substitution in code
+  private preProcTextSymbols: SymbolTable = new SymbolTable();
   private preProcNestingState: PreProcState[] = [];
   // preprocess state information
   private cmdLineDefines: string[] = [];
@@ -124,6 +131,7 @@ export class SpinDocument {
   private gatheringTrailerComment: boolean = true;
   private inDocComment: boolean = false;
   private inNonDocComment: boolean = false;
+  private nonDocNestCount: number = 0;
   // PNut-ts version number handling for this .spin2 file
   private defaultVersion: number = 41;
   private legalVersions: number[] = [41, 43];
@@ -183,7 +191,7 @@ export class SpinDocument {
     if (cliDefinedSymbols.length > 0) {
       for (let index = 0; index < cliDefinedSymbols.length; index++) {
         const newSymbolName = cliDefinedSymbols[index];
-        this.defineSymbol(newSymbolName, 1);
+        this.defineSymbol(newSymbolName, 1, eTextSub.SA_NUMBER_NO);
         // record external symbol for quick check
         this.cmdLineDefines.push(newSymbolName);
       }
@@ -233,13 +241,21 @@ export class SpinDocument {
     this.spinElements = elements;
   }
 
-  public defineSymbol(newSymbol: string, value: string | number): void {
+  public defineSymbol(newSymbol: string, value: string | number, subType: eTextSub): void {
     this.logMessage(`CODE: defSymbol(${newSymbol})=[${value}]`);
     if (!this.preProcSymbols.exists(newSymbol)) {
       if (typeof value === 'number') {
         this.preProcSymbols.add(newSymbol, eElementType.type_con, BigInt(value));
       } else {
         this.preProcSymbols.add(newSymbol, eElementType.type_con, value);
+      }
+      if (subType == eTextSub.SA_TEXT_YES) {
+        if (typeof value === 'number') {
+          // hmmm... this should never happen...
+          this.preProcTextSymbols.add(newSymbol, eElementType.type_con, BigInt(value));
+        } else {
+          this.preProcTextSymbols.add(newSymbol, eElementType.type_con, value);
+        }
       }
     } else {
       this.logMessage(`CODE: symbol(${newSymbol}) already exists, add skipped`);
@@ -289,17 +305,69 @@ export class SpinDocument {
       let forceKeepThisline: boolean = false;
       let insertTextLines: TextLine[] = [];
       let currLine = this.rawLines[lineIdx];
+      this.logMessage(`CODE-PP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
         this.recordComment(currLine);
+        // check for nonDoc comments (generally looking for '} patterns) in single line comment (only if already in nonDoc Comment)
+        if (this.inNonDocComment) {
+          const openCt: number = currLine.split('{').length - 1;
+          const closeCt: number = currLine.split('}').length - 1;
+          const nbrCloses = closeCt - openCt;
+          this.nonDocNestCount -= nbrCloses;
+          // if we clsoed nonDoc the clear inNonDoc state
+          this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
+        }
+        this.logMessage(`CODE-PP: ': depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`);
+        continue;
       } else if (this.inNonDocComment) {
-        // handle {..{..}..}
-        // FIXME: TODO: add missing code
+        // handle  {..\n{\n..}\n..}
+        const tmpLine = this.removeNonDocComments(currLine);
+        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
+        const openCt: number = tmpLine.split('{').length - 1;
+        if (openCt > 0) {
+          this.nonDocNestCount += openCt;
+        }
+        const closeCt: number = tmpLine.split('}').length - 1;
+        if (closeCt > 0) {
+          this.nonDocNestCount -= closeCt;
+        }
+        const wasInNonDocComment: boolean = this.inNonDocComment;
+        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
+        this.logMessage(
+          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
+        );
+        if (wasInNonDocComment) {
+          // entire line is within open but no close...
+          this.logMessage(`CODE-PP: IN-{: Line is comment [${currLine}]`);
+          skipThisline = true; // is comment but let's skip emitting it
+        } else {
+          this.logMessage(`CODE-PP: IN-{: comment ended [${currLine}]`);
+          currLine = tmpLine.trimEnd();
+          if (currLine.length == 0) {
+            continue;
+          }
+        }
+        skipThisline = true;
       } else if (this.inDocComment) {
         // handle {{..}}
-        this.recordComment(currLine);
-        if (currLine.includes('}}')) {
+        const docClosePosn: number = currLine.indexOf('}}');
+        // record only comment portion of line
+        if (docClosePosn == -1) {
+          this.recordComment(currLine);
+        } else {
+          this.recordComment(currLine.substring(0, docClosePosn + 1));
+        }
+        if (docClosePosn != -1) {
           this.inDocComment = false;
+          if (currLine.length <= docClosePosn + 2) {
+            continue; // no more processing, only empty line remains
+          }
+          // remove left edge comment
+          currLine = this.replaceSubstringWithSpaces(currLine, 0, docClosePosn + 1);
+          if (currLine.trim().length == 0) {
+            continue; // no more processing, is empty line
+          }
         }
       } else if (currLine.startsWith('#')) {
         // handle preprocessor #directive
@@ -313,7 +381,7 @@ export class SpinDocument {
             replaceCurrent = this.commentOut(currLine);
             if (canAdd) {
               this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
-              this.defineSymbol(symbol, value);
+              this.defineSymbol(symbol, value, eTextSub.SA_TEXT_YES); // this should work?!!
             } else if (foundUndefine) {
               this.logMessage(`CODE-PP: #define of [${symbol}] prevented by "-U ${symbol}" on command line`);
               insertTextLines = [new TextLine(this.fileId, `' NOTE: #define of ${symbol} prevented by command line "-U ${symbol}"`, lineIdx)];
@@ -503,9 +571,34 @@ export class SpinDocument {
           this.headerComments.push(currLine);
         }
       } else if (currLine.startsWith('{')) {
-        // handle preprocessor directive
-        this.inNonDocComment = true;
-        // FIXME: TODO: COPY CODE FROM OUR ELEMENTIZER!!!
+        // starting a line with a non-doc comment, could be one of many cases...
+        // if we are positioned at the start of a '{.{..}.}' non-doc comment then skip lines until
+        // NOTE: handle case where {..}{..} (the nondoc-comments are back to back with/without spaces in-between)
+        const tmpLine = this.removeNonDocComments(currLine);
+        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
+        const openCt: number = tmpLine.split('{').length - 1;
+        if (openCt > 0) {
+          this.nonDocNestCount += openCt;
+        }
+        const closeCt: number = tmpLine.split('}').length - 1;
+        if (closeCt > 0) {
+          this.nonDocNestCount -= closeCt;
+        }
+        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
+        this.logMessage(
+          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
+        );
+        if (this.inNonDocComment) {
+          // entire line is within open but no close...
+          this.logMessage(`CODE-PP: STRT-{: Line is comment [${currLine}]`);
+          skipThisline = true; // is comment but let's skip emitting it
+        } else {
+          this.logMessage(`CODE-PP: STRT-{: comment ended [${currLine}]`);
+          currLine = tmpLine.trimEnd();
+          if (currLine.length == 0) {
+            continue;
+          }
+        }
       } else {
         // have code line
         this.gatheringHeaderComment = false; // no more gathering once we hit text
@@ -528,7 +621,19 @@ export class SpinDocument {
       }
 
       if (!skipThisline) {
+        const skipSubst: boolean = currLine.startsWith('#') ? true : false;
         currLine = replaceCurrent.length > 0 ? replaceCurrent : currLine;
+        if (!skipSubst) {
+          const tmpLine: string = this.macroSubstitute(currLine);
+          if (currLine !== tmpLine) {
+            const nonSubstLine: string = `' ${currLine}`;
+            this.preprocessedLines.push(new TextLine(this.fileId, nonSubstLine, lineIdx));
+            this.logMessage(`CODE-PP: EMIT replacement Line [${nonSubstLine}]`);
+            this.logMessage(`CODE-PP: MACRO currLine [${currLine}](${currLine.length})`);
+            this.logMessage(`CODE-PP: MACRO  tmpLine [${tmpLine}](${tmpLine.length})`);
+            currLine = tmpLine.trimEnd();
+          }
+        }
         this.preprocessedLines.push(new TextLine(this.fileId, currLine, lineIdx));
         if (replaceCurrent.length > 0) {
           this.logMessage(`CODE-PP: EMIT replacement Line [${currLine}]`);
@@ -541,6 +646,7 @@ export class SpinDocument {
       if (insertTextLines.length > 0) {
         this.logMessage(`CODE-PP: INSERT #${insertTextLines.length} line(s)`);
         for (const newTextLine of insertTextLines) {
+          // assume these are already preprocessed
           this.preprocessedLines.push(newTextLine);
         }
         //insertTextLines = []; // included new lines, empty list
@@ -557,6 +663,94 @@ export class SpinDocument {
       reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
     }
     this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- EXIT`);
+  }
+
+  private macroSubstitute(line: string): string {
+    const substitutedLine: string = this.preProcTextSymbols.replaceSymbolsInString(line);
+    return substitutedLine;
+  }
+
+  private removeNonDocComments(currLine: string): string {
+    // replace any inline nonDoc comments with spaces
+    let nonCommentLine: string = currLine;
+    let needReplace: boolean = false;
+    let currPosn: number = 0;
+    let firstOpenPosn: number = currLine.substring(currPosn).indexOf('{');
+    let nextOpenPosn: number = -1;
+    // must have at least one open { and be more than one char to remove comment
+    if (firstOpenPosn != -1 && currLine.length > 1) {
+      this.logMessage(`CODE-PP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
+      do {
+        nextOpenPosn = nonCommentLine.substring(firstOpenPosn + 1).indexOf('{');
+        if (nextOpenPosn != -1) {
+          nextOpenPosn += firstOpenPosn + 1;
+        }
+        let nextClosePosn: number = nonCommentLine.substring(firstOpenPosn + 1).indexOf('}');
+        if (nextClosePosn != -1) {
+          nextClosePosn += firstOpenPosn + 1;
+        }
+        this.logMessage(`CODE-PP: rmvNDC() loop firstOpenPosn=(${firstOpenPosn}), nextOpenPosn=(${nextOpenPosn}), nextClosePosn=(${nextClosePosn})`);
+        if (nextOpenPosn == -1) {
+          // no nesting on this line...
+          if (nextClosePosn != -1) {
+            // have open.close on this line, remove it
+            currPosn = firstOpenPosn;
+            needReplace = true;
+          } else {
+            // have only nested open, still in comment
+            break;
+          }
+        } else {
+          if (nextClosePosn != -1 && nextOpenPosn != -1) {
+            // have both
+            if (nextClosePosn < nextOpenPosn) {
+              // have close, then another open
+              // no replacement, just move to next open
+              currPosn = nextOpenPosn;
+            } else {
+              // have open followed by a close
+              // replace with spaces
+              currPosn = nextOpenPosn;
+              needReplace = true;
+            }
+          } else if (nextClosePosn != -1) {
+            // have only close
+            // no replacement, just move to next open
+            currPosn = nextClosePosn + 1;
+          } else if (nextOpenPosn != -1) {
+            // have only nested open, still in comment
+          } else {
+            // have NO open or close
+            break;
+          }
+        }
+        if (needReplace) {
+          const cmtEndIdx = nextClosePosn + 1 > nonCommentLine.length - 1 ? nonCommentLine.length - 1 : nextClosePosn + 1;
+          nonCommentLine = this.replaceSubstringWithSpaces(nonCommentLine, currPosn, cmtEndIdx);
+        }
+        firstOpenPosn = nonCommentLine.indexOf('{');
+      } while (firstOpenPosn != -1);
+    }
+    if (currLine !== nonCommentLine) {
+      this.logMessage(`CODE-PP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
+      this.logMessage(`CODE-PP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
+    }
+    return nonCommentLine;
+  }
+
+  private replaceSubstringWithSpaces(line: string, startIdx: number, endIdx: number): string {
+    let spacedLine = line;
+    this.logMessage(`CODE-PP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})`);
+    if (startIdx >= 0 && startIdx <= line.length - 1 && endIdx >= 0 && endIdx <= line.length - 1 && startIdx < endIdx) {
+      const spaces: string = ' '.repeat(endIdx - startIdx);
+      if (endIdx - startIdx + 1 == line.length) {
+        spacedLine = spaces;
+      } else {
+        spacedLine = line.substring(0, startIdx) + spaces + line.substring(endIdx);
+      }
+      this.logMessage(`CODE-PP: REPL    new [${spacedLine}](${spacedLine.length})`);
+    }
+    return spacedLine;
   }
 
   private commentOut(line: string): string {
@@ -737,10 +931,13 @@ export class SpinDocument {
     if (this.context?.compileOptions.enableDebug) {
       baseSymbols['__DEBUG__'] = 1;
     }
+    // this following is done in pnut_ts.ts itself!
+    //   baseSymbols['__VERSION__'] = ...;
     // populate our symbol table with this list
     for (const symbolKey of Object.keys(baseSymbols)) {
       const value = baseSymbols[symbolKey];
-      this.defineSymbol(symbolKey, value);
+      const symTextFlag: eTextSub = value === 1 ? eTextSub.SA_NUMBER_NO : eTextSub.SA_TEXT_YES;
+      this.defineSymbol(symbolKey, value, symTextFlag);
     }
   }
 

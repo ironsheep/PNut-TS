@@ -10,15 +10,24 @@ Work to appear in upcoming releases:
 
 - adding STRUCT support as in PNut_v45.exe
 
-## [1.45.0] 2024-??-??
+## [1.43.1] 2024-09-17
 
-- First formal release
-- Compatible with PNut_v45.exe
+- Finish implementation of PreProcessor (Oops!)
+- Clean up output under error conditions
+- Compatible with PNut_v43.exe
+
+### know issues v1.43.1
+
+- Compiler occasionally produces duplicate error messages
 
 ## [1.43.0] 2024-09-11
 
 - Initial Release for Testing
 - Compatible with PNut_v43.exe
+
+## [0.43.1] 2024-08-30
+
+- Fix linux x86 packaging along with install docs
 
 ## [0.43.0] 2024-08-29
 

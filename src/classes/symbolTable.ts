@@ -104,6 +104,18 @@ export class SymbolTable {
     return removeStatus;
   }
 
+  replaceSymbolsInString(inputString: string): string {
+    let resultString = inputString;
+
+    this.symbols.forEach((symEntry, symName) => {
+      const regex = new RegExp(symName, 'g');
+      const symValueText: string = `${symEntry.value}`;
+      resultString = resultString.replace(regex, symValueText);
+    });
+
+    return resultString;
+  }
+
   /**
    * Return the symbol and its attributes if present in table
    *
