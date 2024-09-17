@@ -3,7 +3,7 @@ SCRIPT=${0##*/}
 SCRIPT_VERSION="1.0"
 
 #              v1.43.0
-BUILD_VERSION="014300"
+BUILD_VERSION="014301"
 
 # Store the original directory
 original_dir=$(pwd)
@@ -18,8 +18,8 @@ fi
 
 arm64_dmg="_unzipped/macos/macos-arm64.dmg"
 x64_dmg="_unzipped/macos/macos-x64.dmg"
-arm64_zip="_UPLOAD/macos-arm64-${BUILD_VERSION}.zip"
-x64_zip="_UPLOAD/macos-x64-${BUILD_VERSION}.zip"
+arm64_zip="_UPLOAD/pnut-ts-macos-arm64-${BUILD_VERSION}.zip"
+x64_zip="_UPLOAD/pnut-ts-macos-x64-${BUILD_VERSION}.zip"
 
 (set -x;ditto -ck --norsrc "$arm64_dmg" "$arm64_zip")
 (set -x;ditto -ck --norsrc "$x64_dmg" "$x64_zip")

@@ -3,7 +3,7 @@ SCRIPT=${0##*/}
 SCRIPT_VERSION="1.0"
 
 #              v1.43.0
-BUILD_VERSION="014300"
+BUILD_VERSION="014301"
 
 
 # =============================================================================
@@ -187,7 +187,7 @@ for base_dir in "${base_dirs[@]}"; do
         if [ ${#subfolders[@]} -eq 2 ]; then
             for subfolder in "${subfolders[@]}"; do
                 folder_name=$(basename "$subfolder")
-                output_zip="${out_dir}/${folder_name}-${BUILD_VERSION}.zip"
+                output_zip="${out_dir}/pnut-ts-${folder_name}-${BUILD_VERSION}.zip"
 
                 # Zip the contents of the folder
                 zip_folder_contents "$subfolder" "$output_zip"
