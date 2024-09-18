@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/ironsheep/PNut-TS
+    about: Supporting Documentation is all at this repository - README
+  - name: 📖 Forum Thread
+    url: https://forums.parallax.com/discussion/175988/new-pnut-ts-compiler-for-p2-development-on-windows-mac-linux-yes-rpi#latest
+    about: Join us in this forum for discussion and support (Maybe the issue you are experiencing has already been addressed by someone in this forum!)

@@ -29,7 +29,7 @@ body:
   - type: textarea
     id: description
     validations:
-      required: true
+      required: false
     attributes:
       label: Alternatives
       description: |
