@@ -74,7 +74,8 @@ export class PNutInTypeScript {
         outputError: (str, write) => write(this.errorColor(str))
       })
       .name('pnut-ts')
-      .version(`v${this.version}`, '-V, --version', 'Output the version number')
+      //.version(`v${this.version}`, '-V, --version', 'Output the version number')
+      .version(`v${this.version}`)
       .usage('[optons] filename')
       .description(`Propeller Spin2 compiler/downloader - v${this.version}`)
       .arguments('[filename]')
@@ -506,9 +507,9 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
       this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
       this.context.logger.verboseMsg(''); // blank line
-      runCommand('node -v').then((result) => {
+      this.runCommand('node -v').then((result) => {
         if (result.error) {
-          this.context.logger.errorMsg(`Error: ${result.error}`);
+          this.context.logger.errorMsg(`${result.error}`);
         } else {
           this.context.logger.verboseMsg(`Node version: ${result.value}`);
           this.context.logger.verboseMsg(''); // blank line
@@ -672,22 +673,22 @@ export class PNutInTypeScript {
     const bHexGrouped = bHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
     this.context.logger.logMessage(`   b: 0x${bHexGrouped.toUpperCase()} b=(${b})`);
   }
-}
 
-function runCommand(command: string): Promise<{ value: string | null; error: string | null }> {
-  return new Promise((resolve) => {
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        resolve({ value: null, error: error.message });
-        return;
-      }
-      if (stderr) {
-        resolve({ value: null, error: stderr });
-        return;
-      }
-      resolve({ value: stdout.trim(), error: null });
+  private runCommand(command: string): Promise<{ value: string | null; error: string | null }> {
+    return new Promise((resolve) => {
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          resolve({ value: null, error: error.message });
+          return;
+        }
+        if (stderr) {
+          resolve({ value: null, error: stderr });
+          return;
+        }
+        resolve({ value: stdout.trim(), error: null });
+      });
     });
-  });
+  }
 }
 
 // --------------------------------------------------
