@@ -26,7 +26,7 @@ export class PNutInTypeScript {
   private readonly program = new Command();
   //static isTesting: boolean = false;
   private options: OptionValues = this.program.opts();
-  private version: string = '1.43.1';
+  private version: string = '1.43.2';
   private argsArray: string[] = [];
   private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
@@ -199,7 +199,9 @@ export class PNutInTypeScript {
     const showingHelp: boolean = this.program.args.includes('--help') || this.program.args.includes('-h');
 
     if (!showingHelp) {
-      this.context.logger.progressMsg(`(DBG) foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
+      if (foundJest || runningCoverageTesting) {
+        this.context.logger.progressMsg(`(DBG) foundJest=(${foundJest}), runningCoverageTesting=(${runningCoverageTesting})`);
+      }
     }
 
     if (this.options.verbose) {
@@ -267,6 +269,24 @@ export class PNutInTypeScript {
         if (this.options.filename !== argument) {
           this.options.filename = argument;
         }
+      }
+    }
+
+    if (this.options.filename === undefined) {
+      let needAbort: boolean = false;
+      for (let index = 0; index < combinedArgs.length; index++) {
+        if (combinedArgs[index].length > 0 && combinedArgs[index].toLowerCase().endsWith('.spin2')) {
+          if (this.options.filename === undefined) {
+            this.options.filename = combinedArgs[index];
+          } else {
+            this.context.logger.errorMsg('Compiling more than one .spin2 files at a time, not supported!');
+            needAbort = true;
+            break;
+          }
+        }
+      }
+      if (needAbort) {
+        return Promise.resolve(-1);
       }
     }
 

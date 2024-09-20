@@ -10,6 +10,15 @@ Work to appear in upcoming releases:
 
 - adding STRUCT support as in PNut_v45.exe
 
+## [1.43.2] 2024-09-18
+
+- Repair command-line option parsing
+- Compatible with PNut_v43.exe
+
+### know issues v1.43.2
+
+- Compiler occasionally produces duplicate error messages
+
 ## [1.43.1] 2024-09-17
 
 - Finish implementation of PreProcessor (Oops!)
