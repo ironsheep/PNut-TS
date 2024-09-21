@@ -201,7 +201,7 @@ export class SpinDocument {
       this.logMessage(`CODE-PP: file=[${this.fileBaseName}], id=(${this.fileId})`);
       this.preProcess();
       if (this.context.preProcessorOptions.writeIntermediateSpin2) {
-        this.writeProprocessedSrc(this.dirName, this.fileName, this.preprocessedLines);
+        this.writeProprocessedSrc(this.dirName, this.fileName, this.allPreprocessedLines);
       }
     }
   }
@@ -213,8 +213,8 @@ export class SpinDocument {
     this.logMessage(`* writing preprocessed source to ${outFilename}`);
     const stream = fs.createWriteStream(outFilename);
 
-    for (const testLine of lines) {
-      stream.write(`${testLine.text}\n`);
+    for (const textLine of lines) {
+      stream.write(`${textLine.text}\n`);
     }
 
     // Close the stream
@@ -226,7 +226,7 @@ export class SpinDocument {
     return this.documentId;
   }
 
-  get allTextLines(): TextLine[] {
+  get allPreprocessedLines(): TextLine[] {
     // return entire content of file
     return this.preprocessedLines;
   }
@@ -491,7 +491,7 @@ export class SpinDocument {
                 this.context.sourceFiles.addFile(incSpinDocument);
               }
               // get parsed content from spinDoc inserting into current content after / -or / in-place-of this line
-              insertTextLines = incSpinDocument.allTextLines;
+              insertTextLines = incSpinDocument.allPreprocessedLines;
             } else {
               this.reportError(`File [${filename}] not found!`, lineIdx, 0);
             }
@@ -583,7 +583,7 @@ export class SpinDocument {
     if (this.context?.reportOptions.writePreprocessReport) {
       this.logMessage('CODE-PP: writePreprocessReport()');
       const reporter: RegressionReporter = new RegressionReporter(this.context);
-      reporter.writeProprocessResults(this.dirName, this.fileName, this.preprocessedLines);
+      reporter.writeProprocessResults(this.dirName, this.fileName, this.allPreprocessedLines);
     }
     this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- EXIT`);
   }
@@ -591,6 +591,89 @@ export class SpinDocument {
   private macroSubstitute(line: string): string {
     const substitutedLine: string = this.preProcTextSymbols.replaceSymbolsInString(line);
     return substitutedLine;
+  }
+
+  private removeNonDocComments(currLine: string): string {
+    // replace any inline nonDoc comments with spaces
+    let nonCommentLine: string = currLine;
+    let needReplace: boolean = false;
+    let currPosn: number = 0;
+    let firstOpenPosn: number = currLine.substring(currPosn).indexOf('{');
+    let nextOpenPosn: number = -1;
+    // must have at least one open { and be more than one char to remove comment
+    if (firstOpenPosn != -1 && currLine.length > 1) {
+      this.logMessage(`CODE-PP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
+      do {
+        nextOpenPosn = nonCommentLine.substring(firstOpenPosn + 1).indexOf('{');
+        if (nextOpenPosn != -1) {
+          nextOpenPosn += firstOpenPosn + 1;
+        }
+        let nextClosePosn: number = nonCommentLine.substring(firstOpenPosn + 1).indexOf('}');
+        if (nextClosePosn != -1) {
+          nextClosePosn += firstOpenPosn + 1;
+        }
+        this.logMessage(`CODE-PP: rmvNDC() loop firstOpenPosn=(${firstOpenPosn}), nextOpenPosn=(${nextOpenPosn}), nextClosePosn=(${nextClosePosn})`);
+        if (nextOpenPosn == -1) {
+          // no nesting on this line...
+          if (nextClosePosn != -1) {
+            // have open.close on this line, remove it
+            currPosn = firstOpenPosn;
+            needReplace = true;
+          } else {
+            // have only nested open, still in comment
+            break;
+          }
+        } else {
+          if (nextClosePosn != -1 && nextOpenPosn != -1) {
+            // have both
+            if (nextClosePosn < nextOpenPosn) {
+              // have close, then another open
+              // no replacement, just move to next open
+              currPosn = nextOpenPosn;
+            } else {
+              // have open followed by a close
+              // replace with spaces
+              currPosn = nextOpenPosn;
+              needReplace = true;
+            }
+          } else if (nextClosePosn != -1) {
+            // have only close
+            // no replacement, just move to next open
+            currPosn = nextClosePosn + 1;
+          } else if (nextOpenPosn != -1) {
+            // have only nested open, still in comment
+          } else {
+            // have NO open or close
+            break;
+          }
+        }
+        if (needReplace) {
+          const cmtEndIdx = nextClosePosn + 1 > nonCommentLine.length - 1 ? nonCommentLine.length - 1 : nextClosePosn + 1;
+          nonCommentLine = this.replaceSubstringWithSpaces(nonCommentLine, currPosn, cmtEndIdx);
+        }
+        firstOpenPosn = nonCommentLine.indexOf('{');
+      } while (firstOpenPosn != -1);
+    }
+    if (currLine !== nonCommentLine) {
+      this.logMessage(`CODE-PP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
+      this.logMessage(`CODE-PP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
+    }
+    return nonCommentLine;
+  }
+
+  private replaceSubstringWithSpaces(line: string, startIdx: number, endIdx: number): string {
+    let spacedLine = line;
+    this.logMessage(`CODE-PP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})`);
+    if (startIdx >= 0 && startIdx <= line.length - 1 && endIdx >= 0 && endIdx <= line.length - 1 && startIdx < endIdx) {
+      const spaces: string = ' '.repeat(endIdx - startIdx);
+      if (endIdx - startIdx + 1 == line.length) {
+        spacedLine = spaces;
+      } else {
+        spacedLine = line.substring(0, startIdx) + spaces + line.substring(endIdx);
+      }
+      this.logMessage(`CODE-PP: REPL    new [${spacedLine}](${spacedLine.length})`);
+    }
+    return spacedLine;
   }
 
   private commentOut(line: string): string {
