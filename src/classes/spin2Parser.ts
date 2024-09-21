@@ -329,29 +329,6 @@ export class Spin2Parser {
     }
   }
 
-  /*
-  private P2ListElements() {
-    this.logMessage(''); // blank line
-    this.logMessage('// ---------------------------------------');
-    this.logMessage(`- displaying ${this.spinElements.length} entries`);
-    let currSourceLine: number = -1;
-    // now loop thru elements found
-    for (let index = 0; index < this.spinElements.length; index++) {
-      const element = this.spinElements[index];
-      if (element.sourceLineIndex != currSourceLine) {
-        const sourceLine: string = this.srcFile !== undefined ? this.srcFile.lineAt(element.sourceLineIndex).text : '??noSource??';
-        this.logMessage(`  -- Ln#${element.sourceLineNumber}(${element.sourceCharacterOffset}) [${sourceLine}]`);
-        currSourceLine = element.sourceLineIndex;
-      }
-      const symbolName = getSourceSymbol(this.context, element);
-      const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
-      this.logMessage(` [${index}] -- ${element.toString()}${symbolInterp}`);
-    }
-    this.logMessage('\\ ---------------------------------------');
-    this.logMessage('');
-  }
-  */
-
   private rightAlignedHexValue(value: number, width: number): string {
     const symbolValue: string = `$${float32ToHexString(BigInt(value)).replace('0x', '').padStart(8, '0')}`;
     const interpValue: string = `${symbolValue.padStart(width)}`;

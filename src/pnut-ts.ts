@@ -466,11 +466,11 @@ export class PNutInTypeScript {
       filename = undefined;
     }
 
-    if (filename !== undefined && filename !== '') {
+    if (filename !== undefined && filename.length > 0) {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
       // and load our .spin2 top-level file
       this.spinDocument = new SpinDocument(this.context, filename);
-      if (!this.spinDocument || !this.spinDocument.validFile) {
+      if (this.spinDocument === undefined || !this.spinDocument.validFile) {
         this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file!`);
         this.shouldAbort = true;
       } else {

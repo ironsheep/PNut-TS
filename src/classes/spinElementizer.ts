@@ -63,11 +63,12 @@ export class SpinElementizer {
     this.isLogging = this.context.logOptions.logElementizer;
     this.isLoggingOutline = this.context.logOptions.logOutline;
     this.srcFile = new SpinDocument(ctx, '');
-    this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     this.symbol_tables = new SpinSymbolTables(ctx);
     if (this.isLogging) {
       this.symbol_tables.enableLogging();
     }
+    // since we must initialize this...
+    this.currentTextLine = this.srcFile.rawLineAt(this.currLineIndex); // load a dummy line, this is overridden by loadNextLine() in setSourceFile()
   }
 
   private resetForNewFile() {
@@ -89,7 +90,6 @@ export class SpinElementizer {
     // now load the line and set conditions after incrementing line index
     this.logMessage(`* Elementizer.setSourceFile([${spinCode.fileName}])`);
     this.resetForNewFile();
-    //this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
     this.loadNextLine();
     // configure our tabes with version for this spin2 source file
     this.symbol_tables.setLangaugeVersion(spinCode.versionNumber);
@@ -944,12 +944,12 @@ export class SpinElementizer {
   }
 
   private loadNextLine(): void {
-    //this.logMessage(`- loadNextLine() - ENTRY   currLineIndex=(${this.currLineIndex}), lineCt=(${this.srcFile.lineCount})`);
     if (!this.at_eof) {
-      this.logMessage(`Elementizer.loadNextLine() currLineIndex=(${this.currLineIndex}), lineCount=(${this.srcFile.lineCount})`);
-      if (this.currLineIndex < this.srcFile.lineCount - 1) {
-        this.currLineIndex += 1;
-        this.currentTextLine = this.srcFile.lineAt(this.currLineIndex);
+      this.logMessage(`Elementizer.loadNextLine() currLineIndex=(${this.currLineIndex}), rawLineCount=(${this.srcFile.rawLineCount})`);
+      // iterate over all lines of preProcessed source code. Even tho' some are comments placed by preprocessor
+      if (this.currLineIndex < this.srcFile.rawLineCount - 1) {
+        this.currLineIndex += 1; // at fresh open of file: -1 is incremented zero!
+        this.currentTextLine = this.srcFile.rawLineAt(this.currLineIndex);
         this.unprocessedLine = this.currentTextLine.text;
         this.currCharacterIndex = 0;
         //this.logMessage(`  -- loadNextLine() unprocessedLine=[${this.unprocessedLine}](${this.unprocessedLine.length})`);

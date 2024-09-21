@@ -12,7 +12,7 @@ Work to appear in upcoming releases:
 
 ## [1.43.2] 2024-09-18
 
-- Repair command-line option parsing
+- Repair command-line option parsing (on Windows)
 - Compatible with PNut_v43.exe
 
 ### know issues v1.43.2

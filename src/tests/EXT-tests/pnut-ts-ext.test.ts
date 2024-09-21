@@ -34,6 +34,10 @@ describe('PNut_ts builds our EXTernal files (.obj) correctly', () => {
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
+  // Filter out files that were our v44 attempt
+  files = files.filter((file) => !file.includes('v44'));
+  // Filter out files that match the *-pre.spin2 pattern (-i output files)
+  files = files.filter((file) => !file.endsWith('-pre.spin2'));
   if (files.length > 1) {
     files.sort();
   }

@@ -13,7 +13,7 @@ export function getSourceSymbol(context: Context, element: SpinElement): string 
   let desiredSymbol: string = '';
   const srcDocument: SpinDocument | undefined = context.sourceFiles.getFileHavingID(element.fileId);
   if (srcDocument !== undefined && element.refersToSymbol) {
-    const sourceLine: string = srcDocument.lineAt(element.sourceLineIndex).text;
+    const sourceLine: string = srcDocument.sourceLineAt(element.sourceLineIndex).text;
     //context.logger.logMessage(`funcGetSourceSymbol() sourceLine=[${sourceLine}](${element.sourceCharacterEndOffset})`);
     desiredSymbol = sourceLine.substring(element.sourceCharacterOffset, element.sourceCharacterEndOffset + 1).toUpperCase();
     //} else {

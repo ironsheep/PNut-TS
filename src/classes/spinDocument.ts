@@ -52,34 +52,8 @@ class PreProcState {
     this.clear();
   }
 
-  public clear() {
-    this.ifSideEmits = false;
-    this.elseSideEmits = false;
-    this.inIfSide = false;
-    this.foundElse = false;
-    this.skipThisIfDef = false;
-  }
-
-  public setIgnoreIfdef() {
-    this.skipThisIfDef = true;
-  }
-
   get ignoreIfdef(): boolean {
     return this.skipThisIfDef;
-  }
-
-  public setInIf() {
-    this.inIfSide = true;
-  }
-
-  public setInElse() {
-    this.inIfSide = false;
-    this.foundElse = true;
-  }
-
-  public setIfEmits(doesEmit: boolean = true) {
-    this.ifSideEmits = doesEmit;
-    this.elseSideEmits = !doesEmit;
   }
 
   get thisSideEmits(): boolean {
@@ -95,6 +69,32 @@ class PreProcState {
     }
     return shouldEmit;
   }
+
+  public clear() {
+    this.ifSideEmits = false;
+    this.elseSideEmits = false;
+    this.inIfSide = false;
+    this.foundElse = false;
+    this.skipThisIfDef = false;
+  }
+
+  public setIgnoreIfdef() {
+    this.skipThisIfDef = true;
+  }
+
+  public setInIf() {
+    this.inIfSide = true;
+  }
+
+  public setInElse() {
+    this.inIfSide = false;
+    this.foundElse = true;
+  }
+
+  public setIfEmits(doesEmit: boolean = true) {
+    this.ifSideEmits = doesEmit;
+    this.elseSideEmits = !doesEmit;
+  }
 }
 
 /**
@@ -103,6 +103,7 @@ class PreProcState {
 export class SpinDocument {
   private context: Context;
   private isLogging: boolean = false;
+  private isLoggingOutline: boolean = false;
   // unique document IDs
   static nextDocumentId: number = 0;
   private documentId: number;
@@ -144,9 +145,10 @@ export class SpinDocument {
     // record file name and location
     this.context = ctx;
     this.isLogging = this.context.logOptions.logPreprocessor;
+    this.isLoggingOutline = ctx.logOptions.logOutline;
     this.documentId = SpinDocument.nextDocumentId++;
     const bFileFound: boolean = fileExists(fileSpec);
-    this.logMessage(`CODE: checking fileSpec=[${fileSpec}] bFileFound=(${bFileFound})`);
+    this.logMessage(`CODE: checking fileSpec=[${fileSpec}](${fileSpec.length}) bFileFound=(${bFileFound})`);
     this.docFolder = bFileFound ? path.dirname(fileSpecFromURI(fileSpec)) : '';
     this.fileBaseName = bFileFound ? path.basename(fileSpecFromURI(fileSpec)) : '';
     // record file type (decoded from name)
@@ -172,37 +174,37 @@ export class SpinDocument {
         }
         this.logMessage(`CODE: loaded [${this.fileBaseName}] from [${this.docFolder}]`);
       }
+
+      // load our predefined symbols with values
+      this.preloadSymbolTable();
+
+      // set include folder if provided from the command line
+      if (this.context.preProcessorOptions.includeFolders.length > 0) {
+        for (const newFolder of this.context.preProcessorOptions.includeFolders) {
+          this.setIncludePath(newFolder);
+        }
+      }
+
+      // add any symbols arriving from the command line
+      const cliDefinedSymbols: string[] = this.context.preProcessorOptions.defSymbols;
+      if (cliDefinedSymbols.length > 0) {
+        for (let index = 0; index < cliDefinedSymbols.length; index++) {
+          const newSymbolName = cliDefinedSymbols[index];
+          this.defineSymbol(newSymbolName, 1, eTextSub.SA_NUMBER_NO);
+          // record external symbol for quick check
+          this.cmdLineDefines.push(newSymbolName);
+        }
+      }
+
+      if (this.rawLines.length > 0) {
+        this.logMessage(`CODE-PP: file=[${this.fileBaseName}], id=(${this.fileId})`);
+        this.preProcess();
+        if (this.context.preProcessorOptions.writeIntermediateSpin2) {
+          this.writeProprocessedSrc(this.dirName, this.fileName, this.allPreprocessedLines);
+        }
+      }
     } else {
-      this.logMessage(`CODE: ERROR failed to load [${this.fileBaseName}] from [${this.docFolder}]`);
-    }
-
-    // load our predefined symbols with values
-    this.preloadSymbolTable();
-
-    // set include folder if provided from the command line
-    if (this.context.preProcessorOptions.includeFolders.length > 0) {
-      for (const newFolder of this.context.preProcessorOptions.includeFolders) {
-        this.setIncludePath(newFolder);
-      }
-    }
-
-    // add any symbols arriving from the command line
-    const cliDefinedSymbols: string[] = this.context.preProcessorOptions.defSymbols;
-    if (cliDefinedSymbols.length > 0) {
-      for (let index = 0; index < cliDefinedSymbols.length; index++) {
-        const newSymbolName = cliDefinedSymbols[index];
-        this.defineSymbol(newSymbolName, 1, eTextSub.SA_NUMBER_NO);
-        // record external symbol for quick check
-        this.cmdLineDefines.push(newSymbolName);
-      }
-    }
-
-    if (this.rawLines.length > 0) {
-      this.logMessage(`CODE-PP: file=[${this.fileBaseName}], id=(${this.fileId})`);
-      this.preProcess();
-      if (this.context.preProcessorOptions.writeIntermediateSpin2) {
-        this.writeProprocessedSrc(this.dirName, this.fileName, this.allPreprocessedLines);
-      }
+      this.logMessage(`CODE: ERROR failed to load [${this.fileBaseName}] from [${this.docFolder}] - skipping EMPTY SpinDocument setup`);
     }
   }
 
@@ -224,11 +226,6 @@ export class SpinDocument {
   get fileId(): number {
     // return this files' unique ID
     return this.documentId;
-  }
-
-  get allPreprocessedLines(): TextLine[] {
-    // return entire content of file
-    return this.preprocessedLines;
   }
 
   get elementList(): SpinElement[] {
@@ -262,16 +259,6 @@ export class SpinDocument {
     }
   }
 
-  private undefineSymbol(oldSymbol: string): boolean {
-    let removeStatus: boolean = false;
-    if (this.preProcSymbols.exists(oldSymbol)) {
-      this.logMessage(`CODE: undefSymbol(${oldSymbol})`);
-      this.preProcSymbols.remove(oldSymbol);
-      removeStatus = true;
-    }
-    return removeStatus;
-  }
-
   public setIncludePath(includeDir: string): void {
     this.logMessage(`CODE: setIncludePath(${includeDir})`);
     // is inc-folder
@@ -294,7 +281,99 @@ export class SpinDocument {
     return this.requiredVersion == 0 ? this.defaultVersion : this.requiredVersion;
   }
 
-  public preProcess(): void {
+  public reportError(message: string, lineIndex: number, characterOffset: number) {
+    // record a new error
+    const errorReport: iError = {
+      message: message,
+      sourceLineIndex: lineIndex,
+      characterOffset: characterOffset
+    };
+    //this.logMessage(`CODE: new error: Ln#${lineIndex + 1}: ${message}`);
+    this.errorsfound.push(errorReport);
+  }
+
+  get errors(): iError[] {
+    // return list of all errors found
+    return this.errorsfound;
+  }
+
+  get validFile(): boolean {
+    return this.haveFile;
+  }
+
+  get fileName(): string {
+    return this.fileBaseName;
+  }
+
+  get fileSpec(): string {
+    return path.join(this.docFolder, this.fileBaseName);
+  }
+
+  get dirName(): string {
+    return this.docFolder;
+  }
+
+  get rawLineCount(): number {
+    return this.preprocessedLines.length;
+  }
+
+  get lastLineNumber(): number {
+    return this.preprocessedLines[this.preprocessedLines.length - 1].sourceLineNumber;
+  }
+
+  get allPreprocessedLines(): TextLine[] {
+    // return entire content of file
+    return this.preprocessedLines;
+  }
+
+  get EndOfLine(): eEOLType {
+    return this.eolType;
+  }
+
+  get languageId(): eLangaugeId {
+    return this.langId;
+  }
+
+  /**
+   * Returns a TextLine object representing the line at the given index.
+   * @param {number} lineIndex - The index of the line to return.
+   * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range,
+   * returns a TextLine object representing an empty line with a line number of -1.
+   */
+  public rawLineAt(lineIndex: number): TextLine {
+    // NOTE: fileID cannot be less than zero nor can the line number be > max lines
+    //  this just represents a line that doesn't exist
+    let desiredLine: TextLine = new TextLine(-1, '', -1);
+    if (lineIndex >= 0 && lineIndex < this.rawLineCount) {
+      desiredLine = this.preprocessedLines[lineIndex];
+      //this.logMessage(`DOC: rawLineAt(${lineIndex}) finds desiredString=[${desiredLine.text}](${desiredLine.text.length})`);
+    }
+    // return the with additional details about the line
+    return desiredLine;
+  }
+
+  /**
+   * Returns a TextLine object representing the line at the given index.
+   * @param {number} lineIndex - The index of the line to return.
+   * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range,
+   * returns a TextLine object representing an empty line with a line number of -1.
+   */
+  public sourceLineAt(lineIndex: number): TextLine {
+    // NOTE: fileID cannot be less than zero nor can the line number be > last line number
+    //  this just represents a line that doesn't exist
+    let desiredLine: TextLine = new TextLine(-1, '', -1);
+    if (lineIndex >= 0 && lineIndex < this.lastLineNumber) {
+      const desiredLines: TextLine[] = this.preprocessedLines.filter((textLine) => textLine.sourceLineNumber === lineIndex + 1);
+      if (desiredLines.length > 0) {
+        desiredLine = desiredLines[desiredLines.length - 1];
+      }
+      //this.logMessage(`DOC: sourceLineAt(${lineIndex}) finds desiredString=[${desiredLine.text}](${desiredLine.text.length})`);
+    }
+    // return the with additional details about the line
+    return desiredLine;
+  }
+
+  private preProcess(): void {
     // Gather header (doc-only and non-doc) comments and trailer (doc-only) comments
     // From header (doc-only and non-doc) comments identify required version if any version
     // Process raw-lines into file content lines w/original line numbers based on #ifdef/#ifndef, etc. directives
@@ -305,16 +384,58 @@ export class SpinDocument {
       let forceKeepThisline: boolean = false;
       let insertTextLines: TextLine[] = [];
       let currLine = this.rawLines[lineIdx];
+      this.logMessage(`CODE-PP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
         this.recordComment(currLine);
+        // check for nonDoc comments (generally looking for '} patterns) in single line comment (only if already in nonDoc Comment)
+        if (this.inNonDocComment) {
+          const openCt: number = currLine.split('{').length - 1;
+          const closeCt: number = currLine.split('}').length - 1;
+          const nbrCloses = closeCt - openCt;
+          this.nonDocNestCount -= nbrCloses;
+          // if we clsoed nonDoc the clear inNonDoc state
+          this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
+          this.logMessage(`CODE-PP: ': depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`);
+        }
       } else if (this.inNonDocComment) {
-        // handle {..{..}..}
-        // FIXME: TODO: add missing code
+        // handle  {..\n{\n..}\n..}
+        const tmpLine = this.removeNonDocComments(currLine);
+        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
+        const openCt: number = tmpLine.split('{').length - 1;
+        if (openCt > 0) {
+          this.nonDocNestCount += openCt;
+        }
+        const closeCt: number = tmpLine.split('}').length - 1;
+        if (closeCt > 0) {
+          this.nonDocNestCount -= closeCt;
+        }
+        const wasInNonDocComment: boolean = this.inNonDocComment;
+        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
+        this.logMessage(
+          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
+        );
+        if (wasInNonDocComment) {
+          // entire line is within open but no close...
+          this.logMessage(`CODE-PP: IN-{: Line is comment [${currLine}]`);
+          skipThisline = true; // is comment but let's skip emitting it
+        } else {
+          this.logMessage(`CODE-PP: IN-{: comment ended [${currLine}]`);
+          currLine = tmpLine.trimEnd();
+          if (currLine.length == 0) {
+            skipThisline = true;
+          }
+        }
       } else if (this.inDocComment) {
         // handle {{..}}
-        this.recordComment(currLine);
-        if (currLine.includes('}}')) {
+        const docClosePosn: number = currLine.indexOf('}}');
+        // record only comment portion of line
+        if (docClosePosn == -1) {
+          this.recordComment(currLine);
+        } else {
+          this.recordComment(currLine.substring(0, docClosePosn + 1));
+        }
+        if (docClosePosn != -1) {
           this.inDocComment = false;
         }
       } else if (currLine.startsWith('#')) {
@@ -477,15 +598,16 @@ export class SpinDocument {
           // handle #include "filename"
           //  ensure suffix not present or must be ".spin2"
           const filename = this.isolateFilename(currLine, lineIdx);
-          if (filename) {
+          if (filename !== undefined) {
             const filespec = locateIncludeFile(this.incFolders, this.dirName, filename);
-            if (filespec) {
+            if (filespec !== undefined) {
               replaceCurrent = this.commentOut(currLine);
               currLine = '';
               // load file into spinDoc
               // reuse existing document if present
               let incSpinDocument = this.context.sourceFiles.getFile(filespec);
               if (incSpinDocument === undefined) {
+                this.logMessageOutline(`--- load include file [${path.basename(filespec)}]`);
                 incSpinDocument = new SpinDocument(this.context, filespec);
                 // record this new file in our master list of files we compiled to buid the binary
                 this.context.sourceFiles.addFile(incSpinDocument);
@@ -519,9 +641,34 @@ export class SpinDocument {
           this.headerComments.push(currLine);
         }
       } else if (currLine.startsWith('{')) {
-        // handle preprocessor directive
-        this.inNonDocComment = true;
-        // FIXME: TODO: COPY CODE FROM OUR ELEMENTIZER!!!
+        // starting a line with a non-doc comment, could be one of many cases...
+        // if we are positioned at the start of a '{.{..}.}' non-doc comment then skip lines until
+        // NOTE: handle case where {..}{..} (the nondoc-comments are back to back with/without spaces in-between)
+        const tmpLine = this.removeNonDocComments(currLine);
+        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
+        const openCt: number = tmpLine.split('{').length - 1;
+        if (openCt > 0) {
+          this.nonDocNestCount += openCt;
+        }
+        const closeCt: number = tmpLine.split('}').length - 1;
+        if (closeCt > 0) {
+          this.nonDocNestCount -= closeCt;
+        }
+        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
+        this.logMessage(
+          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
+        );
+        if (this.inNonDocComment) {
+          // entire line is within open but no close...
+          this.logMessage(`CODE-PP: STRT-{: Line is comment [${currLine}]`);
+          skipThisline = true; // is comment but let's skip emitting it
+        } else {
+          this.logMessage(`CODE-PP: STRT-{: comment ended [${currLine}]`);
+          currLine = tmpLine.trimEnd();
+          if (currLine.length == 0) {
+            continue;
+          }
+        }
       } else {
         // have code line
         this.gatheringHeaderComment = false; // no more gathering once we hit text
@@ -544,7 +691,7 @@ export class SpinDocument {
       }
 
       if (!skipThisline) {
-        const skipSubst: boolean = currLine.startsWith('#') ? true : false;
+        const skipSubst: boolean = currLine.startsWith('#') || currLine.startsWith("'") ? true : false;
         currLine = replaceCurrent.length > 0 ? replaceCurrent : currLine;
         if (!skipSubst) {
           const tmpLine: string = this.macroSubstitute(currLine);
@@ -586,6 +733,34 @@ export class SpinDocument {
       reporter.writeProprocessResults(this.dirName, this.fileName, this.allPreprocessedLines);
     }
     this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- EXIT`);
+  }
+
+  private dumpErrors() {
+    if (this.errorsfound.length > 0) {
+      this.logMessage(''); // blank line
+    }
+    for (let index = 0; index < this.errorsfound.length; index++) {
+      const error = this.errorsfound[index];
+      this.logMessage(`ERROR: Ln#${error.sourceLineIndex + 1}: ${error.message}`);
+    }
+  }
+
+  private recordComment(line: string) {
+    if (this.gatheringHeaderComment) {
+      this.headerComments.push(line);
+    } else if (this.gatheringTrailerComment) {
+      this.trailerComments.push(line);
+    }
+  }
+
+  private undefineSymbol(oldSymbol: string): boolean {
+    let removeStatus: boolean = false;
+    if (this.preProcSymbols.exists(oldSymbol)) {
+      this.logMessage(`CODE: undefSymbol(${oldSymbol})`);
+      this.preProcSymbols.remove(oldSymbol);
+      removeStatus = true;
+    }
+    return removeStatus;
   }
 
   private macroSubstitute(line: string): string {
@@ -701,38 +876,18 @@ export class SpinDocument {
     return isolatedFilename;
   }
 
-  private dumpErrors() {
-    if (this.errorsfound.length > 0) {
-      this.logMessage(''); // blank line
+  private getSymbolValue(line: string): [string | undefined, string] {
+    const lineParts = this.splitLineOnWhiteSpace(line);
+    let symbol: string | undefined = undefined;
+    let value: string = '1';
+    if (lineParts.length > 1) {
+      // internally all Preprocessor symbols are UPPER CASE
+      symbol = lineParts[1].toUpperCase();
+      if (lineParts.length > 2) {
+        value = lineParts[2];
+      }
     }
-    for (let index = 0; index < this.errorsfound.length; index++) {
-      const error = this.errorsfound[index];
-      this.logMessage(`ERROR: Ln#${error.sourceLineIndex + 1}: ${error.message}`);
-    }
-  }
-
-  private recordComment(line: string) {
-    if (this.gatheringHeaderComment) {
-      this.headerComments.push(line);
-    } else if (this.gatheringTrailerComment) {
-      this.trailerComments.push(line);
-    }
-  }
-
-  public reportError(message: string, lineIndex: number, characterOffset: number) {
-    // record a new error
-    const errorReport: iError = {
-      message: message,
-      sourceLineIndex: lineIndex,
-      characterOffset: characterOffset
-    };
-    //this.logMessage(`CODE: new error: Ln#${lineIndex + 1}: ${message}`);
-    this.errorsfound.push(errorReport);
-  }
-
-  get errors(): iError[] {
-    // return list of all errors found
-    return this.errorsfound;
+    return [symbol, value];
   }
 
   private splitLineOnWhiteSpace(line: string): string[] {
@@ -752,69 +907,10 @@ export class SpinDocument {
     return symbol;
   }
 
-  private getSymbolValue(line: string): [string | undefined, string] {
-    const lineParts = this.splitLineOnWhiteSpace(line);
-    let symbol: string | undefined = undefined;
-    let value: string = '1';
-    if (lineParts.length > 1) {
-      // internally all Preprocessor symbols are UPPER CASE
-      symbol = lineParts[1].toUpperCase();
-      if (lineParts.length > 2) {
-        value = lineParts[2];
-      }
-    }
-    return [symbol, value];
-  }
-
   private logMessage(message: string): void {
     if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
-  }
-  get validFile(): boolean {
-    return this.haveFile;
-  }
-
-  get fileName(): string {
-    return this.fileBaseName;
-  }
-
-  get fileSpec(): string {
-    return path.join(this.docFolder, this.fileBaseName);
-  }
-
-  get dirName(): string {
-    return this.docFolder;
-  }
-
-  get lineCount(): number {
-    return this.preprocessedLines.length;
-  }
-
-  get EndOfLine(): eEOLType {
-    return this.eolType;
-  }
-
-  get languageId(): eLangaugeId {
-    return this.langId;
-  }
-
-  /**
-   * Returns a TextLine object representing the line at the given index.
-   * @param {number} lineIndex - The index of the line to return.
-   * @returns {TextLine} A TextLine object representing the line at the given index. If the index is out of range,
-   * returns a TextLine object representing an empty line with a line number of -1.
-   */
-  public lineAt(lineIndex: number): TextLine {
-    // NOTE: fileID cannot be lessthan zero nor can the line number be
-    //  this just represents a line that doesn't exist
-    let desiredLine: TextLine = new TextLine(-1, '', -1);
-    if (lineIndex >= 0 && lineIndex < this.lineCount) {
-      desiredLine = this.preprocessedLines[lineIndex];
-      //this.logMessage(`DOC: lineAt(${lineIndex}) finds desiredString=[${desiredString}](${desiredString.length})`);
-    }
-    // return the with additional details about the line
-    return desiredLine;
   }
 
   private getVersionFromHeader(headerComments: string[]): void {
@@ -903,5 +999,11 @@ export class SpinDocument {
       }
     }
     return emitCode;
+  }
+
+  private logMessageOutline(message: string): void {
+    if (this.isLoggingOutline) {
+      this.context.logger.logMessage(message);
+    }
   }
 }

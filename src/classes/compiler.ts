@@ -142,6 +142,7 @@ export class Compiler {
               // reuse existing document if present
               let childObjSourceFile = this.context.sourceFiles.getFile(fileSpec);
               if (childObjSourceFile === undefined) {
+                this.logMessageOutline(`--- load child object [${path.basename(fileSpec)}]`);
                 childObjSourceFile = new SpinDocument(this.context, fileSpec);
                 this.context.sourceFiles.addFile(childObjSourceFile);
               }

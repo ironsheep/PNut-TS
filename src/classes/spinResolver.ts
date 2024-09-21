@@ -6131,7 +6131,7 @@ export class SpinResolver {
 
   private debugVerboseString(startOffset: number, endOffset: number) {
     // PNut debug_verbose_string:
-    let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
+    let currSrcLine = this.srcFile?.sourceLineAt(this.currElement.sourceLineIndex).text;
     if (currSrcLine) {
       // enter string bytes
       for (let index = startOffset; index <= endOffset; index++) {
@@ -6282,7 +6282,7 @@ export class SpinResolver {
     // return value z=1 if '`', z=0 if ')'
     this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
     let foundEndWithTickStatus: boolean = false;
-    let currSrcLine = this.srcFile?.lineAt(this.currElement.sourceLineIndex).text;
+    let currSrcLine = this.srcFile?.sourceLineAt(this.currElement.sourceLineIndex).text;
     let charCount: number = 1;
     if (currSrcLine) {
       let charOffset = this.currElement.sourceCharacterOffset; // the backtick
