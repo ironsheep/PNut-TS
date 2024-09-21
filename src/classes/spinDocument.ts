@@ -197,7 +197,7 @@ export class SpinDocument {
       }
 
       if (this.rawLines.length > 0) {
-        this.logMessage(`CODE-PP: file=[${this.fileBaseName}], id=(${this.fileId})`);
+        this.logMessage(`SpinPP: file=[${this.fileBaseName}], id=(${this.fileId})`);
         this.preProcess();
         if (this.context.preProcessorOptions.writeIntermediateSpin2) {
           this.writeProprocessedSrc(this.dirName, this.fileName, this.allPreprocessedLines);
@@ -377,14 +377,14 @@ export class SpinDocument {
     // Gather header (doc-only and non-doc) comments and trailer (doc-only) comments
     // From header (doc-only and non-doc) comments identify required version if any version
     // Process raw-lines into file content lines w/original line numbers based on #ifdef/#ifndef, etc. directives
-    this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- ENTRY`);
+    this.logMessage(`SpinPP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- ENTRY`);
     let replaceCurrent: string = ``;
     for (let lineIdx = 0; lineIdx < this.rawLines.length; lineIdx++) {
       let skipThisline: boolean = false;
       let forceKeepThisline: boolean = false;
       let insertTextLines: TextLine[] = [];
       let currLine = this.rawLines[lineIdx];
-      this.logMessage(`CODE-PP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
+      this.logMessage(`SpinPP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
         this.recordComment(currLine);
@@ -396,7 +396,7 @@ export class SpinDocument {
           this.nonDocNestCount -= nbrCloses;
           // if we clsoed nonDoc the clear inNonDoc state
           this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-          this.logMessage(`CODE-PP: ': depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`);
+          this.logMessage(`SpinPP: ': depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`);
         }
       } else if (this.inNonDocComment) {
         // handle  {..\n{\n..}\n..}
@@ -413,14 +413,14 @@ export class SpinDocument {
         const wasInNonDocComment: boolean = this.inNonDocComment;
         this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
         this.logMessage(
-          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
+          `SpinPP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
         );
         if (wasInNonDocComment) {
           // entire line is within open but no close...
-          this.logMessage(`CODE-PP: IN-{: Line is comment [${currLine}]`);
+          this.logMessage(`SpinPP: IN-{: Line is comment [${currLine}]`);
           skipThisline = true; // is comment but let's skip emitting it
         } else {
-          this.logMessage(`CODE-PP: IN-{: comment ended [${currLine}]`);
+          this.logMessage(`SpinPP: IN-{: comment ended [${currLine}]`);
           currLine = tmpLine.trimEnd();
           if (currLine.length == 0) {
             skipThisline = true;
@@ -449,10 +449,10 @@ export class SpinDocument {
             const canAdd = (this.thisSideKeepsCode() || !this.inIfDef()) && !foundUndefine;
             replaceCurrent = this.commentOut(currLine);
             if (canAdd) {
-              this.logMessage(`CODE: add new symbol [${symbol}]=[${value}]`);
+              this.logMessage(`SpinPP: add new symbol [${symbol}]=[${value}]`);
               this.defineSymbol(symbol, value, eTextSub.SA_TEXT_YES); // this should work?!!
             } else if (foundUndefine) {
-              this.logMessage(`CODE-PP: #define of [${symbol}] prevented by "-U ${symbol}" on command line`);
+              this.logMessage(`SpinPP: #define of [${symbol}] prevented by "-U ${symbol}" on command line`);
               insertTextLines = [new TextLine(this.fileId, `' NOTE: #define of ${symbol} prevented by command line "-U ${symbol}"`, lineIdx)];
             }
           } else {
@@ -463,18 +463,18 @@ export class SpinDocument {
           // parse #undef {symbol}
           const symbol = this.getSymbolName(currLine);
           if (symbol) {
-            // this.logMessage(`CODE: (DBG) UNDEF inPreProcIForIxFNOT=(${inPreProcIForIxFNOT}), thisSidxeKeepsCode=(${thisSideKexepsCode})`);
+            // this.logMessage(`SpinPP: (DBG) UNDEF inPreProcIForIxFNOT=(${inPreProcIForIxFNOT}), thisSidxeKeepsCode=(${thisSideKexepsCode})`);
             if (this.thisSideKeepsCode() || !this.inIfDef()) {
               if (!this.undefineSymbol(symbol)) {
                 // ERROR no such symbol
                 this.reportError(`#undef symbol [${symbol}] not found`, lineIdx, 0);
               } else {
-                this.logMessage(`CODE: removed symbol [${symbol}]`);
+                this.logMessage(`SpinPP: removed symbol [${symbol}]`);
                 replaceCurrent = this.commentOut(currLine);
               }
             } else {
               // ignore this code since in conditional code
-              this.logMessage(`CODE: NOT keeping code SKIP [${currLine}]`);
+              this.logMessage(`SpinPP: NOT keeping code SKIP [${currLine}]`);
             }
           } else {
             this.reportError(`#undef is missing symbol name`, lineIdx, 0);
@@ -494,24 +494,24 @@ export class SpinDocument {
               ifState.setIgnoreIfdef();
             }
             if (isElseForm == false || (isElseForm == true && this.inIfDef())) {
-              // this.logMessage(`CODE: (DBG) inPreProcIxForIFNOT=(${inPrePxrocIForIFNOT})`);
+              // this.logMessage(`SpinPP: (DBG) inPreProcIxForIFNOT=(${inPrePxrocIForIFNOT})`);
               const symbol = this.getSymbolName(currLine);
               if (symbol !== undefined) {
                 if (this.cmdLineDefines.includes(symbol)) {
                   insertTextLines = [new TextLine(this.fileId, `' NOTE: ${symbol} provided on command line using -D ${symbol}`, lineIdx)];
-                  this.logMessage(`CODE-PP: #define of [${symbol}] caused by "-D ${symbol}" on command line`);
+                  this.logMessage(`SpinPP: #define of [${symbol}] caused by "-D ${symbol}" on command line`);
                 }
                 const symbolDefined: boolean = this.preProcSymbols.exists(symbol);
                 ifState.setIfEmits(symbolDefined === true);
                 if (symbolDefined) {
-                  this.logMessage(`CODE: ifdef - symbol defined [${symbol}]`);
+                  this.logMessage(`SpinPP: ifdef - symbol defined [${symbol}]`);
                   // found symbol... we are keeping code from IF side
                 } else {
                   // symbol doesn't exist keep code from ELSE side
-                  this.logMessage(`CODE: ifdef - NOT symbol defined [${symbol}]`);
+                  this.logMessage(`SpinPP: ifdef - NOT symbol defined [${symbol}]`);
                 }
                 forceKeepThisline = true;
-                // this.logMessage(`CODE: (DBG) thisSideKeexpsCode=(${thisSideKxeepsCode})`);
+                // this.logMessage(`SpinPP: (DBG) thisSideKeexpsCode=(${thisSideKxeepsCode})`);
                 replaceCurrent = this.commentOut(currLine);
               } else {
                 // ERROR bad statement
@@ -537,7 +537,7 @@ export class SpinDocument {
               ifState.setIgnoreIfdef();
             }
             if (isElseForm == false || (isElseForm == true && this.inIfDef())) {
-              // this.logMessage(`CODE: (DBG) inPreProcIxForIFNOT=(${inPreProcIFxorIFNOT})`);
+              // this.logMessage(`SpinPP: (DBG) inPreProcIxForIFNOT=(${inPreProcIFxorIFNOT})`);
               const symbol = this.getSymbolName(currLine);
               if (symbol !== undefined) {
                 if (this.cmdLineDefines.includes(symbol)) {
@@ -547,13 +547,13 @@ export class SpinDocument {
                 ifState.setIfEmits(symbolDefined === false);
                 if (symbolDefined === false) {
                   // found symbol... we are keeping code from ELSE side
-                  this.logMessage(`CODE: ifndef - symbol NOT defined [${symbol}]`);
+                  this.logMessage(`SpinPP: ifndef - symbol NOT defined [${symbol}]`);
                 } else {
                   // symbol doesn't exist keep code from IF side
-                  this.logMessage(`CODE: ifndef - symbol defined [${symbol}]`);
+                  this.logMessage(`SpinPP: ifndef - symbol defined [${symbol}]`);
                 }
                 replaceCurrent = this.commentOut(currLine);
-                // this.logMessage(`CODE: (DBG) thisSideKeexpsCode=(${thisSideKexepsCode})`);
+                // this.logMessage(`SpinPP: (DBG) thisSideKeexpsCode=(${thisSideKexepsCode})`);
               } else {
                 // ERROR bad statement
                 this.reportError(`#directive is missing symbol name`, lineIdx, 0);
@@ -582,7 +582,7 @@ export class SpinDocument {
             replaceCurrent = this.commentOut(currLine);
             this.exitIf();
           }
-          // this.logMessage(`CODE: (DBG) inPrePrxocIForIFNOT=(${inPreProcIFoxrIFNOT})`);
+          // this.logMessage(`SpinPP: (DBG) inPrePrxocIForIFNOT=(${inPreProcIFoxrIFNOT})`);
         } else if (currLine.startsWith('#error')) {
           // parse #error
           replaceCurrent = this.commentOut(currLine);
@@ -594,7 +594,7 @@ export class SpinDocument {
           const message: string = currLine.substring(7);
           this.reportError(`WARNING: ${message}`, lineIdx, 0);
         } else if (currLine.startsWith('#include')) {
-          this.logMessage(`CODE-PP: have #include [${currLine}]`);
+          this.logMessage(`SpinPP: have #include [${currLine}]`);
           // handle #include "filename"
           //  ensure suffix not present or must be ".spin2"
           const filename = this.isolateFilename(currLine, lineIdx);
@@ -622,7 +622,7 @@ export class SpinDocument {
           }
         } else if (currLine.match(/^#-*[0-9%$]+\s*,*|^#_*[A-Za-z_]+\s*,*/)) {
           // ignore these enumeration starts, they are not meant to be directives
-          this.logMessage(`CODE-PP: SKIP ENUM [${currLine}]`);
+          this.logMessage(`SpinPP: SKIP ENUM [${currLine}]`);
         } else {
           // generate error! vs. throwing exception
           let lineParts = this.splitLineOnWhiteSpace(currLine);
@@ -656,14 +656,14 @@ export class SpinDocument {
         }
         this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
         this.logMessage(
-          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
+          `SpinPP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
         );
         if (this.inNonDocComment) {
           // entire line is within open but no close...
-          this.logMessage(`CODE-PP: STRT-{: Line is comment [${currLine}]`);
+          this.logMessage(`SpinPP: STRT-{: Line is comment [${currLine}]`);
           skipThisline = true; // is comment but let's skip emitting it
         } else {
-          this.logMessage(`CODE-PP: STRT-{: comment ended [${currLine}]`);
+          this.logMessage(`SpinPP: STRT-{: comment ended [${currLine}]`);
           currLine = tmpLine.trimEnd();
           if (currLine.length == 0) {
             continue;
@@ -698,23 +698,23 @@ export class SpinDocument {
           if (currLine !== tmpLine) {
             const nonSubstLine: string = `' ${currLine}`;
             this.preprocessedLines.push(new TextLine(this.fileId, nonSubstLine, lineIdx));
-            this.logMessage(`CODE-PP: EMIT replacement Line [${nonSubstLine}]`);
-            this.logMessage(`CODE-PP: MACRO currLine [${currLine}](${currLine.length})`);
-            this.logMessage(`CODE-PP: MACRO  tmpLine [${tmpLine}](${tmpLine.length})`);
+            this.logMessage(`SpinPP: EMIT replacement Line [${nonSubstLine}]`);
+            this.logMessage(`SpinPP: MACRO currLine [${currLine}](${currLine.length})`);
+            this.logMessage(`SpinPP: MACRO  tmpLine [${tmpLine}](${tmpLine.length})`);
             currLine = tmpLine.trimEnd();
           }
         }
         this.preprocessedLines.push(new TextLine(this.fileId, currLine, lineIdx));
         if (replaceCurrent.length > 0) {
-          this.logMessage(`CODE-PP: EMIT replacement Line [${currLine}]`);
+          this.logMessage(`SpinPP: EMIT replacement Line [${currLine}]`);
         }
         replaceCurrent = ''; // used, empty it so no dupes
       } else {
-        //this.logMessage(`CODE: Line SKIP [${currLine}]`);
+        //this.logMessage(`SpinPP: Line SKIP [${currLine}]`);
       }
 
       if (insertTextLines.length > 0) {
-        this.logMessage(`CODE-PP: INSERT #${insertTextLines.length} line(s)`);
+        this.logMessage(`SpinPP: INSERT #${insertTextLines.length} line(s)`);
         for (const newTextLine of insertTextLines) {
           // assume these are already preprocessed
           this.preprocessedLines.push(newTextLine);
@@ -728,11 +728,11 @@ export class SpinDocument {
 
     // if regression testing the emit our preprocessing result
     if (this.context?.reportOptions.writePreprocessReport) {
-      this.logMessage('CODE-PP: writePreprocessReport()');
+      this.logMessage('SpinPP: writePreprocessReport()');
       const reporter: RegressionReporter = new RegressionReporter(this.context);
       reporter.writeProprocessResults(this.dirName, this.fileName, this.allPreprocessedLines);
     }
-    this.logMessage(`CODE-PP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- EXIT`);
+    this.logMessage(`SpinPP: preProcess() file=[${this.fileBaseName}], id=(${this.fileId})- EXIT`);
   }
 
   private dumpErrors() {
@@ -756,7 +756,7 @@ export class SpinDocument {
   private undefineSymbol(oldSymbol: string): boolean {
     let removeStatus: boolean = false;
     if (this.preProcSymbols.exists(oldSymbol)) {
-      this.logMessage(`CODE: undefSymbol(${oldSymbol})`);
+      this.logMessage(`SpinPP: undefSymbol(${oldSymbol})`);
       this.preProcSymbols.remove(oldSymbol);
       removeStatus = true;
     }
@@ -777,7 +777,7 @@ export class SpinDocument {
     let nextOpenPosn: number = -1;
     // must have at least one open { and be more than one char to remove comment
     if (firstOpenPosn != -1 && currLine.length > 1) {
-      this.logMessage(`CODE-PP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
+      this.logMessage(`SpinPP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
       do {
         nextOpenPosn = nonCommentLine.substring(firstOpenPosn + 1).indexOf('{');
         if (nextOpenPosn != -1) {
@@ -787,7 +787,7 @@ export class SpinDocument {
         if (nextClosePosn != -1) {
           nextClosePosn += firstOpenPosn + 1;
         }
-        this.logMessage(`CODE-PP: rmvNDC() loop firstOpenPosn=(${firstOpenPosn}), nextOpenPosn=(${nextOpenPosn}), nextClosePosn=(${nextClosePosn})`);
+        this.logMessage(`SpinPP: rmvNDC() loop firstOpenPosn=(${firstOpenPosn}), nextOpenPosn=(${nextOpenPosn}), nextClosePosn=(${nextClosePosn})`);
         if (nextOpenPosn == -1) {
           // no nesting on this line...
           if (nextClosePosn != -1) {
@@ -830,15 +830,15 @@ export class SpinDocument {
       } while (firstOpenPosn != -1);
     }
     if (currLine !== nonCommentLine) {
-      this.logMessage(`CODE-PP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
-      this.logMessage(`CODE-PP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
+      this.logMessage(`SpinPP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
+      this.logMessage(`SpinPP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
     }
     return nonCommentLine;
   }
 
   private replaceSubstringWithSpaces(line: string, startIdx: number, endIdx: number): string {
     let spacedLine = line;
-    this.logMessage(`CODE-PP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})`);
+    this.logMessage(`SpinPP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})`);
     if (startIdx >= 0 && startIdx <= line.length - 1 && endIdx >= 0 && endIdx <= line.length - 1 && startIdx < endIdx) {
       const spaces: string = ' '.repeat(endIdx - startIdx);
       if (endIdx - startIdx + 1 == line.length) {
@@ -846,7 +846,7 @@ export class SpinDocument {
       } else {
         spacedLine = line.substring(0, startIdx) + spaces + line.substring(endIdx);
       }
-      this.logMessage(`CODE-PP: REPL    new [${spacedLine}](${spacedLine.length})`);
+      this.logMessage(`SpinPP: REPL    new [${spacedLine}](${spacedLine.length})`);
     }
     return spacedLine;
   }
