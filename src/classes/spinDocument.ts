@@ -305,69 +305,17 @@ export class SpinDocument {
       let forceKeepThisline: boolean = false;
       let insertTextLines: TextLine[] = [];
       let currLine = this.rawLines[lineIdx];
-      this.logMessage(`CODE-PP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
       if (currLine.startsWith("'")) {
         // have single line non-doc or doc comment
         this.recordComment(currLine);
-        // check for nonDoc comments (generally looking for '} patterns) in single line comment (only if already in nonDoc Comment)
-        if (this.inNonDocComment) {
-          const openCt: number = currLine.split('{').length - 1;
-          const closeCt: number = currLine.split('}').length - 1;
-          const nbrCloses = closeCt - openCt;
-          this.nonDocNestCount -= nbrCloses;
-          // if we clsoed nonDoc the clear inNonDoc state
-          this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-        }
-        this.logMessage(`CODE-PP: ': depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`);
-        continue;
       } else if (this.inNonDocComment) {
-        // handle  {..\n{\n..}\n..}
-        const tmpLine = this.removeNonDocComments(currLine);
-        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
-        const openCt: number = tmpLine.split('{').length - 1;
-        if (openCt > 0) {
-          this.nonDocNestCount += openCt;
-        }
-        const closeCt: number = tmpLine.split('}').length - 1;
-        if (closeCt > 0) {
-          this.nonDocNestCount -= closeCt;
-        }
-        const wasInNonDocComment: boolean = this.inNonDocComment;
-        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-        this.logMessage(
-          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
-        );
-        if (wasInNonDocComment) {
-          // entire line is within open but no close...
-          this.logMessage(`CODE-PP: IN-{: Line is comment [${currLine}]`);
-          skipThisline = true; // is comment but let's skip emitting it
-        } else {
-          this.logMessage(`CODE-PP: IN-{: comment ended [${currLine}]`);
-          currLine = tmpLine.trimEnd();
-          if (currLine.length == 0) {
-            continue;
-          }
-        }
-        skipThisline = true;
+        // handle {..{..}..}
+        // FIXME: TODO: add missing code
       } else if (this.inDocComment) {
         // handle {{..}}
-        const docClosePosn: number = currLine.indexOf('}}');
-        // record only comment portion of line
-        if (docClosePosn == -1) {
-          this.recordComment(currLine);
-        } else {
-          this.recordComment(currLine.substring(0, docClosePosn + 1));
-        }
-        if (docClosePosn != -1) {
+        this.recordComment(currLine);
+        if (currLine.includes('}}')) {
           this.inDocComment = false;
-          if (currLine.length <= docClosePosn + 2) {
-            continue; // no more processing, only empty line remains
-          }
-          // remove left edge comment
-          currLine = this.replaceSubstringWithSpaces(currLine, 0, docClosePosn + 1);
-          if (currLine.trim().length == 0) {
-            continue; // no more processing, is empty line
-          }
         }
       } else if (currLine.startsWith('#')) {
         // handle preprocessor #directive
@@ -571,34 +519,9 @@ export class SpinDocument {
           this.headerComments.push(currLine);
         }
       } else if (currLine.startsWith('{')) {
-        // starting a line with a non-doc comment, could be one of many cases...
-        // if we are positioned at the start of a '{.{..}.}' non-doc comment then skip lines until
-        // NOTE: handle case where {..}{..} (the nondoc-comments are back to back with/without spaces in-between)
-        const tmpLine = this.removeNonDocComments(currLine);
-        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
-        const openCt: number = tmpLine.split('{').length - 1;
-        if (openCt > 0) {
-          this.nonDocNestCount += openCt;
-        }
-        const closeCt: number = tmpLine.split('}').length - 1;
-        if (closeCt > 0) {
-          this.nonDocNestCount -= closeCt;
-        }
-        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-        this.logMessage(
-          `CODE-PP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
-        );
-        if (this.inNonDocComment) {
-          // entire line is within open but no close...
-          this.logMessage(`CODE-PP: STRT-{: Line is comment [${currLine}]`);
-          skipThisline = true; // is comment but let's skip emitting it
-        } else {
-          this.logMessage(`CODE-PP: STRT-{: comment ended [${currLine}]`);
-          currLine = tmpLine.trimEnd();
-          if (currLine.length == 0) {
-            continue;
-          }
-        }
+        // handle preprocessor directive
+        this.inNonDocComment = true;
+        // FIXME: TODO: COPY CODE FROM OUR ELEMENTIZER!!!
       } else {
         // have code line
         this.gatheringHeaderComment = false; // no more gathering once we hit text
@@ -668,89 +591,6 @@ export class SpinDocument {
   private macroSubstitute(line: string): string {
     const substitutedLine: string = this.preProcTextSymbols.replaceSymbolsInString(line);
     return substitutedLine;
-  }
-
-  private removeNonDocComments(currLine: string): string {
-    // replace any inline nonDoc comments with spaces
-    let nonCommentLine: string = currLine;
-    let needReplace: boolean = false;
-    let currPosn: number = 0;
-    let firstOpenPosn: number = currLine.substring(currPosn).indexOf('{');
-    let nextOpenPosn: number = -1;
-    // must have at least one open { and be more than one char to remove comment
-    if (firstOpenPosn != -1 && currLine.length > 1) {
-      this.logMessage(`CODE-PP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
-      do {
-        nextOpenPosn = nonCommentLine.substring(firstOpenPosn + 1).indexOf('{');
-        if (nextOpenPosn != -1) {
-          nextOpenPosn += firstOpenPosn + 1;
-        }
-        let nextClosePosn: number = nonCommentLine.substring(firstOpenPosn + 1).indexOf('}');
-        if (nextClosePosn != -1) {
-          nextClosePosn += firstOpenPosn + 1;
-        }
-        this.logMessage(`CODE-PP: rmvNDC() loop firstOpenPosn=(${firstOpenPosn}), nextOpenPosn=(${nextOpenPosn}), nextClosePosn=(${nextClosePosn})`);
-        if (nextOpenPosn == -1) {
-          // no nesting on this line...
-          if (nextClosePosn != -1) {
-            // have open.close on this line, remove it
-            currPosn = firstOpenPosn;
-            needReplace = true;
-          } else {
-            // have only nested open, still in comment
-            break;
-          }
-        } else {
-          if (nextClosePosn != -1 && nextOpenPosn != -1) {
-            // have both
-            if (nextClosePosn < nextOpenPosn) {
-              // have close, then another open
-              // no replacement, just move to next open
-              currPosn = nextOpenPosn;
-            } else {
-              // have open followed by a close
-              // replace with spaces
-              currPosn = nextOpenPosn;
-              needReplace = true;
-            }
-          } else if (nextClosePosn != -1) {
-            // have only close
-            // no replacement, just move to next open
-            currPosn = nextClosePosn + 1;
-          } else if (nextOpenPosn != -1) {
-            // have only nested open, still in comment
-          } else {
-            // have NO open or close
-            break;
-          }
-        }
-        if (needReplace) {
-          const cmtEndIdx = nextClosePosn + 1 > nonCommentLine.length - 1 ? nonCommentLine.length - 1 : nextClosePosn + 1;
-          nonCommentLine = this.replaceSubstringWithSpaces(nonCommentLine, currPosn, cmtEndIdx);
-        }
-        firstOpenPosn = nonCommentLine.indexOf('{');
-      } while (firstOpenPosn != -1);
-    }
-    if (currLine !== nonCommentLine) {
-      this.logMessage(`CODE-PP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
-      this.logMessage(`CODE-PP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
-    }
-    return nonCommentLine;
-  }
-
-  private replaceSubstringWithSpaces(line: string, startIdx: number, endIdx: number): string {
-    let spacedLine = line;
-    this.logMessage(`CODE-PP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})`);
-    if (startIdx >= 0 && startIdx <= line.length - 1 && endIdx >= 0 && endIdx <= line.length - 1 && startIdx < endIdx) {
-      const spaces: string = ' '.repeat(endIdx - startIdx);
-      if (endIdx - startIdx + 1 == line.length) {
-        spacedLine = spaces;
-      } else {
-        spacedLine = line.substring(0, startIdx) + spaces + line.substring(endIdx);
-      }
-      this.logMessage(`CODE-PP: REPL    new [${spacedLine}](${spacedLine.length})`);
-    }
-    return spacedLine;
   }
 
   private commentOut(line: string): string {

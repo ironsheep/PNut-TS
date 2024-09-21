@@ -77,7 +77,8 @@ export class PNutInTypeScript {
       //.version(`v${this.version}`, '-V, --version', 'Output the version number')
       .version(`v${this.version}`)
       .usage('[optons] filename')
-      .description(`Propeller Spin2 compiler/downloader - v${this.version}`)
+      //.description(`Propeller Spin2 compiler/downloader - v${this.version}`) // not until flasher is activated
+      .description(`Propeller Spin2 compiler - v${this.version}`)
       .arguments('[filename]')
       .action((filename: string) => {
         this.options.filename = filename;
@@ -266,7 +267,7 @@ export class PNutInTypeScript {
     // OVERRIDE mech to allow args of ['', 'filename.spin2'] - spin2 extension does this!!!
     for (let index = 0; index < this.program.args.length; index++) {
       const argument: string = this.program.args[index];
-      if (argument.length > 0 && argument.includes('.spin')) {
+      if (argument.length > 0 && argument.toLowerCase().includes('.spin')) {
         if (this.options.filename !== argument) {
           this.options.filename = argument;
         }

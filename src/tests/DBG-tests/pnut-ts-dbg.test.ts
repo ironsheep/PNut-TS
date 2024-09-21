@@ -31,6 +31,8 @@ describe('PNut_ts compiles .spin2 w/debug() correctly', () => {
   let files: string[] = [];
   try {
     files = globSync(`${testDirPath}/*.spin2`);
+    // Filter out files that match the *-pre.spin2 pattern (-i output files)
+    files = files.filter((file) => !file.endsWith('-pre.spin2'));
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }

@@ -1,3 +1,7 @@
+PREP for CMD-LINE Repair Release:
+	- Fix unplanned execution of `pnut_ts -v` after compile
+	- Repair SpinDocument PreProcessor changes! (Regression test fail after PreProc adjustment, fix this!)
+
 LIMITATION OF PNUT-TS:
 	- NOTE: floating point constants: The mantissa (bits 22:0) can be +/- 1 ls-bit off in value
 
@@ -61,6 +65,7 @@ PNut_TS PACKAGING Prep:
 				- Bad packaging by npm pkg?
 				- JVM issue?
 	- Hrmf... use non-standalone build for now in .dmg for macOS @done(2024-09-04)
+	
 PNut_TS PACKAGING for testing RELEASE:
 		- bump version number to 1.43.0 @done(2024-09-11)
 		- INSTALL DOC MAC (.md) Fix install  ofr MAC citing new install of Node.js need! (spin2 ext)
