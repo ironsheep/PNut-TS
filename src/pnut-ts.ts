@@ -65,6 +65,11 @@ export class PNutInTypeScript {
   }
 
   public async run(): Promise<number> {
+    // ensure we know early if we are running in developer mode
+    if (process.env.PNUT_DEVELOP_MODE) {
+      this.context.runEnvironment.developerModeEnabled = true;
+    }
+    // now setup and process arguments
     this.program
       .configureOutput({
         // Visibly override write routines as example!
@@ -74,8 +79,8 @@ export class PNutInTypeScript {
         outputError: (str, write) => write(this.errorColor(str))
       })
       .name('pnut-ts')
-      //.version(`v${this.version}`, '-V, --version', 'Output the version number')
-      .version(`v${this.version}`)
+      .version(`v${this.version}`, '-V, --version', 'Output the version number')
+      //.version(`v${this.version}`)
       .usage('[optons] filename')
       //.description(`Propeller Spin2 compiler/downloader - v${this.version}`) // not until flasher is activated
       .description(`Propeller Spin2 compiler - v${this.version}`)
@@ -83,21 +88,20 @@ export class PNutInTypeScript {
       .action((filename: string) => {
         this.options.filename = filename;
       })
-      //      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
-      //.option('-c, --compile', 'Compile file')
+      //.option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
       .option('-44, --ver44', 'Listings compatible with PNut_v44 and later')
       .option('-d, --debug', 'Compile with DEBUG')
       //      .option('-f, --flash', 'Download to FLASH and run')
-      //.option('-f, --flash', 'Generate binary with incorporated flash loader')
       //      .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
       //      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
       //      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
-      .option('-O, --obj', 'Generate object files (.obj) from compilation')
+      .option('-v, --verbose', 'Output verbose messages')
       //.option('-B, --bin', 'Generate binary files (.bin) suitable for download')
       .option('-o, --output <name>', 'Specify output file basename')
       .option('-i, --intermediate', 'Generate *-pre.spin2 after preprocessing')
       .option('-q, --quiet', 'Quiet mode (suppress banner and non-error text)')
+      .option('-O, --obj', 'Generate object files (.obj) from compilation')
       .option('-D, --Define <symbol...>', 'Define (add) preprocessor symbol(s)')
       .option('-U, --Undefine <symbol...>', 'Undefine (remove) preprocessor symbol(s)')
       .option('-I, --Include <dir...>', 'Add preprocessor include directories')
@@ -114,8 +118,7 @@ export class PNutInTypeScript {
         ])
       )
       .addOption(new Option('--regression <testName...>', 'testName').choices(['element', 'tables', 'resolver', 'preproc']))
-      .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']))
-      .option('-v, --verbose', 'Output verbose messages');
+      .addOption(new Option('--pass <passName...>', 'Stop after passName').choices(['preprocess', 'elementize', 'con-block']));
 
     this.program.addHelpText('beforeAll', `$-`);
 
@@ -164,7 +167,7 @@ export class PNutInTypeScript {
       this.program.parse(combinedArgs);
     } catch (error: unknown) {
       if (error instanceof CommanderError) {
-        //this.context.logger.logMessage(`Error: name=[${error.name}], message=[${error.message}]`);
+        //this.context.logger.logMessage(`XYZZY Error: name=[${error.name}], message=[${error.message}]`);
         if (error.name === 'CommanderError') {
           this.context.logger.logMessage(``); // our blank line so prompt is not too close after output
           //this.context.logger.logMessage(`  xyzxzy `);
@@ -180,10 +183,14 @@ export class PNutInTypeScript {
           }
         }
       } else {
-        this.context.logger.logMessage(`Catch unknown error=[${error}]`);
+        this.context.logger.logMessage(`XYZZY Catch unknown error=[${error}]`);
         // Instead of throwing, return a resolved Promise with a specific value, e.g., -1
         return Promise.resolve(-1);
       }
+    }
+
+    if (this.context.runEnvironment.developerModeEnabled) {
+      this.context.logger.verboseMsg('PNUT_DEVELOP_MODE is enabled');
     }
 
     //this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
@@ -252,8 +259,7 @@ export class PNutInTypeScript {
       const signOnVersion: string = `Version ${this.version}, {buildDateHere}`;
       this.context.logger.infoMsg(`* ${signOnVersion}`);
     }
-    // REMOVE BEFORE FLIGHT: DO NOT release with the following uncommented
-    //this.runTestCode(); // for quick live testing...
+
     if (!this.options.quiet && !showingHelp) {
       let commandLine: string;
       if ((foundJest || runningCoverageTesting) && this.argsArray.length === 0) {
@@ -417,9 +423,6 @@ export class PNutInTypeScript {
       this.shouldAbort = true;
     }*/
 
-    //const helpRequestedMsg: string = showingHelp ? 'Help requested' : 'Help not requested';
-    //this.context.logger.progressMsg(helpRequestedMsg);
-
     //if (this.options.compile) {
     // ALWAYS SET THIS until we have a built-in flasher
     if (!showingHelp) {
@@ -508,6 +511,7 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
       this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
       this.context.logger.verboseMsg(''); // blank line
+      /*
       this.runCommand('node -v').then((result) => {
         if (result.error) {
           this.context.logger.errorMsg(`${result.error}`);
@@ -516,6 +520,24 @@ export class PNutInTypeScript {
           this.context.logger.verboseMsg(''); // blank line
         }
       });
+      */
+      const result = await this.runCommand('node -v');
+      if (result.value !== null) {
+        this.context.logger.verboseMsg(`Node version: ${result.value} (external)`);
+      } else {
+        // fake this for now...
+        this.context.logger.verboseMsg(`Node version: v18.5.0 (built-in)`);
+        /*
+        const nodePath = process.execPath;
+        this.context.logger.verboseMsg(`nodePath: [${nodePath}]`);
+        result = await this.runCommand(`${nodePath} -v`);
+        if (result.value !== null) {
+          this.context.logger.verboseMsg(`Node version: ${result.value}`);
+        } else {
+          this.context.logger.verboseMsg(`CMD [${result.cmd}] FAIL: [${result.error}]`);
+        }
+        */
+      }
     }
 
     if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
@@ -561,133 +583,27 @@ export class PNutInTypeScript {
     }
   }
 
-  // --------------------------------------------------
-  // PLEASE PARDON OUR STRAY TEST CODE BELOW HERE
-  // --------------------------------------------------
-
-  private bigIntFloat32ToNumber(float32BigInt: bigint): number {
-    // Create a new ArrayBuffer with a size of 4 bytes
-    const buffer = new ArrayBuffer(4);
-    // Create a new DataView from the ArrayBuffer
-    const view = new DataView(buffer);
-    // Get the least significant 32 bits of the BigInt and set into the DataView
-    view.setUint32(0, Number(float32BigInt & BigInt(0xffffffff)), true); // true for little-endian
-    // Create a new Float32Array from the ArrayBuffer
-    const float32Array = new Float32Array(buffer);
-    // Return the first element of the Float32Array
-    return float32Array[0];
-  }
-
-  private numberToBigIntFloat32(float64: number): bigint {
-    // Create a new ArrayBuffer with a size of 4 bytes
-    const buffer = new ArrayBuffer(4);
-    // Create a new Float32Array from the ArrayBuffer
-    const float32Array = new Float32Array(buffer);
-    // Set the first element of the Float32Array to the number
-    float32Array[0] = float64;
-    // Create a new DataView from the ArrayBuffer
-    const view = new DataView(buffer);
-    // Return the 32 bits from that DataView as a BigInt
-    //   (note true is for little - endian)
-    return BigInt(view.getUint32(0, true));
-  }
-
-  private runTestCode() {
-    return;
-    /*
-    let testValue: bigint = BigInt(0x3f800000);
-    let testResult: number = this.bigIntFloat32ToNumber(testValue);
-    this.context.logger.logMessage(`--->   testResult=(${testResult}) <---`);
-
-    testValue = BigInt(0x3fc00000);
-    testResult = this.bigIntFloat32ToNumber(testValue);
-    this.context.logger.logMessage(`--->   testResult2=(${testResult}) <---`);
-
-    testValue = BigInt(0xbfc00000);
-    testResult = this.bigIntFloat32ToNumber(testValue);
-    this.context.logger.logMessage(`--->   testResult2=(${testResult}) <---`);
-    this.context.logger.logMessage('');
-    */
-    let testValue: number = 1.5;
-    let testResult: bigint = this.numberToBigIntFloat32(testValue);
-
-    let biHex = testResult.toString(16).padStart(16, '0');
-    let biHexGrouped = biHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(` biB: 0x${biHexGrouped.toUpperCase()} a=(${testResult})`);
-
-    testValue = -1.5;
-    testResult = this.numberToBigIntFloat32(testValue);
-
-    biHex = testResult.toString(16).padStart(16, '0');
-    biHexGrouped = biHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(` biB: 0x${biHexGrouped.toUpperCase()} a=(${testResult})`);
-  }
-
-  private runTestCodeOld() {
-    //return;
-    //const parmA: number = 0xffffffff;
-    //const parmA: number = 0x87654321;
-    const parmA: number = 0xedcba987;
-    //const parmA: number = -1;
-    //const parmA: number = 5;
-    const parmB: number = 0x00000001;
-    const a: bigint = BigInt(parmA) & BigInt(0xffffffff);
-    const b: bigint = BigInt(parmB) & BigInt(0xffffffff);
-    //a &= BigInt(0xffffffff);
-    //b &= BigInt(0xffffffff);
-    //a &= BigInt(0x7ffffffffffff);
-    //b &= BigInt(0x7ffffffffffff);
-    //a = ((a << 32n) / b) & BigInt(0xffffffff);
-
-    const fa: number = Number(a);
-    //const logA: number = Math.log(fa) / Math.log(2.0);
-    //const logA2: number = Math.fround(Math.log2(fa) * Math.pow(2, 27));
-    //const logA2: number = Math.log2(Number(a)) * Math.pow(2, 27);
-    //const biA2: bigint = BigInt(Math.trunc(logA2));
-
-    // QLOG
-    //const biA = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
-
-    // QEXP
-    const biB = Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27))); // trunc ..E9, round ..EA
-    //const biB2 = Math.trunc(Number(a) / Math.pow(2, 27));
-
-    this.context.logger.logMessage(`fa=(${fa})`);
-    //this.context.logger.logMessage(`loga=(${logA})`);
-    //this.context.logger.logMessage(`biA=(${biA})`);
-    this.context.logger.logMessage(`biB=(${biB})`);
-    //this.context.logger.logMessage(`biB2=(${biB2})`);
-
-    //const ba2Hex = biA.toString(16).padStart(16, '0');
-    //const ba2HexGrouped = ba2Hex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    //this.context.logger.logMessage(` biA: 0x${ba2HexGrouped.toUpperCase()} a=(${biA})`);
-
-    const bb2Hex = biB.toString(16).padStart(16, '0');
-    const bb2HexGrouped = bb2Hex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(` biB: 0x${bb2HexGrouped.toUpperCase()} a=(${biB})`);
-
-    const aHex = a.toString(16).padStart(16, '0');
-    const aHexGrouped = aHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(`   a: 0x${aHexGrouped.toUpperCase()} a=(${a})`);
-
-    const bHex = b.toString(16).padStart(16, '0');
-    const bHexGrouped = bHex.replace(/(\w{4})/g, '$1_').slice(0, -1);
-    this.context.logger.logMessage(`   b: 0x${bHexGrouped.toUpperCase()} b=(${b})`);
-  }
-
-  private runCommand(command: string): Promise<{ value: string | null; error: string | null }> {
+  private async runCommand(command: string): Promise<{ cmd: string; value: string | null; error: string | null }> {
     return new Promise((resolve) => {
-      exec(command, (error, stdout, stderr) => {
-        if (error) {
-          resolve({ value: null, error: error.message });
-          return;
+      try {
+        exec(command, (error, stdout, stderr) => {
+          if (error) {
+            resolve({ cmd: command, value: null, error: error.message });
+          }
+          if (stderr) {
+            resolve({ cmd: command, value: null, error: stderr });
+          }
+          resolve({ cmd: command, value: stdout.trim(), error: null });
+        });
+      } catch (error: unknown) {
+        let excString: string = '?exc?';
+        if (error instanceof Error) {
+          excString = `Exception: ${error.name}-${error.message}`;
+        } else {
+          excString = `Exception: ${JSON.stringify(error)}`;
         }
-        if (stderr) {
-          resolve({ value: null, error: stderr });
-          return;
-        }
-        resolve({ value: stdout.trim(), error: null });
-      });
+        resolve({ cmd: command, value: null, error: excString });
+      }
     });
   }
 }

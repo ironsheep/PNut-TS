@@ -1,6 +1,6 @@
-PREP for CMD-LINE Repair Release:
-	- Fix unplanned execution of `pnut_ts -v` after compile
-	- Repair SpinDocument PreProcessor changes! (Regression test fail after PreProc adjustment, fix this!)
+PREP for CMD-LINE Repair Release (v1.43.2):
+	- Fix unplanned execution of `pnut_ts -v` after compile @done(2024-09-22)
+	- Repair SpinDocument PreProcessor changes! (Regression test fail after PreProc adjustment, fix this!) @done(2024-09-21)
 
 LIMITATION OF PNUT-TS:
 	- NOTE: floating point constants: The mantissa (bits 22:0) can be +/- 1 ls-bit off in value
@@ -22,6 +22,7 @@ RE-PACKAGING PNut-TS (Self-contained):
 	- UPLOAD all the .zip's to the releases page for the given release
 	
 RE-PACKAGING PNut-TS (External Node.js):
+	Ensure latest files are on _dist folder (ChangeLog.md, etc.)
 	- in vscode run:    npm run bld-dist
 	- Replace version with new   BUILD_VERSION=MMmmSS  where 014300 is v1.43.00
 		- in cs_zip.dmgs.sh
@@ -36,7 +37,7 @@ RE-PACKAGING PNut-TS (External Node.js):
 	- run    cs_not_dmgx64.sh to notarize the x64 DMG
 		- at end run    xcrun stapler staple _unzipped/macos/macos-x64.dmg   # to complete the DMG
 	- run    cs_zip_dmgs.sh  to zip the .dmg files and place the .zips in _UPLOAD
-	- UPLOAD all the .zip's to the releases page for the given release
+	- Manually UPLOAD all the .zip's to the releases page for the given release
 
 REPO Preparation to go pubic:
 		- update npm package list versions to what our main local container is using! @done(2024-08-29)

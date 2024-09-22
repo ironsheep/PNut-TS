@@ -16,6 +16,7 @@ import { SpinFiles } from '../classes/spinFiles';
 
 export interface RuntimeEnvironment {
   serialPortDevices: string[];
+  developerModeEnabled: boolean;
 }
 export interface PassOptions {
   afterPreprocess: boolean; // stop after preprocessing
@@ -156,7 +157,7 @@ export class Context {
       coverageTesting: false
     };
     this.preProcessorOptions = { defSymbols: [], undefSymbols: [], includeFolders: [], writeIntermediateSpin2: false };
-    this.runEnvironment = { serialPortDevices: [] };
+    this.runEnvironment = { serialPortDevices: [], developerModeEnabled: false };
     this.passOptions = { afterPreprocess: false, afterElementize: false, afterConBlock: false };
     this.compileOptions = {
       writeFlash: false,
