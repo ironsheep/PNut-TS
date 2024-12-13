@@ -56,11 +56,12 @@ export interface CompileOptions {
   compile: boolean; // compile file
   enableDebug: boolean; // compile with debug
   outputFilename: string; // override output filename with this name
+  binarySuffix: string; // use this output suffix for binary file
   writeListing: boolean; // write compile report (.lst file)
   v44FormatListing: boolean; // write compile report (.lst file) use v44 style
   //v43Compile: boolean; // compile emitting v43 compatible code (maybe)
   writeObj: boolean; // write object file (.obj file)
-  writeBin: boolean; // write binary file (.bin file)
+  writeBin: boolean; // write binary file (.bin/.binary file)
   listFilename: string; // write compile report to this file
   propPlug: string; // selected deviceNode for PropPlug
 }
@@ -165,6 +166,7 @@ export class Context {
       compile: false,
       enableDebug: false,
       outputFilename: '',
+      binarySuffix: 'binary',
       writeListing: false,
       writeObj: false,
       writeBin: false,

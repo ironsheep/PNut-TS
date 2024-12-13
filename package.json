@@ -1,6 +1,6 @@
 {
   "name": "p2-pnut-ts",
-  "version": "1.43.2",
+  "version": "1.43.3",
   "description": "A Parallax Propeller 2 compiler in TypeScript",
   "main": "out/pnut-ts.js",
   "bin": {
@@ -23,7 +23,8 @@
     "esbuild-base": "npm run copy-ext && esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node && node scripts/insertBuildDate.js",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "prebuild": "mkdir -p dist/ext && ./scripts/prepExt",
+    "makeprebuild": "mkdir -p prebuilds && cp -pr ./node_modules/@serialport/bindings-cpp/prebuilds/* prebuilds/",
+    "prebuild": "mkdir -p dist/ext && ./scripts/prepExt && npm run makeprebuild",
     "precoverage": "npm run jest-clear && npm run build",
     "pretest": "npm run build && npm run lint",
     "copy-ext": "mkdir -p out/ext && ./scripts/prepExt out/ext",
@@ -76,31 +77,35 @@
   "publisher": "IronSheepProductionsLLC",
   "license": "MIT",
   "devDependencies": {
-    "@babel/preset-env": "^7.25.4",
+    "@babel/preset-env": "^7.26.0",
     "@types/glob": "^8.1.0",
-    "@types/jest": "^29.5.12",
-    "@types/node": "^20.16.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.10",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "babel-jest": "^29.7.0",
     "esbuild": "^0.21.5",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "eslint-config-love": "^62.0.1",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-promise": "^6.6.0",
     "glob": "^10.4.5",
     "jest": "^29.7.0",
     "jest-mock-console": "^2.0.0",
-    "nyc": "^17.0.0",
+    "nyc": "^17.1.0",
     "pkg": "^5.8.1",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.7.2"
   },
   "dependencies": {
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "serialport": "^12.0.0",
+    "@serialport/bindings-cpp": "^12.0.1",
+    "@serialport/stream": "12.0.0",
+    "@serialport/parser-readline": "11.0.0"
   }
 }

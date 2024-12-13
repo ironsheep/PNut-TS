@@ -433,8 +433,13 @@ export class Spin2Parser {
 
   private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number, hasFlashLoader: boolean = false) {
     const lstFilename = this.context.compileOptions.listFilename;
-    const binSuffix: string = hasFlashLoader ? '.binf' : '.bin';
-    const objFilename = lstFilename.replace('.lst', binSuffix);
+    const binarySuffix: string = this.context.compileOptions.binarySuffix;
+    const binSuffix: string = hasFlashLoader ? `.${binarySuffix}f` : `.${binarySuffix}`;
+    let objFilename = lstFilename.replace('.lst', binSuffix);
+    // BUGFIX: for issue #4 add true -o option
+    if (this.context.compileOptions.outputFilename.length > 0) {
+      objFilename = this.context.compileOptions.outputFilename;
+    }
     this.logMessage(`  -- writing BIN file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     const stream = fs.createWriteStream(objFilename);
 

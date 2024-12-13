@@ -38,3 +38,4 @@ src/
 TEST/
 # get contents from here
 !out
+!prebuilds

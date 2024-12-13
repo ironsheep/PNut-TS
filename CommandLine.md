@@ -14,47 +14,52 @@
 
 Our new PNut-TS compiler will show you the following when you speicfy `-h` or `--help`:
 
-
-```text 
+```text
 PNut-TS: Usage: pnut-ts [optons] filename
 
-Propeller Spin2 compiler/downloader - v0.43.0
+Propeller Spin2 compiler - v1.43.3
 
 Options:
   -V, --version               Output the version number
+  -b, --both                  Compile with DEBUG, download to FLASH and run
   -d, --debug                 Compile with DEBUG
+  -f, --flash                 Download to FLASH and run
+  -r, --ram                   Download to RAM and run
   -l, --list                  Generate listing files (.lst) from compilation
-  -O, --obj                   Generate object files (.obj) from compilation
+  -p, --plug <dvcNode>        download to/flash Propeller attached to <dvcNode>
+  -n, --dvcnodes              List available USB PropPlug device (n)odes
+  -v, --verbose               Output verbose messages
   -o, --output <name>         Specify output file basename
+  -i, --intermediate          Generate *-pre.spin2 after preprocessing
   -q, --quiet                 Quiet mode (suppress banner and non-error text)
+  -O, --obj                   Generate object files (.obj) from compilation
   -D, --Define <symbol...>    Define (add) preprocessor symbol(s)
   -U, --Undefine <symbol...>  Undefine (remove) preprocessor symbol(s)
   -I, --Include <dir...>      Add preprocessor include directories
-  -v, --verbose               Output verbose messages
   -h, --help                  display help for command
 
       Example:
          $ pnut-ts my-top-level.spin2         # compile leaving .bin file
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
-         
+         $ pnut-ts -d -r my-top-level.spin2   # compile file with Debug and run from RAM
+         $ pnut-ts -f my-top-level.spin2      # compile file without Debug download to FLASH and run
+
 
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC., Parallax Inc.
-pnut-ts: * Version 0.43.0,  Build date: 8/14/24
+pnut-ts: * Version 0.43.0,  Build date: 12/12/24
 ```
 
 These options should already make sense but here's a light-weight recap:
 
 | Option forms | Description |
 | --- | --- |
-| -O, --obj,<br>-l, --list | control the generation of the additional listing and object files
-| -V, -\-version | shows the compiler version information
-| <pre>-o {filename}, --output {filename}</pre> | allows you to provide a specific filename for the .bin output file
-| -q, --quiet,<br>-v, --verbose | control how little or how much extra messaging is output from the compiler
-| -I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all proprocessor directives where -I adds search directories contining .spin2 files to be included, -D defines one or more symbols on the command line, and -U un-defines symbols from the command line.
+| -O, --obj,<br>-l, --list | control the generation of the additional listing and object files |
+| -V, -\-version | shows the compiler version information |
+| <pre>-o {filename}, --output {filename}</pre> | allows you to provide a specific filename for the .bin output file |
+| -q, --quiet,<br>-v, --verbose | control how little or how much extra messaging is output from the compiler |
+| -I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all proprocessor directives where -I adds search directories contining . |spin2 files to be included, -D defines one or more symbols on the command line, and -U un-defines symbols from the command line. |
 
 And of course `-h` or `--help` produce the output as shown above.
-
-
 
 ## For PNut-TS developer use
 
@@ -74,7 +79,7 @@ The `--log {option(s)}` produce very detailed output from different sections of 
 
 The `--regression {option(s)}` produce additional reports we use for testing/verifing the compiler.
 
-and 
+and
 
 The `--pass {option(s)}` are how we instruct the compiler to end after a given pass.
 

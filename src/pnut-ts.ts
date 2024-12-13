@@ -10,7 +10,7 @@ import { Compiler } from './classes/compiler';
 import { eTextSub, SpinDocument } from './classes/spinDocument';
 import path from 'path';
 import { exec } from 'child_process';
-//import { UsbSerial } from './utils/usb.serial';
+import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
 // REF https://blog.logrocket.com/using-stdout-stdin-stderr-node-js/
@@ -26,7 +26,7 @@ export class PNutInTypeScript {
   private readonly program = new Command();
   //static isTesting: boolean = false;
   private options: OptionValues = this.program.opts();
-  private version: string = '1.43.2';
+  private version: string = '1.43.3';
   private argsArray: string[] = [];
   private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
@@ -83,21 +83,22 @@ export class PNutInTypeScript {
       //.version(`v${this.version}`)
       .usage('[optons] filename')
       //.description(`Propeller Spin2 compiler/downloader - v${this.version}`) // not until flasher is activated
-      .description(`Propeller Spin2 compiler - v${this.version}`)
+      .description(`Propeller Spin2 compiler/downloader - v${this.version}`)
       .arguments('[filename]')
       .action((filename: string) => {
         this.options.filename = filename;
       })
-      //.option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
+      .option('-b, --both', 'Compile with DEBUG, download to FLASH and run')
       .option('-44, --ver44', 'Listings compatible with PNut_v44 and later')
       .option('-d, --debug', 'Compile with DEBUG')
-      //      .option('-f, --flash', 'Download to FLASH and run')
-      //      .option('-r, --ram', 'Download to RAM and run')
+      .option('-f, --flash', 'Download to FLASH and run')
+      .option('-r, --ram', 'Download to RAM and run')
       .option('-l, --list', 'Generate listing files (.lst) from compilation')
-      //      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
-      //      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
+      .option('-p, --plug <dvcNode>', 'download to/flash Propeller attached to <dvcNode>')
+      .option('-n, --dvcnodes', 'List available USB PropPlug device (n)odes')
       .option('-v, --verbose', 'Output verbose messages')
       //.option('-B, --bin', 'Generate binary files (.bin) suitable for download')
+      .option('-a, --altbin', 'Use alternate .bin name vs. .binary')
       .option('-o, --output <name>', 'Specify output file basename')
       .option('-i, --intermediate', 'Generate *-pre.spin2 after preprocessing')
       .option('-q, --quiet', 'Quiet mode (suppress banner and non-error text)')
@@ -128,12 +129,10 @@ export class PNutInTypeScript {
       Example:
          $ pnut-ts my-top-level.spin2         # compile leaving .bin file
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
+         $ pnut-ts -d -r my-top-level.spin2   # compile file with Debug, run from RAM
+         $ pnut-ts -f my-top-level.spin2      # compile file without Debug, download to FLASH and run
          `
     );
-
-    // HOLD: (we don't support flash or ram download yet)
-    //   $ pnut-ts -c -d -r my-top-level.spin2   # compile file with Debug and run from RAM
-    //   $ pnut-ts -cf my-top-level.spin2        # compile file without Debug download to FLASH and run
 
     //this.program.showHelpAfterError('(add --help for additional information)');
 
@@ -226,6 +225,11 @@ export class PNutInTypeScript {
       this.context.compileOptions.v44FormatListing = true;
     }
 
+    if (this.options.altbin) {
+      this.context.compileOptions.binarySuffix = 'bin'; // use bin vs binary
+      this.context.logger.verboseMsg('Writing .bin suffix binary files');
+    }
+
     //if (this.options.bin) {
     // ALWAYS SET THIS until we have a built-in flasher
     this.context.compileOptions.writeBin = true;
@@ -235,23 +239,31 @@ export class PNutInTypeScript {
       this.context.compileOptions.writeObj = true;
     }
 
-    /*
-    if (this.options.dvcnodes) {
+    const usingUSB: boolean = this.options.plug || this.options.ram || this.options.flash || this.options.dvcnodes;
+    if (usingUSB) {
       this.loadUsbPortsFound();
-      for (let index = 0; index < this.context.runEnvironment.serialPortDevices.length; index++) {
-        const dvcNode = this.context.runEnvironment.serialPortDevices[index];
-        this.context.logger.progressMsg(` USB #${index + 1} [${dvcNode}]`);
-      }
-      if (this.context.runEnvironment.serialPortDevices.length == 0) {
-        this.context.logger.progressMsg(` USB  - no Serial Ports Found!`);
+      if (this.options.dvcnodes) {
+        for (let index = 0; index < this.context.runEnvironment.serialPortDevices.length; index++) {
+          const dvcNode = this.context.runEnvironment.serialPortDevices[index];
+          this.context.logger.progressMsg(` USB #${index + 1} [${dvcNode}]`);
+        }
+        if (this.context.runEnvironment.serialPortDevices.length == 0) {
+          this.context.logger.progressMsg(` USB  - no Serial Ports Found!`);
+        }
       }
     }
 
     if (this.options.plug) {
+      // PropPlug identified on command line, use it
+      // FIXME: add check for if device is still plugged in (is found in list)
       this.context.compileOptions.propPlug = this.options.plug;
+    } else if (this.context.runEnvironment.serialPortDevices.length == 1) {
+      // use only port if none specified
+      this.context.compileOptions.propPlug = this.context.runEnvironment.serialPortDevices[0];
+    }
+    if (this.context.compileOptions.propPlug !== undefined && this.context.compileOptions.propPlug.length > 0) {
       this.context.logger.verboseMsg(`* using USB [${this.context.compileOptions.propPlug}]`);
     }
-    */
 
     if (!this.options.quiet && !foundJest && !runningCoverageTesting) {
       const signOnCompiler: string = "Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC., Parallax Inc.";
@@ -390,13 +402,12 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`* Override output filename, now [${outFilename}]`);
     }
 
-    /*
     if (this.options.both) {
       this.context.logger.verboseMsg('have BOTH: enabling FLASH and DEBUG');
       this.options.debug = true;
       this.options.flash = true;
       this.options.ram = false;
-    }*/
+    }
 
     if (this.options.debug) {
       this.context.logger.progressMsg('Compiling with DEBUG');
@@ -410,7 +421,6 @@ export class PNutInTypeScript {
       this.requiresFilename = true;
     }
 
-    /*
     if (this.options.ram) {
       this.context.logger.progressMsg('Downloading to RAM');
       this.context.compileOptions.writeRAM = true;
@@ -421,21 +431,21 @@ export class PNutInTypeScript {
       //this.program.error('Please only use one of -f and -r');
       this.context.logger.errorMsg('Please only use one of -f and -r');
       this.shouldAbort = true;
-    }*/
+    }
 
-    //if (this.options.compile) {
-    // ALWAYS SET THIS until we have a built-in flasher
-    if (!showingHelp) {
-      if ((foundJest || runningCoverageTesting) && this.options.filename === undefined) {
-        // we don't handle this!
-        this.requiresFilename = false;
-        this.context.compileOptions.compile = false;
-      } else {
-        this.requiresFilename = true;
-        this.context.compileOptions.compile = true;
+    if (this.options.compile) {
+      // ALWAYS SET THIS until we have a built-in flasher
+      if (!showingHelp) {
+        if ((foundJest || runningCoverageTesting) && this.options.filename === undefined) {
+          // we don't handle this!
+          this.requiresFilename = false;
+          this.context.compileOptions.compile = false;
+        } else {
+          this.requiresFilename = true;
+          this.context.compileOptions.compile = true;
+        }
       }
     }
-    //}
 
     if (this.options.Include) {
       // forward  Include Folder name(s)
@@ -505,22 +515,21 @@ export class PNutInTypeScript {
       }
     }
 
+    // if no PropPlug but want download, Abort!
+    if (this.context.compileOptions.propPlug === undefined || this.context.compileOptions.propPlug.length == 0) {
+      if (this.options.flash || this.options.ram) {
+        this.context.logger.errorMsg("Can't download, no prop plugs connected!");
+        this.shouldAbort = true;
+      }
+    }
+
     if (this.shouldAbort == false) {
       this.context.logger.verboseMsg(''); // blank line
       this.context.logger.verboseMsg(`ext dir [${this.context.extensionFolder}]`);
       this.context.logger.verboseMsg(`lib dir [${this.context.libraryFolder}]`);
       this.context.logger.verboseMsg(`wkg dir [${this.context.currentFolder}]`);
       this.context.logger.verboseMsg(''); // blank line
-      /*
-      this.runCommand('node -v').then((result) => {
-        if (result.error) {
-          this.context.logger.errorMsg(`${result.error}`);
-        } else {
-          this.context.logger.verboseMsg(`Node version: ${result.value}`);
-          this.context.logger.verboseMsg(''); // blank line
-        }
-      });
-      */
+
       const result = await this.runCommand('node -v');
       if (result.value !== null) {
         this.context.logger.verboseMsg(`Node version: ${result.value} (external)`);
@@ -553,22 +562,23 @@ export class PNutInTypeScript {
         }
       }
     }
-    // const optionsString: string = 'options: ' + String(this.options);
-    // this.verboseMsg(optionsString);
+
+    let resolveValue: number = 0;
     if (!this.options.quiet && !showingHelp) {
       if (this.shouldAbort) {
         this.context.logger.progressMsg('Aborted!');
+        resolveValue = -1;
       } else {
         this.context.logger.progressMsg('Done');
       }
     }
-    return Promise.resolve(0);
+    return Promise.resolve(resolveValue);
   }
 
-  //private async loadUsbPortsFound(): Promise<void> {
-  //  const deviceNodes: string[] = await UsbSerial.serialDeviceList();
-  //  this.context.runEnvironment.serialPortDevices = deviceNodes;
-  //}
+  private async loadUsbPortsFound(): Promise<void> {
+    const deviceNodes: string[] = await UsbSerial.serialDeviceList();
+    this.context.runEnvironment.serialPortDevices = deviceNodes;
+  }
 
   private errorColor(str: string): string {
     // Add ANSI escape codes to display text in red.
