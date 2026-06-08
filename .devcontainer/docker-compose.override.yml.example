@@ -14,5 +14,7 @@ services:
       # - /path/to/your/.claude:/home/vscode/.claude
       # Container tools (MCP servers: todo-mcp, p2kb-mcp, image-tools-mcp)
       # - /path/to/container-tools:/opt/container-tools
+      # Git configuration (user identity, aliases, credential helpers)
+      # - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
       # SSH keys for git operations inside the container
       # - ${HOME}/.ssh:/tmp/.ssh:ro

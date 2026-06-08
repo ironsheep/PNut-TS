@@ -291,8 +291,9 @@ TEST/LANG-VER-tests/Spin2_v50_step.elemOLD
 TEST/SHORT/tablesTESTs/p2com.LST
 REF/p2com.LST
 
-# Devcontainer local overrides (user-specific mounts)
+# Devcontainer local overrides (user-specific mounts) + per-machine shell scaffolding
 .devcontainer/docker-compose.override.yml
+.bashrc
 
 # v52 GOLD file rebuild folders (temporary - for Windows compilation)
 *-rebuild-v52/

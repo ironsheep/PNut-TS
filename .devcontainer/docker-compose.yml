@@ -1,13 +1,15 @@
-version: '3.8'
-
 services:
   dev:
-    image: node:23-bookworm
+    image: mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
     volumes:
       - ..:/workspaces/PNut-TS:cached
+      - todo-mcp-data:/home/vscode/.local/share/todo-mcp
     ports:
       - "5001:5001"
       - "9125:8123"
     command: sleep infinity
     # Note: features, postCreateCommand, extensions, and settings
     # are handled in devcontainer.json, not here
+
+volumes:
+  todo-mcp-data:
