@@ -1076,7 +1076,7 @@ export class SpinResolver {
     [symbolFound, isConstInteger, value] = this.checkDebugSymbol(sympinrx);
     if (symbolFound) {
       if (isConstInteger) {
-        this.debugPinTx = Number(value) & 0x3f;
+        this.debugPinRx = Number(value) & 0x3f;
       } else {
         // [error_debugprx]
         throw new Error('DEBUG_PIN_RX can only be defined as an integer constant');

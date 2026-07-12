@@ -1,0 +1,22 @@
+'' =================================================================================================
+''
+''   File....... debug_pin_txrx.spin2
+''   Purpose.... Regression: DEBUG_PIN_TX and DEBUG_PIN_RX must land in the debugger blob independently.
+''               Guards the bug where DEBUG_PIN_RX overwrote the TX pin (spinResolver determine_bauds_pins).
+''               Uses distinct, non-default pin numbers so a swap/clobber is detectable in _txpin_/_rxpin_.
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2026 Iron Sheep Productions, LLC
+''   E-mail..... stephen@ironsheep.biz
+''
+'' =================================================================================================
+
+CON
+
+  _clkfreq = 200_000_000
+
+  DEBUG_PIN_TX = 40                                             ' P2 transmits debug on this pin -> _txpin_ (@140)
+  DEBUG_PIN_RX = 41                                             ' P2 receives debug on this pin  -> _rxpin_ (@144)
+
+PUB main()
+
+  debug("pins: tx=40 rx=41")

@@ -311,10 +311,16 @@ vTriggered      : boolean;       // Trigger event occurred
   - Arm when signal rises above TriggerArm
   - Fire when signal falls below TriggerFire
 
-**vTriggerOffset**: Pre/post-trigger position
-- `0`: Trigger at left edge (show what happens after trigger)
+**vTriggerOffset**: Pre/post-trigger position. The trigger sample is read `vTriggerOffset`
+slots back from newest (`t := Y_SampleBuff[(SamplePtr - vTriggerOffset - 1) and Y_PtrMask …]`,
+line 1296) and so renders at horizontal position `k = vTriggerOffset`. Because the trace runs
+**oldest-at-left → newest-at-right** (`SCOPE_Draw`, lines 1355-1359), the offset maps to the
+edge **opposite** to the naive reading:
+- `0`: Trigger at **right** edge — tests the newest sample; the display shows the samples
+  leading **up to** the trigger (pre-trigger history)
 - `vSamples/2`: Trigger at center (default)
-- `vSamples-1`: Trigger at right edge (show what led up to trigger)
+- `vSamples-1`: Trigger at **left** edge — tests the oldest sample; the display shows what
+  happens **after** the trigger (post-trigger)
 
 **Default Initialization** (lines 1198-1203):
 ```pascal

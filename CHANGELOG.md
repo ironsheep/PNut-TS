@@ -21,6 +21,12 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## [1.55.1] 2026-07-12
+
+### Fixed
+
+- **DEBUG_PIN_RX overwrote the debug TX pin.** In `determine_bauds_pins()` the `DEBUG_PIN_RX` handler assigned the transmit-pin field instead of the receive-pin field. Because `DEBUG_PIN_RX` is evaluated after `DEBUG_PIN_TX`, defining both (as production debug builds do) caused the RX value to clobber TX, so the P2 transmitted debug output on the wrong pin and the host saw nothing. With the documented defaults (`DEBUG_PIN_TX = 62`, `DEBUG_PIN_RX = 63`) the compiler emitted `_txpin_ = 63`, silencing debug output; users had to swap the pin values to work around it. The v55 documentation was correct — this was a port typo. Also restores the ability to set the debug RX pin at all (it was previously pinned at its default of 63). Matches original PNut `p2com.asm` `determine_bauds_pins`. Regression fixture: `TEST/DBG-tests/debug_pin_txrx.spin2`.
+
 ## [1.55.0] 2026-05-13
 
 PNut v55 support. Optimization-only release at the source level — every
