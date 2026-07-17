@@ -351,15 +351,17 @@ jobs:
           x = (width - (bbox[2] - bbox[0])) // 2
           draw.text((x, 255), instruction, fill=(80, 80, 80), font=font_instruction)
 
+          # DMG-surface company logo — keep this block IDENTICAL to PNut-Term-TS/.github/workflows/release.yml
           logo_path = "assets/logo.png"
           if os.path.exists(logo_path):
               try:
                   logo = Image.open(logo_path).convert("RGBA")
-                  logo_h = 45
+                  logo_h = 85
                   scale = logo_h / logo.size[1]
                   logo = logo.resize((int(logo.size[0] * scale), logo_h), Image.LANCZOS)
-                  x = width - logo.size[0] - 20
-                  img.paste(logo, (x, 25), logo)
+                  # Full ISP logo, top-right; h=85 keeps the wordmark legible and clears the drag-icon band
+                  x = width - logo.size[0] - 18
+                  img.paste(logo, (x, 12), logo)
               except:
                   pass
 
