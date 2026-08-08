@@ -106,13 +106,27 @@ A combination of `#else` and `#ifndef`. Must be preceded by a `#ifdef` or a `#if
 
 #### \#error {msg}
 
-Prints an error message. Mainly used in conditional compilation to report an unhandled condition. Everything after the `#error` directive is printed. Example:
+Reports an error and stops the compile. Mainly used in conditional compilation to report an unhandled condition. Everything after the `#error` directive is the message; if you surround it with a matching pair of quotes, the quotes are stripped. Example:
 
 ```c++
 #ifndef __P2__
 #error This code only works on Propeller 2
 #endif
 ```
+
+`#error` and `#warn` are subject to conditional compilation like any other directive: one inside a branch that is **not** taken does not fire. That is what makes the fall-through idiom safe — an `#error` in the final `#else` of a configuration chain fires only when nothing matched:
+
+```c++
+#ifdef BOARD_A
+  ' Board A settings
+#elseifdef BOARD_B
+  ' Board B settings
+#else
+#error Define exactly one of BOARD_A or BOARD_B
+#endif
+```
+
+*As of v1.55.2.* Earlier versions fired `#error` and `#warn` from branches that were not taken, so the pattern above reported an error on every build regardless of which board was selected.
 
 #### \#include "{filename}"
 
@@ -138,7 +152,7 @@ NOTE: if the .spin2 suffix is not present on the filename provide in the include
 
 #### \#warn {msg}
 
-`#warn` prints a warning message; otherwise it is similar to `#error`.
+`#warn` reports a warning and the compile continues; otherwise it is similar to `#error`, including the quote stripping and the branch behavior described above.
 
 #### \#undef {symbol}
 
@@ -149,6 +163,14 @@ Removes a prior definition of a symbol, e.g., to undefine `FOO` do:
 ```
 
 Removes the user-defined symbol FOO if it was defined.
+
+`#undef` of a symbol that was never defined is a **warning**, not an error — C specifies it as a no-op, so the compile continues and your output files are still written:
+
+```
+myfile.spin2:3:warning:#undef symbol [FOO] not found
+```
+
+*As of v1.55.2.* This means a defensive `#undef` — one written to guarantee a symbol is clear without knowing whether it was ever set — will warn on every build. An `#elseifdef` chain is already mutually exclusive and needs no such guard.
 
 Note that #undef will not do anything if one of our built-in symbols was named.
 
@@ -193,6 +215,55 @@ OBJ driver : MEMDRIVER
 
 Similarly if SYMBOL was defined on the command line (`-DSYMBOL`), then a `#pragma exportdef SYMBOL` will not have any effect.
 
+## Diagnostics
+
+*This section describes behavior as of v1.55.2.* Earlier versions recorded most preprocessor problems and then discarded them — a malformed directive produced no message and the build succeeded, compiling whichever lines the broken conditional happened to select.
+
+### Message format
+
+Preprocessor errors and warnings are written to **stderr**, one per line, in source order:
+
+```
+<filespec>:<line>:error:<message>
+<filespec>:<line>:warning:<message>
+```
+
+This is the same format compilation errors use. There are no ANSI color codes, so the output can be filtered, matched or recolored by your editor or build wrapper. Every preprocessor error in a file is reported from a single build — you do not have to fix one, rebuild, and discover the next.
+
+An error stops the compile and **the output files are deleted**, so a failed build never leaves a stale `.bin`, `.lst`, `.obj`, `.map` or `.flash` behind from an earlier run. A warning leaves the build running and the files are written normally.
+
+### What is now caught
+
+| Situation | Result |
+| --- | --- |
+| `#ifdef`/`#ifndef` never closed by `#endif` | error `Expected #ENDIF`, reported against the line that **opened** the block |
+| `#else`, `#endif`, `#elseifdef` or `#elseifndef` with no open conditional | error `Must be preceeded by #IFDEF or #IFNDEF` |
+| A directive that needs a symbol, written without one | error `Expected a preprocessor symbol` |
+| A directive that is not recognized | error naming the directive |
+| `{Spin2_vNN}` naming a version this compiler does not support | error, citing the line the directive is on |
+| `#include` with an unsupported filetype, or a filename whose quotes are missing | error describing the actual problem |
+| `#undef` of a symbol that was never defined | **warning**; build continues |
+
+Bare directives — `#define`, `#ifdef`, `#include` and friends written with no argument — used to be swallowed silently, because a CON enumeration start also begins with `#`. They are now caught. Valid CON enumeration starts are unaffected.
+
+### Wording shared with PNut
+
+Where the original PNut has the same directive, PNut-TS uses PNut's exact message text, so a build log from either compiler matches the same search:
+
+`Expected a preprocessor symbol` · `Must be preceeded by #IFDEF or #IFNDEF` · `Expected #ENDIF`
+
+(The misspelling in the second is PNut's, and is reproduced deliberately.)
+
+`#error`, `#warn`, `#include` and `#pragma` are PNut-TS extensions and use wording of their own.
+
+### If a file that used to build now fails
+
+That is expected for a small class of sources, and it is the reason this release exists. A stray `#endif`, an unclosed `#ifdef`, a directive missing its symbol, an unknown directive, or an unsupported `{Spin2_vNN}` all used to compile "successfully". They did not produce the program you thought they did — a broken conditional nest silently selects the wrong lines. If a source of yours starts failing here, it was very likely not compiling what you intended.
+
+### Nesting depth
+
+The original PNut limits conditional nesting to 8 levels. PNut-TS does not impose that limit — source nested deeper compiles here. If your source needs to build under both compilers, stay within 8 levels.
+
 ## Predefined Symbols
 
 There are several predefined symbols:
@@ -214,7 +285,7 @@ There are several predefined symbols:
 
 > If you like my work and/or this has helped you in some way then feel free to help me out for a couple of :coffee:'s or :pizza: slices or support my work by contributing at Patreon!
 >
-> [![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/ironsheep) &nbsp;&nbsp; -OR- &nbsp;&nbsp; [![Patreon](./DOCs/images/patreon.png)](https://www.patreon.com/IronSheep?fan_landing=true)[Patreon.com/IronSheep](https://www.patreon.com/IronSheep?fan_landing=true)
+> [![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/ironsheep) &nbsp;&nbsp; -OR- &nbsp;&nbsp; [![Patreon](https://raw.githubusercontent.com/ironsheep/PNut-TS/main/DOCs/images/patreon.png)](https://www.patreon.com/IronSheep?fan_landing=true)[Patreon.com/IronSheep](https://www.patreon.com/IronSheep?fan_landing=true)
 
 ---
 

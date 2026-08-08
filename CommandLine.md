@@ -17,33 +17,44 @@ Our new PNut-TS compiler will show you the following when you specify `-h` or `-
 ```text
 PNut-TS: Usage: pnut-ts [optons] filename
 
-Propeller Spin2 compiler - v1.54.0
+Propeller Spin2 compiler - v1.55.2
 
 Options:
   -V, --version               Output the version number
   -d, --debug                 Compile with DEBUG
   -l, --list                  Generate listing files (.lst) from compilation
+  -m, --map                   Generate memory map file (.map) from compilation
   -v, --verbose               Output verbose messages
   -a, --altbin                Use alternate .binary name vs. .bin
   -o, --output <name>         Specify output file basename
   -i, --intermediate          Generate *__pre.spin2 after preprocessing
   -q, --quiet                 Quiet mode (suppress banner and non-error text)
-  -F, --flashfile             Generate FLASH image file (.flash) suitable for writing to flash chip
+  -F, --flashfile             Generate FLASH image file (.flash) suitable for
+                              writing to flash chip
   -O, --obj                   Generate object files (.obj) from compilation
   -D, --Define <symbol...>    Define (add) preprocessor symbol(s)
   -U, --Undefine <symbol...>  Undefine (remove) preprocessor symbol(s)
   -I, --Include <dir...>      Add preprocessor include directories
-  --log <objectName...>       objectName (choices: "all", "outline", "compiler", "elementizer", "parser", "distiller", "preproc", "resolver")
-  --regression <testName...>  testName (choices: "element", "tables", "resolver", "preproc")
-  --pass <passName...>        Stop after passName (choices: "preprocess", "elementize", "con-block")
+  -C, --cache                 Enable object compilation cache
+  --cache-dir <dir>           Set object cache directory (default: .pnut-cache
+                              in current directory)
+  --cache-clear               Clear object cache before compiling
+  --log <objectName...>       objectName (choices: "all", "outline",
+                              "compiler", "elementizer", "parser", "distiller",
+                              "preproc", "resolver")
+  --regression <testName...>  testName (choices: "element", "resolver",
+                              "preproc")
+  --pass <passName...>        Stop after passName (choices: "preprocess",
+                              "elementize", "con-block")
   -h, --help                  display help for command
 
       Example:
          $ pnut-ts my-top-level.spin2         # compile leaving .bin file
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
          
-pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024 Iron Sheep Productions, LLC., Parallax Inc.
-pnut-ts: * Version 1.54.0, Build date: 4/23/2026
+
+pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2025 Iron Sheep Productions, LLC., Parallax Inc.
+pnut-ts: * Version 1.55.2, {buildDateHere}
 ```
 
 These options should already make sense but here's a light-weight recap:
@@ -57,6 +68,8 @@ These options should already make sense but here's a light-weight recap:
 | <pre>-i, --intermediate</pre> | Generate `*__pre.spin2` file after preprocessing your source file
 | <pre>-F, --flashfile</pre> | control the generation of the additional (.flash) flash-mage file |
 | <pre>-a, --altbin</pre> | use alternate `.binary` suffix vs. `.bin` |
+| <pre>-m, --map</pre> | generate a memory map file (.map) describing the compiled object structure, memory allocation and multi-object relationships |
+| <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory — pointing several source trees at one folder maximizes reuse. `--cache-clear` empties it first, and works even when no source file is given. |
 | <pre>-q, --quiet,<br>-v, --verbose</pre> | control how little or how much extra messaging is output from the compiler |
 | <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **proprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U un-defines symbols from the command line.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option can not undefine a symbol created by a #define directive.*) |
 
@@ -69,8 +82,8 @@ And of course `-h` or `--help` produces the output as shown above.
 There are a couple of additional options we use when testing or validating PNut_TS:
 
 ```text
-  --log <objectName...>       objectName (choices: "all", "outline", "compiler", "elementizer", "parser", "preproc", "resolver")
-  --regression <testName...>  testName (choices: "element", "tables", "resolver", "preproc")
+  --log <objectName...>       objectName (choices: "all", "outline", "compiler", "elementizer", "parser", "distiller", "preproc", "resolver")
+  --regression <testName...>  testName (choices: "element", "resolver", "preproc")
   --pass <passName...>        Stop after passName (choices: "preprocess", "elementize", "con-block")
 
 ```
@@ -88,7 +101,7 @@ The `--pass {option(s)}` are how we instruct the compiler to end after a given p
 
 > If you like my work and/or this has helped you in some way then feel free to help me out for a couple of :coffee:'s or :pizza: slices or support my work by contributing at Patreon!
 >
-> [![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/ironsheep) &nbsp;&nbsp; -OR- &nbsp;&nbsp; [![Patreon](./DOCs/images/patreon.png)](https://www.patreon.com/IronSheep?fan_landing=true)[Patreon.com/IronSheep](https://www.patreon.com/IronSheep?fan_landing=true)
+> [![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/ironsheep) &nbsp;&nbsp; -OR- &nbsp;&nbsp; [![Patreon](https://raw.githubusercontent.com/ironsheep/PNut-TS/main/DOCs/images/patreon.png)](https://www.patreon.com/IronSheep?fan_landing=true)[Patreon.com/IronSheep](https://www.patreon.com/IronSheep?fan_landing=true)
 
 ---
 

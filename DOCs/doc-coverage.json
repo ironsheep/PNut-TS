@@ -97,10 +97,10 @@
   },
 
   "documents": {
-    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": null },
+    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.2" },
     "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.2", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: DOCs/voicing/CHANGELOG-Voicing.md" },
-    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.54.0", "note": "Sample help transcript still shows v1.54.0" },
-    "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.51.7", "note": "KNOWN STALE — missing the v1.55.2 diagnostics behavior entirely" },
+    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.2", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
+    "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.55.2" },
 
     "BUILD-RUN.md":         { "class": "process", "verified": null },
     "PACKAGING.md":         { "class": "process", "verified": null },
@@ -113,6 +113,7 @@
     "DOCs/voicing/README.md": { "class": "process", "verified": "1.55.2" },
     "DOCs/voicing/CHANGELOG-Voicing.md": { "class": "process", "verified": "1.55.2" },
     "DOCs/voicing/Usage-Guide-Voicing.md": { "class": "process", "verified": "1.55.2" },
+    "DOCs/voicing/Shipped-Docs-Voicing.md": { "class": "process", "verified": "1.55.2" },
     "TEST/MAP-tests/README.md": { "class": "process", "verified": null },
     "scripts/gold/README.md": { "class": "process", "verified": null },
     "tools/README.md":      { "class": "process", "verified": null },
