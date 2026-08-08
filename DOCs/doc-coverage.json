@@ -28,7 +28,23 @@
     "was last checked against. A doc is stale when any file matching its covered areas",
     "has a commit newer than the tag for `verified`. Set it only after actually",
     "re-reading the document against the code — it is a claim, not a timestamp.",
-    "  null = never verified under this scheme; treated as stale on first run."
+    "  null = never verified under this scheme; treated as stale on first run.",
+    "",
+    "  A PARTIAL UPDATE DOES NOT EARN THE STAMP. `verified` means the WHOLE document",
+    "  was checked, not the section you happened to change. Editing one section and",
+    "  stamping the file marks the untouched sections as current when nobody looked at",
+    "  them — which is worse than leaving it stale, because stale is visible in the",
+    "  report and a false stamp is not.",
+    "",
+    "  Learned the hard way, 2026-08-08: Preprocessor.md was stamped 1.55.2 after its",
+    "  Diagnostics, #error, #warn and #undef sections were rewritten and verified",
+    "  against the binary. Its Predefined Symbols table was never read, and carried",
+    "  three errors — a symbol name that does not exist (__PNUTTS__ vs the actual",
+    "  __PNUT_TS__), a wrong value for __propeller__, and __VERSION__ documented as",
+    "  usable when it is defined too late for the preprocessor to ever see it.",
+    "",
+    "  If you can only verify part of a document, leave `verified` where it was and",
+    "  note what still needs reading. Half a verification is not a verification."
   ],
 
   "policy": {
