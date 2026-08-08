@@ -106,10 +106,20 @@ jobs:
           for platform in win-x64 win-arm64 linux-x64 linux-arm64 macos-x64 macos-arm64; do
             mkdir -p "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts"
 
-            # Copy documentation files
-            cp README.md "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts/"
+            # Copy documentation files.
+            # This list must stay in step with scripts-pkg/_dist/, which is what
+            # the local macOS packaging path ships — see the "Shipped
+            # documentation" section of DOCs/RELEASE-PROCESS.md. A missing file
+            # is a hard failure: a release must not publish without its docs.
+            for doc in README.md CHANGELOG.md AUTHORS CommandLine.md Preprocessor.md; do
+              if [ ! -f "${doc}" ]; then
+                echo "ERROR: required package document '${doc}' not found" >&2
+                exit 1
+              fi
+              cp "${doc}" "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts/"
+            done
+
             cp LICENSE.txt "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts/" 2>/dev/null || cp LICENSE "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts/LICENSE.txt" 2>/dev/null || echo "No LICENSE file found"
-            cp CHANGELOG.md "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts/" 2>/dev/null || true
 
             # Copy binary with correct name and create compatibility alias
             # Note: pkg produces files named "p2-pnut-ts-*" based on package.json name
@@ -667,8 +677,29 @@ jobs:
           # Extract changelog section for this version
           CHANGELOG_CONTENT=$(awk "/^## \[${VERSION}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md | sed '/^$/N;/^\n$/d')
 
-          # Extract one-line summary (first Added or Fixed bullet point)
-          SUMMARY_LINE=$(echo "${CHANGELOG_CONTENT}" | grep -m1 '^\- ' | sed 's/^- //' | sed 's/\*\*[^*]*\*\*: //')
+          # Extract the one-line summary from the entry's lede — the prose
+          # paragraph that opens the entry, before any section heading or
+          # bullet. Wrapped lines are joined back into a single line.
+          # Every entry is expected to open with one; see
+          # DOCs/voicing/CHANGELOG-Voicing.md.
+          SUMMARY_LINE=$(echo "${CHANGELOG_CONTENT}" | awk '
+            /^(#|-)/ { exit }
+            /^[[:space:]]*$/ { if (n) exit; next }
+            { line[n++] = $0 }
+            END { for (i = 0; i < n; i++) printf "%s%s", (i ? " " : ""), line[i] }
+          ')
+
+          # Older entries predate the lede convention: fall back to the first
+          # bullet, joining its wrapped continuation lines and flattening the
+          # bold lead-in to plain text.
+          if [ -z "${SUMMARY_LINE}" ]; then
+            SUMMARY_LINE=$(echo "${CHANGELOG_CONTENT}" | awk '
+              /^- / { if (f) exit; f = 1; s = substr($0, 3); next }
+              f && /^[[:space:]]+[^[:space:]]/ { sub(/^[[:space:]]+/, ""); s = s " " $0; next }
+              f { exit }
+              END { gsub(/\*\*/, "", s); print s }
+            ')
+          fi
 
           # Generate release body file
           cat > release_body.md << RELEASE_EOF
