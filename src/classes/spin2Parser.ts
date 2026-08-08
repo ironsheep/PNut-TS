@@ -4,6 +4,7 @@
 
 import fs from 'fs';
 import { Context } from '../utils/context';
+import { iOutputFilespecs, outputFilespecs } from '../utils/outputFilespecs';
 import { SpinDocument } from './spinDocument';
 import { SpinElementizer } from './spinElementizer';
 import { SpinElement } from './spinElement';
@@ -334,7 +335,7 @@ export class Spin2Parser {
       const objectOffset: number = isPasmMode ? 0 : 8;
 
       if (this.context.compileOptions.writeObj) {
-        this.writeObjectFile(this.objImage, 0, this.objImage.length, outFilename); // full
+        this.writeObjectFile(this.objImage, 0, this.objImage.length, outputFilespecs(this.context).object); // full
         this.objImage.setOffsetTo(saveObjImageOffset);
       }
 
@@ -493,8 +494,12 @@ export class Spin2Parser {
     // the dump symbol tables to listing file
   }
 
-  private writeObjectFile(objImage: ObjectImage, offset: number, byteCount: number, lstFilename: string) {
-    const objFilename = lstFilename.replace('.lst', '.obj');
+  // The destination is passed in rather than derived here: this writes the .obj for
+  // one caller and the .flash image for the other. It used to take the LISTING name
+  // and do lstFilename.replace('.lst', '.obj'), which produced the .obj for the first
+  // caller and -- because the flash filename contains no '.lst' to replace -- silently
+  // passed the flash name straight through for the second.
+  private writeObjectFile(objImage: ObjectImage, offset: number, byteCount: number, objFilename: string) {
     if (this.isLogging) this.logMessage(`  -- writing OBJ file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     const stream = fs.createWriteStream(objFilename);
     if (offset == 8) {
@@ -570,15 +575,10 @@ export class Spin2Parser {
   }
 
   private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number, hasFlashLoader: boolean = false) {
-    const lstFilename = this.context.compileOptions.listFilename;
-    const binarySuffix: string = this.context.compileOptions.binarySuffix;
-    const binSuffix: string = hasFlashLoader ? `.${binarySuffix}f` : `.${binarySuffix}`;
-    let objFilename = lstFilename.replace('.lst', binSuffix);
-    // BUGFIX: for issue #4 add true -o option
-    if (this.context.compileOptions.outputFilename.length > 0) {
-      const dirName = path.dirname(lstFilename);
-      objFilename = path.join(dirName, this.context.compileOptions.outputFilename);
-    }
+    // BUGFIX: for issue #4 add true -o option -- the -o override lives in the
+    // shared derivation now, along with the -a suffix choice
+    const outputs: iOutputFilespecs = outputFilespecs(this.context);
+    const objFilename = hasFlashLoader ? outputs.flashLoaderBinary : outputs.binary;
     if (this.isLogging) this.logMessage(`  -- writing BIN file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     const stream = fs.createWriteStream(objFilename);
 

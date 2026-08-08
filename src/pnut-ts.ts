@@ -6,6 +6,8 @@
 'use strict';
 import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
+import { fileExists, isSpin2File } from './utils/files';
+import { iOutputFilespecs, outputFilespecs } from './utils/outputFilespecs';
 import { Compiler } from './classes/compiler';
 import { ObjectCache } from './classes/objectCache';
 import { eTextSub, PreprocessorError, SpinDocument } from './classes/spinDocument';
@@ -83,7 +85,60 @@ export class PNutInTypeScript {
     //PNutInTypeScript.isTesting = true;
   }
 
+  /**
+   * Compile, and on any failure leave no output files behind.
+   *
+   * A failed build that leaves the previous run's .bin in place is worse than one
+   * that leaves nothing: the file looks current, so a make-style consumer loads
+   * stale code onto hardware and the author debugs a binary that does not
+   * correspond to the source in front of them. A partial failure is worse still,
+   * pairing a fresh .lst with a stale .bin that disagrees with it. GCC and ld
+   * unlink their output on failure for exactly this reason.
+   *
+   * The compile proper is runCompile(); this wrapper exists so that no exit path
+   * through it -- including one added later -- can skip the cleanup.
+   */
   public async run(): Promise<number> {
+    let exitCode: number = 1;
+    try {
+      exitCode = await this.runCompile();
+    } catch (error) {
+      this.removeOutputFiles();
+      throw error;
+    }
+    if (exitCode != 0) {
+      this.removeOutputFiles();
+    }
+    return exitCode;
+  }
+
+  /**
+   * Remove every file this invocation could have written.
+   *
+   * Does nothing until a source file has resolved: 'pnut-ts nosuchfile.spin2'
+   * must not delete artifacts belonging to an earlier, successful build. The
+   * listing filespec is empty until the source resolves, which is the test.
+   *
+   * The *__pre.spin2 preprocessor dump is deliberately NOT removed. It is opt-in
+   * diagnostic output requested with -i, not a build product, and it is most
+   * useful precisely when the build has just failed -- the same reason GCC keeps
+   * -save-temps output on failure.
+   */
+  private removeOutputFiles(): void {
+    const outputs: iOutputFilespecs = outputFilespecs(this.context);
+    if (outputs.listing.length == 0) {
+      return;
+    }
+    const filespecs: string[] = [outputs.listing, outputs.map, outputs.flash, outputs.object, outputs.binary, outputs.flashLoaderBinary];
+    for (const filespec of filespecs) {
+      if (fs.existsSync(filespec)) {
+        this.context.logger.verboseMsg(`* Build failed, removing ${filespec}`);
+        fs.unlinkSync(filespec);
+      }
+    }
+  }
+
+  private async runCompile(): Promise<number> {
     // ensure we know early if we are running in developer mode
     if (process.env.PNUT_DEVELOP_MODE) {
       this.context.runEnvironment.developerModeEnabled = true;
@@ -497,6 +552,16 @@ export class PNutInTypeScript {
 
     if (filename !== undefined && filename.length > 0) {
       this.context.logger.verboseMsg(`Working with file [${filename}]`);
+      // Claim the output namespace BEFORE preprocessing, not after. Preprocessing
+      // happens inside the SpinDocument constructor, so a preprocessor error never
+      // reaches the code below -- and if the listing filespec were still unset at
+      // that point, removeOutputFiles() would decline to clean up and leave the
+      // previous build's .bin sitting there looking current. The source having
+      // resolved is what matters here (decision D3), and it has: the file exists
+      // and is a .spin2. Whether it compiles is the question we are about to ask.
+      if (fileExists(filename) && isSpin2File(filename)) {
+        this.context.compileOptions.listFilename = filename.replace('.spin2', '.lst');
+      }
       // and load our .spin2 top-level file
       try {
         this.spinDocument = new SpinDocument(this.context, filename);
@@ -522,22 +587,19 @@ export class PNutInTypeScript {
         // TODO post symbols to context object instead of top-level doc??
         this.spinDocument.defineSymbol('__VERSION__', this.version, eTextSub.SA_TEXT_YES);
         this.context.currentFolder = this.spinDocument.dirName;
-        // set up output filespec in case we are writing a listing file
-        const lstFilespec = filename.replace('.spin2', '.lst');
-        this.context.compileOptions.listFilename = lstFilespec;
-        const flashFilespec = filename.replace('.spin2', '.flash');
-        this.context.compileOptions.flashFilename = flashFilespec;
-        const mapFilespec = filename.replace('.spin2', '.map');
-        this.context.compileOptions.mapFilename = mapFilespec;
+        // listFilename was set above, before preprocessing; everything else derives
+        // from it.
+        const outputs: iOutputFilespecs = outputFilespecs(this.context);
+        this.context.compileOptions.flashFilename = outputs.flash;
+        this.context.compileOptions.mapFilename = outputs.map;
         if (this.options.list) {
-          this.context.logger.verboseMsg(`* Write listing file: ${lstFilespec}`);
+          this.context.logger.verboseMsg(`* Write listing file: ${outputs.listing}`);
         }
         if (this.options.map) {
-          this.context.logger.verboseMsg(`* Write memory map file: ${mapFilespec}`);
+          this.context.logger.verboseMsg(`* Write memory map file: ${outputs.map}`);
         }
         if (this.context.compileOptions.writeObj) {
-          const objFilespec = filename.replace('.spin2', '.obj');
-          this.context.logger.verboseMsg(`* Write object file: ${objFilespec}`);
+          this.context.logger.verboseMsg(`* Write object file: ${outputs.object}`);
         }
       }
     } else {
