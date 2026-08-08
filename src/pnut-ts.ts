@@ -8,7 +8,7 @@ import { Command, Option, CommanderError, type OptionValues } from 'commander';
 import { Context } from './utils/context';
 import { Compiler } from './classes/compiler';
 import { ObjectCache } from './classes/objectCache';
-import { eTextSub, SpinDocument } from './classes/spinDocument';
+import { eTextSub, PreprocessorError, SpinDocument } from './classes/spinDocument';
 import path from 'path';
 import fs from 'fs';
 import { exec } from 'child_process';
@@ -501,8 +501,11 @@ export class PNutInTypeScript {
       try {
         this.spinDocument = new SpinDocument(this.context, filename);
       } catch (error) {
-        // Handle preprocessor errors (e.g., missing include files)
-        if (error instanceof Error) {
+        // A PreprocessorError means the diagnostics were already written to stderr
+        // as they were detected -- reporting here too would print each one twice.
+        if (error instanceof PreprocessorError) {
+          // nothing to say; the author has already seen every diagnostic
+        } else if (error instanceof Error) {
           this.context.logger.errorMsg(error.message);
         } else {
           this.context.logger.errorMsg(`Preprocessing failed: ${error}`);

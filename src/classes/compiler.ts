@@ -4,7 +4,7 @@
 'use strict';
 
 import { Context } from '../utils/context';
-import { SpinDocument } from './spinDocument';
+import { PreprocessorError, SpinDocument } from './spinDocument';
 import { Spin2Parser } from './spin2Parser';
 import { RegressionReporter } from './regression';
 import { DatFile, ObjFile, SpinFiles } from './spinFiles';
@@ -138,6 +138,12 @@ export class Compiler {
         this.spin2Parser.P2Map();
         this.spin2Parser.ComposeRam();
       } catch (error: unknown) {
+        if (error instanceof PreprocessorError) {
+          // Raised while preprocessing a child object. Its diagnostics are already
+          // on stderr; dressing this up as a compiler error would print a second,
+          // less specific message pointing at the wrong place.
+          throw error;
+        }
         if (error instanceof Error) {
           const sourceFileID: number = this.spin2Parser.failingFileID;
           const srcDocument: SpinDocument | undefined = this.context.sourceFiles.getFileHavingID(sourceFileID);

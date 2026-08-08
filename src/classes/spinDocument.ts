@@ -35,10 +35,28 @@ export enum eTextSub {
   SA_NUMBER_NO
 }
 
-export interface iError {
-  sourceLineIndex: number;
-  characterOffset: number;
-  message: string;
+export enum eDiagnosticSeverity {
+  /** The source cannot be compiled as written. Reported, then the build aborts. */
+  DS_FATAL,
+  /** Worth telling the author about, but compilation continues and artifacts are written. */
+  DS_WARNING
+}
+
+/**
+ * Thrown at the end of a preprocessing pass in which at least one fatal
+ * diagnostic was reported.
+ *
+ * The diagnostics themselves have ALREADY been written to stderr by the time
+ * this is thrown -- see SpinDocument.reportError(). Catch sites must therefore
+ * abort without reporting anything further, or the author sees the message
+ * twice. The class exists precisely so those sites can tell "already reported"
+ * apart from an ordinary Error that still needs printing.
+ */
+export class PreprocessorError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PreprocessorError';
+  }
 }
 
 class PreProcState {
@@ -138,7 +156,7 @@ export class SpinDocument {
   private legalVersions: number[] = [41, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55];
   private requiredVersion: number = 0;
   // errors reported while processing file
-  private errorsfound: iError[] = [];
+  private hadFatalDiagnostic: boolean = false;
   private spinElements: SpinElement[] = [];
 
   constructor(ctx: Context, fileSpec: string) {
@@ -294,20 +312,26 @@ export class SpinDocument {
     return this.requiredVersion == 0 ? this.defaultVersion : this.requiredVersion;
   }
 
-  public reportError(message: string, lineIndex: number, characterOffset: number) {
-    // record a new error
-    const errorReport: iError = {
-      message: message,
-      sourceLineIndex: lineIndex,
-      characterOffset: characterOffset
-    };
-    //this.logMessage(`CODE: new error: Ln#${lineIndex + 1}: ${message}`);
-    this.errorsfound.push(errorReport);
-  }
-
-  get errors(): iError[] {
-    // return list of all errors found
-    return this.errorsfound;
+  /**
+   * Report a preprocessor diagnostic against a line of this document.
+   *
+   * Diagnostics are emitted the moment they are detected, which means they
+   * arrive on stderr in source order and are visible in normal operation. A
+   * fatal one does NOT stop the pass: the author gets every preprocessor error
+   * in the file from a single run rather than rediscovering them one build at
+   * a time. preProcess() throws PreprocessorError at the end of the pass if any
+   * fatal was reported.
+   *
+   * @param message the diagnostic text, without severity or position -- both are supplied here
+   * @param lineIndex 0-based index of the offending source line; reported 1-based
+   * @param severity fatal aborts the build after the pass; warning does not
+   */
+  private reportError(message: string, lineIndex: number, severity: eDiagnosticSeverity) {
+    const severityText: string = severity === eDiagnosticSeverity.DS_FATAL ? 'error' : 'warning';
+    this.context.logger.logErrorMessage(`${this.fileSpec}:${lineIndex + 1}:${severityText}:${message}`);
+    if (severity === eDiagnosticSeverity.DS_FATAL) {
+      this.hadFatalDiagnostic = true;
+    }
   }
 
   get validFile(): boolean {
@@ -466,7 +490,7 @@ export class SpinDocument {
             }
           } else {
             // ERROR bad statement
-            this.reportError(`#define is missing symbol name`, lineIdx, 0);
+            this.reportError(`#define is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (/^\s*#undef\s+/i.test(currLine)) {
           // parse #undef {symbol}
@@ -475,18 +499,21 @@ export class SpinDocument {
             // this.logMessage(`SpinPP: (DBG) UNDEF inPreProcIForIxFNOT=(${inPreProcIForIxFNOT}), thisSidxeKeepsCode=(${thisSideKexepsCode})`);
             if (this.thisSideKeepsCode() || !this.inIfDef()) {
               if (!this.undefineSymbol(symbol)) {
-                // ERROR no such symbol
-                this.reportError(`#undef symbol [${symbol}] not found`, lineIdx, 0);
+                // Not fatal: C specifies #undef of an undefined symbol as a no-op.
+                this.reportError(`#undef symbol [${symbol}] not found`, lineIdx, eDiagnosticSeverity.DS_WARNING);
               } else {
                 this.logMessage(`SpinPP: removed symbol [${symbol}]`);
-                replaceCurrent = this.commentOut(currLine);
               }
+              // Either way the directive leaves the stream. A #undef that reached the
+              // elementizer would be reported as a syntax error on the author's own
+              // valid directive -- which is what happened before the warning existed.
+              replaceCurrent = this.commentOut(currLine);
             } else {
               // ignore this code since in conditional code
               this.logMessage(`SpinPP: NOT keeping code SKIP [${currLine}]`);
             }
           } else {
-            this.reportError(`#undef is missing symbol name`, lineIdx, 0);
+            this.reportError(`#undef is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (/^\s*#ifdef\s+/i.test(currLine) || /^\s*#elseifdef\s+/i.test(currLine)) {
           // parse #ifdef {symbol}
@@ -495,7 +522,7 @@ export class SpinDocument {
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
           const ifState = isElseForm ? this.currIfDef() : this.enterIf();
           if (ifState === undefined) {
-            this.reportError(`#elseifdef found before #ifdef/#ifndef`, lineIdx, 0);
+            this.reportError(`#elseifdef found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             ifState.setInIf();
             if (isElseForm) {
@@ -533,11 +560,11 @@ export class SpinDocument {
                 replaceCurrent = this.commentOut(currLine);
               } else {
                 // ERROR bad statement
-                this.reportError(`#directive is missing symbol name`, lineIdx, 0);
+                this.reportError(`#directive is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
               }
             } else {
               // ERROR missing preceeding #if*...
-              this.reportError(`#elseifdef without earlier #if*...`, lineIdx, 0);
+              this.reportError(`#elseifdef without earlier #if*...`, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           }
         } else if (/^\s*#ifndef\s+/i.test(currLine) || /^\s*#elseifndef\s+/i.test(currLine)) {
@@ -547,7 +574,7 @@ export class SpinDocument {
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
           const ifState = isElseForm ? this.currIfDef() : this.enterIf();
           if (ifState === undefined) {
-            this.reportError(`#elseifndef found before #ifdef/#ifndef`, lineIdx, 0);
+            this.reportError(`#elseifndef found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             ifState.setInIf();
             if (isElseForm) {
@@ -583,11 +610,11 @@ export class SpinDocument {
                 // this.logMessage(`SpinPP: (DBG) thisSideKeexpsCode=(${thisSideKexepsCode})`);
               } else {
                 // ERROR bad statement
-                this.reportError(`#directive is missing symbol name`, lineIdx, 0);
+                this.reportError(`#directive is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
               }
             } else {
               // ERROR missing preceeding #if*...
-              this.reportError(`#elseifndef without earlier #if*...`, lineIdx, 0);
+              this.reportError(`#elseifndef without earlier #if*...`, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           }
         } else if (/^\s*#else\s*/i.test(currLine)) {
@@ -595,7 +622,7 @@ export class SpinDocument {
           const ifState = this.currIfDef();
           if (ifState === undefined) {
             // ERROR missing preceeding #if*...
-            this.reportError(`#else found before #ifdef/#ifndef`, lineIdx, 0);
+            this.reportError(`#else found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             replaceCurrent = this.commentOut(currLine);
             ifState.setInElse();
@@ -604,7 +631,7 @@ export class SpinDocument {
           // parse #endif
           if (!this.inIfDef()) {
             // ERROR missing preceeding #if*...
-            this.reportError(`#endif without earlier #if*...`, lineIdx, 0);
+            this.reportError(`#endif without earlier #if*...`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             replaceCurrent = this.commentOut(currLine);
             this.exitIf();
@@ -614,12 +641,12 @@ export class SpinDocument {
           // parse #error
           replaceCurrent = this.commentOut(currLine);
           const message: string = currLine.substring(7);
-          this.reportError(`ERROR: ${message}`, lineIdx, 0);
+          this.reportError(`${message}`, lineIdx, eDiagnosticSeverity.DS_FATAL);
         } else if (/^\s*#warn\s+/i.test(currLine)) {
           // parse #warn
           replaceCurrent = this.commentOut(currLine);
           const message: string = currLine.substring(7);
-          this.reportError(`WARNING: ${message}`, lineIdx, 0);
+          this.reportError(`${message}`, lineIdx, eDiagnosticSeverity.DS_WARNING);
         } else if (/^\s*#include\s+/i.test(currLine)) {
           this.logMessage(`SpinPP: have #include [${currLine}]`);
           // handle #include "filename"
@@ -678,11 +705,11 @@ export class SpinDocument {
               }
             } else {
               // ERROR bad statement
-              this.reportError(`#pragma ${command} is missing symbol name`, lineIdx, 0);
+              this.reportError(`#pragma ${command} is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           } else {
             // ERROR bad statement
-            this.reportError(`#pragma [${command}] UNSUPPORTED!`, lineIdx, 0);
+            this.reportError(`#pragma [${command}] UNSUPPORTED!`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (currLine.match(/^\s*#-*[0-9%$]+\s*,*|^\s*#_*[A-Za-z_]+\s*,*/)) {
           // ignore these enumeration starts, they are not meant to be directives
@@ -693,7 +720,7 @@ export class SpinDocument {
           if (lineParts.length == 0) {
             lineParts = [currLine];
           }
-          this.reportError(`Unknown #directive: [${lineParts[0]}]`, lineIdx, 0);
+          this.reportError(`Unknown #directive: [${lineParts[0]}]`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           skipThisline = true;
         }
       } else if (currLine.startsWith('{{')) {
@@ -795,7 +822,12 @@ export class SpinDocument {
     }
     this.getVersionFromHeader(this.headerComments);
 
-    this.dumpErrors(); // report on errors if any found
+    // Every diagnostic has already been written to stderr as it was detected, so
+    // the author sees all of this file's preprocessor errors from one run rather
+    // than one per build. Now that the pass has shown them all, refuse to go on.
+    if (this.hadFatalDiagnostic) {
+      throw new PreprocessorError(`Preprocessing failed for [${this.fileBaseName}]`);
+    }
 
     // if regression testing the emit our preprocessing result
     if (this.context?.reportOptions.writePreprocessReport) {
@@ -834,16 +866,6 @@ export class SpinDocument {
       foundDirectiveStatus = true;
     }
     return foundDirectiveStatus;
-  }
-
-  private dumpErrors() {
-    if (this.errorsfound.length > 0) {
-      this.logMessage(''); // blank line
-    }
-    for (let index = 0; index < this.errorsfound.length; index++) {
-      const error = this.errorsfound[index];
-      this.logMessage(`ERROR: Ln#${error.sourceLineIndex + 1}: ${error.message}`);
-    }
   }
 
   private recordComment(line: string) {
@@ -972,10 +994,10 @@ export class SpinDocument {
       } else if (fileExtension.length > 0 && fileExtension.toLowerCase() === '.spin2') {
         isolatedFilename = filename;
       } else {
-        this.reportError(`Filetype [${fileExtension}] NOT supported, must be .spin2`, index, 0);
+        this.reportError(`Filetype [${fileExtension}] NOT supported, must be .spin2`, index, eDiagnosticSeverity.DS_FATAL);
       }
     } else {
-      this.reportError(`Unable to get filename from #include ... (missing quotes?)`, index, 0);
+      this.reportError(`Unable to get filename from #include ... (missing quotes?)`, index, eDiagnosticSeverity.DS_FATAL);
     }
     this.logMessage(`CODE: isolatedFilename=[${isolatedFilename}]`);
     return isolatedFilename;
@@ -1039,7 +1061,7 @@ export class SpinDocument {
         this.requiredVersion = this.legalVersions.includes(possibleVersion) ? possibleVersion : 0;
         //this.logMessage(`  -- possibleVersion=(${possibleVersion}) -> requiredVersion=(${this.requiredVersion})`);
         if (possibleVersion != this.requiredVersion) {
-          this.reportError(`ERROR: ${symbolMatch[0]}, ${possibleVersion} is not a legal Spin2 Language Version!`, index, 0);
+          this.reportError(`${symbolMatch[0]}, ${possibleVersion} is not a legal Spin2 Language Version!`, index, eDiagnosticSeverity.DS_FATAL);
         }
       }
     }
