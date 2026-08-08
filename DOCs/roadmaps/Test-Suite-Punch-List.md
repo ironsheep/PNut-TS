@@ -413,6 +413,60 @@ is the cause. Pick the handling option then.
 
 ---
 
+## 7. `copyright` excluded from the release package (added 2026-08-08)
+
+**Surfaced by:** CLI-Robustness closeout, while reconciling the two packaging
+paths.
+
+The repo root `copyright` names `github.com/ironsheep/Pnut_ts_dev` — a private
+dev repo — and credits Iron Sheep Productions only. The
+`scripts-pkg/_dist/copyright` copy that has actually been shipping names the
+public `github.com/ironsheep/PNut_TS` and credits **Iron Sheep Productions and
+Parallax Inc.** The `_dist` text is the correct one to publish.
+
+Because of this, `copyright` was deliberately left out of the release workflow's
+document list — adding it as-is would publish the wrong text to every platform.
+
+**Fix:** reconcile root `copyright` to the `_dist` wording, then add `copyright`
+to the `for doc in ...` list at `.github/workflows/release.yml:112`. Two one-line
+changes. Attribution wording is Stephen's call, not a mechanical merge.
+
+## 8. `#include` of a constants-only file fails (added 2026-08-08)
+
+**Surfaced by:** CLI-Robustness sprint; pre-existing, reproduced on the
+pre-sprint build `58180b1`.
+
+`#include` of a file containing only CON declarations fails with
+`<inc>:N:error:No PUB method or DAT block found`, blamed on the *included* file —
+even though the including file has a `PUB` and the preprocessed output is
+correct. Including a file that itself contains a `PUB` works.
+
+Uncovered because `TEST/PREPROC-tests/inc/included.spin2` has `PUB` methods, and
+that suite runs `--pass preprocess`, stopping before compilation. **Nothing
+covers full compilation of an `#include`.**
+
+Related to item 2's second root cause (CON-only sources are legal as imported
+objects but not as top-level) but distinct: here the CON-only file is *included*,
+not compiled top-level, so the top-level check is being applied to the wrong
+file.
+
+Sharing constants is arguably the main reason to use `#include`, so this likely
+deserves its own defect sprint rather than a punch-list line.
+
+## 9. `TEST/FULL` `dumpTables` failure + `-I` relative-path bug (added 2026-08-08)
+
+**Surfaced by:** CLI-Robustness entry-baseline correction.
+
+`jest-full-config` carries **4** failures (`dumpTables`, `condCode`,
+`condCodeElse`, `include`), proven pre-existing at `58180b1`. Three are item 2
+above. Two things are *not* covered there:
+
+1. **`dumpTables`** — not a preprocessor GOLD issue; needs its own look.
+2. **`TEST/FULL/pnut-ts-preproc.test.ts` runs the CLI with `-I inc` relative to
+   cwd rather than to the test directory** — a likely contributing cause for the
+   `include` failure independent of GOLD staleness, and a latent trap for any
+   future test in that file.
+
 ## Cross-cutting note: regression tests against "us-vs-us" GOLDs
 
 Three of the items above (`#1 op_qlog`, `#2 preproc GOLDs`, the deleted

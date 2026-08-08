@@ -1,5 +1,11 @@
 # CLI Robustness Sprint Plan
 
+> **STATUS: CLOSED — 2026-08-08.** All 12 sections certified SHIPPED against
+> current code. Shipped in build **1.55.2**, tag `v1.55.2` on `main`.
+> Closeout audit: [`2026-08-08-CLI-Robustness-CLOSEOUT.md`](2026-08-08-CLI-Robustness-CLOSEOUT.md)
+> — read it for per-section evidence, the exit baseline, the accepted in-sprint
+> scope extension, and carryover items.
+
 Three related robustness defects in the PNut-TS command-line contract, all
 sharing one theme: **the compiler currently fails silently and leaves a
 misleading result behind.**
