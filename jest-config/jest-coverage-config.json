@@ -17,7 +17,10 @@
     "<rootDir>/dist/tests/LANG-VER-tests/",
     "<rootDir>/dist/tests/ENCODING-tests/",
     "<rootDir>/dist/tests/V52A-tests/",
-    "<rootDir>/dist/tests/INCLUDE-tests/"
+    "<rootDir>/dist/tests/INCLUDE-tests/",
+    "<rootDir>/dist/tests/EXCEPT-tests/",
+    "<rootDir>/dist/tests/PREPROC-tests/",
+    "<rootDir>/dist/tests/CLEANUP-tests/"
   ],
   "testMatch": ["**/*.test.js"],
   "verbose": true
