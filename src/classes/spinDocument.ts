@@ -64,15 +64,31 @@ export class PreprocessorError extends Error {
 const ERROR_DIRECTIVE = /^\s*#error\s+(.*)$/i;
 const WARN_DIRECTIVE = /^\s*#warn\s+(.*)$/i;
 
+// A directive written with nothing after it: '#define' alone on a line.
+const BARE_DIRECTIVE = /^\s*#([A-Za-z_]+)\s*$/;
+
+// Directives that are meaningless without an argument. #else and #endif are
+// deliberately absent -- they legitimately stand alone, and their own patterns
+// match them earlier in the chain, so they never reach the bare-directive test.
+const ARGUMENT_TAKING_DIRECTIVES: string[] = ['define', 'undef', 'ifdef', 'ifndef', 'elseifdef', 'elseifndef', 'error', 'warn', 'include', 'pragma'];
+
 class PreProcState {
   private ifSideEmits: boolean = false;
   private elseSideEmits: boolean = false;
   private inIfSide: boolean = false;
   private foundElse: boolean = false; // T/F where T means the endif can be emitted even if side not emitting
   private skipThisIfDef: boolean = false; // T/F where T means all sides of IFDEF...ENDIF don't emit code
+  // where the #ifdef/#ifndef that opened this level was written, so an unterminated
+  // conditional can name the line the author needs to look at rather than EOF
+  private readonly openedAtLineIndex: number;
 
-  constructor() {
+  constructor(openedAtLineIndex: number = 0) {
+    this.openedAtLineIndex = openedAtLineIndex;
     this.clear();
+  }
+
+  get openingLineIndex(): number {
+    return this.openedAtLineIndex;
   }
 
   get ignoreIfdef(): boolean {
@@ -318,6 +334,28 @@ export class SpinDocument {
   }
 
   /**
+   * If this line is a known argument-taking directive written with no argument,
+   * return the directive's name; otherwise undefined.
+   *
+   * Every directive pattern in preProcess() requires trailing whitespace, so an
+   * argument-less directive matches none of them and falls all the way through to
+   * the CON enum-start branch -- whose pattern matches '#' followed by letters and
+   * therefore swallows a bare #define, #ifdef, #include or #error without a word.
+   *
+   * The test is an EXACT token match, which is why it adds no risk to valid Spin2:
+   * these tokens are already claimed as directives by the patterns above, so no
+   * enum start that works today changes meaning.
+   */
+  private bareDirectiveName(line: string): string | undefined {
+    const match: RegExpExecArray | null = BARE_DIRECTIVE.exec(line);
+    if (match === null) {
+      return undefined;
+    }
+    const token: string = match[1].toLowerCase();
+    return ARGUMENT_TAKING_DIRECTIVES.includes(token) ? token : undefined;
+  }
+
+  /**
    * Pull the author's message out of an #error or #warn directive.
    *
    * The usage guide writes these messages in quotes, so one surrounding pair of
@@ -500,6 +538,7 @@ export class SpinDocument {
       } else if (/^\s*#/.test(currLine)) {
         // handle preprocessor #directive
         this.gatheringHeaderComment = false; // no more gathering once we hit text
+        const bareDirective: string | undefined = this.bareDirectiveName(currLine);
         if (/^\s*#define\s+/i.test(currLine)) {
           // parse #define {symbol} {value}
           const [symbol, value] = this.getSymbolValue(currLine);
@@ -542,7 +581,7 @@ export class SpinDocument {
           // parse #elseifdef {symbol}
           const isElseForm: boolean = /^\s*#elseifdef\s+/i.test(currLine);
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
-          const ifState = isElseForm ? this.currIfDef() : this.enterIf();
+          const ifState = isElseForm ? this.currIfDef() : this.enterIf(lineIdx);
           if (ifState === undefined) {
             this.reportError(`#elseifdef found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
@@ -594,7 +633,7 @@ export class SpinDocument {
           // parse #elseifndef {symbol}
           const isElseForm: boolean = /^\s*#elseifndef\s+/i.test(currLine);
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
-          const ifState = isElseForm ? this.currIfDef() : this.enterIf();
+          const ifState = isElseForm ? this.currIfDef() : this.enterIf(lineIdx);
           if (ifState === undefined) {
             this.reportError(`#elseifndef found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
@@ -739,6 +778,11 @@ export class SpinDocument {
             // ERROR bad statement
             this.reportError(`#pragma [${command}] UNSUPPORTED!`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
+        } else if (bareDirective !== undefined) {
+          // A known directive written with no argument. Without this test the CON
+          // enum-start pattern below would match it and silently discard it.
+          replaceCurrent = this.commentOut(currLine);
+          this.reportError(`#${bareDirective} is missing its argument`, lineIdx, eDiagnosticSeverity.DS_FATAL);
         } else if (currLine.match(/^\s*#-*[0-9%$]+\s*,*|^\s*#_*[A-Za-z_]+\s*,*/)) {
           // ignore these enumeration starts, they are not meant to be directives
           this.logMessage(`SpinPP: SKIP ENUM [${currLine}]`);
@@ -849,6 +893,18 @@ export class SpinDocument {
       }
     }
     this.getVersionFromHeader(this.headerComments);
+
+    // An #ifdef/#ifndef the author never closed does not fail on its own -- it just
+    // ends at EOF, leaving the rest of the file's inclusion decided by a block that
+    // was never finished. Name the line that opened it, not the end of the file.
+    if (this.inIfDef()) {
+      const unclosedLevel: PreProcState | undefined = this.currIfDef();
+      if (unclosedLevel !== undefined) {
+        // PNut's exact wording -- REF-V52A/p2com.asm:3629 -- so a user grepping build
+        // logs across both compilers gets the same hits.
+        this.reportError(`Expected #ENDIF`, unclosedLevel.openingLineIndex, eDiagnosticSeverity.DS_FATAL);
+      }
+    }
 
     // Every diagnostic has already been written to stderr as it was detected, so
     // the author sees all of this file's preprocessor errors from one run rather
@@ -1127,8 +1183,8 @@ export class SpinDocument {
 
   // #ifdef/#ifndef support routines
 
-  private enterIf(): PreProcState {
-    const newProcLevel = new PreProcState();
+  private enterIf(lineIndex: number): PreProcState {
+    const newProcLevel = new PreProcState(lineIndex);
     newProcLevel.setInIf();
     this.preProcNestingState.push(newProcLevel);
     return newProcLevel;
