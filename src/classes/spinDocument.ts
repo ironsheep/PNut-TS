@@ -59,6 +59,11 @@ export class PreprocessorError extends Error {
   }
 }
 
+// The message is taken from the capture group rather than a fixed offset, so it is
+// immune both to leading indentation and to the two directives differing in length.
+const ERROR_DIRECTIVE = /^\s*#error\s+(.*)$/i;
+const WARN_DIRECTIVE = /^\s*#warn\s+(.*)$/i;
+
 class PreProcState {
   private ifSideEmits: boolean = false;
   private elseSideEmits: boolean = false;
@@ -310,6 +315,23 @@ export class SpinDocument {
   get versionNumber(): number {
     // return the Spin language version required by this file
     return this.requiredVersion == 0 ? this.defaultVersion : this.requiredVersion;
+  }
+
+  /**
+   * Pull the author's message out of an #error or #warn directive.
+   *
+   * The usage guide writes these messages in quotes, so one surrounding pair of
+   * matching quotes is removed: the quotes delimit the text, they are not part
+   * of it. Any other quoting the author uses is left exactly as written.
+   */
+  private directiveMessage(line: string, directivePattern: RegExp): string {
+    const match: RegExpExecArray | null = directivePattern.exec(line);
+    let message: string = match !== null ? match[1].trim() : '';
+    const firstChar: string = message.charAt(0);
+    if (message.length >= 2 && (firstChar === '"' || firstChar === "'") && message.endsWith(firstChar)) {
+      message = message.substring(1, message.length - 1);
+    }
+    return message;
   }
 
   /**
@@ -637,16 +659,22 @@ export class SpinDocument {
             this.exitIf();
           }
           // this.logMessage(`SpinPP: (DBG) inPrePrxocIForIFNOT=(${inPreProcIFoxrIFNOT})`);
-        } else if (/^\s*#error\s+/i.test(currLine)) {
-          // parse #error
+        } else if (ERROR_DIRECTIVE.test(currLine)) {
+          // parse #error {message}
           replaceCurrent = this.commentOut(currLine);
-          const message: string = currLine.substring(7);
-          this.reportError(`${message}`, lineIdx, eDiagnosticSeverity.DS_FATAL);
-        } else if (/^\s*#warn\s+/i.test(currLine)) {
-          // parse #warn
+          if (this.thisSideKeepsCode() || !this.inIfDef()) {
+            this.reportError(this.directiveMessage(currLine, ERROR_DIRECTIVE), lineIdx, eDiagnosticSeverity.DS_FATAL);
+            // #error is a stop the author placed deliberately -- "abort here" is what
+            // it means -- so unlike other fatals it does not wait for the end of the
+            // pass. Nothing after it in this file is expected to be meaningful.
+            throw new PreprocessorError(`Preprocessing stopped by #error in [${this.fileBaseName}]`);
+          }
+        } else if (WARN_DIRECTIVE.test(currLine)) {
+          // parse #warn {message}
           replaceCurrent = this.commentOut(currLine);
-          const message: string = currLine.substring(7);
-          this.reportError(`${message}`, lineIdx, eDiagnosticSeverity.DS_WARNING);
+          if (this.thisSideKeepsCode() || !this.inIfDef()) {
+            this.reportError(this.directiveMessage(currLine, WARN_DIRECTIVE), lineIdx, eDiagnosticSeverity.DS_WARNING);
+          }
         } else if (/^\s*#include\s+/i.test(currLine)) {
           this.logMessage(`SpinPP: have #include [${currLine}]`);
           // handle #include "filename"
@@ -852,9 +880,9 @@ export class SpinDocument {
       foundDirectiveStatus = true;
     } else if (/^\s*#elseifndef\s+/i.test(line)) {
       foundDirectiveStatus = true;
-    } else if (/^\s*#warn\s+/i.test(line)) {
+    } else if (WARN_DIRECTIVE.test(line)) {
       foundDirectiveStatus = true;
-    } else if (/^\s*#error\s+/i.test(line)) {
+    } else if (ERROR_DIRECTIVE.test(line)) {
       foundDirectiveStatus = true;
     } else if (/^\s*#include\s+/i.test(line)) {
       foundDirectiveStatus = true;
