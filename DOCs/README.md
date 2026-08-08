@@ -19,6 +19,14 @@ Complete language specification and IDE integration package for Parallax Propell
 - **IDE integration files** for VS Code, Sublime, Atom, Vim, Emacs
 - **Automated extraction pipeline** for maintaining sync with compiler changes
 
+### `/voicing/` - How We Write What We Publish
+Voice and content standards for the project's documents. Read the shared core
+first; each artifact then has a short guide of its own:
+
+- **[README.md](voicing/README.md)** - Shared core: audience, evidence-grounding, no-internals rule, voice. Applies to everything we publish
+- **[CHANGELOG-Voicing.md](voicing/CHANGELOG-Voicing.md)** - `CHANGELOG.md`, which is published verbatim as the GitHub release notes
+- **[Usage-Guide-Voicing.md](voicing/Usage-Guide-Voicing.md)** - The usage guides under `/internals/usage-guides*/`
+
 ### `/roadmaps/` - Future Improvement Plans
 Strategic plans for architectural improvements and optimizations:
 
