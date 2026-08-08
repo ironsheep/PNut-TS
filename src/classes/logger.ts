@@ -19,20 +19,19 @@ export class Logger {
     this.verboseEnabled = true;
   }
 
+  // Diagnostics are emitted as plain text, without ANSI escapes. Colorizing at the
+  // source prevents downstream consumers -- editors, build wrappers, log collectors,
+  // grep -- from filtering or recolorizing our output; that decision belongs to
+  // whatever is displaying the text, not to the compiler producing it.
   public errorMsg(message: string | unknown) {
-    const redMessage: string = this.errorColor(message);
-    this.logErrorMessage(`${this.programName}: ERROR- ${redMessage}`);
+    this.logErrorMessage(`${this.programName}: ERROR- ${message}`);
   }
 
-  public compilerErrorMsg(message: string, underTest: boolean = false) {
-    if (typeof message !== 'string') {
-      this.logMessage(`* compilerErrorMsg() - message is ${typeof message}`);
-    }
-    const redMessage: string = underTest ? message : this.errorColor(message);
-    if (typeof redMessage !== 'string') {
-      this.logMessage(`* compilerErrorMsg() - redMessage is ${typeof redMessage}`);
-    }
-    this.logErrorMessage(`${redMessage}`);
+  public compilerErrorMsg(message: string) {
+    // The non-string guard that used to sit here is redundant: logErrorMessage
+    // carries the identical check one level down, for every caller rather than
+    // just this one.
+    this.logErrorMessage(`${message}`);
   }
 
   public verboseMsg(message: string): void {
@@ -50,22 +49,11 @@ export class Logger {
   }
 
   public warningMsg(message: string): void {
-    const yellowMessage: string = this.warningColor(message);
-    this.logErrorMessage(`${this.programName}: WARNING- ${yellowMessage}`);
+    this.logErrorMessage(`${this.programName}: WARNING- ${message}`);
   }
 
   public progressMsg(message: string): void {
     this.logMessage(`${this.programName}: ${message}`);
-  }
-
-  private errorColor(str: string | unknown): string {
-    // Add ANSI escape codes to display text in red.
-    return `\x1b[31m${str}\x1b[0m`;
-  }
-
-  private warningColor(str: string | unknown): string {
-    // Add ANSI escape codes to display text in yellow.
-    return `\x1b[33m${str}\x1b[0m`;
   }
 
   /**

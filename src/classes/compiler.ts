@@ -144,11 +144,9 @@ export class Compiler {
           const filename: string = srcDocument !== undefined ? srcDocument.fileSpec : this.srcFile.fileSpec;
           const sourceLineNumber: number = this.spin2Parser.sourceLineNumber;
           const compilerErrorText: string = `${filename}:${sourceLineNumber}:error:${error.message}`;
-          //this.context.logger.logMessage(`EEEE: About to report:   ${compilerErrorText}`);
-          this.context.logger.logMessage(`${compilerErrorText}`);
           //this.context.logger.logMessage(` DBG filename=[${filename}], sourceLineNumber=(${sourceLineNumber}), errTxt=[${compilerErrorText}]`);
-          const underTestStatus: boolean = this.context.reportOptions.regressionTesting;
-          this.context.logger.compilerErrorMsg(compilerErrorText, underTestStatus);
+          // Errors are reported once, on stderr only, as plain text -- see logger.compilerErrorMsg().
+          this.context.logger.compilerErrorMsg(compilerErrorText);
           //if (error.stack !== undefined && !underTestStatus) {
           //  this.context.logger.errorMsg(error.stack);
           //}

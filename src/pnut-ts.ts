@@ -94,8 +94,9 @@ export class PNutInTypeScript {
         // Visibly override write routines as example!
         writeOut: (str) => process.stdout.write(this.prefixName(str)),
         writeErr: (str) => process.stderr.write(this.prefixName(str)),
-        // Highlight errors in color.
-        outputError: (str, write) => write(this.errorColor(str))
+        // Argument errors go out as plain text, like every other diagnostic -- see
+        // logger.compilerErrorMsg() for why we do not colorize at the source.
+        outputError: (str, write) => write(str)
       })
       .name('pnut-ts')
       .version(`v${this.version}`, '-V, --version', 'Output the version number')
@@ -614,11 +615,6 @@ export class PNutInTypeScript {
   //  const deviceNodes: string[] = await UsbSerial.serialDeviceList();
   //  this.context.runEnvironment.serialPortDevices = deviceNodes;
   //}
-
-  private errorColor(str: string): string {
-    // Add ANSI escape codes to display text in red.
-    return `\x1b[31m${str}\x1b[0m`;
-  }
 
   private prefixName(str: string): string {
     if (str.startsWith('$-')) {
