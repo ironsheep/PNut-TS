@@ -3,6 +3,8 @@
 **Sprint:** CLI-Robustness · **Build:** 1.55.2 · **Closed:** 2026-08-08
 **Plan:** `DOCs/roadmaps/completed/CLI-Robustness-Sprint-Plan.md`
 **Tag:** `v1.55.2` (annotated, on `main`)
+**Retrospective:** [`2026-08-08-CLI-Robustness-Retrospective.md`](2026-08-08-CLI-Robustness-Retrospective.md)
+— read that for *why this sprint was hard*; this document covers *what shipped*.
 
 **Certification: PLAN CERTIFIED DONE.** All 12 plan sections SHIPPED, verified
 against current code rather than against commit messages. No PARTIAL, no
