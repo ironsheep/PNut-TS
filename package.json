@@ -70,7 +70,8 @@
     "perf-compare": "node dist/tests/PERF/perf-compare.js",
     "bld-dist": "npm run build && npm run esbuild && npm pack && pkg .",
     "gen-regold-tarball": "./scripts/gold/bundle.sh",
-    "apply-regold-tarball": "./scripts/gold/apply.sh"
+    "apply-regold-tarball": "./scripts/gold/apply.sh",
+    "docs-check": "node scripts/docs-check.js"
   },
   "repository": {
     "type": "git",
