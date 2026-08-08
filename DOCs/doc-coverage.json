@@ -214,6 +214,7 @@
     "DOCs/analysis/Spin2-Interpreter-Analysis-Round5-Findings.md": { "class": "historical" },
     "DOCs/language-specification/documentation/PASM2-SPIN2-Language-Specification-Extraction-Roadmap.md": { "class": "historical" },
     "DOCs/roadmaps/Architectural-Extraction-Roadmap.md": { "class": "historical" },
+    "DOCs/roadmaps/Preprocessor-Symbol-Correctness-Sprint-Plan.md": { "class": "historical", "note": "Active sprint plan; archives to completed/ at closeout" },
     "DOCs/roadmaps/completed/CLI-Robustness-Sprint-Plan.md": { "class": "historical" },
     "DOCs/roadmaps/completed/2026-08-08-CLI-Robustness-CLOSEOUT.md": { "class": "historical" },
     "DOCs/roadmaps/completed/2026-08-08-CLI-Robustness-Retrospective.md": { "class": "historical" },
