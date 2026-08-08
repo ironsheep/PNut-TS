@@ -766,12 +766,19 @@ export class SpinDocument {
               // get parsed content from spinDoc inserting into current content after / -or / in-place-of this line
               insertTextLines = incSpinDocument.allPreprocessedLines;
             } else {
-              // Fatal error - include file not found
-              throw new Error(`${this.fileSpec}:${lineIdx + 1}:error:File [${filename}] not found in #include (m630)`);
+              // Fatal - include file not found. Reported like every other preprocessor
+              // diagnostic rather than thrown as a bare Error: the text already carries
+              // its own file:line:error: framing, so routing it through the top-level
+              // handler stamped a second 'pnut-ts: ERROR- ' prefix on front of it.
+              replaceCurrent = this.commentOut(currLine);
+              this.reportError(`File [${filename}] not found in #include (m630)`, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           } else {
-            // Fatal error - malformed #include statement
-            throw new Error(`${this.fileSpec}:${lineIdx + 1}:error:Filename missing from #include statement (m631)`);
+            // isolateFilename() already reported precisely what was wrong with the
+            // argument. The generic "Filename missing from #include statement" that
+            // used to be thrown here buried that specific message under a vaguer one
+            // -- and was not even accurate for an unsupported filetype.
+            replaceCurrent = this.commentOut(currLine);
           }
         } else if (/^\s*#pragma\s+/i.test(currLine)) {
           // handle #pragma {comand} {symbol}
