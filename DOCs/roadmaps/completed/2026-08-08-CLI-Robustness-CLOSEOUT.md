@@ -100,11 +100,13 @@ still exactly 3 WUMMI failures and nothing new"* — **is satisfied in full.**
   (`isp_dummy_flash`, one failure then six clean runs). Standing total: **2
   isolated failures against 8+ clean full runs**, cause unknown. Flagged, not
   chased — it has never reproduced under observation.
-- **The release workflow had not completed at the time of writing.** `v1.55.2`
-  was tagged and pushed; the GitHub Actions run publishes the binaries. This is
-  the first run using the repaired packaging step, so the published artifact set
-  and release headline are **code-complete, not yet confirmed on the canonical
-  target**.
+- **The release workflow completed correctly — confirmed by Stephen, 2026-08-08.**
+  This was the first run using the repaired packaging step, and both changes it
+  carried are verified in the published output: the release headline is drawn
+  from the entry's lede (not the truncated first-bullet fragment the old
+  extractor produced), and the expanded document set packaged without tripping
+  the new missing-document hard failure. `v1.55.2` is **verified on the canonical
+  target**; no item in this sprint remains code-complete-but-unverified.
 
 ## 5. Carryover
 
