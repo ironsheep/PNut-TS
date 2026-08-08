@@ -58,6 +58,14 @@ not compiling what you thought it was.
   would load stale code and you would debug a binary that did not match your
   source. The `-i` `*__pre.spin2` dump is kept — it is diagnostic output, and
   most useful right after a failure.
+- **The download now includes the preprocessor and command-line references.**
+  Every platform package previously carried only `README.md`, `LICENSE` and this
+  changelog; `Preprocessor.md` and `CommandLine.md` now ship alongside them, so
+  the reference material is in the folder with the binary rather than only on
+  GitHub. Both were brought current for this release: `Preprocessor.md` gains a
+  Diagnostics section describing the behavior above, and `CommandLine.md`'s help
+  transcript was regenerated — it had been missing `-m`/`--map`, `-C`/`--cache`,
+  `--cache-dir` and `--cache-clear` entirely.
 
 ### Fixed
 
