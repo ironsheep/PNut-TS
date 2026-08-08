@@ -11,6 +11,76 @@ misleading result behind.**
 3. A failed build leaves the previous build's output artifacts in place,
    so the next tool in the chain consumes stale bytes.
 
+## Sprint execution record
+
+Filled in at `sprint-start`; the plan itself was authored earlier.
+
+| Item | Value |
+|---|---|
+| **Outgoing build** | **1.55.2** (patch bump from 1.55.1) |
+| Version locations | `package.json:3`, `package-lock.json`, `src/pnut-ts.ts:31` — all three must move together |
+| Started | 2026-08-07 |
+| Branch | `sprint/cli-robustness` |
+| Working-tree audit | Clean at start; no uncommitted edits, no untracked files in `src/`, `TEST/`, `jest-config/`, `DOCs/` |
+| Container mode | Regression Mode (verified via `npm run cov-chk`) |
+
+### Entry baseline (measured 2026-08-07)
+
+**Build:** clean, **0 warnings** (`npm run build`).
+
+**Standard regression suite** (`jest --runInBand -c smm.jestconfig.js`):
+**276/276 passing**, 17 suites, exit 0. No `.skip` / `xit` / `xdescribe`
+anywhere in `src/tests/`. The known `TOF/demo_180degrFOV.spin2`
+environmental timeout did not trigger on this run.
+
+**Runner-coverage gap — the significant finding.** `smm.jestconfig.js`
+enumerates 17 explicit `roots`, and **9 test suites are outside it**, so
+`npm test` never runs them:
+
+```
+CACHE-tests  COV-tests  EXCEPT-tests  FULL/preproc  FULL/resolver
+LANG-FEAT-tests  PREPROC-tests  SHORT  WUMMI-tests
+```
+
+**`EXCEPT-tests` and `PREPROC-tests` are this sprint's two primary test
+homes** (§9). A green `npm test` therefore says nothing about the suites
+this sprint most affects. Measured separately: **133/137 passing**, 4
+failures in 2 groups.
+
+| Group | Tests | Cause | Disposition |
+|---|---|---|---|
+| **A — stderr pollution** | `PREPROC-tests/condCodeElse` | The captured `.errout` contains **only** Node `MaxListenersExceededWarning` text (11 error/close listeners on one `SyncWriteStream`), no compiler error. The runner treats any non-empty `.errout` as "Exception Generated". A harness artifact of running many compiles in one process under `--runInBand`. | **AGREED: fold into sprint** → §11 |
+| **B — dedup parity divergence** | `WUMMI-tests/FG1`, `Main`, `Mustererkennung` | Real byte divergence, not EOL. PNut-TS's early-deduplication + distiller produce **smaller** objects than PNut (`OBJ bytes: 68_672` vs GOLD `68_780`) and a three-line savings summary where PNut's GOLD has one line. `.bin` differs accordingly (79_617 vs 79_629). A PNut-TS-only optimization diverging from PNut GOLDs. | **AGREED: defer** — out of scope, needs its own investigation |
+
+Group A is recommended for folding in because it pollutes **exactly the
+stderr-capture path** that §7 (single plain-text error output) changes and
+§9 (`.errout.GOLD` fixtures) depends on — every new negative fixture would
+inherit the same flakiness. Fix is small: stop re-attaching per-compile
+listeners, or raise the cap on the shared stream.
+
+Group B is recommended for deferral: it is an object-deduplication parity
+question with no relationship to the CLI contract, and folding it in would
+roughly double the sprint. It needs its own investigation — note the design
+tension, since PNut-TS deliberately dedups harder than PNut, so *some*
+divergence here is intended and the GOLDs may simply predate the feature.
+
+**AGREED as a sprint deliverable** → §12: add `EXCEPT-tests` and
+`PREPROC-tests` to `smm.jestconfig.js` roots. This sprint's entire
+regression protection lives in those two suites; leaving them outside the
+default suite means a future `npm test` would report green while this
+sprint's guarantees silently rot.
+
+**Exit-baseline assertion for closeout.** Health must be no worse than:
+build clean / 0 warnings; standard suite 276/276 **plus** the newly-added
+EXCEPT + PREPROC suites all green; Group A resolved; Group B still exactly
+3 WUMMI failures and nothing new.
+
+Patch level is the right tier per the project's `Major.PNutVersion.Patch`
+convention: this sprint changes no PNut-version-defined language behavior,
+so only the rightmost digit moves. Note that §4 still carries a **behavior
+break** for sources with malformed directives — flagged to Stephen at plan
+time, and shipping at patch level is his decision.
+
 ## Scope
 
 In scope: items 1–3 above, their test fixtures, and the documentation that
@@ -825,9 +895,104 @@ be reproduced from an actual run.
 
 ---
 
+## 11. Test-harness stderr pollution
+
+Folded in at sprint start from entry-baseline **Group A**.
+
+### Why
+
+`TEST/PREPROC-tests/condCodeElse.errout` contains no compiler error at all —
+only repeated Node warnings:
+
+```
+MaxListenersExceededWarning: Possible EventEmitter memory leak detected.
+11 error listeners added to [SyncWriteStream]. MaxListeners is 10.
+```
+
+The suites capture stderr by overriding `process.stderr.write` per test
+(`pnut-ts-except.test.ts:66-76` and the equivalent in the PREPROC runner)
+while the compiler attaches `error`/`close` listeners to the same shared
+stream on each of many compiles in one `--runInBand` process. Past ten,
+Node emits the warning **to stderr**, where the capture picks it up, and the
+runner treats any non-empty `.errout` as "Exception Generated".
+
+This belongs in this sprint rather than deferred: §7 rewrites the error
+output path and §9 adds a set of new `.errout.GOLD` fixtures. Every one of
+them would inherit this flakiness, and a spurious failure in a
+freshly-authored fixture is far more expensive to diagnose than one in a
+known-good suite.
+
+### Target
+
+Find the per-compile listener attachment and stop re-attaching to a stream
+that outlives the compile — attach once, or detach on completion. Raising
+`setMaxListeners` is the fallback only if a genuine one-listener-per-compile
+design is required; it suppresses the warning without fixing the leak, so it
+needs a comment saying why.
+
+Whichever route, the `.errout` capture must contain **only** compiler
+diagnostics. Consider having the capture ignore lines matching Node's
+internal-warning shape as defense in depth, so unrelated future Node
+warnings cannot break every negative fixture at once.
+
+### Verification
+
+- **Normal**: `npm run test-pre` fully green, `condCodeElse.errout` empty.
+- **Edge**: the full PREPROC + EXCEPT suites run in one `--runInBand`
+  process with no `MaxListenersExceededWarning` in any `.errout`.
+- **Edge**: a compile that *does* emit a real diagnostic still captures it
+  intact — the fix must not suppress genuine stderr.
+- **Error**: with §9's new fixtures added (the largest `.errout` fixture
+  count this suite has had), still no listener warnings.
+
+## 12. Default-suite coverage for the sprint's test homes
+
+Folded in at sprint start from the entry-baseline runner-coverage gap.
+
+### Why
+
+`smm.jestconfig.js` merges `old.jestconfig.json` with
+`jest-config/jest-coverage-config.json`, whose `roots` array names 17
+directories explicitly. Nine suites are absent, so `npm test` never runs
+them — among them **`EXCEPT-tests` and `PREPROC-tests`**, which §9 makes
+this sprint's primary regression homes.
+
+Leaving them out means the default suite reports green while every
+guarantee this sprint establishes goes unchecked. An explicit-list runner
+that drifts behind the test files is the most invisible kind of skip:
+the tests show up as neither pass nor fail, just absent.
+
+### Target
+
+Add `<rootDir>/dist/tests/EXCEPT-tests/` and
+`<rootDir>/dist/tests/PREPROC-tests/` to the `roots` array in
+`jest-config/jest-coverage-config.json`. This must land **after** §11, or
+the default suite immediately goes red on the Group A artifact.
+
+The other seven uncovered suites (`CACHE-tests`, `COV-tests`, `FULL/*`,
+`LANG-FEAT-tests`, `SHORT`, `WUMMI-tests`) are **deliberately left out of
+this change** — `WUMMI-tests` carries the deferred Group B failures and
+would turn the default suite red, `COV-tests` requires Coverage Mode, and
+the rest are outside this sprint's remit. Their absence is now documented
+rather than accidental, which is the actual improvement.
+
+### Verification
+
+- **Normal**: `npm test` runs 19 suites and is green, with the EXCEPT and
+  PREPROC test counts added to the 276.
+- **Edge**: the count increase matches what those two suites report when
+  run standalone — no tests silently dropped by a `testMatch` mismatch.
+- **Error**: deliberately break one new `.errout.GOLD` and confirm `npm
+  test` now catches it. Without this check we have not actually proven the
+  suites are wired in.
+
 ## Notes for execution
 
-- **Order.** §1 first — §2 through §6 all depend on its severity mechanism.
+- **Order.** §11 early — it unblocks trustworthy `.errout` fixtures for
+  everything else, and §12 depends on it. §1 next: §2 through §6 all depend
+  on its severity mechanism. §12 last of the test work, once the suites it
+  adds are green.
+- **Order (original).** §1 first — §2 through §6 all depend on its severity mechanism.
   §7 is independent and can land at any point. §8 depends on the shared
   filespec helper but nothing else. §9's runner strengthening (9a) should
   land before the fixtures that rely on it. §10 last, verified against
