@@ -34,13 +34,20 @@ export class PNutInTypeScript {
   private spinDocument: SpinDocument | undefined = undefined;
   private shouldAbort: boolean = false;
   private requiresFilename: boolean = false;
+  // The stdout/stderr guards below are process-global, not per-compiler. Installing
+  // them from the constructor once meant every additional instance in a single
+  // process (the run-in-band test suites create dozens) added four more listeners
+  // to the same two streams, and past ten Node emitted a MaxListenersExceededWarning
+  // onto stderr -- where the suites' stderr capture wrote it into .errout files and
+  // failed unrelated fixtures. Install once per process instead.
+  private static streamGuardsInstalled: boolean = false;
 
-  constructor(argsOverride?: string[]) {
-    //console.log(`PNut-TS: argsOverride=[${argsOverride}]`);
-    if (argsOverride !== undefined) {
-      this.argsArray = argsOverride;
-      //PNutInTypeScript.isTesting = true;
+  private static installStreamGuards(): void {
+    if (PNutInTypeScript.streamGuardsInstalled) {
+      return;
     }
+    PNutInTypeScript.streamGuardsInstalled = true;
+
     process.stdout.on('error', (error: Error) => {
       console.error(`PNut-TS: An error occurred on stdout: "${error.message}", Aborting.`);
       process.exit(1);
@@ -57,6 +64,15 @@ export class PNutInTypeScript {
     process.stderr.on('close', () => {
       console.log('PNut-TS: stderr was closed');
     });
+  }
+
+  constructor(argsOverride?: string[]) {
+    //console.log(`PNut-TS: argsOverride=[${argsOverride}]`);
+    if (argsOverride !== undefined) {
+      this.argsArray = argsOverride;
+      //PNutInTypeScript.isTesting = true;
+    }
+    PNutInTypeScript.installStreamGuards();
     this.context = new Context();
     this.context.compilerVersion = this.version;
   }

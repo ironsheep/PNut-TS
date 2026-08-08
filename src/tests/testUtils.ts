@@ -612,3 +612,18 @@ export function appendDiagnosticString(origString: string, appendString: string,
   }
   return longerString;
 }
+
+/**
+ * Is this stderr chunk a Node.js internal warning rather than compiler output?
+ *
+ * The test suites capture stderr into .errout files that are compared against
+ * .errout.GOLD (or treated as "exception generated" when non-empty). Node writes
+ * its own process warnings -- deprecations, EventEmitter leak warnings, experimental
+ * feature notices -- to that same stream, which would otherwise pollute every
+ * fixture's captured output at once. Warnings are recognizable by Node's fixed
+ * "(node:<pid>) SomethingWarning:" prefix and the trailing "(Use `node --trace-...)"
+ * hint; neither shape can be produced by the compiler's own diagnostics.
+ */
+export function isNodeInternalWarning(chunkText: string): boolean {
+  return /^\(node:\d+\)\s+\S*Warning:/.test(chunkText) || /^\(Use `node --trace-/.test(chunkText);
+}

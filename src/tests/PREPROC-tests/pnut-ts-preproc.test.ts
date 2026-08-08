@@ -13,6 +13,7 @@ import {
   compareListingFiles,
   compareObjOrBinFiles,
   fileExists,
+  isNodeInternalWarning,
   removeExistingFiles,
   removeFileIfEmpty,
   topLevel,
@@ -62,8 +63,11 @@ describe('PNut_ts preprocesses files correctly', () => {
       // Override process.stderr.write
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
-        // Store the stderr output
-        stderrOutput.push(chunk.toString());
+        // Store the stderr output (Node process warnings are not compiler output)
+        const chunkText: string = chunk.toString();
+        if (!isNodeInternalWarning(chunkText)) {
+          stderrOutput.push(chunkText);
+        }
         // Call the original function to ensure any other behaviors are preserved
         return originalStderrWrite.call(process.stderr, chunk, encoding, callback);
       };
