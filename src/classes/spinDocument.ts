@@ -64,13 +64,32 @@ export class PreprocessorError extends Error {
 const ERROR_DIRECTIVE = /^\s*#error\s+(.*)$/i;
 const WARN_DIRECTIVE = /^\s*#warn\s+(.*)$/i;
 
+// PNut's exact wording for a conditional directive found with no #IFDEF/#IFNDEF
+// open -- REF-V52A/p2com.asm:3635. The misspelling of "preceded" is PNut's, and it
+// is matched VERBATIM rather than silently corrected: parity here means someone
+// grepping build logs across both compilers gets the same hits. Do not "fix" it.
+const MSG_MISSING_CONDITIONAL: string = 'Must be preceeded by #IFDEF or #IFNDEF';
+
+// PNut's exact wording for a directive whose symbol argument is missing --
+// REF-V52A/p2com.asm:3638. It deliberately does not name the offending directive.
+const MSG_EXPECTED_SYMBOL: string = 'Expected a preprocessor symbol';
+
 // A directive written with nothing after it: '#define' alone on a line.
 const BARE_DIRECTIVE = /^\s*#([A-Za-z_]+)\s*$/;
 
 // Directives that are meaningless without an argument. #else and #endif are
 // deliberately absent -- they legitimately stand alone, and their own patterns
 // match them earlier in the chain, so they never reach the bare-directive test.
-const ARGUMENT_TAKING_DIRECTIVES: string[] = ['define', 'undef', 'ifdef', 'ifndef', 'elseifdef', 'elseifndef', 'error', 'warn', 'include', 'pragma'];
+//
+// The split is only about which message the bare form reports. These six are the
+// ones PNut also has, so a missing symbol reports PNut's wording (MSG_EXPECTED_SYMBOL)
+// no matter which code path detects it -- '#define' and '#define ' are the same
+// author error, and differing by an invisible trailing space would be absurd.
+const SYMBOL_TAKING_DIRECTIVES: string[] = ['define', 'undef', 'ifdef', 'ifndef', 'elseifdef', 'elseifndef'];
+// These four are PNut-TS-only, so we have a free hand; their argument is a message,
+// a filename or a command rather than a symbol, so they say "argument" and name
+// themselves.
+const ARGUMENT_TAKING_DIRECTIVES: string[] = ['error', 'warn', 'include', 'pragma'];
 
 class PreProcState {
   private ifSideEmits: boolean = false;
@@ -352,7 +371,8 @@ export class SpinDocument {
       return undefined;
     }
     const token: string = match[1].toLowerCase();
-    return ARGUMENT_TAKING_DIRECTIVES.includes(token) ? token : undefined;
+    const isDirective: boolean = SYMBOL_TAKING_DIRECTIVES.includes(token) || ARGUMENT_TAKING_DIRECTIVES.includes(token);
+    return isDirective ? token : undefined;
   }
 
   /**
@@ -551,7 +571,8 @@ export class SpinDocument {
             }
           } else {
             // ERROR bad statement
-            this.reportError(`#define is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            replaceCurrent = this.commentOut(currLine);
+            this.reportError(MSG_EXPECTED_SYMBOL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (/^\s*#undef\s+/i.test(currLine)) {
           // parse #undef {symbol}
@@ -574,7 +595,8 @@ export class SpinDocument {
               this.logMessage(`SpinPP: NOT keeping code SKIP [${currLine}]`);
             }
           } else {
-            this.reportError(`#undef is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            replaceCurrent = this.commentOut(currLine);
+            this.reportError(MSG_EXPECTED_SYMBOL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (/^\s*#ifdef\s+/i.test(currLine) || /^\s*#elseifdef\s+/i.test(currLine)) {
           // parse #ifdef {symbol}
@@ -583,7 +605,8 @@ export class SpinDocument {
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
           const ifState = isElseForm ? this.currIfDef() : this.enterIf(lineIdx);
           if (ifState === undefined) {
-            this.reportError(`#elseifdef found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            replaceCurrent = this.commentOut(currLine);
+            this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             ifState.setInIf();
             if (isElseForm) {
@@ -621,11 +644,13 @@ export class SpinDocument {
                 replaceCurrent = this.commentOut(currLine);
               } else {
                 // ERROR bad statement
-                this.reportError(`#directive is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+                replaceCurrent = this.commentOut(currLine);
+                this.reportError(MSG_EXPECTED_SYMBOL, lineIdx, eDiagnosticSeverity.DS_FATAL);
               }
             } else {
               // ERROR missing preceeding #if*...
-              this.reportError(`#elseifdef without earlier #if*...`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+              replaceCurrent = this.commentOut(currLine);
+              this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           }
         } else if (/^\s*#ifndef\s+/i.test(currLine) || /^\s*#elseifndef\s+/i.test(currLine)) {
@@ -635,7 +660,8 @@ export class SpinDocument {
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
           const ifState = isElseForm ? this.currIfDef() : this.enterIf(lineIdx);
           if (ifState === undefined) {
-            this.reportError(`#elseifndef found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            replaceCurrent = this.commentOut(currLine);
+            this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             ifState.setInIf();
             if (isElseForm) {
@@ -671,11 +697,13 @@ export class SpinDocument {
                 // this.logMessage(`SpinPP: (DBG) thisSideKeexpsCode=(${thisSideKexepsCode})`);
               } else {
                 // ERROR bad statement
-                this.reportError(`#directive is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+                replaceCurrent = this.commentOut(currLine);
+                this.reportError(MSG_EXPECTED_SYMBOL, lineIdx, eDiagnosticSeverity.DS_FATAL);
               }
             } else {
               // ERROR missing preceeding #if*...
-              this.reportError(`#elseifndef without earlier #if*...`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+              replaceCurrent = this.commentOut(currLine);
+              this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           }
         } else if (/^\s*#else\s*/i.test(currLine)) {
@@ -683,7 +711,8 @@ export class SpinDocument {
           const ifState = this.currIfDef();
           if (ifState === undefined) {
             // ERROR missing preceeding #if*...
-            this.reportError(`#else found before #ifdef/#ifndef`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            replaceCurrent = this.commentOut(currLine);
+            this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             replaceCurrent = this.commentOut(currLine);
             ifState.setInElse();
@@ -692,7 +721,8 @@ export class SpinDocument {
           // parse #endif
           if (!this.inIfDef()) {
             // ERROR missing preceeding #if*...
-            this.reportError(`#endif without earlier #if*...`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            replaceCurrent = this.commentOut(currLine);
+            this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else {
             replaceCurrent = this.commentOut(currLine);
             this.exitIf();
@@ -771,18 +801,25 @@ export class SpinDocument {
                 ];
               }
             } else {
-              // ERROR bad statement
+              // #pragma is a PNut-TS extension with no parity constraint, and it takes a
+              // command argument that PNut's generic wording would not explain -- so this
+              // one names the pragma rather than using MSG_EXPECTED_SYMBOL.
+              replaceCurrent = this.commentOut(currLine);
               this.reportError(`#pragma ${command} is missing symbol name`, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           } else {
             // ERROR bad statement
+            replaceCurrent = this.commentOut(currLine);
             this.reportError(`#pragma [${command}] UNSUPPORTED!`, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (bareDirective !== undefined) {
           // A known directive written with no argument. Without this test the CON
           // enum-start pattern below would match it and silently discard it.
           replaceCurrent = this.commentOut(currLine);
-          this.reportError(`#${bareDirective} is missing its argument`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+          const bareMessage: string = SYMBOL_TAKING_DIRECTIVES.includes(bareDirective)
+            ? MSG_EXPECTED_SYMBOL
+            : `#${bareDirective} is missing its argument`;
+          this.reportError(bareMessage, lineIdx, eDiagnosticSeverity.DS_FATAL);
         } else if (currLine.match(/^\s*#-*[0-9%$]+\s*,*|^\s*#_*[A-Za-z_]+\s*,*/)) {
           // ignore these enumeration starts, they are not meant to be directives
           this.logMessage(`SpinPP: SKIP ENUM [${currLine}]`);
@@ -1107,11 +1144,16 @@ export class SpinDocument {
     let symbol: string | undefined = undefined;
     let command: string = '';
     const value: string = '1';
-    if (lineParts.length > 2) {
-      // internally all Preprocessor symbols are UPPER CASE
+    // internally all Preprocessor symbols are UPPER CASE
+    if (lineParts.length > 1) {
       command = lineParts[1].toUpperCase();
+    }
+    if (lineParts.length > 2) {
       symbol = lineParts[2].toUpperCase();
     }
+    // The command is reported even when the symbol is missing. Requiring both meant
+    // '#pragma exportdef' with no symbol came back with an empty command and was
+    // reported as an unsupported pragma rather than as the missing symbol it is.
     return [command, symbol, value];
   }
 
