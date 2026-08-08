@@ -184,7 +184,7 @@ export class SpinDocument {
   // preprocess state information
   private cmdLineDefines: string[] = [];
   private cmdLineUndefines: string[] = [];
-  private headerComments: string[] = [];
+  private headerComments: TextLine[] = [];
   private trailerComments: string[] = [];
   private gatheringHeaderComment: boolean = true;
   private gatheringTrailerComment: boolean = true;
@@ -504,7 +504,7 @@ export class SpinDocument {
       this.logMessage(`SpinPP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
       if (/^\s*'/.test(currLine)) {
         // have single line non-doc (') or doc ('') comment
-        this.recordComment(currLine);
+        this.recordComment(currLine, lineIdx);
         // check for nonDoc comments (generally looking for '} patterns) in single line comment (only if already in nonDoc Comment)
         if (this.inNonDocComment) {
           const openCt: number = currLine.split('{').length - 1;
@@ -548,9 +548,9 @@ export class SpinDocument {
         const docClosePosn: number = currLine.indexOf('}}');
         // record only comment portion of line
         if (docClosePosn == -1) {
-          this.recordComment(currLine);
+          this.recordComment(currLine, lineIdx);
         } else {
-          this.recordComment(currLine.substring(0, docClosePosn + 1));
+          this.recordComment(currLine.substring(0, docClosePosn + 1), lineIdx);
         }
         if (docClosePosn != -1) {
           this.inDocComment = false;
@@ -839,7 +839,7 @@ export class SpinDocument {
         }
         if (this.gatheringHeaderComment) {
           this.logMessage(`SpinPP: hdrCmt++[${currLine}]`);
-          this.headerComments.push(currLine);
+          this.headerComments.push(new TextLine(this.fileId, currLine, lineIdx));
         }
       } else if (currLine.startsWith('{')) {
         // starting a line with a non-doc comment, could be one of many cases...
@@ -861,7 +861,7 @@ export class SpinDocument {
         );
         if (this.gatheringHeaderComment) {
           this.logMessage(`SpinPP: hdrCmt++[${currLine}]`);
-          this.headerComments.push(currLine);
+          this.headerComments.push(new TextLine(this.fileId, currLine, lineIdx));
         }
         if (this.inNonDocComment) {
           // entire line is within open but no close...
@@ -989,10 +989,10 @@ export class SpinDocument {
     return foundDirectiveStatus;
   }
 
-  private recordComment(line: string) {
+  private recordComment(line: string, lineIndex: number) {
     if (this.gatheringHeaderComment) {
       this.logMessage(`SpinPP: hdrCmt++[${line}]`);
-      this.headerComments.push(line);
+      this.headerComments.push(new TextLine(this.fileId, line, lineIndex));
     } else if (this.gatheringTrailerComment) {
       this.trailerComments.push(line);
     }
@@ -1174,24 +1174,27 @@ export class SpinDocument {
     return symbol;
   }
 
-  private getVersionFromHeader(headerComments: string[]): void {
+  private getVersionFromHeader(headerComments: TextLine[]): void {
     const spinLangVersionRegEx = /\{Spin2_v(\d{2,3})\}/i;
-    //this.forceLogMessage(`* SpinPP: headerComments=[${this.headerComments}]`);
-    for (let index = 0; index < headerComments.length; index++) {
-      const headerLine = headerComments[index];
-      const symbolMatch = headerLine.match(spinLangVersionRegEx);
+    for (const headerLine of headerComments) {
+      const symbolMatch = headerLine.text.match(spinLangVersionRegEx);
       // yields: symbolMatch=[{Spin2_v43},43](2), hdr=[' {Spin2_v43}]
       if (symbolMatch) {
         const possibleVersion = parseInt(symbolMatch[1]);
-        //this.logMessage(`- #${index + 1}: symbolMatch=[${symbolMatch}](${symbolMatch?.length}), hdr=[${headerLine}]`);
         this.requiredVersion = this.legalVersions.includes(possibleVersion) ? possibleVersion : 0;
-        //this.logMessage(`  -- possibleVersion=(${possibleVersion}) -> requiredVersion=(${this.requiredVersion})`);
         if (possibleVersion != this.requiredVersion) {
-          this.reportError(`${symbolMatch[0]}, ${possibleVersion} is not a legal Spin2 Language Version!`, index, eDiagnosticSeverity.DS_FATAL);
+          // Fatal: compiling a source against a language level it did not ask for is
+          // exactly the silent-wrong-output failure this must not produce. The line
+          // index comes from the header comment itself -- using its position within
+          // headerComments[] cited a line number that meant nothing.
+          this.reportError(
+            `${symbolMatch[0]}, ${possibleVersion} is not a legal Spin2 Language Version!`,
+            headerLine.sourceLineIndex,
+            eDiagnosticSeverity.DS_FATAL
+          );
         }
       }
     }
-    //this.forceLogMessage(`* found ${this.requiredVersion}`);
   }
 
   private preloadSymbolTable() {

@@ -108,6 +108,14 @@ export class TextLine {
     return this._rawLineIndex + 1;
   }
 
+  /**
+   * Gets the zero-relative line index, as passed to the constructor.
+   * @returns {number} The raw line index [0 to lineCount - 1].
+   */
+  get sourceLineIndex(): number {
+    return this._rawLineIndex;
+  }
+
   get range(): Range {
     const startPos: Position = new Position(this._rawLineIndex, 0);
     const endPos: Position = new Position(this._rawLineIndex, this._rawText.length - 1);
