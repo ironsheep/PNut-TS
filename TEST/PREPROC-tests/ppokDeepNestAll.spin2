@@ -1,0 +1,44 @@
+'' Conditional nesting deeper than PNut's 8-level cap (decision D11).
+'' PNut-TS has no cap; this proves both that deep nesting works and that
+'' exclusion below level 2 is still decided correctly.
+#define LEVEL1
+#define LEVEL2
+#define LEVEL3
+#define LEVEL4
+#define LEVEL5
+#define LEVEL6
+#define LEVEL7
+#define LEVEL8
+#define LEVEL9
+#define LEVEL10
+#define LEVEL11
+#define LEVEL12
+#ifdef LEVEL1
+#ifdef LEVEL2
+#ifdef LEVEL3
+#ifdef LEVEL4
+#ifdef LEVEL5
+#ifdef LEVEL6
+#ifdef LEVEL7
+#ifdef LEVEL8
+#ifdef LEVEL9
+#ifdef LEVEL10
+#ifdef LEVEL11
+#ifdef LEVEL12
+CON
+  DEEP_VALUE = 12
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
+
+PUB main()
+  repeat

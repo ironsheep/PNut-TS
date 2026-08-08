@@ -1,0 +1,4 @@
+'' #else with no conditional open
+#else
+PUB main()
+  repeat

@@ -1,0 +1,4 @@
+'' a quoted, well-formed #include naming a file that is not there
+#include "no_such_include.spin2"
+PUB main()
+  repeat

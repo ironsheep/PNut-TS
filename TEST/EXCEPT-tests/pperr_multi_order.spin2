@@ -1,0 +1,6 @@
+'' every preprocessor diagnostic appears, in source order, before the build aborts
+#warn first warning
+#warn second warning
+#error third and fatal
+PUB main()
+  repeat

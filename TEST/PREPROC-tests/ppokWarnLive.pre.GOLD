@@ -1,0 +1,17 @@
+' Report for regression testing
+' Run: 08/08/2026
+#
+' ---------------------------------------
+[000] 1: '' A warning is reported but does not stop the build: artifacts are still written.
+[001] 2: '' The #error and #warn in the dead branch below must stay completely silent.
+[002] 3: ' #define BOARD_A
+[003] 4: ' #ifdef BOARD_A
+[004] 5: CON
+[005] 6:   PIN_COUNT = 8
+[006] 10: ' #endif
+[007] 11: ' #undef NEVER_WAS_DEFINED
+[008] 12: 
+[009] 13: PUB main()
+[010] 14:   repeat
+[011] 15: 
+' ---------------------------------------

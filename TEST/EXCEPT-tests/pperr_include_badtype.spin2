@@ -1,0 +1,4 @@
+'' the specific filetype complaint stands alone, with no vaguer message after it
+#include "notspin.txt"
+PUB main()
+  repeat

@@ -1,0 +1,1 @@
+pperr_stray_elseifdef.spin2:2:error:Must be preceeded by #IFDEF or #IFNDEF

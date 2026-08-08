@@ -1,0 +1,9 @@
+'' the version diagnostic cites the SOURCE line, not an index into header comments
+
+'' a header comment
+
+'' another header comment
+
+{Spin2_v99}
+PUB main()
+  repeat

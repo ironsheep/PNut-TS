@@ -239,7 +239,10 @@ export function compareExceptionFiles(reportFSpec: string, goldenFSpec: string):
       // Normalize paths - extract just the filename and line number portion
       // Match patterns like /any/path/filename.spin2:line:error:message
       // or C:\any\path\filename.spin2:line:error:message
-      const errorPattern = /^.*[/\\]([^/\\]+\.spin2:\d+:error:.*)$/;
+      // Warnings carry the same shape and need the same treatment: without it a
+      // fixture whose GOLD contains a warning would have to record one machine's
+      // absolute path and would fail everywhere else.
+      const errorPattern = /^.*[/\\]([^/\\]+\.spin2:\d+:(?:error|warning):.*)$/;
       const match = normalized.match(errorPattern);
       if (match) {
         normalized = match[1]; // Just keep filename.spin2:line:error:message
@@ -626,4 +629,17 @@ export function appendDiagnosticString(origString: string, appendString: string,
  */
 export function isNodeInternalWarning(chunkText: string): boolean {
   return /^\(node:\d+\)\s+\S*Warning:/.test(chunkText) || /^\(Use `node --trace-/.test(chunkText);
+}
+
+/**
+ * Which of these filespecs exist? Used to assert that artifacts are ABSENT.
+ *
+ * A negative fixture -- one that is expected to fail to compile -- must not only
+ * produce the right diagnostic, it must leave no build products behind. Checking
+ * only that the expected files appeared would let a stale or wrongly-produced
+ * .bin sit next to a correct error message and go unnoticed, which is exactly the
+ * failure the delete-outputs-on-failure work exists to prevent.
+ */
+export function filesThatExist(fileSpecList: string[]): string[] {
+  return fileSpecList.filter((fileSpec) => fs.existsSync(fileSpec));
 }

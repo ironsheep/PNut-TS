@@ -14,6 +14,7 @@ import {
   compareListingFiles,
   compareObjOrBinFiles,
   fileEmpty,
+  filesThatExist,
   fileExists,
   isNodeInternalWarning,
   removeExistingFiles,
@@ -270,8 +271,11 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
       // Override process.stderr.write
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       process.stderr.write = (chunk: any, encoding?: any, callback?: any) => {
-        // Store the stderr output
-        stderrOutput.push(chunk.toString());
+        // Store the stderr output (Node process warnings are not compiler output)
+        const chunkText: string = chunk.toString();
+        if (!isNodeInternalWarning(chunkText)) {
+          stderrOutput.push(chunkText);
+        }
         // Call the original function to ensure any other behaviors are preserved
         return originalStderrWrite.call(process.stderr, chunk, encoding, callback);
       };
@@ -441,6 +445,19 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
           }
         }
       }
+
+      // A fixture with no GOLD for a given artifact is asserting that the artifact
+      // must NOT be produced: a failed compile has to leave nothing behind. Without
+      // this check the suite only ever verified that expected files appeared, so a
+      // stale or wrongly-written .bin could sit beside a perfectly correct error
+      // message and nothing would notice.
+      const shouldNotExist: string[] = [listingFSpec, objectFSpec, binaryFSpec].filter((artifactFSpec) => !fileExists(`${artifactFSpec}.GOLD`));
+      const unexpected: string[] = filesThatExist(shouldNotExist);
+      if (unexpected.length > 0) {
+        const names: string = unexpected.map((artifactFSpec) => path.basename(artifactFSpec)).join(', ');
+        whatFailed = appendDiagnosticString(whatFailed, `Artifact(s) should NOT exist after a failed compile: ${names}`, ', ');
+      }
+
       expect(whatFailed).toBe('');
     });
   });

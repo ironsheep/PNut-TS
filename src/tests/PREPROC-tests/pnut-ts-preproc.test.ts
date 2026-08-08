@@ -10,6 +10,7 @@ import { sync as globSync } from 'glob';
 import { PNutInTypeScript } from '../../pnut-ts';
 import {
   appendDiagnosticString,
+  compareExceptionFiles,
   compareListingFiles,
   compareObjOrBinFiles,
   fileExists,
@@ -210,9 +211,20 @@ describe('PNut_ts preprocesses files correctly', () => {
             }
           }
 
-          // detect exception output
+          // Any stderr output used to fail the fixture outright. That is still the
+          // right default -- a preprocessing test that says something unexpected has
+          // gone wrong -- but it left no way to test a diagnostic that is SUPPOSED to
+          // appear, such as a warning, which by design does not suppress artifacts.
+          // A fixture that provides an .errout.GOLD is asserting its output instead.
           if (fileExists(errorFSpec)) {
-            whatFailed = appendDiagnosticString(whatFailed, 'Exception Generated', ', ');
+            const goldenErroutFSpec = path.join(testDirPath, `${basename}.errout.GOLD`);
+            if (fileExists(goldenErroutFSpec)) {
+              if (!compareExceptionFiles(errorFSpec, goldenErroutFSpec)) {
+                whatFailed = appendDiagnosticString(whatFailed, 'Exception File', ', ');
+              }
+            } else {
+              whatFailed = appendDiagnosticString(whatFailed, 'Exception Generated', ', ');
+            }
           }
 
           if (whatFailed.length > 0) {

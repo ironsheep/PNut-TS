@@ -1,0 +1,4 @@
+'' a directive with no argument must not be mistaken for a CON enum start
+#define
+PUB main()
+  repeat

@@ -1,0 +1,4 @@
+'' PNut-TS-only directives name themselves; their argument is not a symbol
+#include
+PUB main()
+  repeat

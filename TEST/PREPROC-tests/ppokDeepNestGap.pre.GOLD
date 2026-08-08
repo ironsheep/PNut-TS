@@ -1,0 +1,41 @@
+' Report for regression testing
+' Run: 08/08/2026
+#
+' ---------------------------------------
+[000] 1: '' Conditional nesting deeper than PNut's 8-level cap (decision D11).
+[001] 2: '' PNut-TS has no cap; this proves both that deep nesting works and that
+[002] 3: '' exclusion below level 2 is still decided correctly.
+[003] 4: ' #define LEVEL1
+[004] 5: ' #define LEVEL2
+[005] 6: ' #define LEVEL3
+[006] 7: ' #define LEVEL4
+[007] 8: ' #define LEVEL5
+[008] 9: ' #define LEVEL7
+[009] 10: ' #define LEVEL8
+[010] 11: ' #define LEVEL9
+[011] 12: ' #define LEVEL10
+[012] 13: ' #define LEVEL11
+[013] 14: ' #define LEVEL12
+[014] 15: ' #ifdef LEVEL1
+[015] 16: ' #ifdef LEVEL2
+[016] 17: ' #ifdef LEVEL3
+[017] 18: ' #ifdef LEVEL4
+[018] 19: ' #ifdef LEVEL5
+[019] 20: ' #ifdef LEVEL6
+[020] 21: ' #ifdef LEVEL7
+[021] 22: ' #ifdef LEVEL8
+[022] 23: ' #ifdef LEVEL9
+[023] 24: ' #ifdef LEVEL10
+[024] 25: ' #ifdef LEVEL11
+[025] 26: ' #ifdef LEVEL12
+[026] 35: ' #endif
+[027] 36: ' #endif
+[028] 37: ' #endif
+[029] 38: ' #endif
+[030] 39: ' #endif
+[031] 40: ' #endif
+[032] 41: 
+[033] 42: PUB main()
+[034] 43:   repeat
+[035] 44: 
+' ---------------------------------------

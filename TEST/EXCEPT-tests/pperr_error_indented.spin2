@@ -1,0 +1,4 @@
+'' an indented #error reports only its message, not a mis-sliced fragment
+  #error indented message
+PUB main()
+  repeat

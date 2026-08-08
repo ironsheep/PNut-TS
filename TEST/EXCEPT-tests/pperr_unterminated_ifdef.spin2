@@ -1,0 +1,6 @@
+'' an unclosed conditional names the line that opened it, not the end of file
+#ifdef SOME_SYMBOL
+CON
+  VALUE = 1
+PUB main()
+  repeat

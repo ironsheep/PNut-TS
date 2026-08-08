@@ -1,0 +1,14 @@
+'' A warning is reported but does not stop the build: artifacts are still written.
+'' The #error and #warn in the dead branch below must stay completely silent.
+#define BOARD_A
+#ifdef BOARD_A
+CON
+  PIN_COUNT = 8
+#else
+#error "no board selected"
+#warn "this must never be seen"
+#endif
+#undef NEVER_WAS_DEFINED
+
+PUB main()
+  repeat

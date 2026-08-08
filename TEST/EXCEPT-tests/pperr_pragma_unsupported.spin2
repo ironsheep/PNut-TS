@@ -1,0 +1,4 @@
+'' an unrecognized pragma command
+#pragma bogus SOME_SYMBOL
+PUB main()
+  repeat

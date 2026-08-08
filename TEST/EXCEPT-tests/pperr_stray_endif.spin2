@@ -1,0 +1,4 @@
+'' PNut wording, misspelling included, so build logs grep alike across compilers
+#endif
+PUB main()
+  repeat

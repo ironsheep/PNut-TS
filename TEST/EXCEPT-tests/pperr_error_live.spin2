@@ -1,0 +1,6 @@
+'' #error fires from a live conditional branch
+#ifndef BOARD_SELECTED
+#error "no board selected"
+#endif
+PUB main()
+  repeat

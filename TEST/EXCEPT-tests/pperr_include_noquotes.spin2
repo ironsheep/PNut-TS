@@ -1,0 +1,4 @@
+'' an #include argument without quotes
+#include somefile.spin2
+PUB main()
+  repeat

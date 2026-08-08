@@ -1,0 +1,4 @@
+'' #pragma reports its missing symbol rather than claiming the pragma is unsupported
+#pragma exportdef
+PUB main()
+  repeat

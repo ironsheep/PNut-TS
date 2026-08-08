@@ -1,0 +1,4 @@
+'' a # form that cannot be a CON enum start reaches the unknown-directive report
+#!notadirective
+PUB main()
+  repeat

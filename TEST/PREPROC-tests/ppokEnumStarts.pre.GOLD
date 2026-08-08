@@ -1,0 +1,19 @@
+' Report for regression testing
+' Run: 08/08/2026
+#
+' ---------------------------------------
+[000] 1: '' CON enumeration starts are not preprocessor directives.
+[001] 2: '' The bare-directive check must not disturb any of these forms.
+[002] 3: CON
+[003] 4: #0, VALUE0, VALUE1
+[004] 5: #0[-2], VALUE3, VALUE4
+[005] 6: #-5[-3], TEST1, TEST2
+[006] 7:   MYBASE = 10
+[007] 8:   _LEADING_UNDERSCORE = 20
+[008] 9: #MYBASE, CMD1, CMD2
+[009] 10: #_LEADING_UNDERSCORE, UND1, UND2
+[010] 11: 
+[011] 12: PUB main()
+[012] 13:   repeat
+[013] 14: 
+' ---------------------------------------

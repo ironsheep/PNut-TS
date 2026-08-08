@@ -1,0 +1,4 @@
+'' #elseifdef with no conditional open
+#elseifdef SOME_SYMBOL
+PUB main()
+  repeat

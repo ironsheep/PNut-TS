@@ -1,0 +1,13 @@
+'' CON enumeration starts are not preprocessor directives.
+'' The bare-directive check must not disturb any of these forms.
+CON
+#0, VALUE0, VALUE1
+#0[-2], VALUE3, VALUE4
+#-5[-3], TEST1, TEST2
+  MYBASE = 10
+  _LEADING_UNDERSCORE = 20
+#MYBASE, CMD1, CMD2
+#_LEADING_UNDERSCORE, UND1, UND2
+
+PUB main()
+  repeat
