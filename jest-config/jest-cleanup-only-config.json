@@ -1,0 +1,6 @@
+{
+  "displayName": "ARTIFACT CLEANUP suite of tests",
+  "roots": ["<rootDir>/../dist/tests/CLEANUP-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

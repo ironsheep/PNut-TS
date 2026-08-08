@@ -41,6 +41,7 @@
     "test-lang": "npm run build && jest --verbose -c jest-config/jest-lang-only-config.json",
     "test-pre": "npm run build && jest --verbose -c jest-config/jest-preproc-only-config.json",
     "test-exc": "npm run build && jest -c jest-config/jest-except-only-config.json",
+    "test-cleanup": "npm run build && jest --runInBand -c jest-config/jest-cleanup-only-config.json",
     "test-obj": "npm run build && jest -c jest-config/jest-obj-only-config.json",
     "test-inc": "npm run build && jest -c jest-config/jest-include-only-config.json",
     "test-cache": "npm run build && jest -c jest-config/jest-cache-only-config.json",
