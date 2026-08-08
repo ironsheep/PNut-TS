@@ -12,6 +12,76 @@ Seven of the eight findings below were discovered by *asking the compiler*, not
 by reading it. Each was reproduced against the shipping 1.55.2 binary before
 being written down, and the reproduction is recorded in the section.
 
+## Sprint execution record
+
+Filled in at `sprint-start`; the plan itself was authored earlier the same day.
+
+| Item | Value |
+|---|---|
+| **Outgoing build** | **1.55.3** (patch bump from 1.55.2) |
+| Version locations | `package.json:3`, `package-lock.json` (two fields), `src/pnut-ts.ts:33` — all move together |
+| Started | 2026-08-08 |
+| Branch | **`main`** — this repo does not branch (see `CLAUDE.md`) |
+| Working-tree audit | Clean; no uncommitted edits, no untracked files in `src/`, `TEST/`, `jest-config/`, `DOCs/`, `scripts/`; `main` in sync with `origin/main` |
+| Container mode | Regression Mode (verified via `npm run cov-chk`) |
+| Tracking board | Empty — 0 tasks, 0 context keys; left clean by the CLI-Robustness closeout |
+
+Patch tier is correct per `Major.PNutVersion.Patch`: this sprint changes no
+PNut-version-defined language behavior, so only the rightmost digit moves. §2
+and §3 carry behavior breaks, shipping at patch level with Stephen's agreement —
+the same call made for v1.55.2 §4.
+
+### Entry baseline (measured 2026-08-08, at `3846a97`)
+
+**Build:** clean, **0 warnings** (`npm run build`).
+
+**Skips:** none. `.skip` / `xit(` / `xdescribe(` across `src/tests/` returns only
+five `process.exit(` false positives.
+
+**Default suite** (`npm test`): **320/320 passing, 20 suites**, exit 0.
+
+**Runner coverage — 26 suite directories exist; the default runner enumerates
+20.** Six sit outside it. Three of those had **no recorded baseline before this
+sprint** and were measured here:
+
+| Suite | Result | Status |
+|---|---|---|
+| `CACHE-tests` | **59/59** | ✅ green — *newly recorded* |
+| `LANG-FEAT-tests` | **11/11** | ✅ green — *newly recorded* |
+| `SHORT` | **2/2** | ✅ green — *newly recorded* |
+| `WUMMI-tests` | 3 failed / 46 passed | ⚠️ known Group B, deferred since v1.55.2 |
+| `FULL` (`jest-full-config`) | 4 failed / 27 passed | ⚠️ known — punch-list items 2 and 9 |
+| `COV-tests` | not measurable | requires Coverage Mode; excluded by design |
+
+**Total measurable in Regression Mode: 392 passing** (320 + 59 + 11 + 2), plus
+WUMMI's 46 and FULL's 27 within their failing suites.
+
+### Failure groups and dispositions
+
+| Group | Tests | Cause | Disposition |
+|---|---|---|---|
+| **A — WUMMI dedup parity** | `FG1`, `Main`, `Mustererkennung` | PNut-TS's early-deduplication + distiller produce *smaller* objects than PNut, so `.obj`/`.bin` diverge from GOLDs that may predate the feature. Not EOL, not a GOLD-editing question. | **DEFER** — unchanged from v1.55.2; unrelated to preprocessor symbols and would roughly double the sprint |
+| **B — `TEST/FULL` preprocessor GOLDs** | `condCode`, `condCodeElse`, `include` | Punch-list item 2: CON-only fixture sources, legal as imported objects but not top-level, so the compiler correctly errors `No PUB method or DAT block found`. GOLDs also predate a deliberate preprocessor output-format change. | **DEFER** — but see the §3 interaction note below |
+| **C — `TEST/FULL` `dumpTables`** | `dumpTables` | Punch-list item 9; cause unknown, not a preprocessor-GOLD issue | **DEFER** — needs its own diagnosis |
+
+**§3 interaction — watch this during execution.** Group B's fixtures are
+preprocessor GOLD comparisons, and §3 changes what the preprocessor emits for
+multi-word `#define` values. If a Group B fixture's failure *changes shape*
+during this sprint, that is signal, not noise — re-read it rather than assuming
+it is the same known failure.
+
+**Exit-baseline assertion for closeout.** Health must be no worse than: build
+clean / 0 warnings; no skips; default suite ≥320 passing with any newly-added
+tests on top; CACHE 59/59, LANG-FEAT 11/11, SHORT 2/2 still green; WUMMI still
+exactly 3 failures and nothing new; FULL still exactly 4 and nothing new.
+
+**Observation for a future sprint (not this one):** CACHE, LANG-FEAT and SHORT
+are all green and outside the default runner — the same invisible-skip shape
+v1.55.2 §12 fixed for EXCEPT and PREPROC. Adding them to
+`jest-config/jest-coverage-config.json` roots would bring the default suite to
+392. Not folded in here: it is unrelated to symbol correctness, and doing it
+mid-sprint would move the very count the exit baseline asserts against.
+
 ## Scope
 
 Two strands, deliberately in one sprint because the second is the documentation
