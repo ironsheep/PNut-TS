@@ -21,6 +21,108 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## [1.55.2] 2026-08-08
+
+CLI robustness: preprocessor problems are now reported instead of being silently
+tolerated, errors are emitted once as plain text on stderr, and a failed build no
+longer leaves output files behind.
+
+### ⚠️ Behavior change — some sources that build today will start failing
+
+Malformed preprocessor directives used to be recorded and then discarded. They
+are now errors that stop the build. A source containing a stray `#endif`, an
+`#ifdef` never closed, a directive missing its symbol, an unknown directive, or a
+`{Spin2_vNN}` naming a version this compiler does not support **compiled
+successfully before and will now fail**.
+
+This is not a new restriction so much as a newly visible one. A broken
+conditional nest never produced a compile error you would notice — it produced a
+clean, successful build of the wrong lines, which is the failure mode this
+release exists to eliminate. If a source of yours starts failing here, it was
+very likely not compiling what you thought it was.
+
+### Added
+
+- **Preprocessor diagnostics are visible.** Errors and warnings are written to
+  stderr as `<filespec>:<line>:error:<message>` (or `:warning:`), in source
+  order, matching the format compilation errors already used. Every preprocessor
+  error in a file is reported from a single build rather than one per attempt.
+- **Unterminated conditionals are detected.** An `#ifdef`/`#ifndef` never closed
+  by `#endif` now reports `Expected #ENDIF` against the line that opened it,
+  instead of quietly ending at EOF with the rest of the file's inclusion decided
+  by a block the author never finished.
+- **Directives written with no argument are caught.** `#define`, `#ifdef`,
+  `#include` and friends written bare used to be swallowed by the CON
+  enumeration-start syntax, which also begins with `#`. Valid enumeration starts
+  are unaffected.
+- **Failed builds delete their output files.** A build that fails removes the
+  `.lst`, `.map`, `.flash`, `.obj` and binary it would have produced, including
+  a `-o` custom-named binary and the `-a` `.binary` variant. Previously a failed
+  build left the *previous* run's binary in place with its old timestamp, so any
+  scripted consumer would load stale code onto hardware and debug a binary that
+  did not correspond to the source. The `-i` `*__pre.spin2` dump is kept — it is
+  diagnostic output, and most useful exactly when a build has just failed.
+  Nothing is deleted for a failure that occurs before the source file resolves,
+  so a mistyped filename leaves an earlier build's output alone.
+
+### Fixed
+
+- **`#error` and `#warn` fired from conditional branches that were not taken.**
+  Neither directive was guarded by the branch test every other content-bearing
+  directive uses, so the documented idiom — an `#error` in the fall-through
+  `#else` of a board-selection chain — fired on *every* build regardless of
+  which board was selected.
+- **`#warn` and `#error` messages lost their first character.** The message was
+  taken by fixed offset rather than by parsing, so `#warn hello` reported
+  `ello`, and any leading indentation shifted the text further (`  #error msg`
+  reported `r msg`). Surrounding quotes are now stripped as the documentation
+  always implied.
+- **An illegal `{Spin2_vNN}` version compiled anyway.** The version was reset to
+  the default and compilation proceeded, so a source declaring a version this
+  compiler does not support was silently built against a different language
+  level. It is now an error — and it cites the correct source line, where it
+  previously reported a meaningless one derived from the comment's position in
+  the header block.
+- **`#include` argument errors were replaced by a vaguer message.** The specific
+  complaint — unsupported filetype, or a filename that could not be read because
+  the quotes are missing — was overwritten by a generic "Filename missing from
+  #include statement", which was not even accurate for the filetype case.
+- **`#pragma` with a missing symbol reported the wrong problem.** It came back as
+  an unsupported pragma rather than naming the missing symbol.
+- **Compile errors were printed twice**, once to stdout and once to stderr. Only
+  the stderr copy is now emitted.
+- **Diagnostics no longer contain ANSI color codes.** Colorizing at the source
+  prevented editors, build wrappers and `grep` from filtering or recoloring the
+  output; that decision belongs to whatever displays the text.
+
+### Changed
+
+- Diagnostics covering directives the original PNut also has now use PNut's
+  exact wording — `Expected a preprocessor symbol`, `Must be preceeded by #IFDEF
+  or #IFNDEF`, `Expected #ENDIF` — so build logs from either compiler match the
+  same search. (The misspelling in the second is PNut's and is reproduced
+  deliberately.) `#error`, `#warn`, `#include` and `#pragma` are PNut-TS
+  extensions and keep wording of their own.
+- `#undef` of a symbol that was never defined is a **warning**, not an error: C
+  specifies it as a no-op. The build continues and artifacts are written.
+- PNut caps conditional nesting at 8 levels; PNut-TS deliberately does not adopt
+  that limit. Source nested deeper builds here and will not build under PNut —
+  see the portability note in the Preprocessor Usage Guide.
+
+### Testing
+
+- The default `npm test` suite grew from 276 tests across 17 suites to **320
+  across 20**. The EXCEPT and PREPROC suites were never in it, so this sprint's
+  primary regression homes would have gone unrun; a new artifact-cleanup suite
+  joins them.
+- 16 negative fixtures (`TEST/EXCEPT-tests/pperr_*.spin2`), 4 positive
+  preprocessor fixtures including 12-level nesting in both all-defined and
+  intermediate-undefined configurations, and 8 sequenced-compile tests covering
+  the delete-on-failure behavior.
+- The remaining suites stay outside the default run deliberately: WUMMI carries
+  three known failures under investigation, COV requires the container in
+  Coverage Mode, and FULL carries four failures that predate this work.
+
 ## [1.55.1] 2026-07-12
 
 ### Fixed

@@ -282,6 +282,81 @@ Use `#warn` to:
 - Alert about non-optimal settings
 - Provide informational messages during compilation
 
+Both directives only fire from a branch that is actually being compiled. An
+`#error` sitting in the `#else` of a configuration chain — the pattern under
+[Hardware Configuration Selection](#hardware-configuration-selection) — stays
+silent whenever any earlier branch matched.
+
+## Diagnostics
+
+### Message Format
+
+Every preprocessor diagnostic is written to **stderr**, one per line, in the
+order it occurs in the source:
+
+```
+<filespec>:<line>:error:<message>
+<filespec>:<line>:warning:<message>
+```
+
+Line numbers are 1-based and refer to the file named on that line, which is not
+necessarily the file you compiled — a diagnostic inside an included file or a
+child object names that file and its own line number.
+
+The text is plain: no ANSI color codes, and nothing is duplicated onto stdout.
+Colorizing is left to whatever displays the output, so editors, build wrappers
+and `grep` all see the same bytes.
+
+Compilation errors from the compiler proper use the same shape, so a single
+pattern matches everything PNut-TS reports.
+
+### Fatal vs Warning
+
+| Condition | Severity |
+|-----------|----------|
+| `#error` in a live branch | fatal |
+| `#warn` in a live branch | warning |
+| `#define`, `#undef`, `#ifdef`, `#ifndef`, `#elseifdef`, `#elseifndef` with no symbol | fatal |
+| `#error`, `#warn`, `#include`, `#pragma` with no argument | fatal |
+| `#else`, `#elseifdef`, `#elseifndef`, `#endif` with no conditional open | fatal |
+| `#ifdef`/`#ifndef` never closed by `#endif` | fatal |
+| `#include` of an unsupported filetype, without quotes, or not found | fatal |
+| Unsupported `#pragma` command, or an unrecognized directive | fatal |
+| Illegal `{Spin2_vNN}` language version | fatal |
+| `#undef` of a symbol that was never defined | warning |
+
+`#undef` of an undefined symbol is deliberately not an error: C specifies it as
+a no-op, and so does PNut-TS.
+
+### Exit Codes and Output Files
+
+| Outcome | Exit code | Output files |
+|---------|-----------|--------------|
+| Success, no diagnostics | 0 | written |
+| Warnings only | 0 | written |
+| Any fatal diagnostic | 1 | **none** |
+
+A failed build leaves **no output files behind**. Any `.lst`, `.map`, `.flash`,
+`.obj` or binary from a previous successful build of the same source is removed
+rather than left looking current, so a scripted consumer cannot pick up a stale
+binary that no longer matches the source. Nothing is deleted for a failure that
+happens before the source file is resolved — a typo in the filename on the
+command line leaves an earlier build's output alone.
+
+The `*__pre.spin2` dump requested with `-i` is **kept** on failure. It is
+diagnostic output, not a build product, and it is most useful precisely when the
+build has just failed.
+
+### Seeing Every Error at Once
+
+A fatal diagnostic does not stop the preprocessing pass. All of a file's
+preprocessor errors are reported, in source order, and the build then aborts —
+so a file with three broken conditionals takes one build to diagnose rather than
+three.
+
+`#error` is the exception: it stops immediately. "Abort here" is what an
+author-placed `#error` means, and nothing after it is expected to be meaningful.
+
 ## Command-Line Options
 
 ### -D (Define Symbol)
@@ -721,6 +796,58 @@ The commented-out directives preserve line numbers for error reporting while sho
 | `#ifdef SYMBOL` | No | Code excluded |
 | `#ifndef SYMBOL` | Yes | Code excluded |
 | `#ifndef SYMBOL` | No | Code included |
+
+## Compatibility with PNut
+
+PNut-TS is a superset of the original Windows PNut compiler. Source that only
+uses the directives PNut has will build under both; source that uses the rest
+builds under PNut-TS only. If portability matters, this is the line to stay on
+the right side of.
+
+### Directives PNut Also Has
+
+`#define` · `#undef` · `#ifdef` · `#ifndef` · `#elseifdef` · `#elseifndef` ·
+`#else` · `#endif`
+
+These eight are portable. Where PNut has wording for a diagnostic, PNut-TS uses
+PNut's wording verbatim, so build logs from either compiler match the same
+search:
+
+| Condition | Message |
+|-----------|---------|
+| Directive missing its symbol | `Expected a preprocessor symbol` |
+| Conditional directive with nothing open | `Must be preceeded by #IFDEF or #IFNDEF` |
+| `#ifdef`/`#ifndef` never closed | `Expected #ENDIF` |
+
+The misspelling in the second message is PNut's own and is reproduced exactly
+rather than corrected — the point is that the two compilers say the same thing.
+
+### PNut-TS Extensions
+
+`#error` · `#warn` · `#include` · `#pragma exportdef`
+
+These do not exist in PNut. Source using them will not build under the original
+compiler.
+
+### Nesting Depth
+
+PNut caps conditional nesting at 8 levels and rejects anything deeper. PNut-TS
+has **no limit** — the preprocessor is a property of the compiler rather than of
+the Spin2 language, so PNut's implementation limit is not one PNut-TS adopts.
+
+Nesting deeper than 8 levels therefore builds here and fails under PNut. That is
+not a reason to reject it, but it is worth knowing before shipping such source to
+someone on Windows. (Deep nesting is hard to read regardless — see
+[Deeply Nested Conditionals](#deeply-nested-conditionals).)
+
+### A Note on Unrecognized Directives
+
+`#` followed by a word is also valid Spin2 syntax: it starts a CON enumeration.
+PNut-TS resolves the ambiguity in favor of Spin2, so a misspelled directive that
+still looks like an enumeration start — `#ifdefx SYMBOL`, say — is treated as an
+enumeration rather than reported as a bad directive. It will still fail the
+build, but as a Spin2 syntax error rather than a preprocessor one. A directive
+written with no argument at all is caught and reported properly.
 
 ## Related Documentation
 

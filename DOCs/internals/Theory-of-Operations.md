@@ -99,14 +99,47 @@ The integrated preprocessor handles:
 #error "This causes compilation to fail"
 ```
 
-#### 2.3 Preprocessor Integration Features
+#### 2.3 Preprocessor Diagnostics
+
+Diagnostics are **emitted at the point of detection**, straight to stderr, in
+source order:
+
+```
+<filespec>:<line>:error:<message>
+<filespec>:<line>:warning:<message>
+```
+
+A fatal diagnostic does not abandon the pass. It sets a per-document flag and
+preprocessing continues, so every preprocessor error in a file is reported from
+a single build rather than one per attempt. At the end of the pass, a document
+that recorded a fatal throws `PreprocessorError` — before any output file is
+written, and before the compiler proper is reached.
+
+`PreprocessorError` is a distinct type rather than a plain `Error` because its
+diagnostics have **already been reported** by the time it propagates. The
+top-level handler in `pnut-ts.ts` therefore stays silent for it, and
+`compiler.ts` re-throws it ahead of the code that dresses an exception up as a
+compiler error — without that, a fatal inside a child object would be printed
+twice, the second time naming the wrong file.
+
+`#error` is the one directive that throws immediately instead of deferring to
+the end of the pass, since an author-placed `#error` means "stop here."
+
+An earlier design accumulated diagnostics in a per-document array and printed
+them only when a debug logging flag was set. The array had no other reader, so
+in normal operation preprocessor diagnostics were invisible and affected neither
+the exit code nor artifact production — a source with a broken conditional nest
+did not fail to build, it built successfully from the wrong lines. That model
+has been removed.
+
+#### 2.4 Preprocessor Integration Features
 - **Command-Line Defines**: Symbols defined with -D flags
 - **Nested Conditionals**: Proper IF/IFDEF nesting with state tracking
 - **Include Path Resolution**: Searches multiple folders for include files
 - **Symbol Export**: `#pragma EXPORTDEF symbol` for cross-file symbols
 - **Version Requirements**: Automatic detection of required compiler version
 
-#### 2.4 Comment Processing
+#### 2.5 Comment Processing
 - **Documentation Comments**: `{{...}}` blocks preserved for documentation
 - **Line Comments**: `'` comments handled appropriately
 - **Block Comments**: `{...}` comments removed during preprocessing
