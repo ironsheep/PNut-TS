@@ -1006,12 +1006,12 @@ export class SpinDocument {
   }
 
   private undefineSymbol(oldSymbol: string): boolean {
-    // Mirror of defineSymbol(): a symbol may live in the presence table alone
+    // Mirror of defineSymbol(): a symbol lives in the presence table alone
     // (SA_NUMBER_NO) or in both it and the substitution table (SA_TEXT_YES).
-    // Removing from only the presence table left the substitution live -- #ifdef
-    // said the symbol was gone while the text kept expanding. Found-in-either is
-    // the contract: a symbol in only one table must not trigger the not-found
-    // warning at the #undef site.
+    // Remove from both; found-in-either is success, so a symbol in only one
+    // table does not trip the caller's not-found warning. Both removes run
+    // before the ||: collapsing them into it would short-circuit past the
+    // substitution-table removal.
     const presenceRemoved: boolean = this.preProcSymbols.remove(oldSymbol);
     const substitutionRemoved: boolean = this.preProcTextSymbols.remove(oldSymbol);
     const removeStatus: boolean = presenceRemoved || substitutionRemoved;
