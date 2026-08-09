@@ -495,6 +495,29 @@ outcome** and is why the phases are separated.
 - Phase B's path is chosen by that answer, not assumed at plan time.
 - No count is published that was not produced by a run.
 
+### Execution record (2026-08-09)
+
+**Phase A answer: BROKEN as a pipeline — the broken branch of Phase B was
+taken.** Findings, in full in punch-list item 10:
+
+- `extract-pasm2-database.ts` and `extract-condition-codes.ts` import
+  `'../src/classes/types'` — a pre-move path; neither has ever run from the
+  tree as committed (`d3c11aa`, 2025-09-13, moved them without repathing).
+  `extract-pasm2-database.ts` also writes to the deleted pre-move output
+  location.
+- `extract-pasm2-database-corrected.ts` is the *successor* to
+  `extract-pasm2-database.ts` (operand patterns from `spinResolver.ts` parsing
+  logic instead of comments); the shipped v3.0.0 database appears to be its
+  renamed output post-processed by the undocumented `scripts/*.js` helpers.
+  The README documents only the broken original.
+- `extract-spin2-language.ts` runs, and a probe regeneration (reverted)
+  showed every `elementType` ordinal off by one since the v53 enum shift —
+  confirmed content drift with coincidentally-stable headline counts.
+
+Per the broken branch: no counts hand-patched, Group C findings left in
+place, `verified` stamps unchanged, punch-list item 10 added, scope decision
+(repair / retire / staleness-banner) brought to Stephen.
+
 ---
 
 ## 9. `copyright` — reconcile and ship

@@ -467,6 +467,53 @@ above. Two things are *not* covered there:
    `include` failure independent of GOLD staleness, and a latent trap for any
    future test in that file.
 
+## 10. Language-specification extraction pipeline broken in place (added 2026-08-09)
+
+**Surfaced by:** Preproc-Symbols sprint §8 Phase A — the aged-document gate
+selected `DOCs/language-specification/README.md` (2025-09-13, ~v52 era) and
+its hardcoded counts; the assessment asked "does the documented pipeline still
+run?" The answer is no, and it never has from its current location:
+
+1. **Broken imports since the move.** `extract-pasm2-database.ts:16` and
+   `extract-condition-codes.ts:16` import `'../src/classes/types'` — a path
+   from the scripts' pre-`d3c11aa` (2025-09-13) home. From
+   `extraction-scripts/` it must be `'../../../src/classes/types'`. Neither
+   script has ever run from the tree as committed. (In
+   `extract-condition-codes.ts` the broken import is also *unused* — the same
+   line the external audit flagged as UNUSED_IMPORT.)
+2. **Stale output path.** `extract-pasm2-database.ts:490` writes to
+   `../DOCs/internals/PASM2-Instruction-Database.json` — the pre-move
+   location, deleted in the same commit that moved the scripts.
+3. **Superseded-but-undocumented generator.** `extract-pasm2-database-corrected.ts`
+   derives operand patterns from `spinResolver.ts` parsing logic (its header
+   calls the original's comment-based patterns unreliable) and writes
+   `databases/PASM2-Instruction-Database-CORRECTED.json`. The shipped
+   `databases/PASM2-Instruction-Database.json` (v3.0.0, generated 2025-12-13)
+   appears to be its renamed output, post-processed by the four `scripts/*.js`
+   helpers (mode-700, tracked) — none of which the README mentions. The README
+   documents only the original, broken script.
+4. **Confirmed content drift.** `extract-spin2-language.ts` *does* run; a probe
+   regeneration (reverted, not committed) changed every `elementType` ordinal
+   by +1 — the v53 enum shift. The committed
+   `SPIN2-Language-Specification.json` has embedded raw enum ordinals stale
+   since v53. Headline counts (36 keywords / 72 operators) happen to still
+   match, but the numeric IDs are all wrong — and raw enum ordinals in a
+   persistent artifact is the same fragility class the bc_* names-not-values
+   rule exists for.
+
+**Not done in that sprint (deliberate):** no counts were hand-patched, the
+Group C audit findings in these files were left as-is (a repair rewrites or
+retires them), and `verified` stamps were not advanced. Repairing this is a
+scoped effort of its own: fix the two import paths and the output path,
+reconcile original vs `-corrected` vs the `scripts/` post-processors into one
+documented canonical flow, regenerate all four outputs, decide whether
+`databases/` + `ide-integration/` should be class `generated` (not
+hand-audited), and consider dropping raw enum ordinals from the emitted JSON.
+**Scope decision is Stephen's**: repair sprint, retire the tree, or leave as
+historical reference with a staleness banner.
+
+---
+
 ## Cross-cutting note: regression tests against "us-vs-us" GOLDs
 
 Three of the items above (`#1 op_qlog`, `#2 preproc GOLDs`, the deleted
