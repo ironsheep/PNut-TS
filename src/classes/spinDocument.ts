@@ -1288,7 +1288,9 @@ export class SpinDocument {
     // bare form, no 'v' prefix -- read from the CLI's single version source
     // via Context, never restated here. Defining it late in pnut-ts.ts ran
     // AFTER preprocessing (which happens in this constructor), so the symbol
-    // never existed when a source referenced it.
+    // never existed when a source referenced it. Guarded: should a context
+    // ever arrive without a version, an ABSENT symbol (#ifdef false) beats a
+    // defined-but-empty one that substitutes to nothing.
     const compilerVersion: string = this.context?.compilerVersion ?? '';
     if (compilerVersion.length > 0) {
       baseSymbols['__VERSION__'] = compilerVersion;
