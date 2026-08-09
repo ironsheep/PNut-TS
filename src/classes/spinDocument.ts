@@ -1176,10 +1176,38 @@ export class SpinDocument {
       // internally all Preprocessor symbols are UPPER CASE
       symbol = lineParts[1].toUpperCase();
       if (lineParts.length > 2) {
-        value = lineParts[2];
+        // The value is everything after the symbol token, not just the next
+        // token: '#define MSG hello there world' substitutes all three words
+        // (C and FlexSpin take the rest of the line; taking one token
+        // silently dropped the others). Interior spacing is preserved; a
+        // trailing tick or brace comment is not part of the value. The
+        // symbol stays the whitespace-split token above -- the caller's
+        // function-like '(' check depends on that.
+        const restMatch = /^\s*#define\s+\S+([ \t].*)$/i.exec(line);
+        if (restMatch !== null) {
+          const restValue: string = this.removeTrailingLineComment(restMatch[1]).trim();
+          if (restValue.length > 0) {
+            value = restValue;
+          }
+        }
       }
     }
     return [symbol, value];
+  }
+
+  private removeTrailingLineComment(text: string): string {
+    // Cut at the first tick or open-brace outside a double-quoted string --
+    // the quote guard keeps '#define MEMDRIVER "driver2.spin2"' intact.
+    let insideString: boolean = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"') {
+        insideString = !insideString;
+      } else if (!insideString && (char === "'" || char === '{')) {
+        return text.substring(0, i);
+      }
+    }
+    return text;
   }
 
   private getPragmaSymbolValue(line: string): [string, string | undefined, string] {

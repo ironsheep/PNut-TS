@@ -1,0 +1,23 @@
+'' A #define value is everything after the symbol token, not just the next
+'' word: MSG must substitute all three words below (the defect kept only the
+'' first). A trailing tick comment is not part of the value, interior spacing
+'' is preserved, a quoted value keeps an interior tick, and single-token and
+'' bare defines behave as before.
+#define MSG hello there world
+#define NOTED 42 ' this comment is not part of the value
+#define SPACED 1  +  2
+#define QUOTED "it's quoted"
+#define ONE hello
+#define BARE
+#ifdef BARE
+CON
+  N = NOTED
+  S = SPACED
+#endif
+DAT
+  m  byte  "MSG", 0
+  q  byte  QUOTED, 0
+  o  byte  "ONE", 0
+
+PUB main()
+  repeat

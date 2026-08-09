@@ -1,0 +1,34 @@
+' Report for regression testing
+' Run: 08/09/2026
+#
+' ---------------------------------------
+[000] 1: '' A #define value is everything after the symbol token, not just the next
+[001] 2: '' word: MSG must substitute all three words below (the defect kept only the
+[002] 3: '' first). A trailing tick comment is not part of the value, interior spacing
+[003] 4: '' is preserved, a quoted value keeps an interior tick, and single-token and
+[004] 5: '' bare defines behave as before.
+[005] 6: ' #define MSG hello there world
+[006] 7: ' #define NOTED 42 ' this comment is not part of the value
+[007] 8: ' #define SPACED 1  +  2
+[008] 9: ' #define QUOTED "it's quoted"
+[009] 10: ' #define ONE hello
+[010] 11: ' #define BARE
+[011] 12: ' #ifdef BARE
+[012] 13: CON
+[013] 14: '   N = NOTED
+[014] 14:   N = 42
+[015] 15: '   S = SPACED
+[016] 15:   S = 1  +  2
+[017] 16: ' #endif
+[018] 17: DAT
+[019] 18: '   m  byte  "MSG", 0
+[020] 18:   m  byte  "hello there world", 0
+[021] 19: '   q  byte  QUOTED, 0
+[022] 19:   q  byte  "it's quoted", 0
+[023] 20: '   o  byte  "ONE", 0
+[024] 20:   o  byte  "hello", 0
+[025] 21: 
+[026] 22: PUB main()
+[027] 23:   repeat
+[028] 24: 
+' ---------------------------------------
