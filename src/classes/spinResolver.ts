@@ -1300,7 +1300,7 @@ export class SpinResolver {
         this.cogOrgLimit = inLineCogOrgLimit;
         this.hubOrg = 0x400;
         this.orghOffset = this.hubOrg - this.objImage.offset;
-        this.hubOrgLimit = this.obj_size_limit;
+        this.hubOrgLimit = this.obj_size_limit; // redundant with line above the if — kept for line-by-line parity with PNut Pascal
         this.logRestoredElementLocation(startingElementIndex);
       } else {
         // PNut @@passblock:
@@ -1310,7 +1310,7 @@ export class SpinResolver {
         // location in object of start -OR- start of hub for execution
         this.hubOrg = this.pasmMode ? this.objImage.offset : 0x00400;
         this.orghOffset = this.hubOrg - this.objImage.offset;
-        this.hubOrgLimit = this.obj_size_limit;
+        this.hubOrgLimit = this.obj_size_limit; // redundant with line above the if — kept for line-by-line parity with PNut Pascal
         this.logRestoredElementLocation(0); // start from first in list
       }
       do {

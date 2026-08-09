@@ -384,7 +384,6 @@ function compareConFloatValues(compileLines: string[], goldenLines: string[]): b
     const hexPattern = /^([0-9A-F]{5}-)\s+((?:[0-9A-F]{2}\s+)+)/;
     const compHexBytes: string[] = [];
     const goldHexBytes: string[] = [];
-    const hexDumpLineIndices: number[] = [];
 
     for (let index = 0; index < compileLines.length; index++) {
       const compLine: string = compileLines[index];
@@ -396,7 +395,6 @@ function compareConFloatValues(compileLines: string[], goldenLines: string[]): b
         if (compMatch !== null && goldMatch !== null) {
           compHexBytes.push(...compMatch[2].trim().split(/\s+/));
           goldHexBytes.push(...goldMatch[2].trim().split(/\s+/));
-          hexDumpLineIndices.push(index);
         }
       }
     }

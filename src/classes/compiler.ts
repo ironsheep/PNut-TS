@@ -396,13 +396,12 @@ export class Compiler {
               //dumpUniqueChildObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
               // DEBUG dump object records for inspection
               if (this.isLoggingOutline) {
-                if (this.isLoggingOutline) this.logMessageOutline(`* - -------------------------------`);
+                this.logMessageOutline(`* - -------------------------------`);
                 for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
                   const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
-                  if (this.isLoggingOutline)
-                    this.logMessageOutline(`  -- compRecur() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
+                  this.logMessageOutline(`  -- compRecur() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
                 }
-                if (this.isLoggingOutline) this.logMessageOutline(`* - -------------------------------`);
+                this.logMessageOutline(`* - -------------------------------`);
               }
             }
           }
@@ -665,29 +664,29 @@ export class Compiler {
   private logDuplicationStats(): void {
     // Only log if we have duplicates and outline logging is enabled
     if (this.memoryStats.duplicatesDetected > 0 && this.isLoggingOutline) {
-      if (this.isLoggingOutline) this.logMessageOutline('');
-      if (this.isLoggingOutline) this.logMessageOutline('=== Early Object Deduplication Statistics ===');
-      if (this.isLoggingOutline) this.logMessageOutline(`Total objects compiled: ${this.memoryStats.totalObjectsCompiled}`);
-      if (this.isLoggingOutline) this.logMessageOutline(`Duplicate objects detected: ${this.memoryStats.duplicatesDetected}`);
-      if (this.isLoggingOutline) this.logMessageOutline(`Memory saved: ${this.memoryStats.memoryBytesSaved} bytes`);
+      this.logMessageOutline('');
+      this.logMessageOutline('=== Early Object Deduplication Statistics ===');
+      this.logMessageOutline(`Total objects compiled: ${this.memoryStats.totalObjectsCompiled}`);
+      this.logMessageOutline(`Duplicate objects detected: ${this.memoryStats.duplicatesDetected}`);
+      this.logMessageOutline(`Memory saved: ${this.memoryStats.memoryBytesSaved} bytes`);
 
       const deduplicationRatio = (this.memoryStats.duplicatesDetected / this.memoryStats.totalObjectsCompiled) * 100;
-      if (this.isLoggingOutline) this.logMessageOutline(`Deduplication ratio: ${deduplicationRatio.toFixed(1)}%`);
+      this.logMessageOutline(`Deduplication ratio: ${deduplicationRatio.toFixed(1)}%`);
 
       // Log breakdown by object size
       if (this.memoryStats.duplicatesBySize.size > 0) {
-        if (this.isLoggingOutline) this.logMessageOutline('');
-        if (this.isLoggingOutline) this.logMessageOutline('Duplicates by size:');
+        this.logMessageOutline('');
+        this.logMessageOutline('Duplicates by size:');
         const sortedSizes = Array.from(this.memoryStats.duplicatesBySize.entries()).sort((a, b) => b[0] - a[0]);
         for (const [size, count] of sortedSizes) {
           const sizeKB = (size / 1024).toFixed(2);
           const savedKB = ((size * count) / 1024).toFixed(2);
-          if (this.isLoggingOutline) this.logMessageOutline(`  ${sizeKB} KB objects: ${count} duplicates (saved ${savedKB} KB)`);
+          this.logMessageOutline(`  ${sizeKB} KB objects: ${count} duplicates (saved ${savedKB} KB)`);
         }
       }
 
-      if (this.isLoggingOutline) this.logMessageOutline('==============================================');
-      if (this.isLoggingOutline) this.logMessageOutline('');
+      this.logMessageOutline('==============================================');
+      this.logMessageOutline('');
     }
   }
 

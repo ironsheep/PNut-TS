@@ -99,7 +99,7 @@ export class PNutInTypeScript {
    * through it -- including one added later -- can skip the cleanup.
    */
   public async run(): Promise<number> {
-    let exitCode: number = 1;
+    let exitCode: number;
     try {
       exitCode = await this.runCompile();
     } catch (error) {
