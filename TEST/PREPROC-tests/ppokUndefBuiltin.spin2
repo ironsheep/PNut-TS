@@ -1,0 +1,18 @@
+'' #undef of a preloaded built-in warns and refuses: __P2__ must survive the
+'' #undef below, and the build still completes with artifacts (warning, not
+'' error -- the refusal keeps the build correct). The lowercase __file__ form
+'' must be recognized too: symbol matching is case-insensitive. A user
+'' symbol's #undef stays silent.
+#undef __P2__
+#ifdef __P2__
+CON
+  P2_PRESENT = 1
+#else
+#error "__P2__ was removed by #undef"
+#endif
+#undef __file__
+#define MY_SYM
+#undef MY_SYM
+
+PUB main()
+  repeat

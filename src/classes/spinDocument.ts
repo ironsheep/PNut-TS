@@ -35,6 +35,15 @@ export enum eTextSub {
   SA_NUMBER_NO
 }
 
+export enum eUndefineResult {
+  /** Symbol was present and has been removed from both tables. */
+  UR_REMOVED,
+  /** Symbol was not present in either table. */
+  UR_NOT_FOUND,
+  /** Symbol is one of the preloaded built-ins; removal refused. */
+  UR_BUILTIN_REFUSED
+}
+
 export enum eDiagnosticSeverity {
   /** The source cannot be compiled as written. Reported, then the build aborts. */
   DS_FATAL,
@@ -180,6 +189,10 @@ export class SpinDocument {
   private preProcSymbols: SymbolTable = new SymbolTable();
   // these can be used for text substitution in code
   private preProcTextSymbols: SymbolTable = new SymbolTable();
+  // uppercase names of the symbols preloadSymbolTable() defined -- the set
+  // #undef refuses to remove. Filled by preloadSymbolTable() itself so it can
+  // never drift from the actual built-in list. -D symbols are NOT in it.
+  private preloadedSymbolNames: Set<string> = new Set();
   private preProcNestingState: PreProcState[] = [];
   // preprocess state information
   private cmdLineDefines: string[] = [];
@@ -580,7 +593,11 @@ export class SpinDocument {
           if (symbol) {
             // this.logMessage(`SpinPP: (DBG) UNDEF inPreProcIForIxFNOT=(${inPreProcIForIxFNOT}), thisSidxeKeepsCode=(${thisSideKexepsCode})`);
             if (this.thisSideKeepsCode() || !this.inIfDef()) {
-              if (!this.undefineSymbol(symbol)) {
+              const undefResult: eUndefineResult = this.undefineSymbol(symbol);
+              if (undefResult == eUndefineResult.UR_BUILTIN_REFUSED) {
+                // Warning, not error: the refusal keeps the build correct.
+                this.reportError(`cannot undefine built-in symbol [${symbol}]`, lineIdx, eDiagnosticSeverity.DS_WARNING);
+              } else if (undefResult == eUndefineResult.UR_NOT_FOUND) {
                 // Not fatal: C specifies #undef of an undefined symbol as a no-op.
                 this.reportError(`#undef symbol [${symbol}] not found`, lineIdx, eDiagnosticSeverity.DS_WARNING);
               } else {
@@ -1005,7 +1022,14 @@ export class SpinDocument {
     }
   }
 
-  private undefineSymbol(oldSymbol: string): boolean {
+  private undefineSymbol(oldSymbol: string): eUndefineResult {
+    // The built-in guard lives here, not at the directive site, so every
+    // caller inherits it: the preloaded __*__ symbols describe the compilation
+    // environment and stay defined no matter who asks. -D symbols are not in
+    // the preloaded set and remain undefinable (-U is their counterpart).
+    if (this.preloadedSymbolNames.has(oldSymbol.toUpperCase())) {
+      return eUndefineResult.UR_BUILTIN_REFUSED;
+    }
     // Mirror of defineSymbol(): a symbol lives in the presence table alone
     // (SA_NUMBER_NO) or in both it and the substitution table (SA_TEXT_YES).
     // Remove from both; found-in-either is success, so a symbol in only one
@@ -1014,11 +1038,11 @@ export class SpinDocument {
     // substitution-table removal.
     const presenceRemoved: boolean = this.preProcSymbols.remove(oldSymbol);
     const substitutionRemoved: boolean = this.preProcTextSymbols.remove(oldSymbol);
-    const removeStatus: boolean = presenceRemoved || substitutionRemoved;
-    if (removeStatus) {
+    if (presenceRemoved || substitutionRemoved) {
       this.logMessage(`SpinPP: undefSymbol(${oldSymbol})`);
+      return eUndefineResult.UR_REMOVED;
     }
-    return removeStatus;
+    return eUndefineResult.UR_NOT_FOUND;
   }
 
   private macroSubstitute(line: string): string {
@@ -1236,6 +1260,7 @@ export class SpinDocument {
       const value = baseSymbols[symbolKey];
       const symTextFlag: eTextSub = value === 1 ? eTextSub.SA_NUMBER_NO : eTextSub.SA_TEXT_YES;
       this.defineSymbol(symbolKey, value, symTextFlag);
+      this.preloadedSymbolNames.add(symbolKey.toUpperCase()); // the set #undef refuses
     }
   }
 

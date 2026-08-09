@@ -1,0 +1,22 @@
+' Report for regression testing
+' Run: 08/09/2026
+#
+' ---------------------------------------
+[000] 1: '' #undef of a preloaded built-in warns and refuses: __P2__ must survive the
+[001] 2: '' #undef below, and the build still completes with artifacts (warning, not
+[002] 3: '' error -- the refusal keeps the build correct). The lowercase __file__ form
+[003] 4: '' must be recognized too: symbol matching is case-insensitive. A user
+[004] 5: '' symbol's #undef stays silent.
+[005] 6: ' #undef __P2__
+[006] 7: ' #ifdef __P2__
+[007] 8: CON
+[008] 9:   P2_PRESENT = 1
+[009] 12: ' #endif
+[010] 13: ' #undef __file__
+[011] 14: ' #define MY_SYM
+[012] 15: ' #undef MY_SYM
+[013] 16: 
+[014] 17: PUB main()
+[015] 18:   repeat
+[016] 19: 
+' ---------------------------------------

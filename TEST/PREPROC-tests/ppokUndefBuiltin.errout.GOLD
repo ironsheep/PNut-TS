@@ -1,0 +1,2 @@
+ppokUndefBuiltin.spin2:6:warning:cannot undefine built-in symbol [__P2__]
+ppokUndefBuiltin.spin2:13:warning:cannot undefine built-in symbol [__FILE__]
