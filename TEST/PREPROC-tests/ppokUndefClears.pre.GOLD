@@ -1,0 +1,26 @@
+' Report for regression testing
+' Run: 08/09/2026
+#
+' ---------------------------------------
+[000] 1: '' #undef must clear the substitution table as well as the presence table.
+[001] 2: '' UF exercises define/undef/re-define: the NEW value must substitute below
+[002] 3: '' (the defect left the OLD value expanding after #undef, while #ifdef agreed
+[003] 4: '' the symbol was gone). BARE exercises the presence-only shape: its #undef
+[004] 5: '' must count as found, so no warning may appear in this compile.
+[005] 6: ' #define UF hello
+[006] 7: ' #undef UF
+[007] 8: ' #ifdef UF
+[008] 10: ' #endif
+[009] 11: ' #define UF 7
+[010] 12: ' #define BARE
+[011] 13: ' #undef BARE
+[012] 14: ' #ifdef BARE
+[013] 16: ' #endif
+[014] 17: CON
+[015] 18: '   X = UF
+[016] 18:   X = 7
+[017] 19: 
+[018] 20: PUB main()
+[019] 21:   repeat
+[020] 22: 
+' ---------------------------------------

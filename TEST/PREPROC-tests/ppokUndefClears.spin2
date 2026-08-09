@@ -1,0 +1,21 @@
+'' #undef must clear the substitution table as well as the presence table.
+'' UF exercises define/undef/re-define: the NEW value must substitute below
+'' (the defect left the OLD value expanding after #undef, while #ifdef agreed
+'' the symbol was gone). BARE exercises the presence-only shape: its #undef
+'' must count as found, so no warning may appear in this compile.
+#define UF hello
+#undef UF
+#ifdef UF
+#error "UF presence not cleared by #undef"
+#endif
+#define UF 7
+#define BARE
+#undef BARE
+#ifdef BARE
+#error "BARE presence not cleared by #undef"
+#endif
+CON
+  X = UF
+
+PUB main()
+  repeat

@@ -1006,11 +1006,17 @@ export class SpinDocument {
   }
 
   private undefineSymbol(oldSymbol: string): boolean {
-    let removeStatus: boolean = false;
-    if (this.preProcSymbols.exists(oldSymbol)) {
+    // Mirror of defineSymbol(): a symbol may live in the presence table alone
+    // (SA_NUMBER_NO) or in both it and the substitution table (SA_TEXT_YES).
+    // Removing from only the presence table left the substitution live -- #ifdef
+    // said the symbol was gone while the text kept expanding. Found-in-either is
+    // the contract: a symbol in only one table must not trigger the not-found
+    // warning at the #undef site.
+    const presenceRemoved: boolean = this.preProcSymbols.remove(oldSymbol);
+    const substitutionRemoved: boolean = this.preProcTextSymbols.remove(oldSymbol);
+    const removeStatus: boolean = presenceRemoved || substitutionRemoved;
+    if (removeStatus) {
       this.logMessage(`SpinPP: undefSymbol(${oldSymbol})`);
-      this.preProcSymbols.remove(oldSymbol);
-      removeStatus = true;
     }
     return removeStatus;
   }
