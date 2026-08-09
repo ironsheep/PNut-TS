@@ -17,7 +17,7 @@ A couple of command line options affect the preprocessing:
 | Option | Effect |
 | --- | --- |
 | <PRE>-D \<symbolName></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements. Equivalent to `#define SYMBOL` but affects all files in the compilation effort. |
-| <PRE>-U \<symbolName></PRE>  | The -U option can undefine a symbol that was previously defined by using the -D option. <Br>**NOTE:** *The -U option can not undefine a symbol created by a #define directive.*
+| <PRE>-U \<symbolName></PRE>  | Prevents a `#pragma exportdef` of the named symbol from taking effect: the symbol stays private to the file that defined it instead of being exported to the rest of the compile. <Br>**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*
 | <PRE>-I \<directory></PRE>  | Specify the folder to search within for files specified using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`
 | -- **Diagnostic Use** -- |
 | <PRE>-i, --intermediate | Generate `*__pre.spin2` file after preprocessing - so you can review what preprocessed source was fed to the compiler
@@ -50,7 +50,22 @@ If you see the similarity to the FlexSpin directive set, you are correct! This c
 
 Defines a new symbol `FOO` with the value `hello`. Whenever the symbol `FOO` appears in the text, the preprocessor will substitute `hello`.
 
-Note that, unlike the traditional preprocessors, **this preprocessor** does not accept arguments. Only simple defines are permitted.
+The value is **everything after the symbol**, not just the next word — interior spacing preserved — so a multi-word value substitutes whole:
+
+```c++
+#define MSG hello there world       ' MSG expands to: hello there world
+#define NOTED 42 ' trailing comment ' NOTED expands to: 42
+```
+
+A trailing tick (`'`) or brace (`{`) comment on the directive line is not part of the value. A tick inside a double-quoted value is kept: `#define QUOTED "it's fine"` substitutes with the quotes and apostrophe intact. *(As of v1.55.3 — earlier versions silently kept only the first word of a multi-word value.)*
+
+Note that, unlike the traditional preprocessors, **this preprocessor** does not accept arguments. Only simple defines are permitted. A function-like define is a compile error, not a silent no-op:
+
+```
+myfile.spin2:1:error:#define does not support arguments — only simple symbol definitions
+```
+
+*(As of v1.55.3 — earlier versions accepted `#define SQ(x) ((x)*(x))` without a diagnostic and the macro never expanded, so every use site was silently wrong.)*
 
 Also note that this preprocessor is case insensitive, just like spin.
 
@@ -162,7 +177,7 @@ Removes a prior definition of a symbol, e.g., to undefine `FOO` do:
 #undef FOO
 ```
 
-Removes the user-defined symbol FOO if it was defined.
+Removes the user-defined symbol FOO if it was defined. Removal is complete: after the `#undef`, `#ifdef FOO` is false **and** the text `FOO` is no longer substituted. A later `#define FOO newvalue` installs the new value. *(As of v1.55.3 — earlier versions removed only the `#ifdef` presence while the old text substitution silently kept expanding.)*
 
 `#undef` of a symbol that was never defined is a **warning**, not an error — C specifies it as a no-op, so the compile continues and your output files are still written:
 
@@ -172,7 +187,13 @@ myfile.spin2:3:warning:#undef symbol [FOO] not found
 
 *As of v1.55.2.* This means a defensive `#undef` — one written to guarantee a symbol is clear without knowing whether it was ever set — will warn on every build. An `#elseifdef` chain is already mutually exclusive and needs no such guard.
 
-Note that #undef will not do anything if one of our built-in symbols was named.
+`#undef` of a predefined symbol (the `__*__` set below) is refused: the symbol stays defined, a warning is reported, and the compile continues — these symbols describe the compilation environment, and removing one would misbehave far from the file that removed it. Symbols defined with `-D` are not in the predefined set and can be `#undef`'d normally.
+
+```
+myfile.spin2:1:warning:cannot undefine built-in symbol [__P2__]
+```
+
+*(The refusal is enforced as of v1.55.3; earlier versions removed the symbol silently.)*
 
 ### \#pragma statements
 
@@ -182,42 +203,43 @@ The following \#pragma(s) are supported in PNut_TS:
 
 #### \#pragma exportdef {SYMNAME}
 
-The `exportdef` \#pragma exports the definition of the macro `SYMNAME` to other files. Normally a preprocessor macro only takes effect in the single source file in which it was defined. `#pragma exportdef` applied to the macro causes it to be exported to the global namespace, so that it will be in effect in all subsequent files, including objects.
+The `exportdef` \#pragma exports the **presence** of the symbol `SYMNAME` to
+the rest of the compile. Normally a preprocessor symbol only takes effect in
+the single source file in which it was defined; `#pragma exportdef` makes the
+symbol *defined* in all subsequent files, including objects — exactly as if
+`-D SYMNAME` had been given on the command line.
 
-Note that macros exported to other files by `#pragma exportdef` have lower priority than macros defined on the command line, that is, `#pragma exportdef SYMNAME ` has lower priority than `-DSYMNAME`. 
-
-Example of `#pragma exportdef ...` use:
+**What is exported is the fact that the symbol is defined, not its value.**
+An exported symbol tests true with `#ifdef` / `#ifndef` in every file, but it
+does not text-substitute in the other files. Use it to select configuration
+branches in child objects:
 
 Top level file main.spin2:
 
 ```
-#define MEMDRIVER "driver2.spin2"
-#pragma exportdef MEMDRIVER
-
-' instantiate flash.spin2 with the
-' default memory driver overridden by
-' MEMDRIVER
+#define USE_PSRAM
+#pragma exportdef USE_PSRAM
 
 OBJ flash : "flash.spin2"
 ```
 
-Subobject obj.spin2:
+Subobject flash.spin2:
 
 ```
-#ifndef MEMDRIVER
-#define MEMDRIVER "default_driver"
+#ifdef USE_PSRAM
+OBJ driver : "psram_driver"
+#else
+OBJ driver : "default_driver"
 #endif
-
-OBJ driver : MEMDRIVER
 ```
 
-**Note** that if there are multiple uses of `#pragma exportdef` for the same symbol, only the first one will actually be used -- that is, a macro may be exported from a file only once. 
+**Note** that if there are multiple uses of `#pragma exportdef` for the same symbol, only the first one will actually be used -- that is, a symbol may be exported only once.
 
-Similarly if SYMBOL was defined on the command line (`-DSYMBOL`), then a `#pragma exportdef SYMBOL` will not have any effect.
+Similarly if SYMBOL was defined on the command line (`-DSYMBOL`), then a `#pragma exportdef SYMBOL` will not have any effect, and `-U SYMBOL` prevents the export entirely — command-line options outrank the pragma.
 
 ## Diagnostics
 
-*This section describes behavior as of v1.55.2.* Earlier versions recorded most preprocessor problems and then discarded them — a malformed directive produced no message and the build succeeded, compiling whichever lines the broken conditional happened to select.
+*This section describes behavior as of v1.55.2, with the v1.55.3 additions marked.* Earlier versions recorded most preprocessor problems and then discarded them — a malformed directive produced no message and the build succeeded, compiling whichever lines the broken conditional happened to select.
 
 ### Message format
 
@@ -243,6 +265,8 @@ An error stops the compile and **the output files are deleted**, so a failed bui
 | `{Spin2_vNN}` naming a version this compiler does not support | error, citing the line the directive is on |
 | `#include` with an unsupported filetype, or a filename whose quotes are missing | error describing the actual problem |
 | `#undef` of a symbol that was never defined | **warning**; build continues |
+| `#undef` of a predefined `__*__` symbol *(v1.55.3)* | **warning** `cannot undefine built-in symbol [...]`; the symbol stays defined and the build continues |
+| Function-like `#define NAME(args)` *(v1.55.3)* | error `#define does not support arguments — only simple symbol definitions` |
 
 Bare directives — `#define`, `#ifdef`, `#include` and friends written with no argument — used to be swallowed silently, because a CON enumeration start also begins with `#`. They are now caught. Valid CON enumeration starts are unaffected.
 
@@ -266,20 +290,37 @@ The original PNut limits conditional nesting to 8 levels. PNut-TS does not impos
 
 ## Predefined Symbols
 
-There are several predefined symbols:
+The predefined symbols come in two kinds:
 
+- **Presence-only** symbols exist to be tested with `#ifdef` / `#ifndef`. They
+  are never text-substituted, and their numeric "value" is not observable —
+  there is no `#if` expression evaluation in this preprocessor, so the only
+  question you can ask is *defined or not*.
+- **Substituting** symbols carry a string value that replaces the symbol name
+  wherever it appears in the text — including inside a quoted string, which is
+  the normal way to use them: `byte "__VERSION__", 0` emits the version
+  string.
 
-| Symbol             | When Defined                                                            |
-| ------------------ | ----------------------------------------------------------------------- |
-| `__propeller__`    | defined as 2 (for Propeller 2)
-| `__P2__`           | defined as 1 (compiling for Propeller 2)
-| `__propeller2__`   | defined as 1 (compiling for Propeller 2)
-| `__PNUTTS__`       | defined as 1, indicating that the `PNut-TS` compiler is used
-| `__DATE__`         | a string containing the date when compilation was begun
-| `__FILE__`         | a string giving the current file being compiled
-| `__TIME__`         | a string containing the time when compilation was begun
-| `__VERSION__`      | a string containing the full version of PNut-TS in use (e.g., 'v1.43.0')
-| `__DEBUG__`        | defined as 1 only if compiling debug() statements is enabled (-d given)
+| Symbol             | Kind | Meaning |
+| ------------------ | ---- | ------- |
+| `__propeller__`    | presence-only | compiling for a Propeller |
+| `__P2__`           | presence-only | compiling for Propeller 2 |
+| `__propeller2__`   | presence-only | compiling for Propeller 2 |
+| `__PNUT_TS__`      | presence-only | the `PNut-TS` compiler is in use (note the underscore — there is no `__PNUTTS__`) |
+| `__DEBUG__`        | presence-only | defined only when debug() compilation is enabled (`-d` given) |
+| `__DATE__`         | substituting | the date compilation of the file began, as `YYYY-MM-DD` |
+| `__TIME__`         | substituting | the time compilation of the file began, as `HH:MM` |
+| `__FILE__`         | substituting | the name of the file being preprocessed (e.g. `myfile.spin2`). Inside an `#include`d file this is the **included** file's name, not the top file's |
+| `__VERSION__`      | substituting | the PNut-TS version, bare with no `v` prefix (e.g. `1.55.3`), matching the version the CLI banner reports |
+
+All predefined symbols are protected from `#undef` (see the `#undef`
+directive above).
+
+**Note on `__VERSION__`:** the substituted text is a bare dotted version
+string, which is not a legal Spin2 expression — `CON V = __VERSION__` fails
+at the use site. Use it inside a quoted string, or test it with `#ifdef`.
+*(Before v1.55.3, `__VERSION__` was defined too late to be visible to the
+preprocessor at all, so any use failed.)*
 
 ---
 
