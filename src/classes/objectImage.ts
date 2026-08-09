@@ -38,7 +38,7 @@ export class ObjectImage {
   private isLogging: boolean;
   private isLoggingOutline: boolean;
   private _id: string;
-  private readonly obj_limit: number = OBJ_LIMIT; // max object size (2MB) PNut obj_limit as of v49
+  private readonly obj_limit: number = OBJ_LIMIT; // max object size (24MB) PNut obj_limit as of v49
   private readonly ALLOC_SIZE_IN_BYTES: number = this.obj_limit / 16;
   private _objImageByteAr = new Uint8Array(this.ALLOC_SIZE_IN_BYTES); // initial memory size
   private _objOffset: number = 0; // current index into OBJ image

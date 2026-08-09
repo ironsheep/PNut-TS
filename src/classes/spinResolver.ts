@@ -199,7 +199,7 @@ interface ObjectRecord {
   subObjectIds: number[];
 }
 
-export const OBJ_LIMIT = 0x1800000; // max object size (2MB) PNut obj_limit as of v49
+export const OBJ_LIMIT = 0x1800000; // max object size (24MB) PNut obj_limit as of v49
 
 export class SpinResolver {
   readonly IGNORE_SYMBOL_TABLE = false; // parameter value affecting getElement()

@@ -139,7 +139,7 @@
     "DOCs/internals/Flash-Loader-Theory-of-Operations.md": { "class": "governed", "covers": ["flash-loader"], "verified": null },
     "DOCs/internals/SingleStep-Debugger-Theory-of-Operations.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/Spin2-Interpreter-v55-Theory-of-Operations.md": { "class": "governed", "covers": ["interpreter"], "verified": "1.55.0" },
-    "DOCs/internals/SPIN2-BIN-Format.md":                { "class": "governed", "covers": ["object-format"], "verified": null },
+    "DOCs/internals/SPIN2-BIN-Format.md":                { "class": "governed", "covers": ["object-format"], "verified": "1.55.3" },
     "DOCs/internals/TECHNICAL-DEBT.md":                  { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/PUNCH-LIST.md":                      { "class": "governed", "covers": [], "verified": null },
     "DOCs/internals/PASM2-ASSEMBLY-LABELS.md":           { "class": "governed", "covers": ["compiler-core"], "verified": null },
