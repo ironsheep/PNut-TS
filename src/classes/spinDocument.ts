@@ -575,27 +575,23 @@ export class SpinDocument {
         if (/^\s*#define\s+/i.test(currLine)) {
           // parse #define {symbol} {value}
           const [symbol, value] = this.getSymbolValue(currLine);
-          if (symbol !== undefined && symbol.includes('(')) {
+          replaceCurrent = this.commentOut(currLine);
+          if (symbol?.includes('(')) {
             // Function-like form: '#define SQ(x) ...'. Without this check the
             // symbol registered literally as 'SQ(X)' -- #ifdef SQ was false,
             // #ifdef SQ(X) was true, and every use site of the macro passed
             // through unexpanded. Fatal, because a macro that never expands
-            // makes the build wrong; the message names the capability gap so
-            // an author porting from a macro-capable preprocessor learns the
-            // feature is unsupported, not that their line has a typo. Only the
-            // SYMBOL token is inspected -- a value with parens is fine.
-            replaceCurrent = this.commentOut(currLine);
-            this.reportError(`#define does not support arguments — only simple symbol definitions`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+            // makes the build wrong. Only the SYMBOL token is inspected -- a
+            // value with parens is fine.
+            this.reportError('#define does not support arguments — only simple symbol definitions', lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else if (symbol) {
             const canAdd = this.thisSideKeepsCode() || !this.inIfDef();
-            replaceCurrent = this.commentOut(currLine);
             if (canAdd) {
               this.logMessage(`SpinPP: add new symbol [${symbol}]=[${value}]`);
               this.defineSymbol(symbol, value, eTextSub.SA_TEXT_YES); // this should work?!!
             }
           } else {
             // ERROR bad statement
-            replaceCurrent = this.commentOut(currLine);
             this.reportError(MSG_EXPECTED_SYMBOL, lineIdx, eDiagnosticSeverity.DS_FATAL);
           }
         } else if (/^\s*#undef\s+/i.test(currLine)) {
