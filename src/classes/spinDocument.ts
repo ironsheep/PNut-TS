@@ -1285,11 +1285,17 @@ export class SpinDocument {
     baseSymbols['__DATE__'] = formattedDate;
     baseSymbols['__FILE__'] = this.fileBaseName;
     baseSymbols['__TIME__'] = formattedTime;
+    // bare form, no 'v' prefix -- read from the CLI's single version source
+    // via Context, never restated here. Defining it late in pnut-ts.ts ran
+    // AFTER preprocessing (which happens in this constructor), so the symbol
+    // never existed when a source referenced it.
+    const compilerVersion: string = this.context?.compilerVersion ?? '';
+    if (compilerVersion.length > 0) {
+      baseSymbols['__VERSION__'] = compilerVersion;
+    }
     if (this.context?.compileOptions.enableDebug) {
       baseSymbols['__DEBUG__'] = 1;
     }
-    // this following is done in pnut_ts.ts itself!
-    //   baseSymbols['__VERSION__'] = ...;
     // populate our symbol table with this list
     for (const symbolKey of Object.keys(baseSymbols)) {
       const value = baseSymbols[symbolKey];

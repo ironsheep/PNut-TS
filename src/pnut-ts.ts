@@ -10,7 +10,7 @@ import { fileExists, isSpin2File } from './utils/files';
 import { iOutputFilespecs, outputFilespecs } from './utils/outputFilespecs';
 import { Compiler } from './classes/compiler';
 import { ObjectCache } from './classes/objectCache';
-import { eTextSub, PreprocessorError, SpinDocument } from './classes/spinDocument';
+import { PreprocessorError, SpinDocument } from './classes/spinDocument';
 import path from 'path';
 import fs from 'fs';
 import { exec } from 'child_process';
@@ -584,8 +584,6 @@ export class PNutInTypeScript {
       } else {
         // record this new file in our master list of files we compiled to buid the binary
         this.context.sourceFiles.addFile(this.spinDocument);
-        // TODO post symbols to context object instead of top-level doc??
-        this.spinDocument.defineSymbol('__VERSION__', this.version, eTextSub.SA_TEXT_YES);
         this.context.currentFolder = this.spinDocument.dirName;
         // listFilename was set above, before preprocessing; everything else derives
         // from it.

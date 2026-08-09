@@ -1,0 +1,14 @@
+'' __VERSION__ must exist DURING preprocessing (it was defined after the
+'' SpinDocument constructor, which is after preprocessing ran, so #ifdef
+'' __VERSION__ was FALSE and any use was an undefined symbol). This fixture
+'' checks presence only: the substituted VALUE is the live version string,
+'' which must not be baked into a GOLD or the fixture breaks at every bump.
+#ifdef __VERSION__
+CON
+  VERSION_PRESENT = 1
+#else
+#error "__VERSION__ not visible to the preprocessor"
+#endif
+
+PUB main()
+  repeat
