@@ -15,7 +15,7 @@ Reimplementation Pnut for Windows in a platform agnostic language.
 
 ## We welcome testing help
 
-While this is no longer our first release, we hope is that our community can help us expand our testing beyond what we've been able to do to help us find any compilation issues we may not have found. Our regression test suite is reasonably large (*currently 180+ individual .spin2 compiles which generate coverage reports that allow us to quickly find regions of code that we haven't tested.*) but there is no such thing as too much testing!
+While this is no longer our first release, we hope is that our community can help us expand our testing beyond what we've been able to do to help us find any compilation issues we may not have found. Our regression test suite is reasonably large (*currently 320+ individual .spin2 compiles which generate coverage reports that allow us to quickly find regions of code that we haven't tested.*) but there is no such thing as too much testing!
 
 The page [Testing PNut-TS](https://github.com/ironsheep/PNut-TS/blob/main/Testing.md) will help you learn how to test and identify what to report when you find an issue.
 

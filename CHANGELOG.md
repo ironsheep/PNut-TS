@@ -21,6 +21,66 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## [1.55.3] 2026-08-09
+
+Preprocessor symbols now behave the way the documentation always said they
+did: `#undef` removes a symbol completely, a `#define` value is the whole
+rest of the line, function-like macros are rejected instead of silently never
+expanding, and `__VERSION__` finally exists.
+
+### ⚠️ Behavior change — `#define` is stricter and more capable
+
+- **A function-like define is now an error.** `#define SQ(x) ((x)*(x))` used
+  to compile without a diagnostic — and the macro never expanded, so every
+  use site was silently wrong. It now stops the build with
+  `#define does not support arguments — only simple symbol definitions`.
+  Only the symbol is inspected: a parenthesized value such as
+  `#define MASK (1<<3)` is unaffected. A source that builds today and fails
+  here was carrying a macro that never worked.
+- **A multi-word `#define` value now substitutes whole.** `#define MSG hello
+  there world` used to keep only `hello`, silently. The value is now
+  everything after the symbol name, with interior spacing preserved and a
+  trailing comment excluded — matching C and FlexSpin. Output can change if
+  a source relied on the truncation.
+
+### Fixed
+
+- **`#undef` left the symbol's text substitution alive.** After
+  `#define UF hello` / `#undef UF`, `#ifdef UF` correctly said the symbol was
+  gone — while `UF` in the text silently kept expanding to `hello`, and a
+  re-`#define` could never install a new value. Removal is now complete.
+- **`#undef` could remove the compiler's own predefined symbols.** The
+  documentation promised the `__*__` built-ins were protected; no such guard
+  existed, so `#undef __P2__` silently broke every later `#ifdef __P2__`. The
+  guard now exists: the symbol stays defined, the build continues, and
+  `cannot undefine built-in symbol [__P2__]` is reported as a warning.
+- **`__VERSION__` was documented but did not exist.** It was defined after
+  preprocessing had already run, so any use failed. It is now available
+  everywhere — top file, includes, and child objects — substituting the bare
+  version string (e.g. `1.55.3`). Use it inside a quoted string or with
+  `#ifdef`; the bare dotted form is not a legal Spin2 expression.
+
+### Changed
+
+- **The shipped `Preprocessor.md` was re-verified line by line, and its
+  Predefined Symbols table rewritten.** The compiler defines `__PNUT_TS__` —
+  the table's `__PNUTTS__` never existed, so any build script following the
+  doc to detect this compiler was testing a symbol that is never defined.
+  The table now also distinguishes presence-only symbols (`#ifdef`-testable,
+  never substituted) from substituting ones (`__DATE__`, `__TIME__`,
+  `__FILE__`, `__VERSION__`).
+- **Two documented behaviors turned out not to match the compiler, and the
+  docs now tell the truth.** `-U` does not undefine a `-D` symbol — its only
+  effect is to block `#pragma exportdef` of that symbol. And
+  `#pragma exportdef` exports a symbol's *presence*, not its value: the
+  doc's export-a-driver-filename example never compiled. Export flag-style
+  symbols and select branches with `#ifdef` in the child instead. Whether
+  either behavior should change is an open question; the documentation now
+  describes what ships.
+- **The `copyright` file now ships in every release package**, naming the
+  public repository and crediting both Iron Sheep Productions, LLC and
+  Parallax Inc.
+
 ## [1.55.2] 2026-08-08
 
 Preprocessor problems are now reported instead of silently tolerated, errors are

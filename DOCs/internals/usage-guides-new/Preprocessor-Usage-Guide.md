@@ -80,6 +80,20 @@ Creates a preprocessor symbol. The symbol can optionally have a value.
 
 ' Symbol with expression value
 #define TIMEOUT_MS 5000
+
+' Multi-word value - the value is everything after the symbol name
+#define GREETING hello there world
+```
+
+The value is the rest of the line, with interior spacing preserved; a trailing
+tick or brace comment is not part of it. (Before v1.55.3 only the first word
+was kept, silently.)
+
+Function-like defines are not supported and fail the build rather than
+silently never expanding:
+
+```
+myfile.spin2:1:error:#define does not support arguments — only simple symbol definitions
 ```
 
 Symbols defined with `#define` can be:
@@ -99,6 +113,18 @@ Removes a previously defined symbol.
 #ifdef CLOCK_300MHZ
 #undef CLOCK_200MHZ
 #endif
+```
+
+Removal is complete: after `#undef`, `#ifdef` reports the symbol undefined
+*and* the symbol's text no longer substitutes; a later `#define` of the same
+name installs the new value. (Before v1.55.3 the old substitution survived the
+`#undef` — `#ifdef` said the symbol was gone while its text kept expanding.)
+
+The predefined `__*__` symbols refuse `#undef`: the symbol stays defined, the
+build continues, and a warning is reported:
+
+```
+myfile.spin2:1:warning:cannot undefine built-in symbol [__P2__]
 ```
 
 Use `#undef` to:
@@ -323,7 +349,9 @@ pattern matches everything PNut-TS reports.
 | `#include` of an unsupported filetype, without quotes, or not found | fatal |
 | Unsupported `#pragma` command, or an unrecognized directive | fatal |
 | Illegal `{Spin2_vNN}` language version | fatal |
+| Function-like `#define NAME(args)` | fatal |
 | `#undef` of a symbol that was never defined | warning |
+| `#undef` of a predefined `__*__` symbol | warning; the symbol stays defined |
 
 `#undef` of an undefined symbol is deliberately not an error: C specifies it as
 a no-op, and so does PNut-TS.
@@ -376,19 +404,21 @@ Command-line defines:
 - Override `#define` directives in source code
 - Are visible in all files (including `#include` files)
 
-### -U (Undefine Symbol)
+### -U (Block Symbol Export)
 
-Prevents a symbol from being defined, even if `#define` appears in source code.
+Prevents a `#pragma exportdef` of the named symbol from taking effect: the
+symbol stays private to the file that defined it instead of propagating to
+the rest of the compile.
 
 ```bash
-# Prevent DEBUG_MODE from being defined
+# The top file's "#pragma exportdef DEBUG_MODE" is ignored;
+# child objects do not see DEBUG_MODE
 pnut-ts -U DEBUG_MODE source.spin2
 ```
 
-Use `-U` to:
-- Override default settings in source files
-- Create release builds without modifying source
-- Test configurations without editing code
+`-U` does **not** remove a symbol defined with `-D` or `#define` — it only
+blocks the export. Within the defining file the symbol remains defined and
+behaves normally.
 
 ### -I (Include Directory)
 
@@ -406,21 +436,54 @@ Include directories are searched in order:
 1. Directories from `-I` options (in order specified)
 2. Directory containing the source file
 
+## Predefined Symbols
+
+Two kinds. **Presence-only** symbols are tested with `#ifdef` / `#ifndef` and
+never substitute (there is no `#if` expression evaluation, so their numeric
+values are not observable). **Substituting** symbols replace their name with a
+string wherever it appears — including inside quoted strings, which is the
+normal way to use them.
+
+| Symbol | Kind | Meaning |
+|---|---|---|
+| `__propeller__`, `__P2__`, `__propeller2__` | presence-only | compiling for Propeller 2 |
+| `__PNUT_TS__` | presence-only | the PNut-TS compiler is in use |
+| `__DEBUG__` | presence-only | defined only under `-d` |
+| `__DATE__` | substituting | compile date, `YYYY-MM-DD` |
+| `__TIME__` | substituting | compile time, `HH:MM` |
+| `__FILE__` | substituting | name of the file being preprocessed (inside an include: the included file's name) |
+| `__VERSION__` | substituting | the PNut-TS version, bare (e.g. `1.55.3`) |
+
+```spin2
+DAT
+  banner  byte  "built ", "__DATE__", " ", "__TIME__", " by PNut-TS ", "__VERSION__", 0
+```
+
+`__VERSION__` substitutes a bare dotted string that is not a legal Spin2
+expression — use it inside a quoted string or with `#ifdef`, never as
+`CON V = __VERSION__`. All predefined symbols refuse `#undef` (see above).
+
 ## Pragma Directive
 
 ### #pragma exportdef
 
-Exports a symbol definition to child objects and subsequent compilations.
+Exports the **presence** of a symbol to child objects and subsequent
+compilations.
 
 ```spin2
-#pragma exportdef HARDWARE_REV 2
+#define HARDWARE_REV2
+#pragma exportdef HARDWARE_REV2
 
-' Child objects will have HARDWARE_REV defined
+' Child objects see HARDWARE_REV2 as defined
 OBJ
   sensor : "sensor_driver"
 ```
 
-The exported symbol acts like a `-D` option for child objects. This allows a top-level object to configure symbols that propagate to all dependencies.
+The exported symbol acts like a `-D` option for child objects: it tests true
+with `#ifdef` / `#ifndef` everywhere, letting a top-level object select
+configuration branches in all dependencies. The symbol's **value does not
+propagate** — an exported symbol does not text-substitute in other files, so
+export flag-style symbols, not value-carrying ones.
 
 **Interaction with command line:**
 - `-U` on command line prevents `#pragma exportdef` from taking effect
@@ -430,10 +493,11 @@ The exported symbol acts like a `-D` option for child objects. This allows a top
 
 ### Debug vs Release Builds
 
-```spin2
-' Source file with debug code
-#define DEBUG_BUILD
+Leave the symbol out of the source and supply it from the command line — the
+build script, not the source file, decides which build this is:
 
+```spin2
+' Source file: no #define here
 PUB process(data) | result
 #ifdef DEBUG_BUILD
   debug("Input: ", uhex(data))
@@ -449,12 +513,15 @@ PUB process(data) | result
 
 Build commands:
 ```bash
-# Debug build (uses #define in source)
-pnut-ts source.spin2
+# Debug build
+pnut-ts -D DEBUG_BUILD source.spin2
 
-# Release build (removes debug code)
-pnut-ts -U DEBUG_BUILD source.spin2
+# Release build (debug code excluded)
+pnut-ts source.spin2
 ```
+
+(`-U` cannot produce the release build from an in-source `#define` — it does
+not remove symbols; its only effect is to block `#pragma exportdef`.)
 
 ### Hardware Configuration Selection
 
@@ -554,29 +621,22 @@ PUB main()
 
 ### Mutual Exclusivity
 
-Ensure only one option from a set is active:
+An `#elseifdef` chain is mutually exclusive by construction — the first match
+wins and the rest are skipped, so no defensive `#undef` of the other options
+is needed (and a defensive `#undef` of a never-defined symbol warns on every
+build):
 
 ```spin2
 #define USE_UART
 
-' Clear conflicting options
 #ifdef USE_UART
-#undef USE_USB
-#undef USE_BLUETOOTH
-#endif
-
-#ifdef USE_USB
-#undef USE_UART
-#undef USE_BLUETOOTH
-#endif
-
-' Verify exactly one is set
-#ifndef USE_UART
-#ifndef USE_USB
-#ifndef USE_BLUETOOTH
+  ' UART configuration
+#elseifdef USE_USB
+  ' USB configuration
+#elseifdef USE_BLUETOOTH
+  ' Bluetooth configuration
+#else
 #error "Must define USE_UART, USE_USB, or USE_BLUETOOTH"
-#endif
-#endif
 #endif
 ```
 
@@ -653,13 +713,14 @@ PUB main()
 #endif
 #endif
 
-' CORRECT: Make mutual exclusivity explicit
+' CORRECT: Let the #elseifdef chain enforce exclusivity
 #ifdef USE_MODE_A
-#undef USE_MODE_B        ' Explicitly clear the other mode
   ' Mode A code
 #elseifdef USE_MODE_B
   ' Mode B code
 #endif
+' The first match wins; no #undef needed (an #undef of a never-defined
+' symbol warns on every build)
 ```
 
 ### Overusing Preprocessor for Logic
@@ -735,7 +796,8 @@ PUB helper_func()
 
 ## Preprocessor Output
 
-When using the `-E` flag (if available) or examining preprocessed output, directives are converted to comments:
+The `-i` (`--intermediate`) option writes the preprocessed source to a
+`*__pre.spin2` file. In it, directives are converted to comments:
 
 **Source:**
 ```spin2
@@ -785,7 +847,7 @@ The commented-out directives preserve line numbers for error reporting while sho
 | Option | Purpose | Example |
 |--------|---------|---------|
 | `-D` | Define symbol | `-D DEBUG_MODE` |
-| `-U` | Undefine symbol | `-U DEBUG_MODE` |
+| `-U` | Block `#pragma exportdef` of symbol | `-U DEBUG_MODE` |
 | `-I` | Add include path | `-I ./includes` |
 
 ### Conditional Compilation Logic

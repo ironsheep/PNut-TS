@@ -17,7 +17,7 @@ Our new PNut-TS compiler will show you the following when you specify `-h` or `-
 ```text
 PNut-TS: Usage: pnut-ts [optons] filename
 
-Propeller Spin2 compiler - v1.55.2
+Propeller Spin2 compiler - v1.55.3
 
 Options:
   -V, --version               Output the version number
@@ -54,7 +54,7 @@ Options:
          
 
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2025 Iron Sheep Productions, LLC., Parallax Inc.
-pnut-ts: * Version 1.55.2, {buildDateHere}
+pnut-ts: * Version 1.55.3, {buildDateHere}
 ```
 
 These options should already make sense but here's a light-weight recap:
@@ -71,7 +71,7 @@ These options should already make sense but here's a light-weight recap:
 | <pre>-m, --map</pre> | generate a memory map file (.map) describing the compiled object structure, memory allocation and multi-object relationships |
 | <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory — pointing several source trees at one folder maximizes reuse. `--cache-clear` empties it first, and works even when no source file is given. |
 | <pre>-q, --quiet,<br>-v, --verbose</pre> | control how little or how much extra messaging is output from the compiler |
-| <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **proprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U un-defines symbols from the command line.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option can not undefine a symbol created by a #define directive.*) |
+| <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **proprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U prevents a `#pragma exportdef` of the named symbol from taking effect, keeping that symbol private to the file that defined it.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*) |
 
 And of course `-h` or `--help` produces the output as shown above.
 

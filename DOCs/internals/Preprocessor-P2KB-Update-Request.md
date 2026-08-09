@@ -363,3 +363,86 @@ alone:
 * `Preprocessor.md` (repo root) — the user-facing doc shipped in the package.
   **Note:** this file has not yet been updated for v1.55.2 and should not be
   used as a reference for the behaviors in §3.
+
+---
+
+## 9. Addendum — v1.55.3 behavior changes (2026-08-09)
+
+PNut-TS v1.55.3 (Preprocessor Symbol Correctness sprint) changed several
+behaviors this request describes as of v1.55.2. A correct P2KB entry should
+reflect the v1.55.3 state below; everything earlier in this document stands
+except where this section supersedes it.
+
+### 9.1 `#undef` now clears text substitution too
+
+Under v1.55.2, `#undef` removed only the `#ifdef` presence while the symbol's
+text substitution silently kept expanding. As of v1.55.3, removal is complete:
+after `#undef FOO`, `#ifdef FOO` is false **and** `FOO` no longer substitutes;
+a later re-`#define` installs the new value.
+
+### 9.2 `#undef` of a predefined symbol warns and refuses
+
+New in v1.55.3 (no guard existed before — the symbol was silently removed):
+
+```
+myfile.spin2:1:warning:cannot undefine built-in symbol [__P2__]
+```
+
+The symbol stays defined; the build continues. Scope: the predefined `__*__`
+set only. `-D` symbols remain removable by `#undef`.
+
+### 9.3 Function-like `#define` is a fatal error
+
+Under v1.55.2, `#define SQ(x) ((x)*(x))` produced no diagnostic and the macro
+never expanded. As of v1.55.3:
+
+```
+myfile.spin2:1:error:#define does not support arguments — only simple symbol definitions
+```
+
+### 9.4 Multi-word `#define` values substitute whole
+
+Under v1.55.2 only the first word of a multi-word value was kept, silently.
+As of v1.55.3 the value is everything after the symbol name (interior spacing
+preserved; a trailing tick or brace comment excluded), matching C and
+FlexSpin.
+
+### 9.5 `__VERSION__` now exists
+
+Documented as predefined but defined too late to be visible to the
+preprocessor before v1.55.3. It now substitutes the bare version string
+(e.g. `1.55.3`, no `v` prefix). Note it is usable inside quoted strings and
+with `#ifdef`; the bare dotted string is not a legal Spin2 expression.
+
+### 9.6 Predefined-symbol corrections (affects any P2KB symbol table)
+
+The correct predefined set, verified against v1.55.3:
+
+* Presence-only (testable with `#ifdef`, never substituted): `__propeller__`,
+  `__P2__`, `__propeller2__`, `__PNUT_TS__` (underscore — `__PNUTTS__` has
+  never existed), `__DEBUG__` (only under `-d`).
+* Substituting (string values): `__DATE__` (`YYYY-MM-DD`), `__TIME__`
+  (`HH:MM`), `__FILE__` (the file being preprocessed — inside an include, the
+  included file's name), `__VERSION__`.
+
+There is no `#if` expression evaluation, so presence-only symbols' numeric
+values are not observable; any P2KB text presenting their values (for example
+`__propeller__` "defined as 2") should present them as presence flags instead.
+
+### 9.7 Two PNut-TS limitations P2KB should not paper over
+
+Found while reproducing the shipped documentation for v1.55.3; both are open
+items on the PNut-TS side, and P2KB should describe shipping behavior:
+
+* `-U` does **not** undefine `-D` symbols; its sole effect is to block
+  `#pragma exportdef` of the named symbol.
+* `#pragma exportdef` exports the **presence** of a symbol to other files,
+  not its value — an exported symbol does not text-substitute outside its
+  defining file. FlexSpin's `exportdef` exports the value; source portable
+  between the two should export flag-style symbols only.
+
+### 9.8 Companion-reading correction
+
+Section 8's note that `Preprocessor.md` "has not yet been updated" is
+obsolete: as of v1.55.3 the shipped `Preprocessor.md` is fully verified
+against the compiler and is a reliable reference for everything above.
