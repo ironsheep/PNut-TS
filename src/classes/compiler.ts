@@ -398,8 +398,8 @@ export class Compiler {
               if (this.isLoggingOutline) {
                 this.logMessageOutline(`* - -------------------------------`);
                 for (let objFileIndex = 0; objFileIndex < this.objectData.objectFileCount; objFileIndex++) {
-                  const [objOffset, objLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
-                  this.logMessageOutline(`  -- compRecur() fileIdx=[${objFileIndex}], objOffset=(${objOffset}), objLength(${objLength})`);
+                  const [recOffset, recLength] = this.objectData.getOffsetAndLengthForFile(objFileIndex);
+                  this.logMessageOutline(`  -- compRecur() fileIdx=[${objFileIndex}], objOffset=(${recOffset}), objLength(${recLength})`);
                 }
                 this.logMessageOutline(`* - -------------------------------`);
               }
