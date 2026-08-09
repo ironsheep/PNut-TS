@@ -413,23 +413,10 @@ is the cause. Pick the handling option then.
 
 ---
 
-## 7. `copyright` excluded from the release package (added 2026-08-08)
+## 7. — closed 2026-08-09, archived
 
-**Surfaced by:** CLI-Robustness closeout, while reconciling the two packaging
-paths.
-
-The repo root `copyright` names `github.com/ironsheep/Pnut_ts_dev` — a private
-dev repo — and credits Iron Sheep Productions only. The
-`scripts-pkg/_dist/copyright` copy that has actually been shipping names the
-public `github.com/ironsheep/PNut_TS` and credits **Iron Sheep Productions and
-Parallax Inc.** The `_dist` text is the correct one to publish.
-
-Because of this, `copyright` was deliberately left out of the release workflow's
-document list — adding it as-is would publish the wrong text to every platform.
-
-**Fix:** reconcile root `copyright` to the `_dist` wording, then add `copyright`
-to the `for doc in ...` list at `.github/workflows/release.yml:112`. Two one-line
-changes. Attribution wording is Stephen's call, not a mechanical merge.
+Swept to `completed/2026-08-09-Punch-List-Archive.md` (copyright reconciled
+and shipped, Preproc-Symbols §9, v1.55.3).
 
 ## 8. `#include` of a constants-only file fails (added 2026-08-08)
 
@@ -545,6 +532,29 @@ preprocessor is patterned on, exports the value — the mechanism would need
 presence-only as the feature's scope and leave the doc as now written. The
 doc text was imported from FlexSpin's semantics; the implementation never
 carried values.
+
+---
+
+## 12. `isp_dummy_flash` intermittently compares an empty `.flash` (added 2026-08-09)
+
+**Surfaced by:** Preproc-Symbols sprint full-suite runs — failed in 2 of 6
+runs with `Flash Files Don't match!`, and on inspection the compiler-written
+`.flash` file was **0 bytes** at comparison time. Passes standalone and on
+every rerun; the file regenerates at its normal 6,436 bytes. Never observed
+before this sprint at this frequency.
+
+**Shape:** a test-harness write race, not a compiler defect — the FLASH
+runner's `waitForFiles()` sees the file exist before its content is flushed
+(or a same-process stream is still open when the comparator reads). The
+preprocessor changes this sprint do not touch flash generation, and the
+failure did not correlate with any code change (first sighting was on a
+diff that only removed logging guards).
+
+**Suggested fix:** make the flash comparator (and possibly `waitForFiles` in
+`src/tests/testUtils.ts`) wait for non-zero size / stable size across two
+polls rather than bare existence, or ensure the write path is synchronous
+before the test asserts. Check whether other binary comparisons share the
+same latent race.
 
 ---
 

@@ -1,5 +1,13 @@
 # Preprocessor Symbol Correctness Sprint Plan
 
+> **STATUS: CLOSED — 2026-08-09.** All 11 sections certified SHIPPED against
+> current code. Shipped in build **1.55.3**, tag `v1.55.3` on `main`. §8 took
+> its planned broken-pipeline branch (punch-list item 10 carries the repair
+> scope). Closeout audit:
+> [`2026-08-09-Preproc-Symbols-CLOSEOUT.md`](2026-08-09-Preproc-Symbols-CLOSEOUT.md)
+> — read it for per-section evidence, the exit baseline, the two in-sprint
+> documentation-scope extensions, and the decisions parked with Stephen.
+
 The CLI-Robustness sprint (v1.55.2) made the preprocessor's **diagnostics**
 correct. It did not touch the preprocessor's **symbol table**, and a plain
 question from Stephen — *"which predefined symbols does PNut-TS emit?"* — walked
