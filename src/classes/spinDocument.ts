@@ -191,7 +191,7 @@ export class SpinDocument {
   private preProcTextSymbols: SymbolTable = new SymbolTable();
   // uppercase names of the symbols preloadSymbolTable() defined -- the set
   // #undef refuses to remove. Filled by preloadSymbolTable() itself so it can
-  // never drift from the actual built-in list. -D symbols are NOT in it.
+  // never drift from the actual built-in list.
   private preloadedSymbolNames: Set<string> = new Set();
   private preProcNestingState: PreProcState[] = [];
   // preprocess state information
@@ -1260,7 +1260,7 @@ export class SpinDocument {
       const value = baseSymbols[symbolKey];
       const symTextFlag: eTextSub = value === 1 ? eTextSub.SA_NUMBER_NO : eTextSub.SA_TEXT_YES;
       this.defineSymbol(symbolKey, value, symTextFlag);
-      this.preloadedSymbolNames.add(symbolKey.toUpperCase()); // the set #undef refuses
+      this.preloadedSymbolNames.add(symbolKey.toUpperCase());
     }
   }
 
