@@ -1179,8 +1179,8 @@ export class SpinDocument {
         // The value is everything after the symbol token, not just the next
         // token: '#define MSG hello there world' substitutes all three words
         // (C and FlexSpin take the rest of the line; taking one token
-        // silently dropped the others). Interior spacing is preserved; a
-        // trailing tick or brace comment is not part of the value. The
+        // silently dropped the others). Interior spacing is preserved; the
+        // value ends at the first tick or open-brace outside quotes. The
         // symbol stays the whitespace-split token above -- the caller's
         // function-like '(' check depends on that.
         const restMatch = /^\s*#define\s+\S+([ \t].*)$/i.exec(line);
