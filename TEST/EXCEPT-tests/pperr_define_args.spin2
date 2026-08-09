@@ -1,0 +1,7 @@
+'' Function-like #define is unsupported and must be a fatal error: the macro
+'' would never expand, so every use site would silently miscompile. Only the
+'' SYMBOL token is inspected -- a parenthesized VALUE stays legal.
+#define SQ(x) ((x)*(x))
+
+PUB main()
+  repeat
