@@ -183,13 +183,11 @@ one to watch.
 - [ ] When adding a document to the shipped set, add it in **both** places — the
       workflow's `for doc in ...` list and `scripts-pkg/_dist/`
 
-> **Open item — `copyright`.** The repo's root `copyright` names
-> `github.com/ironsheep/Pnut_ts_dev` and credits Iron Sheep Productions only;
-> the `_dist` copy that has actually been shipping names the public
-> `github.com/ironsheep/PNut_TS` and credits Iron Sheep Productions **and
-> Parallax Inc.** The `_dist` text is the correct one to publish. Until the root
-> file is reconciled, `copyright` is deliberately **not** in the workflow's copy
-> list, so the tag-push path omits it rather than shipping the wrong text.
+> `copyright` was reconciled 2026-08-09 (Preproc-Symbols sprint §9): the root
+> file now carries the public `github.com/ironsheep/PNut_TS` URL and credits
+> Iron Sheep Productions, LLC **and** Parallax Inc., matching what the `_dist`
+> path had been shipping, and it is in the workflow's copy list. The shipped
+> set above is complete.
 
 ---
 

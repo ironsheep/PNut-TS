@@ -111,7 +111,7 @@ jobs:
             # the local macOS packaging path ships — see the "Shipped
             # documentation" section of DOCs/RELEASE-PROCESS.md. A missing file
             # is a hard failure: a release must not publish without its docs.
-            for doc in README.md CHANGELOG.md AUTHORS CommandLine.md Preprocessor.md; do
+            for doc in README.md CHANGELOG.md AUTHORS CommandLine.md Preprocessor.md copyright; do
               if [ ! -f "${doc}" ]; then
                 echo "ERROR: required package document '${doc}' not found" >&2
                 exit 1
