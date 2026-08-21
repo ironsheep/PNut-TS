@@ -16,7 +16,17 @@ import path from 'path';
 import { OBJ_LIMIT } from './spinResolver';
 import { ObjInstanceInfo } from './objInstanceInfo';
 import { eElementType } from './types';
-import { CACHE_FORMAT_VERSION, ObjectCache, CacheMetadata, DebugInfo, patchBrkSite, recomputeChildChecksum } from './objectCache';
+import {
+  CACHE_FORMAT_VERSION,
+  CacheMetadata,
+  DebugInfo,
+  ManifestEntry,
+  ObjectCache,
+  manifestEntryFor,
+  mergeManifests,
+  patchBrkSite,
+  recomputeChildChecksum
+} from './objectCache';
 
 // src/classes/compiler.ts
 
@@ -167,6 +177,19 @@ export class Compiler {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /**
+   * Subtree dependency manifests, one entry per child that has finished
+   * compiling (or cache-hit) at the current recursion level.
+   *
+   * Same shape as the defSymbols / debug-record snapshots above it: a child
+   * marks the length on the way in, its descendants push on the way out, and
+   * the child splices its descendants' contributions back off to fold into its
+   * own manifest. What makes this the fix is that the fold is RECURSIVE — a
+   * parent's manifest names every file in its whole subtree, so revalidating a
+   * parent revalidates everything beneath it without visiting any of it.
+   */
+  private subtreeManifests: ManifestEntry[][] = [];
+
   private compileRecursively(depth: number, srcFile: SpinDocument, overrideParameters: SymbolTable | undefined = undefined) {
     if (this.isLoggingOutline)
       this.logMessageOutline(`++ compileRecursly(${depth}, [${srcFile.fileName}]) - ENTRY ---------------------------------------`);
@@ -191,6 +214,9 @@ export class Compiler {
       // on a future cache hit, leaving the top-level binary's debug data
       // table 100-200 bytes shorter than a fresh compile.
       let recordCountAtKey: number = 0;
+      // Mark where this child's descendants will push their manifests, so the
+      // store path can splice out exactly this subtree's contribution.
+      const manifestMarkAtKey: number = this.subtreeManifests.length;
       if (this.objectCache.isEnabled && depth > 0) {
         defSymbolsLengthAtKey = this.context.preProcessorOptions.defSymbols.length;
         recordCountAtKey = this.spin2Parser.debugRawData.recordCount;
@@ -207,7 +233,10 @@ export class Compiler {
           // even when this child's own preprocessedLines is identical.
           defSymbols: this.context.preProcessorOptions.defSymbols
         });
-        const cachedBinary = this.objectCache.get(cacheKey);
+        // getIfValid re-hashes every file this entry was built from before
+        // handing the binary back. An entry whose subtree changed is counted a
+        // miss and we fall through to a normal compile.
+        const cachedBinary = this.objectCache.getIfValid(cacheKey);
         if (cachedBinary) {
           // Cache hit — inject cached binary into childImages, skip full compilation
           if (this.isLoggingOutline) this.logMessageOutline(`  -- CACHE HIT -- [${srcFile.fileName}], key=${cacheKey.substring(0, 12)}...`);
@@ -306,6 +335,14 @@ export class Compiler {
               this.logMessageOutline(`  -- CACHE HIT but .sym missing/invalid for [${srcFile.fileName}] — map will be incomplete for this object`);
             }
           }
+
+          // Hand this subtree's manifest up. It was validated as the
+          // condition of this hit, so it is current by construction and the
+          // parent can fold it into its own without re-checking. Skipping this
+          // would make the parent's manifest cover only the children that
+          // compiled fresh — reintroducing the same blind spot one level up.
+          const cachedManifest = this.objectCache.getManifest(cacheKey);
+          this.subtreeManifests.push(cachedManifest ?? []);
 
           this.globalChildObjectIndexMap.set(this.globalLogicalIndexCounter, physicalFileIndex);
           this.globalLogicalIndexCounter++;
@@ -451,6 +488,30 @@ export class Compiler {
           // determine if we need this child copy
           const childImage: Uint8Array = this.objImage.rawUint8Array.subarray(0, 0 + objectLength);
 
+          // Fold this subtree's manifest: everything the descendants
+          // contributed (spliced off the shared accumulator) plus this file
+          // itself. Runs whether or not this object is cached, because a
+          // depth-0 top level still has to hand nothing upward while its
+          // children's entries must not be left dangling on the accumulator.
+          const descendantManifests = this.subtreeManifests.splice(manifestMarkAtKey);
+          // `DAT ... FILE` blobs are inputs with no presence in the source: the
+          // bytes land in this object's binary but the .spin2 text only names
+          // the file. Nothing in the cache key sees them (row A7), so editing a
+          // blob alone used to serve a binary carrying the old contents with no
+          // diagnostic. Hashing them here closes that with the same mechanism
+          // as the source entries.
+          //
+          // A blob that has since been deleted is deliberately NOT tolerated
+          // here: manifestEntryFor throws, which propagates as a compile error
+          // rather than silently producing an entry that omits it. Omitting it
+          // would make the next hit validate clean against an input that no
+          // longer exists.
+          const blobEntries: ManifestEntry[] = datFileList.map((datFile) => manifestEntryFor(datFile.fileSpec));
+          const subtreeManifest: ManifestEntry[] = mergeManifests(...descendantManifests, [manifestEntryFor(srcFile.fileSpec)], blobEntries);
+          if (depth > 0) {
+            this.subtreeManifests.push(subtreeManifest);
+          }
+
           // --- CACHE STORE (for child objects on cache miss) ---
           if (cacheKey !== undefined) {
             const binaryCopy = new Uint8Array(childImage);
@@ -516,7 +577,8 @@ export class Compiler {
             this.objectCache.set(cacheKey, binaryCopy, {
               metadata,
               symbols: childSymbols,
-              debugInfo
+              debugInfo,
+              manifest: subtreeManifest
             });
             if (this.isLoggingOutline)
               this.logMessageOutline(

@@ -78,7 +78,7 @@ import { BrkSite } from './objectImage';
  * Bumping this invalidates every existing cache entry by changing every key.
  * Old <key>.bin files become unreachable and are cleaned by --cache-clear.
  */
-export const CACHE_FORMAT_VERSION = 6;
+export const CACHE_FORMAT_VERSION = 7;
 
 export interface CacheStats {
   hits: number;
@@ -110,6 +110,26 @@ export interface CacheKeyInputs {
   defSymbols: string[];
 }
 
+/**
+ * One input file a cached subtree was built from, and what it contained at
+ * store time.
+ *
+ * `path` is the resolved absolute path; `hash` is SHA-256 of the raw bytes.
+ * Content rather than mtime: a fresh checkout, a CI job and a container
+ * bind-mount all rewrite mtimes without changing a byte, and a false MATCH
+ * here is a silently wrong binary — the exact failure this mechanism exists
+ * to end.
+ */
+export interface ManifestEntry {
+  path: string;
+  hash: string;
+}
+
+interface SerializedDepFile {
+  cacheFormatVersion: number;
+  entries: ManifestEntry[];
+}
+
 export interface CacheStoreOptions {
   metadata?: CacheMetadata;
   symbols?: SymbolEntry[];
@@ -120,6 +140,12 @@ export interface CacheStoreOptions {
    * footprint" — that's the unambiguous-not-corrupted signal on later hits.
    */
   debugInfo?: DebugInfo;
+  /**
+   * Every source input in this child's subtree — its own file, its
+   * `DAT ... FILE` blobs, and, recursively, everything its OBJ children were
+   * built from. Written to the `.dep` sidecar and re-checked on every hit.
+   */
+  manifest?: ManifestEntry[];
 }
 
 /**
@@ -254,6 +280,23 @@ export class ObjectCache {
     return undefined;
   }
 
+  /**
+   * The hit path: return the cached binary only if the entry is still valid.
+   *
+   * Validation happens before the lookup so an entry whose inputs have changed
+   * is accounted as a MISS, which is what it is — the caller is about to
+   * compile. Keeping that here rather than in the caller means hit/miss
+   * statistics stay truthful without the compiler touching the counters.
+   */
+  getIfValid(key: string): Uint8Array | undefined {
+    if (!this.enabled) return undefined;
+    if (!this.isEntryValid(key)) {
+      this._misses++;
+      return undefined;
+    }
+    return this.get(key);
+  }
+
   /** Retrieve cached user symbols for a key. Returns undefined if the .sym
    *  sidecar is missing, malformed, or has a mismatched format version. */
   getSymbols(key: string): SymbolEntry[] | undefined {
@@ -301,6 +344,58 @@ export class ObjectCache {
     }
   }
 
+  /**
+   * Read the dependency manifest for a key, or undefined when the `.dep`
+   * sidecar is missing, malformed, or from another cache format version.
+   */
+  getManifest(key: string): ManifestEntry[] | undefined {
+    if (!this.enabled) return undefined;
+    const depPath = this.depPath(key);
+    if (!fs.existsSync(depPath)) return undefined;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(depPath, 'utf8')) as SerializedDepFile;
+      if (parsed.cacheFormatVersion !== CACHE_FORMAT_VERSION) return undefined;
+      if (!Array.isArray(parsed.entries)) return undefined;
+      return parsed.entries;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Is this entry still valid — does every file it was built from still hold
+   * the bytes it held at store time?
+   *
+   * THIS IS THE FIX for transitive staleness. A child's cache key covers only
+   * its own source; the bytes of its OBJ descendants are embedded in its
+   * binary but appear nowhere in the key. On a hit the whole subtree is
+   * skipped, so those descendants are never visited and never get a chance to
+   * report that they changed. Re-hashing the recorded manifest is what closes
+   * that gap: a parent's manifest spans its entire subtree, so validating here
+   * covers every descendant without walking them.
+   *
+   * Returns false — treat as a miss and compile — when the sidecar is absent
+   * (an entry from before manifests, or a partial write), when a recorded file
+   * is gone, or when any hash differs. Every one of those is a case where we
+   * cannot prove the entry is still right, and an unprovable entry is not one
+   * to serve.
+   */
+  isEntryValid(key: string): boolean {
+    if (!this.enabled) return false;
+    const manifest = this.getManifest(key);
+    if (manifest === undefined) return false;
+    for (const entry of manifest) {
+      let bytes: Buffer;
+      try {
+        bytes = fs.readFileSync(entry.path);
+      } catch {
+        return false; // recorded input is gone or unreadable
+      }
+      if (hashBytes(bytes) !== entry.hash) return false;
+    }
+    return true;
+  }
+
   /** Store a compiled object in the cache. Writes sidecars first, binary
    *  last, so an interrupted run never leaves a `.bin` without companions. */
   set(key: string, binary: Uint8Array, options: CacheStoreOptions = {}): void {
@@ -330,6 +425,13 @@ export class ObjectCache {
         subtreeExports: options.debugInfo.subtreeExports
       };
       fs.writeFileSync(this.dbgPath(key), JSON.stringify(payload));
+    }
+    if (options.manifest !== undefined) {
+      const payload: SerializedDepFile = {
+        cacheFormatVersion: CACHE_FORMAT_VERSION,
+        entries: options.manifest
+      };
+      fs.writeFileSync(this.depPath(key), JSON.stringify(payload));
     }
     if (options.metadata !== undefined) {
       fs.writeFileSync(this.metaPath(key), JSON.stringify(options.metadata, null, 2));
@@ -379,6 +481,10 @@ export class ObjectCache {
 
   private metaPath(key: string): string {
     return path.join(this.cacheDir, `${key}.meta`);
+  }
+
+  private depPath(key: string): string {
+    return path.join(this.cacheDir, `${key}.dep`);
   }
 }
 
@@ -474,4 +580,31 @@ export function patchBrkSite(bin: Uint8Array, site: BrkSite, newBrkCode: number)
     bin[site.offset + 1] = (bin[site.offset + 1] & 0x01) | ((newBrkCode & 0x7f) << 1);
     bin[site.offset + 2] = (bin[site.offset + 2] & 0xfe) | ((newBrkCode >> 7) & 0x01);
   }
+}
+
+/** SHA-256 of a file's raw bytes, hex — the manifest's content fingerprint. */
+export function hashBytes(bytes: Buffer | Uint8Array): string {
+  return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
+/** Manifest entry for one file on disk. Throws if the file cannot be read. */
+export function manifestEntryFor(filePath: string): ManifestEntry {
+  return { path: path.resolve(filePath), hash: hashBytes(fs.readFileSync(filePath)) };
+}
+
+/**
+ * Merge manifests, keeping one entry per resolved path.
+ *
+ * A diamond reaches the same file through more than one parent, so duplicates
+ * are normal and not a problem to report — just wasted re-hashing on every
+ * validation if left in.
+ */
+export function mergeManifests(...manifests: ManifestEntry[][]): ManifestEntry[] {
+  const byPath = new Map<string, ManifestEntry>();
+  for (const manifest of manifests) {
+    for (const entry of manifest) {
+      byPath.set(entry.path, entry);
+    }
+  }
+  return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
