@@ -1,8 +1,51 @@
 # Object Cache Transitive Invalidation — Sprint Plan
 
-**Status:** planned, not started
+**Status:** started 2026-08-21
 **Planned:** 2026-08-21
-**Entry baseline:** 325/325 tests, 20/20 suites, build clean, zero warnings (measured 2026-08-20)
+**Ships as:** 1.55.4 (`package.json`; mirror to `package-lock.json` and `src/pnut-ts.ts`)
+
+## Sprint entry record
+
+**Working tree (sprint-start §2).** Clean at start — no uncommitted edits, no
+untracked files. Planning artifacts committed as `ccd2e9f`.
+
+**Tracking readiness (sprint-start §3).** READY. 1 completed task archived
+(`archive_20260821_222750.md`); todo-mcp context 2 keys / 1293 B, both live;
+`MEMORY.md` 94 lines (audit threshold ~150); no stranded `task_#N_*` keys.
+Noted as removal candidates, not acted on: `project_cli_robustness_state_2026-08-08.md`
+and `project_preproc_symbols_state_2026-08-09.md` (closed sprints, but both still
+carry design decisions to respect).
+
+**Entry baseline (sprint-start §4), measured 2026-08-21.**
+
+Build: `npm run build` clean, **zero warnings**.
+
+| Suite set | Result |
+|---|---|
+| `TEST_COMMAND` (`jest -c smm.jestconfig.js`) | **325 / 325 passing, 20 / 20 suites** |
+| `CACHE-tests` (`npm run test-cache`) | 59 / 59 passing — **tracked, but NOT in `TEST_COMMAND`** |
+| `LANG-FEAT-tests` | 11 / 11 passing — **tracked, but NOT in `TEST_COMMAND`** |
+| `WUMMI-tests` | 46 / 49 — fixtures are gitignored (`.gitignore:258`), local-only |
+| `COV-tests`, `FULL/`, `SHORT/` | not measured — container-mode gated / config variants |
+
+The TOF large-file timeout did not fire.
+
+**Runner-coverage finding (baseline-health §3).** 27 compiled test files exist;
+`smm.jestconfig.js` invokes **20**. The seven it does not invoke are named above.
+Two of them — `CACHE-tests` (59 tests) and `LANG-FEAT-tests` (11) — are fully
+tracked suites that are green but invisible to the project's standard regression
+command. `CACHE-tests` is the suite this sprint changes most, and §6 adds a
+second cache suite beside it.
+
+**WUMMI failure group.** All three failures share one cause: GOLD mismatch on
+listing + object + binary (`FG1.spin2`, `Main.spin2`, `Mustererkennung.spin2`).
+Not timeouts. Per the project rule a GOLD mismatch is a real defect, never a GOLD
+problem — but the fixtures are gitignored and local-only, so this is outside the
+tracked baseline and outside this sprint. Recorded here so it is not rediscovered
+as new.
+
+**Entry baseline for closeout comparison:** build clean / 0 warnings ·
+325/325 on `TEST_COMMAND` · 59/59 cache · 11/11 lang-feat.
 
 ## Open Questions
 
@@ -462,6 +505,58 @@ sprint independently confirms it rather than taking it on faith.
 
 ---
 
+## 13. Register the cache suites in the standard regression run
+
+**Why.** The entry baseline found that `smm.jestconfig.js` — what
+`npm test` invokes (`jest --runInBand -c smm.jestconfig.js`) — exercises 20 of the 27 compiled test
+files. `CACHE-tests` is one of the seven it skips: 59 tracked, green, passing
+tests that the project's standard regression command never runs. §6 adds a
+second cache suite beside it.
+
+This matters to this sprint specifically, not just as hygiene. The
+compatibility gate above requires a **full-suite** run rather than slices,
+precisely because a cache entry that stops being served can red an unrelated
+fixture. That gate is only meaningful if the full suite actually contains the
+cache tests. Today it does not, so the sprint's own protection would depend on
+someone remembering `npm run test-cache` by hand.
+
+**Current code.** The roots list is an explicit, hand-maintained array in
+`jest-config/jest-coverage-config.json` (20 entries), merged into
+`smm.jestconfig.js` over `old.jestconfig.json`. A hand-maintained list is exactly
+the drift case `baseline-health` §3 warns about: a test file can be added without
+ever being registered, and it then reads as green because it never ran.
+
+**Target behavior.** Add `<rootDir>/dist/tests/CACHE-tests/` to that roots array.
+`testMatch` is `**/*.test.js`, so registering the directory picks up both
+`objectCache.test.js` and §6's new `objectCacheInvalidation.test.js`
+automatically — no second edit when §6 lands.
+
+**Scope boundary.** Only the cache suites. The other six unregistered files —
+`LANG-FEAT-tests` (tracked, 11 passing), `COV-tests` (container-mode gated),
+`FULL/`, `SHORT/`, and `WUMMI-tests` (gitignored, local-only) — are **out of
+scope for this sprint** by Stephen's decision on 2026-08-21. They are recorded in
+the entry baseline above so the gap stays visible rather than being rediscovered.
+
+**Ordering.** Must land **after** §6, so the new suite exists when the directory
+is registered. Registering first would put a root in the config pointing at a
+suite that is not written yet.
+
+**Verification.**
+- *Normal:* `npm test` reports **21 suites**, and its test total rises by
+  59 plus §6's new tests.
+- *Normal:* the previously-passing 325 still pass — registration must not
+  perturb them.
+- *Edge:* the sprint's own §6 tests actually appear in the standard run's output,
+  not merely in `npm run test-cache`.
+- *Error:* a cache test failure reds `npm test`, which is the entire point of the
+  change.
+
+**Counts this changes:** the "325 regression tests" figure appears in
+`MEMORY.md` and in release prose; it becomes 384 + §6's additions. Listed in the
+Documentation Blast Radius below.
+
+---
+
 ## Documentation Blast Radius
 
 ### `npm run docs-check` — run 2026-08-21, pasted verbatim
@@ -512,7 +607,10 @@ plans and closeouts, prior-sprint ledgers and studies, generated reports.
 | `DOCs/internals/theory-of-operations/PLOT_Theory_of_Operations.md` | **Excluded** — debug-window plotting; matched "map" as a verb. Confirmed unrelated. |
 
 **Counts to re-check at closeout:** the cache test count (59) and the regression
-suite total (325) both appear in `MEMORY.md` and in release prose; §6 changes both.
+suite total (325) both appear in `MEMORY.md` and in release prose. §6 adds cache
+tests and §13 folds the whole cache suite into the standard run, so the headline
+figure becomes 384 + §6's additions — a change of both the number and what it
+counts.
 
 **Docstrings in scope by definition:** `objectCache.ts:1-62` header comment (the
 on-disk layout list gains `.dep`, and the "transitively captures all `#include`
@@ -573,6 +671,7 @@ already tracked in `project_dependency_security` and is not folded in here.
 | §6 invalidation suite | all seven mutation targets; three signals asserted per test |
 | §7-§8 map | `npm run test-map` (7 fixtures) byte-identical; §5 fixture labelled correctly |
 | §9-§11 docs | `npm run docs-check` shows the four addressed documents current |
+| §13 suite registration | `npm test` reports 21 suites; total rises by 59 + §6's tests |
 | §12 P2KB | measurement re-run against the new build; caveat retracted or amended |
 | **All** | `npm run test-full` — full suite, not slices |
 
@@ -582,3 +681,43 @@ probes in §6 read the same map generator §7/§8 modify — they are not indepe
 witnesses of each other. A §6 failure observed while §7/§8 are in flight must be
 confirmed against the binary directly (object count from the `.obj`, DAT
 addresses from the `.lst`) before it is treated as a defect.
+
+---
+
+## Section ↔ task cross-reference
+
+Generated by `plan-to-tasks` on 2026-08-21. Sprint tag: `cache-invalidation`.
+`seq` is the implementation order and the only ordering signal — `todo_next`
+walks it.
+
+| Plan § | Deliverable | Task | seq |
+| --- | --- | --- | --- |
+| §5 | Singleton-diamond fixture family | «#27» | 1 |
+| §4 | Shared cache test scaffolding | «#28» | 2 |
+| §6 | Invalidation test suite *(ends red by design)* | «#29» | 3 |
+| §1 + §3 | Dependency manifest + format bump 6→7 | «#30» | 4 |
+| §2 | DAT FILE blobs (A7) *(closes green-unit)* | «#31» | 5 |
+| §13 | Register cache suites in `npm test` | «#32» | 6 |
+| §7 | Map index-space unification | «#33» | 7 |
+| §8 | `ObjInstanceStore` rekey | «#34» | 8 |
+| §9 | Row A8 correction + analysis stamp | «#35» | 9 |
+| §10 | Three auto-added governed docs | «#36» | 10 |
+| §11 | Shipped docs + changelog | «#37» | 11 |
+| §12 | P2KB `map_caveat` retraction | «#38» | 12 |
+
+**Ordering rationale.** The fixture and scaffolding are foundational, so they come
+first. The invalidation suite is written **before** the fix so the tests are seen
+to fail — a test that never failed has not been shown to test anything, and this
+project's own lesson is to reproduce before fixing.
+
+**Atomic green-unit: «#29» + «#30» + «#31».** «#29» lands red by design because
+it encodes an unfixed defect; «#30» turns most of it green; «#31» closes it. That
+red is not a regression and must not be resolved by weakening the assertions.
+«#32» registers the cache suites into `npm test` and therefore cannot start until
+«#31» is green, or it turns the standard regression run red.
+
+**Independent tracks.** The map work («#33», «#34») has no dependency on the cache
+work — the invalidation tests deliberately assert on `Objects:` count and DAT
+addresses rather than `.map` labels, which keeps the two halves verifiable in
+either order. «#38» depends on «#33»/«#34» landing. Documentation tasks («#35»–«#37»)
+follow the code so their claims are true when written.
