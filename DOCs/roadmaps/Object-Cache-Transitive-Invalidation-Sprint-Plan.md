@@ -326,10 +326,28 @@ Mutation targets, one test each: depth-1 child · depth-2 grandchild · depth-3
 leaf · diamond shared object · `DAT FILE` blob · a file touched but not modified
 (must still hit) · a manifest path deleted (must miss, not crash).
 
-**Verification.** Each test asserts three signals together — output bytes match
-cold, `Objects:` count matches cold, and `shared_state`'s DAT resolves to exactly
-one address. Byte equality alone would pass a build that had quietly forked the
-singleton into two identical-but-separate regions.
+**Verification.** Each test asserts three signals, with **byte equality as the
+primary and required one**: the warm binary must equal an uncached compile of the
+mutated tree. `Objects:` count and the DAT symbol addresses are asserted as
+corroboration, not as the gate.
+
+*Corrected 2026-08-21 during «#28», against measurement — the original text had
+this backwards.* It claimed byte equality was the weak signal and the map
+signals would catch a fork it missed. Measured on the §5 fixture: editing the
+diamond node produces a warm binary **88 bytes larger** than truth, while the
+warm `.map` is **byte-for-byte identical** to the uncached one — same layout,
+same `Objects: 6`, same DAT addresses. The map describes the freshly-derived
+structure while the binary carries stale embedded content, so the two disagree
+and only the binary tells the truth. A test gated on the map signals alone would
+have passed on a provably wrong binary.
+
+Keep asserting the map signals anyway: the reporter's tree *did* move
+`Objects: 3` → `4`, so they catch a shape this fixture does not. They are a
+second net, never the first.
+
+**Follow-on question this raises** (recorded, not resolved here): a `.map` that
+describes a structure the `.bin` does not contain is its own defect, independent
+of the cache. §9 records it; it is not in this sprint's scope.
 
 ---
 

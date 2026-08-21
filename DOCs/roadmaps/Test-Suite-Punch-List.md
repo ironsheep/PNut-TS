@@ -577,3 +577,25 @@ flow.
 A general principle worth adopting: any GOLD that PNut (Pascal) cannot
 produce must come with a documented "how to refresh this" recipe in the
 test file's header, or it doesn't belong in the suite.
+
+### Warm-cache `.map` can describe a structure the `.bin` does not contain
+
+Observed 2026-08-21 while building the cache-invalidation scaffolding (sprint
+task «#28»). With `--cache --map`, after editing an object reached both directly
+and transitively, the generated `.map` was **byte-for-byte identical** to an
+uncached build's map — same MEMORY LAYOUT, same `Objects: 6`, same DAT symbol
+addresses — while the `.bin` was **88 bytes larger** than the uncached binary.
+
+The map is derived from distiller/symbol state while the binary is assembled
+from cached child images, and on a warm cache the two can disagree. That makes
+`--map` output actively misleading in exactly the situation a user would reach
+for it.
+
+The stale-binary half is fixed by the Object-Cache-Transitive-Invalidation
+sprint. What is NOT covered, and is why this entry exists: whether the map and
+binary can still disagree once the cache is correct. Reproduce with
+`TEST/CACHE-fixtures/sgl_*` — cold compile, edit `state_counter LONG 0` to
+`LONG 99` in `sgl_shared_state.spin2`, recompile warm, compare `.map` and `.bin`
+against an uncached build.
+
+Status: **open**, unscheduled.

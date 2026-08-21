@@ -8,32 +8,14 @@
 
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
 import { CACHE_FORMAT_VERSION, ObjectCache, deserializeSymbols, patchBrkSite, serializeSymbols } from '../../classes/objectCache';
 import { BrkSite } from '../../classes/objectImage';
 import { SymbolEntry, SymbolTable } from '../../classes/symbolTable';
-import { TextLine } from '../../classes/textLine';
 import { eElementType } from '../../classes/types';
-import { compareObjOrBinFiles, removeExistingFile } from '../testUtils';
-
-const toolPath = path.resolve(__dirname, '../../pnut-ts.js');
-
-// --- Helpers ---
-
-function makeTempCacheDir(): string {
-  const dir = fs.mkdtempSync(path.join(__dirname, '.cache-test-'));
-  return dir;
-}
-
-function cleanupDir(dir: string): void {
-  if (fs.existsSync(dir)) {
-    fs.rmSync(dir, { recursive: true });
-  }
-}
-
-function makeTextLines(texts: string[]): TextLine[] {
-  return texts.map((t, i) => new TextLine(0, t, i));
-}
+import { compareObjOrBinFiles } from '../testUtils';
+// Shared scaffolding — see cacheFixtures.ts. Both cache suites use one copy of
+// these so neither drifts from the other.
+import { cleanupCacheDir, cleanupDir, cleanupOutputFiles, compileSpin2, makeTempCacheDir, makeTextLines } from './cacheFixtures';
 
 // ====================================================================
 // UNIT TESTS — ObjectCache class in isolation
@@ -480,32 +462,6 @@ describe('ObjectCache Integration Tests', () => {
   const objTestDir = path.resolve(__dirname, '../../../TEST/OBJ-tests');
   // Use MAP-tests/test4-override which has override parameters
   const overrideTestDir = path.resolve(__dirname, '../../../TEST/MAP-tests/test4-override');
-
-  function compileSpin2(sourceDir: string, filename: string, extraFlags: string = ''): string {
-    const filePath = path.join(sourceDir, filename);
-    const cmd = `node ${toolPath} ${extraFlags} ${filePath}`;
-    try {
-      return execSync(cmd, { cwd: sourceDir, encoding: 'utf8', stdio: 'pipe' });
-    } catch (error: unknown) {
-      if (error instanceof Error && 'stderr' in error) {
-        throw new Error(`Compilation failed for ${filename}: ${(error as { stderr: string }).stderr}`);
-      }
-      throw error;
-    }
-  }
-
-  function cleanupCacheDir(dir: string): void {
-    const cachePath = path.join(dir, '.pnut-cache');
-    if (fs.existsSync(cachePath)) {
-      fs.rmSync(cachePath, { recursive: true });
-    }
-  }
-
-  function cleanupOutputFiles(dir: string, basename: string): void {
-    for (const ext of ['.lst', '.obj', '.bin', '.map']) {
-      removeExistingFile(path.join(dir, `${basename}${ext}`));
-    }
-  }
 
   afterAll(() => {
     // Clean up any cache directories left by tests
