@@ -20,7 +20,8 @@
     "<rootDir>/dist/tests/INCLUDE-tests/",
     "<rootDir>/dist/tests/EXCEPT-tests/",
     "<rootDir>/dist/tests/PREPROC-tests/",
-    "<rootDir>/dist/tests/CLEANUP-tests/"
+    "<rootDir>/dist/tests/CLEANUP-tests/",
+    "<rootDir>/dist/tests/CACHE-tests/"
   ],
   "testMatch": ["**/*.test.js"],
   "verbose": true
