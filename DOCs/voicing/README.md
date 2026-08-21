@@ -8,10 +8,7 @@ guide for the rules specific to it.
 |---|---|
 | [`CHANGELOG-Voicing.md`](CHANGELOG-Voicing.md) | `CHANGELOG.md` — which is published verbatim as the release notes |
 | [`Usage-Guide-Voicing.md`](Usage-Guide-Voicing.md) | the usage guides under `DOCs/internals/usage-guides*/` |
-| _(not yet written)_ | the user docs shipped in the package — `README.md`, `Preprocessor.md`, `CommandLine.md` |
-
-That third row is a known gap. Those are the most user-visible prose in the
-project and nothing currently governs their voice.
+| [`Shipped-Docs-Voicing.md`](Shipped-Docs-Voicing.md) | the documents that ship inside the release package — `README.md`, `Preprocessor.md`, `CommandLine.md`, `AUTHORS`, `LICENSE`, `copyright` |
 
 ---
 
