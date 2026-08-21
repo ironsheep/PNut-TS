@@ -1,0 +1,40 @@
+' Singleton-diamond fixture — THE DAT SINGLETON.
+'
+' This is the object the whole fixture exists to protect. Its state lives in
+' DAT, not VAR, so it is shared across every instance: the singleton_object
+' archetype (P2KB p2kbSpin2ObjectArchetypes). Three objects declare it —
+' sgl_app_top directly, and sgl_svc_logger and sgl_svc_config one level down —
+' and the language guarantees they all reach ONE DAT region, because pnut-ts
+' de-duplicates object images by compiled-image CONTENT
+' (P2KB p2kbSpin2ObjectImageDedup, measured against pnut-ts v1.55.0).
+'
+' THE INVARIANT UNDER TEST: however many objects declare this one, state_lock
+' and state_counter must resolve to exactly ONE address in the .map.
+'
+' How a stale cache breaks it: a stale image is no longer byte-identical to a
+' fresh one, findDuplicateChild stops matching, and the program gets two
+' images -> two independent DAT regions -> two locks and two counters, with
+' no diagnostic at any severity.
+'
+' It declares the depth-3 leaf so that editing sgl_tick_leaf.spin2 has to
+' reach up through this object to everything that declares it.
+OBJ
+  tick : "sgl_tick_leaf"
+
+DAT { shared across every instance — this is the point }
+  state_lock    LONG  -1
+  state_counter LONG  0
+
+PUB init() : ok
+  if state_lock == -1
+    state_lock := LOCKNEW()
+  ok := state_lock >= 0
+
+PUB bump() : value
+  repeat until LOCKTRY(state_lock)
+  state_counter := tick.advance(state_counter)
+  value := state_counter
+  LOCKREL(state_lock)
+
+PUB count() : value
+  value := state_counter

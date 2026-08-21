@@ -1,0 +1,52 @@
+' Singleton-diamond fixture — TOP LEVEL (top_level_application archetype).
+'
+' The whole fixture family in one picture:
+'
+'   sgl_app_top
+'     shared : sgl_shared_state    <- singleton, declared DIRECTLY   (depth 1)
+'     log  : sgl_svc_logger                                        (depth 1)
+'     log2 : sgl_svc_logger      <- SAME object declared TWICE      (depth 1)
+'     cfg  : sgl_svc_config                                        (depth 1)
+'
+'   sgl_svc_logger -> sgl_shared_state (depth 2, diamond arm 1), sgl_fmt_util
+'   sgl_svc_config -> sgl_shared_state (depth 2, diamond arm 2) + DAT FILE blob
+'   sgl_shared_state -> sgl_tick_leaf  (depth 3, mutation target)
+'
+' WHAT THIS FIXTURE PROVES, all at once:
+'   - transitive invalidation: editing sgl_tick_leaf.spin2 (depth 3) must
+'     invalidate every entry above it
+'   - the diamond: sgl_shared_state is reached at depth 1 AND depth 2
+'   - the DAT-singleton guarantee: three declarations, ONE DAT region
+'   - repeated instantiation: log and log2 collide in ObjInstanceStore
+'   - row A7: sgl_cfg_defaults.bin is embedded but invisible to the cache key
+'   - exportdef propagation: SGL_TRACE must still reach descendants on a hit
+'
+' ASSERT ON: the .map `Objects:` count and the DAT symbol addresses for
+' state_lock / state_counter. Do NOT assert on .map instance/source labels —
+' they are untrustworthy until the map index-space work lands, and P2KB
+' documents them as such (p2kbSpin2ObjectImageDedup, map_caveat).
+#pragma exportdef SGL_TRACE
+
+CON
+  _clkfreq = 200_000_000
+
+OBJ
+  shared : "sgl_shared_state"
+  log  : "sgl_svc_logger"
+  log2 : "sgl_svc_logger"
+  cfg  : "sgl_svc_config"
+
+' Every method in the family is reachable from here on purpose. The two that
+' carry test signals — trace() (exportdef-gated bytes) and defaults_addr()
+' (the DAT FILE blob) — would otherwise sit unreferenced, and an unreferenced
+' method is what a future dead-code pass drops. A dropped signal does not fail
+' a test; it makes the test pass while proving nothing.
+PUB main() : result | a, b
+  shared.init()
+  log.start()
+  log2.start()
+  cfg.start()
+  a := log.log_tick()
+  b := log2.log_tick()
+  result := a + b + cfg.reading() + shared.count()
+  result += log.trace() + cfg.defaults_addr()

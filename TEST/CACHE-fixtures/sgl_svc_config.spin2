@@ -1,0 +1,33 @@
+' Singleton-diamond fixture — DIAMOND ARM 2 (depth 1; reaches the singleton
+' at depth 2) AND the A7 blob carrier.
+'
+' Second independent path to sgl_shared_state, so the singleton is declared
+' by three different objects in total.
+'
+' The DAT FILE below is the row-A7 test surface: these bytes are loaded from
+' disk at compile time and written into this object's binary, but nothing
+' about the blob appears in this file's source. Edit sgl_cfg_defaults.dat
+' alone and a cache that keys only on source will serve a binary carrying the
+' OLD blob, with no diagnostic.
+'
+' Note the grammar: FILE takes no BYTE/WORD/LONG keyword — the compiler forces
+' byte width itself (spinResolver.ts sets wordSize before reading the name).
+'
+' The blob is named .dat, NOT .bin, on purpose: .gitignore:193 ignores *.bin
+' project-wide because .bin is a compiler OUTPUT extension here. A blob named
+' .bin would be silently left out of the repo, and every test that reads it
+' would fail on a clean clone with "DAT file not found".
+OBJ
+  shared : "sgl_shared_state"
+
+DAT
+  cfgblob       file    "sgl_cfg_defaults.dat"
+
+PUB start() : ok
+  ok := shared.init()
+
+PUB defaults_addr() : addr
+  addr := @cfgblob
+
+PUB reading() : value
+  value := shared.count()

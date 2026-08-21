@@ -1,0 +1,15 @@
+' Singleton-diamond fixture — DEPTH-3 LEAF, the transitive mutation target.
+'
+' This file is the deepest node in the tree and is reached only through
+' sgl_shared_state. Nothing above it names it. Editing THIS file must
+' invalidate every cache entry above it:
+'     sgl_shared_state -> sgl_svc_logger / sgl_svc_config -> sgl_app_top
+' A cache that only tracks a child's own source will serve stale images for
+' all four and the DAT singleton in sgl_shared_state silently forks.
+'
+' Keep this file trivially editable: TICK_STEP is the knob a test changes.
+CON
+  TICK_STEP = 1
+
+PUB advance(count) : result
+  result := count + TICK_STEP

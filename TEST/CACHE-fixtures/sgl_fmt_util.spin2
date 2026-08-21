@@ -1,0 +1,33 @@
+' Singleton-diamond fixture — stateless library object (library_object
+' archetype: no VAR, no init, pure functions) AND the exportdef gate.
+'
+' Two jobs, deliberately kept on this file so the other properties stay
+' independently mutable:
+'
+'  1. Second child of sgl_svc_logger, so that object is a genuine two-child
+'     node and a test can mutate one child without touching the other.
+'
+'  2. THE EXPORTDEF REGRESSION GUARD. This file's bytes depend on SGL_TRACE,
+'     which is defined nowhere in this file — sgl_app_top exports it with
+'     #pragma exportdef and it reaches here through the preprocessor. Nothing
+'     between here and the top mentions SGL_TRACE, so the symbol has to
+'     survive the whole descent.
+'
+'     That is the v1.54.6 failure mode: when an ancestor cache-hits, its
+'     subtree's preprocess is skipped, the exportdef push never happens, and
+'     THIS file compiles down a different branch than a cold compile would.
+'     If a future change to the cache breaks subtree-export replay, the byte
+'     comparison in the invalidation suite catches it here.
+PUB width(value) : digits
+  digits := 1
+  repeat while value >= 10
+    value /= 10
+    digits++
+
+#ifdef SGL_TRACE
+PUB trace_tag() : tag
+  tag := $5347_4C54
+#else
+PUB trace_tag() : tag
+  tag := 0
+#endif

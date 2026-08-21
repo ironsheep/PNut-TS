@@ -1,0 +1,32 @@
+' Singleton-diamond fixture — DIAMOND ARM 1 (depth 1; reaches the singleton
+' at depth 2).
+'
+' A library-style service that needs the shared state, so it declares the
+' singleton itself rather than being handed a reference. That is the correct
+' use of the archetype, not a shortcut: threading a reference through every
+' constructor is exactly what the DAT singleton exists to avoid.
+'
+' sgl_app_top ALSO declares sgl_shared_state directly, so the singleton is
+' reached at depth 1 and depth 2 by different parents — the diamond. It is
+' also declared TWICE by sgl_app_top (log and log2), which is what collides
+' in ObjInstanceStore.
+'
+' Its own source has no #ifdef on the propagated symbol, so its
+' preprocessedLines is identical regardless of what sgl_app_top exports —
+' the same shape that hid the v1.54.4 defect.
+OBJ
+  shared : "sgl_shared_state"
+  fmt : "sgl_fmt_util"
+
+PUB start() : ok
+  ok := shared.init()
+
+PUB log_tick() : digits
+  digits := fmt.width(shared.bump())
+
+' Forwards the exportdef-gated value so the top level can reach it. Keeps
+' trace_tag() referenced: its bytes are a test signal, and an unreferenced
+' method is exactly what a future dead-code pass would drop — which would
+' make the exportdef guard pass vacuously.
+PUB trace() : tag
+  tag := fmt.trace_tag()
