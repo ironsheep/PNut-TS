@@ -1,6 +1,10 @@
 # Object Cache — Correctness Analysis
 
 > **Status:** living analysis, refined as we learn more.
+> **Last verified:** 1.55.4 — whole document re-read against the code, 2026-08-22.
+> **Classification:** `governed` (was `historical` until 2026-08-21). It describes
+> how the cache behaves today and is amended by every cache sprint, so it belongs
+> in the staleness net rather than in the record of what we once believed.
 > **Scope:** correctness of the persistent object cache (`--cache`), not performance, eviction, or sharing policy.
 > **Ground truth:** "byte-identical to a fresh uncached compile, on every test in the suite, including the SD FAT32 driver suite that exposed v1.54.2 → v1.54.5."
 
@@ -28,7 +32,8 @@ Each release fixed one piece of the gap between those two models:
 - v1.54.3: `.dbg` sidecar replays DebugData records on hit (write-side state missing)
 - v1.54.4: brkSite remap + checksum recompute (read-side state missing — baked indices reference replayed records)
 - v1.54.5: `defSymbols` snapshot added to key (read-side state missing — propagated `#pragma exportdef` set)
-- v1.54.6 (planned): replay subtree's `defSymbols` mutations on hit (write-side state missing — skipped subtree's `#pragma exportdef` pushes)
+- v1.54.6: replay subtree's `defSymbols` mutations on hit (write-side state missing — skipped subtree's `#pragma exportdef` pushes)
+- v1.55.4: `.dep` manifest revalidated on every hit (read-side state missing — **the descendants' source content itself**, plus DAT FILE blobs); instance subtree and descendant symbols replayed so `--map` survives a hit
 
 Each fix is a different concrete instance of the same abstract bug: **a piece of process-global mutable state participates in the compile and the cache contract didn't account for it.**
 
@@ -48,9 +53,54 @@ The earlier audit lumped together state that affects compile output with state t
 | A4 | `enableDebug` flag | yes | Boolean, changes bytecode emission |
 | A5 | `CACHE_FORMAT_VERSION` | yes | Force-invalidates on layout change |
 | A6 | `context.preProcessorOptions.defSymbols` snapshot at child preprocess end | yes (v1.54.5) | Captures CLI `-D` + propagated `#pragma exportdef` from any ancestor's preprocess |
-| A7 | DAT FILE bytes (`DAT data byte FILE "blob.bin"`) | **no** | Loaded from disk at compile time, written into binary; only matters if `blob.bin` content varies across compiles of the same `.spin2` source |
-| A8 | Each grandchild's compiled binary | recursive | Captured indirectly: each grandchild has its own cache key; correct iff grandchild's own key inputs are complete |
+| A7 | DAT FILE bytes (`DAT data byte FILE "blob.bin"`) | **yes** (v1.55.4) | Loaded from disk at compile time, written into binary. Not in the *key*; hashed into the `.dep` manifest and revalidated on every hit (§7). Before v1.55.4 this was `no`, and editing a blob alone served a binary carrying the old bytes with no diagnostic. |
+| A8 | Each grandchild's compiled binary | **yes** (v1.55.4), via manifest | See the correction below — this row was wrong from the first draft until v1.55.4. |
 | A9 | Shared `DebugData` table state at the moment each `debug()` is compiled | not in key | Affects which `brkCode` index gets baked. Handled on the *output* side via `.dbg` replay + brkSite remap, not the *input* side. |
+
+#### Correction to row A8 — the assumption that cost four releases
+
+Row A8 read, from the first draft until v1.55.4:
+
+> *Each grandchild's compiled binary | recursive | Captured indirectly: each
+> grandchild has its own cache key; correct iff grandchild's own key inputs are
+> complete.*
+
+**That is false, and it is the sentence that hid the defect.** The indirection
+holds only while the grandchild is *visited*, and a grandchild is visited only
+when its parent **misses** — which is precisely what caching exists to prevent.
+On a hit the cached binary is spliced in and the whole subtree is skipped, so
+the grandchild's key is never computed and its change is never noticed.
+
+The invariant the row assumed:
+
+> a parent's key changes when any descendant's bytes change
+
+The invariant that actually existed:
+
+> each object's key covers its own source
+
+**What makes this worth writing down at length:** the row is not a typo. It is a
+plausible piece of reasoning that is locally true — each grandchild really does
+have its own key, and that key really is complete — and globally wrong, because
+it quietly assumes the grandchild gets evaluated. A catalog is exactly where
+that kind of error becomes invisible: it reads as a checked entry.
+
+**How it is closed (v1.55.4).** Each entry carries a `.dep` manifest listing
+every file its subtree was built from with a SHA-256 of the contents. A hit
+re-hashes that list before the entry may be used and misses on any change. The
+manifest composes recursively — a parent's list spans its whole subtree — so
+revalidating a parent revalidates everything beneath it without visiting any of
+it. The manifest is validated *beside* the key, not hashed *into* it.
+
+**Note the shape of the mistake, because it recurred twice more.** Row B1 below
+records the v1.54.6 gap — subtree pushes from descendants are not replayed when
+the subtree is skipped. That is the same short-circuit, one axis over: a skipped
+subtree cannot report what it contains. It was fixed for `defSymbols` **effects
+flowing out** and never generalized to **inputs flowing in**. §5.3's conclusion —
+*capture once at the boundary, replay covers everything below* — is right for
+effects leaving a subtree and wrong for inputs entering it, and reading it as a
+general principle is part of how A8 survived review. In v1.55.4 the same
+short-circuit surfaced twice again, in the `--map` path (row B4).
 
 ### 2.2 Side effects of a child compile that other compiles read
 
@@ -59,7 +109,7 @@ The earlier audit lumped together state that affects compile output with state t
 | B1 | Pushes onto `context.preProcessorOptions.defSymbols` (from the child's own `#pragma exportdef`) | partial — child's own pushes happen via the SpinDocument constructor's preprocess on every cache hit, so they're naturally replayed; **subtree pushes from descendants are NOT replayed when the subtree is skipped on hit** (this is the v1.54.6 gap) |
 | B2 | Records added to `spin2Parser.debugRawData` (DebugData table) | yes (v1.54.3) — `.dbg` records list |
 | B3 | Symbols stored in `context.objectSymbolStore` | yes (v1.54.2) — `.sym` sidecar, when `--map` is requested |
-| B4 | Records added to `spinResolver.objectDistiller` for parent/child hierarchy | **no** — affects `--map` output only; latent, not correctness-critical |
+| B4 | Object hierarchy + per-object symbols consumed by `--map` | **yes** (v1.55.4) — instance subtree and descendant symbols ride in `.sym` and replay on a hit. Previously `no`, described here as "latent, not correctness-critical"; that was wrong. A hit returned before the child loop, so a hit child's own children were never recorded and its grandchildren's symbols never restored — the warm `.map` silently lost a level and a set of method listings. Wrong output is not latent. |
 
 ### 2.3 Things explicitly *not* on this list and why
 
@@ -87,8 +137,13 @@ Today's on-disk shape per cache entry, keyed by SHA-256 hex:
 
 ```
 <key>.bin    load-bearing — compiled binary
-<key>.sym    load-bearing when --map — serialized user symbols
-<key>.dbg    load-bearing when --debug — DebugData records + brkSites
+<key>.dep    load-bearing ALWAYS (v1.55.4) — {path, sha256} for every file the
+             subtree was built from; read BEFORE .bin, and the gate on whether
+             the entry may be used at all
+<key>.sym    load-bearing when --map — user symbols, PLUS (v1.55.4) the instance
+             subtree and descendant symbols replayed on a hit
+<key>.dbg    load-bearing on every hit since v1.54.6 — DebugData records,
+             brkSites, and subtree exportdef contributions
 <key>.meta   diagnostic JSON, never read by the hit path
 ```
 
@@ -118,6 +173,17 @@ Today's on-disk shape per cache entry, keyed by SHA-256 hex:
 
 - Pros: keeps the inspectability of the current layout; adds the missing structural integrity check; smaller change than Shape A.
 - Cons: doubles the small-file count; doesn't fix the "remember to bump format version when adding a sidecar" discipline gap (though the manifest schema *is* a place to centralize that).
+
+> **v1.55.4 note — `.dep` is NOT Shape B.** The new manifest lists the **inputs
+> the subtree was compiled from**; Shape B proposes a manifest of **the sidecars
+> this entry consists of**, with their format versions and content hashes. They
+> solve different problems: `.dep` catches a changed source, Shape B catches a
+> missing or corrupt sidecar and the "remember to read the new sidecar" discipline
+> gap. Adding `.dep` did not discharge M3, and v1.55.4 is a live demonstration of
+> why M3 still matters — it added one sidecar *and* extended the meaning of
+> another (`.sym` now also carries the instance subtree), which is exactly the
+> invisible-coupling case §3.2 warns about. `CACHE_FORMAT_VERSION` was bumped to 7,
+> by remembering to.
 
 **Recommendation**: Shape B is the smaller correctness lift and the natural evolution of where we are. Shape A is the right answer if we ever ship a public `--cache` flag for end users (correctness over inspectability). For an internal compiler-engineering cache, Shape B is fine.
 
@@ -176,6 +242,13 @@ For the cache, the class of bugs is:
 
 ### 4.5 Recommended mitigation stack
 
+> **Status check, v1.55.4: M1 is still not built.** The invalidation suite added
+> in v1.55.4 (`objectCacheInvalidation.test.ts`) is adjacent but is not M1: it
+> asserts that specific *mutations* invalidate, whereas M1 byte-compares *every
+> hit* against a fresh compile across the whole suite. M1 would have caught this
+> release's defect without anyone thinking to write a mutation test for depth 3.
+> It remains the highest-leverage item in this document.
+
 **Tier 1 (this release window):** M1. The verification harness is the highest-leverage correctness backstop available. It would have caught all five bugs we've shipped at PR-time. Independent of any other work. Cost is small.
 
 **Tier 2 (next release window):** M2 + M4. After the next bug we don't catch via the SD suite, the question won't be "what did we miss?" — the registry will tell us. Plus golden tests catch semantic drift in serializers.
@@ -231,13 +304,44 @@ Traced the recursive replay logic on paper:
 
 **Conclusion:** the design is correctness-recursive — capture once at the boundary, replay covers everything below. Confidence is high but not yet empirical. **Need a 3-level fixture (parent → mid → bottom, where bottom has `#pragma exportdef` and a sibling at top depends on it) to confirm.**
 
+> **v1.55.4 — fixture built, conclusion narrowed.** `TEST/CACHE-fixtures/sgl_*`
+> is that fixture and more: depth 3, a DAT singleton reached both directly and
+> through two different parents, one object declared twice, a DAT FILE blob, and
+> an `#pragma exportdef` whose symbol reaches a depth-2 object and changes its
+> bytes (verified by control: the tag is present with the export and absent
+> under `-U`).
+>
+> The conclusion above holds **for effects flowing out of a subtree** and does
+> not generalize. Read as a principle it says a boundary capture covers
+> everything below it — which is false for **inputs flowing in**, and that
+> reading is part of how row A8 survived. Effects out: capture at the boundary.
+> Inputs in: revalidate the whole subtree, which is what `.dep` does.
+
 ### 5.4 Path-relative resolution for OBJ children — **real but narrow, not on critical path**
 
 Two parent compiles with the same source but different working directories or `-I` paths can resolve `OBJ k : "kid"` to different files. Three sub-cases:
 
 1. **Different `kid` content at different paths.** Each `kid` resolves to a different file → different `preprocessedLines` → different cache key → recursion bottoms out correctly. *No bug.*
-2. **Same `kid` content but different paths, where `kid` itself has DAT FILE / nested OBJ that resolves differently per directory.** `kid`'s cache key matches across paths (same source), but its embedded blob/grandchild bytes differ. *Same root issue as DAT FILE bytes (A7 in §2.1) and recursive OBJ resolution.*
+2. **Same `kid` content but different paths, where `kid` itself has DAT FILE / nested OBJ that resolves differently per directory.** `kid`'s cache key matches across paths (same source), but its embedded blob/grandchild bytes differ.
+
+   **STILL OPEN after v1.55.4 — and do not read the manifest as covering it.**
+   The `.dep` manifest hashes the file that was resolved **at store time** and
+   revalidates *that path*. It never re-runs name resolution on a hit, so a
+   logical name now resolving to a different file passes validation cleanly:
+   the recorded path still exists and still holds the recorded bytes. Closing
+   this needs re-resolution at hit time, which is a different mechanism from
+   content hashing. Recorded as open rather than quietly folded into A7,
+   because a manifest that revalidates *most* inputs invites the assumption
+   that it revalidates all of them — the same shape of error as row A8.
 3. **Cross-project cache sharing via `--cache-dir`** explicitly trades correctness for sharing: if two projects use different `kid.spin2` content under the same logical name but feed into the same cache directory, sub-case 2 bites.
+
+   **v1.55.4 makes entries path-anchored, which narrows this.** A manifest
+   entry records a resolved absolute path, and validation re-reads that path.
+   Move or rename a tree and its entries stop validating — they miss and
+   recompile rather than silently matching. That is deliberately conservative:
+   it costs a rebuild after a move and removes a class of silent wrong output.
+   It does not rescue sub-case 2, where the path is unchanged and the file
+   behind it is not.
 
 **Recommendation:** Document explicitly that cross-directory or cross-project cache sharing is at user discretion and requires either (a) identical project tree layouts or (b) accepting that path-relative resolution can shadow source-content equivalence. Don't fix in code yet; revisit only if a user reports it.
 
@@ -275,6 +379,14 @@ Re-walked the whole compile path looking for state reads not in §2.1's list:
 ---
 
 ## 6. Where to next
+
+> **v1.55.4 status.** Items 1 and 3 below are spent — v1.54.6 shipped, and this
+> document has been confirmed by being wrong in a way that cost four releases
+> (row A8). Item 2 stands unchanged and unstarted: **M1, the verification
+> harness, is still the highest-leverage correctness work available here.** Every
+> defect this document records — including v1.55.4's — would have been caught at
+> PR time by a lane that byte-compares every cache hit against a fresh compile.
+> Each release instead found its defect through a user's project.
 
 Before writing any v1.54.6 code:
 
