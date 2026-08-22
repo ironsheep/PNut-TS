@@ -15,7 +15,7 @@ Reimplementation Pnut for Windows in a platform agnostic language.
 
 ## We welcome testing help
 
-While this is no longer our first release, we hope is that our community can help us expand our testing beyond what we've been able to do to help us find any compilation issues we may not have found. Our regression test suite is reasonably large (*currently 320+ individual .spin2 compiles which generate coverage reports that allow us to quickly find regions of code that we haven't tested.*) but there is no such thing as too much testing!
+While this is no longer our first release, we hope is that our community can help us expand our testing beyond what we've been able to do to help us find any compilation issues we may not have found. Our regression test suite is reasonably large - as of v1.55.4 it runs 393 tests, of which 325 are individual .spin2 compiles, and it generates coverage reports that let us quickly find regions of code we haven't tested - but there is no such thing as too much testing!
 
 The page [Testing PNut-TS](https://github.com/ironsheep/PNut-TS/blob/main/Testing.md) will help you learn how to test and identify what to report when you find an issue.
 
@@ -46,7 +46,7 @@ The features of this new implementation are:
 - A command line tool with standard option processing
 - Has a full featured light-weight [preprocessor](Preprocessor.md)
 - Listing, object, and binary compatible with PNut of same version.<BR>(PNut v43, initially (at testing release), now at PNut v55 with this release.)
-- A persistent object cache that skips recompiling child objects whose inputs have not changed
+- A persistent object cache that skips recompiling child objects whose inputs have not changed - including inputs further down the tree, such as an object your object uses, or a file embedded with `DAT ... FILE` (as of v1.55.4)
 - Memory map files (`-m`) describing object structure and memory allocation
 - Internal table-size-limits are now easy to adjust if we find a need.
 

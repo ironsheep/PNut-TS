@@ -30,7 +30,7 @@ export class PNutInTypeScript {
   private readonly program = new Command();
   //static isTesting: boolean = false;
   private options: OptionValues = this.program.opts();
-  private version: string = '1.55.3';
+  private version: string = '1.55.4';
   private argsArray: string[] = [];
   private context: Context;
   private spinDocument: SpinDocument | undefined = undefined;
@@ -155,7 +155,7 @@ export class PNutInTypeScript {
       })
       .name('pnut-ts')
       .version(`v${this.version}`, '-V, --version', 'Output the version number')
-      .usage('[optons] filename')
+      .usage('[options] filename')
       .description(`Propeller Spin2 compiler - v${this.version}`)
       .arguments('[filename]')
       .action((filename: string) => {

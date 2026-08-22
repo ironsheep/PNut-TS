@@ -113,9 +113,9 @@
   },
 
   "documents": {
-    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.3" },
-    "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.3", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: DOCs/voicing/CHANGELOG-Voicing.md" },
-    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.3", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
+    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.4" },
+    "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.4", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: DOCs/voicing/CHANGELOG-Voicing.md" },
+    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.4", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
     "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.55.3" },
 
     "BUILD-RUN.md":         { "class": "process", "verified": null },

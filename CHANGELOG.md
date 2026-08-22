@@ -21,6 +21,66 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## [1.55.4] 2026-08-22
+
+The object cache now notices when a file deeper in your object tree changes.
+Before this release it only tracked an object's direct dependencies, so editing
+something two or more levels down could leave you with a binary built from the
+old code, with no warning. The `.map` file also names objects and instances
+correctly when the same object is used more than once.
+
+### ⚠️ Behavior change — the first build after upgrading is a full rebuild
+
+- **Any existing cache is discarded on upgrade.** The on-disk format changed, so
+  every entry written by an earlier version is unreachable and the first compile
+  after upgrading recompiles everything. Entries written before v1.55.4 can be
+  stale in ways those versions had no way to detect, so they are not reused.
+- **Some builds that used to hit the cache will now miss.** That is the fix
+  working: those hits were returning stale objects. If you measured a speed-up
+  on a multi-level project, the new, lower figure is the honest one.
+- **Moving or renaming a source tree empties its cache.** Entries record the
+  resolved path of every file they were built from; after a move those paths no
+  longer match and the affected objects recompile.
+
+### Fixed
+
+- **A change to an object further down the tree is no longer ignored.** With
+  `--cache`, editing a file two or more levels below the top — an object used by
+  an object you use — left every level above it cached, so the build kept the
+  old code. Only direct dependencies were tracked. Each cache entry now records
+  every file its whole subtree was built from, and re-checks them before reusing
+  anything.
+
+  The most damaging form of this was silent: when a driver is used both directly
+  and through another object, one copy could be rebuilt while the other stayed
+  stale. Because identical objects are merged by comparing their compiled
+  contents, two copies that no longer matched stopped being merged — and a
+  driver written as a `DAT` singleton became **two** independent copies, with
+  separate lock, separate state and separate cog handle. Nothing reported it.
+
+- **Editing a file embedded with `DAT ... FILE` now rebuilds.** Changing the
+  embedded file alone, without touching the `.spin2` that names it, produced a
+  binary still carrying the old contents.
+
+- **`.map` object and instance names are correct when an object is used more
+  than once.** Declaring the same object twice listed only one of them; names
+  could be attached to the wrong file; and objects could appear as `object_12`
+  or `Object_1` instead of by name. Nested levels could also go missing
+  entirely.
+
+- **`.map` symbol addresses agree with the rest of the file.** A `DAT` symbol
+  could be listed at one address in the symbol index and a different one in the
+  object details — the symbol index address could even fall outside the object,
+  in VAR space.
+
+- **`.map` output from a cached build now matches an uncached one.** With
+  `--cache --map`, objects below a cached one lost their method listings, and a
+  level of the hierarchy could be missing.
+
+- **`.flash` output could be written empty.** Under load, `-F` could produce a
+  zero-byte `.flash` file. The file was correct whenever it was not truncated,
+  so a rebuild appeared to fix it.
+
 ## [1.55.3] 2026-08-09
 
 Preprocessor symbol handling is corrected across the board: `#undef` now

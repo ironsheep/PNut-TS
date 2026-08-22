@@ -15,9 +15,9 @@
 Our new PNut-TS compiler will show you the following when you specify `-h` or `--help`:
 
 ```text
-PNut-TS: Usage: pnut-ts [optons] filename
+PNut-TS: Usage: pnut-ts [options] filename
 
-Propeller Spin2 compiler - v1.55.3
+Propeller Spin2 compiler - v1.55.4
 
 Options:
   -V, --version               Output the version number
@@ -54,24 +54,44 @@ Options:
          
 
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2025 Iron Sheep Productions, LLC., Parallax Inc.
-pnut-ts: * Version 1.55.3, {buildDateHere}
+pnut-ts: * Version 1.55.4, {buildDateHere}
 ```
 
 These options should already make sense but here's a light-weight recap:
 
 | Option forms | Description |
 | --- | --- |
-| <pre>--d, -\-debug</pre> | enables generation of code for debug() statements  |
-| <pre>--O, -\-obj,<br>-l, --list</pre> | control the generation of the additional (.lst) listing and (.ob) object files |
-| <pre>-V, -\-version</pre> | shows the compiler version information |
+| <pre>-d, --debug</pre> | enables generation of code for debug() statements  |
+| <pre>-O, --obj,<br>-l, --list</pre> | control the generation of the additional (.lst) listing and (.obj) object files |
+| <pre>-V, --version</pre> | shows the compiler version information |
 | <pre>-o {filename}, --output {filename}</pre> | allows you to provide a specific filename for the .bin output file |
 | <pre>-i, --intermediate</pre> | Generate `*__pre.spin2` file after preprocessing your source file
-| <pre>-F, --flashfile</pre> | control the generation of the additional (.flash) flash-mage file |
+| <pre>-F, --flashfile</pre> | control the generation of the additional (.flash) flash-image file |
 | <pre>-a, --altbin</pre> | use alternate `.binary` suffix vs. `.bin` |
 | <pre>-m, --map</pre> | generate a memory map file (.map) describing the compiled object structure, memory allocation and multi-object relationships |
-| <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory — pointing several source trees at one folder maximizes reuse. `--cache-clear` empties it first, and works even when no source file is given. |
+| <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. As of v1.55.4 "inputs" covers the whole subtree — an object used by an object you use, and any file embedded with `DAT ... FILE` — so editing a file several levels down invalidates everything above it. Before v1.55.4 only a direct dependency was tracked. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory. `--cache-clear` empties it first, and works even when no source file is given. |
 | <pre>-q, --quiet,<br>-v, --verbose</pre> | control how little or how much extra messaging is output from the compiler |
-| <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **proprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U prevents a `#pragma exportdef` of the named symbol from taking effect, keeping that symbol private to the file that defined it.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*) |
+| <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **preprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U prevents a `#pragma exportdef` of the named symbol from taking effect, keeping that symbol private to the file that defined it.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*) |
+
+### Notes on the object cache
+
+**Moving or renaming a source tree empties its cache.** A cache entry records the
+resolved path of every file it was built from, so after a move those paths no
+longer match and the affected objects recompile. This costs one rebuild and is
+deliberate — the alternative is accepting an entry we can no longer prove is
+right.
+
+**Sharing one `--cache-dir` across different source trees is at your
+discretion.** It maximizes reuse when the trees are genuinely the same code. It
+is not safe when two projects contain *different* files under the same name and
+feed the same cache directory: entries are matched on file contents and resolved
+paths, not on which project asked. If your trees are unrelated, give each its own
+cache directory.
+
+**Upgrading to v1.55.4 discards any existing cache.** The on-disk format changed,
+so the first compile after upgrading recompiles everything. This is intended:
+entries written by earlier versions could be stale in ways those versions could
+not detect.
 
 And of course `-h` or `--help` produces the output as shown above.
 
@@ -91,7 +111,7 @@ There are a couple of additional options we use when testing or validating PNut_
 
 The `--log {option(s)}` produce very detailed output from different sections of the compiler.
 
-The `--regression {option(s)}` produce additional reports we use for testing/verifing the compiler.
+The `--regression {option(s)}` produce additional reports we use for testing/verifying the compiler.
 
 and
 
