@@ -1,8 +1,40 @@
 # P2KB `map_caveat` — re-measurement and proposed amendment (1.55.4)
 
-**Status:** measurement complete, amendment proposed. **Not yet applied** — P2KB
-is an external corpus and is edited by Stephen, not from this repo.
-**Measured:** 2026-08-22 against pnut-ts **1.55.4**.
+**Status:** measurement complete, amendment proposed and **still required**.
+Not yet applied — P2KB is an external corpus, edited by Stephen, not from this
+repo. **Measured:** 2026-08-22 against pnut-ts **1.55.4**.
+
+> **Re-checked 2026-08-22, after the entry was revised.** The entry has since
+> been substantially rewritten — it gained a `singleton_rule` block,
+> `the_other_silent_trap` ("WANTED ONE, GOT TWO"), a `completeness_rule` for
+> forwarding constants, an `enforcement` block, several new measured cases and
+> a new oneliner. That revision addressed override-forwarding and singleton
+> semantics, which is a different subject.
+>
+> **`map_caveat` came through it verbatim, character for character**, so this
+> amendment is still needed.
+>
+> The revision *did* remove the `toolchain:` field, so the stamp update this
+> document originally proposed is moot and has been dropped below. Version
+> guidance now lives in `verification.method`.
+>
+> Because the fetched entry contains all of that new material, this is a fresh
+> read rather than the boot-time snapshot `p2kb-mcp` can otherwise serve — the
+> one failure mode that could have made "unchanged" mean "not reloaded."
+
+**Also re-verified against the entry's newest case.** The revision's headline
+example — one declaration overridden, its sibling not — reproduces in shape at
+1.55.4 (`Objects: 3` forked vs `2` when both are overridden; the entry's 348/216
+byte figures are specific to its own fixture). The forked map reads:
+
+```
+  $00000  $00023     36  mirror_bad       (entry)
+  $00024  $00037     20  drv2             A
+  $00038  $00049     18  drv2             B
+```
+
+Both instances present, correct source file, correct instance names — which is
+precisely what `map_caveat` tells readers not to trust.
 
 ---
 
@@ -106,15 +138,14 @@ Replace `map_caveat:` with:
     The Objects: count is reliable in every version.
 ```
 
-And update the toolchain stamp:
+No `toolchain:` change is proposed — the field no longer exists. If a version
+anchor is still wanted, `verification.method` is where it now belongs; a line
+such as *"instance/source labels confirmed correct at pnut-ts 1.55.4"* would
+carry it without reinstating a field the revision deliberately dropped.
 
-```yaml
-toolchain: "pnut-ts 1.55.4 (re-measured 2026-08-22) — compiler-coupled; re-verify on a compiler version bump"
-```
-
-The `description`, `THE RULE`, `forking_a_dat_region`, `the_silent_trap`,
-`cascade_through_tiers` and `verification.measured` blocks all re-measured
-clean and need no change.
+Everything else re-measured clean and needs no change: `description`,
+`THE RULE`, `singleton_rule`, `forking_a_dat_region`, `the_silent_trap`,
+`the_other_silent_trap`, `cascade_through_tiers` and `verification.measured`.
 
 ## Note on the source
 
