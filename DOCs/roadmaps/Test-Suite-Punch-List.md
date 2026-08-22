@@ -599,3 +599,28 @@ binary can still disagree once the cache is correct. Reproduce with
 against an uncached build.
 
 Status: **open**, unscheduled.
+
+### `.map` SYMBOL INDEX shows one row per source file, not per image
+
+Observed 2026-08-22 while re-measuring the P2KB object-image-dedup entry against
+1.55.4 (sprint task «#38»). When a CON override forks one source file into
+several independent images, `MEMORY LAYOUT` and `ADDRESS INDEX` correctly list
+every image with its own address and instance label, but `SYMBOL INDEX` lists
+each symbol **once** — at the first image's address.
+
+Reproduced with a 3-tier seeded-and-forwarding cascade: 5 images, of which
+`casc_mid` and `casc_leaf` each appear twice, yet `SYMBOL INDEX` carries a
+single `MTAG` row (`$00034`) and a single `LTAG` row (`$0004C`). The second
+image's DAT addresses appear nowhere in that section.
+
+This follows from symbols being stored per source file
+(`objectSymbolStore` is keyed by source-file index), so it is a design
+limitation rather than the index-space confusion fixed in 1.55.4 — but the
+effect on a reader is the same: an address that is right for one instance and
+silently wrong for the other. Either the section should repeat symbols per
+image, or it should say which image it is reporting.
+
+Reproducer: `scratchpad` case in the sprint record, or rebuild from the pattern
+in P2KB `p2kbSpin2ObjectImageDedup` (`cascade_through_tiers`).
+
+Status: **open**, unscheduled.
