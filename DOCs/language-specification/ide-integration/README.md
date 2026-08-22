@@ -5,8 +5,13 @@ This directory contains comprehensive language support files for Parallax Propel
 ## 📦 Package Contents
 
 ### Language Specifications
-- **SPIN2-Language-Specification.json** - Complete SPIN2 language definition with keywords, operators, control flow constructs, and built-in functions
-- **PASM2-Instruction-Database.json** - Complete PASM2 assembly instruction set with opcodes, operand formats, condition codes, and effect flags
+
+These live one directory up, in `../databases/` — this directory holds only the
+IDE integration files listed below.
+
+- **`../databases/SPIN2-Language-Specification.json`** - Complete SPIN2 language definition with keywords, operators, control flow constructs, and built-in functions
+- **`../databases/PASM2-Instruction-Database.json`** - Complete PASM2 assembly instruction set with mnemonics, syntax, effects, and encodings
+- **`../databases/PASM2-Condition-Codes.json`** - Condition codes and effect flags
 
 ### IDE Integration Files
 - **spin2.tmGrammar.json** - TextMate grammar for VS Code syntax highlighting
@@ -31,7 +36,7 @@ This directory contains comprehensive language support files for Parallax Propel
 - **Assembly Directives**: 8 directives for code organization
 - **Registers**: 25 hardware registers and control registers
 - **Debug Commands**: 23 debug output commands
-- **PASM2 Instructions**: 359 assembly instructions with operand formats
+- **PASM2 Instructions**: 359 assembly instructions with syntax, effects and encodings
 - **Condition Codes**: 16 condition codes with all aliases
 - **Effect Flags**: WC, WZ, WCZ modifiers
 
@@ -121,21 +126,25 @@ Use completion definitions for company-mode:
 ## 📊 Statistics
 
 - **SPIN2 Language Elements**: 36 keywords, 72 operators, 55 built-in functions, 6 block types, 3 data types
-- **PASM2 Assembly**: 359 instructions, 16 condition codes, 4 effect flags, 38 operand formats
+- **PASM2 Assembly**: 359 instructions, 16 condition codes, 4 effect-flag records (`none`, `wz`, `wc`, `wcz`)
 - **Additional Elements**: 8 assembly directives, 25 registers, 23 debug commands, 3 system variables, 12 special symbols
-- **IDE Support**: TextMate grammar (173 lines), LSP definitions (3237 lines), completion database (7200+ lines)
-- **Total Language Elements**: 234 across all categories
+- **IDE Support**: TextMate grammar (173 lines), LSP definitions (3779 lines), completion database (5685 lines, 526 items)
+- **Total SPIN2 Language Elements**: 246 across all categories (36 keywords + 72 operators + 55 built-in functions + 8 directives + 25 registers + 23 debug commands + 12 special symbols + 6 block types + 3 data types + 3 control-flow forms + 3 system variables)
 - **Coverage**: 100% of PNut-TS compiler language features
 
 ## 🔄 Updates
 
 These files are automatically generated from the PNut-TS compiler source code. To update:
 
-1. Run the extraction scripts:
+1. Run the extraction scripts. They are run directly, not through npm — there
+   are no `npm run extract-*` scripts in `package.json`:
+
 ```bash
-npm run extract-pasm2-database
-npm run extract-spin2-language
-npm run generate-ide-formats
+cd DOCs/language-specification/extraction-scripts
+npx tsx extract-pasm2-database.ts
+npx tsx extract-condition-codes.ts
+npx tsx extract-spin2-language.ts
+npx tsx generate-ide-formats.ts
 ```
 
 2. Test the generated files in your IDE
@@ -144,30 +153,27 @@ npm run generate-ide-formats
 ## 📝 Example Usage
 
 ### SPIN2 Code Sample
+Compiles as-is with `pnut-ts` — verified against 1.55.4.
+
 ```spin2
 CON
-  LED_PIN = 56
-  BAUD_RATE = 115200
+  LED_PIN   = 56
+  BAUD_RATE = 115_200
 
 VAR
-  LONG counter, status
-  BYTE buffer[256]
+  LONG  counter, status
+  BYTE  buffer[256]
 
-OBJ
-  term : "FullDuplexSerial"
-
-PUB start
-  term.start(31, 30, 0, BAUD_RATE)
-
-  REPEAT
-    IF counter > 100
+PUB start()                            ' parentheses are REQUIRED in Spin2
+  repeat
+    if counter > 100
       toggle_led()
       counter := 0
-    ELSE
+    else
       counter++
 
-PRI toggle_led
-  !OUTA[LED_PIN]
+PRI toggle_led()
+  pintoggle(LED_PIN)                   ' P2 pin toggle
 ```
 
 ### PASM2 Assembly Sample

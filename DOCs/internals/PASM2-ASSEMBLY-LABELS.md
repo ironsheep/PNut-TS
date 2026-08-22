@@ -31,7 +31,7 @@ labelname    [instruction]    [operands]    [effects]    'comment
 - Defining a new global label resets the local label scope
 - Must begin with a letter (A-Z, a-z) or underscore (_)
 - May contain letters, digits (0-9), and underscores
-- Maximum length: 30 characters (for PNut compatibility)
+- Maximum length: 30 characters, enforced — a longer symbol is a compile error
 
 ### Examples
 
@@ -155,16 +155,32 @@ func_b          mov     y, #2           ' Global: func_b, scope #3 begins
 2. **Use short local names** for flow control: `.loop`, `.done`, `.retry`, `.skip`, `.exit`
 3. **Prefer dot notation** (`.label`) over colon notation (`:label`) for consistency with modern convention
 4. **Keep local labels near their references** to improve readability
-5. **Limit symbol names to 30 characters** for compatibility with original PNut compiler
+5. **Limit symbol names to 30 characters** — this is a language rule enforced by both compilers, not a portability courtesy; exceeding it is a compile error
 
 ## Compiler Implementation Notes
 
 - The compiler maintains an internal scope counter (`asmLocal`) that increments with each global label or storage definition
 - Local labels are internally stored as `name'NNNN` where `NNNN` is the 4-digit scope counter
 - Maximum 10,000 DAT symbols per compilation unit (error: "Limit of 10k DAT symbols exceeded")
-- PNut-TS does not enforce the 30-character limit, but original PNut does
+- **PNut-TS enforces the 30-character symbol limit**, as original PNut does.
+  Over-length symbols are rejected with `Symbol exceeds 30 characters`
+  (`spinElementizer.ts:846-852`, `MAX_SYMBOL_LENGTH = 30`); original PNut
+  reports the same text from `REF-V52A/p2com.asm:2609`. *This bullet previously
+  read "PNut-TS does not enforce the 30-character limit, but original PNut
+  does." That was true of an earlier build and became false when the check was
+  added to the elementizer. The same claim was corrected in `CLAUDE.md` on
+  2026-08-07 and missed here — a reminder that a fact repeated in two documents
+  gets corrected in one.*
 
 ## See Also
 
 - [Theory-of-Operations.md](Theory-of-Operations.md) - Overall compiler architecture
 - [SPIN2-BIN-Format.md](SPIN2-BIN-Format.md) - Binary output format details
+
+---
+
+*Verified against compiler source for 1.55.4 (2026-08-22): the 30-character
+limit (`spinElementizer.ts:846`), the 10,000 DAT symbol limit
+(`spinResolver.ts:4524`), the `asmLocal` scope counter (`spinResolver.ts:257`),
+and the `name'NNNN` local-label mangling (`spinResolver.ts:4560`). Every code
+example in this document was compiled.*

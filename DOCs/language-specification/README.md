@@ -41,8 +41,8 @@ DOCs/language-specification/
 
 ### IDE Integration Support
 - **TextMate grammar** for VS Code syntax highlighting (173 lines)
-- **Language Server Protocol** definitions for IntelliSense (3237 lines)
-- **Code completion database** with 650+ completion items (7200+ lines)
+- **Language Server Protocol** definitions for IntelliSense (3779 lines)
+- **Code completion database** with 526 completion items (5685 lines)
 - **VS Code extension** configuration template
 - **Multi-editor support** instructions for Sublime, Atom, Vim, Emacs
 
@@ -67,7 +67,7 @@ console.log(pasm2Instructions.instructions.length); // 359
 // Access SPIN2 language elements
 console.log(spin2Language.keywords.length); // 36
 console.log(spin2Language.operators.length); // 72
-console.log(spin2Language.builtInFunctions.length); // 55
+console.log(spin2Language.builtinFunctions.length); // 55
 console.log(spin2Language.assemblyDirectives.length); // 8
 console.log(spin2Language.registers.length); // 25
 ```
@@ -111,13 +111,13 @@ function provideCompletions(document: TextDocument, position: Position) {
 | Component | Count | Description |
 |-----------|-------|-------------|
 | **PASM2 Instructions** | 359 | Complete P2 assembly instruction set |
-| **Operand Formats** | 38 | All instruction parameter patterns |
+| **Instruction Syntax Forms** | 359 | One `syntax` string per instruction; each record carries `mnemonic`, `syntax`, `effects`, `encoding` |
 | **Condition Codes** | 16 | All conditional execution patterns |
 | **SPIN2 Keywords** | 36 | Block structures, control flow, data types |
 | **Operators** | 72 | Arithmetic, logical, bitwise, comparison, float variants |
 | **Built-in Functions** | 55 | Math, bit manipulation, lookup, flexcode methods |
 | **Assembly Directives** | 8 | ORG, ORGH, RES, FIT, ALIGNL, ALIGNW, FILE, etc. |
-| **Registers** | 25 | PR0-PR7, PTRA, DIRA, OUTA, INA, CNT, etc. |
+| **Registers** | 25 | PR0-PR7, PA, PB, PTRA, PTRB, DIRA/DIRB, OUTA/OUTB, INA/INB, IJMP1-3, IRET1-3, TASKHLT |
 | **Debug Commands** | 23 | UDEC, UHEX, UBIN, ZSTR debug output families |
 | **System Variables** | 3 | CLKMODE, CLKFREQ, VARBASE |
 | **Special Symbols** | 12 | @, @@, ^@, ~, ~~, $, %, #, ##, etc. |
@@ -160,31 +160,45 @@ node -e "require('./databases/SPIN2-Language-Specification.json')"
 With the generated syntax highlighting, your SPIN2/PASM2 code will look like this:
 
 ### SPIN2 Code
+This example compiles as-is with `pnut-ts` — verified against 1.55.4.
+
 ```spin2
 CON                                    ' Constants section
-  LED_PIN = 56                        ' Constant definition
-  BAUD_RATE = 115200
+  LED_PIN   = 56                       ' Constant definition
+  BAUD_RATE = 115_200
 
 VAR                                    ' Variables section
-  LONG counter, status                 ' Variable declarations
-  BYTE buffer[256]
+  LONG  counter, status                ' Variable declarations
+  BYTE  buffer[256]
 
-OBJ                                    ' Objects section
-  term : "FullDuplexSerial"           ' Object instantiation
+PUB start()                            ' Public method - parentheses REQUIRED
+  repeat                               ' Loop construct
+    if counter > 100                   ' Conditional
+      toggle_led()                     ' Method call
+      counter := 0                     ' Assignment
+    else                               ' Alternative branch
+      counter++                        ' Increment operator
 
-PUB start                             ' Public method
-  term.start(31, 30, 0, BAUD_RATE)    ' Method call
-
-  REPEAT                              ' Loop construct
-    IF counter > 100                  ' Conditional
-      toggle_led()                    ' Method call
-      counter := 0                    ' Assignment
-    ELSE                              ' Alternative branch
-      counter++                       ' Increment operator
-
-PRI toggle_led                        ' Private method
-  !OUTA[LED_PIN]                     ' Pin toggle
+PRI toggle_led()                       ' Private method
+  pintoggle(LED_PIN)                   ' Pin toggle
 ```
+
+An `OBJ` block, shown separately because it needs the named file present to
+compile:
+
+```spin2
+OBJ                                    ' Objects section
+  sensor : "my_sensor_driver"          ' Object instantiation
+```
+
+> **Three corrections here, made 2026-08-22 by compiling the example rather
+> than reading it.** The previous version did not compile: `PUB start` and
+> `PRI toggle_led` were written without parentheses (`error: Expected "("` —
+> Spin2 requires them), `!OUTA[LED_PIN]` is a Propeller 1 idiom that is not a
+> valid Spin2 statement (`error: Expected "="`; the P2 form is `pintoggle()`),
+> and `"FullDuplexSerial"` is a P1 object that does not resolve here. A
+> non-compiling example in a language specification is worse than no example,
+> because a reader reasonably assumes it was checked.
 
 ### PASM2 Assembly
 ```pasm2
