@@ -128,7 +128,7 @@ export class MapGenerator {
       return;
     }
 
-    // Build hierarchy: find root (parentIndex === -1) and children
+    // Build hierarchy: find root (no declaring parent) and children
     const topInstance = instances.find((i) => i.parentInstanceId === -1);
     if (topInstance) {
       this.emitHierarchyNode(topInstance, instances, '  ', true);
@@ -586,18 +586,18 @@ export class MapGenerator {
   // Helper Methods
   // ========================================================================
 
-  private getVarBaseForInstance(instanceIndex: number): number {
+  private getVarBaseForInstance(instanceId: number): number {
     // VAR space layout: objects are allocated sequentially after code/data.
     // Each object gets 4 bytes reserved at offset 0, then its VAR symbols.
     // We compute VAR bases by summing the VAR sizes of all preceding objects.
     const execSize = this.resolver.executableSize;
 
-    if (instanceIndex === 0) {
+    if (instanceId === 0) {
       return execSize;
     }
 
-    // For direct children of top (parentIndex === 0), read from top's header
-    const instance = this.context.objInstanceStore.getInstance(instanceIndex);
+    // For direct children of top, read from top's object header
+    const instance = this.context.objInstanceStore.getInstance(instanceId);
     if (!instance) {
       return execSize;
     }
@@ -610,7 +610,7 @@ export class MapGenerator {
         const parentSubObjects = parentRecord.subObjectIds;
         for (let i = 0; i < parentSubObjects.length; i++) {
           const childId = parentSubObjects[i] & 0x7fffffff;
-          if (childId === instanceIndex) {
+          if (childId === instanceId) {
             const objImage = this.resolver.objectImage;
             // Object image has 8-byte header: [varSize(4), codeSize(4)], then object data
             // Child entries start at offset 8 (after header), each entry is 8 bytes: [codeOffset(4), varOffset(4)]
@@ -628,7 +628,7 @@ export class MapGenerator {
     const allSymbols = this.context.objectSymbolStore.getAllSymbols();
     let cumulativeVarSize = 0;
 
-    for (let objIdx = 0; objIdx < instanceIndex; objIdx++) {
+    for (let objIdx = 0; objIdx < instanceId; objIdx++) {
       const symbols = allSymbols.get(objIdx);
       if (symbols) {
         // Each object has 4 bytes reserved, plus its VAR symbols
