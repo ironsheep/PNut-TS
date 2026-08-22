@@ -129,7 +129,7 @@ export class MapGenerator {
     }
 
     // Build hierarchy: find root (parentIndex === -1) and children
-    const topInstance = instances.find((i) => i.parentIndex === -1);
+    const topInstance = instances.find((i) => i.parentInstanceId === -1);
     if (topInstance) {
       this.emitHierarchyNode(topInstance, instances, '  ', true);
     }
@@ -139,14 +139,15 @@ export class MapGenerator {
 
   private emitHierarchyNode(instance: ObjInstanceInfo, allInstances: ObjInstanceInfo[], indent: string, isLast: boolean): void {
     const prefix = indent.length > 2 ? (isLast ? '\\-- ' : '+-- ') : '';
-    const instanceDisplay = instance.parentIndex === -1 ? instance.sourceFileBaseName : `${instance.instanceName} : ${instance.sourceFileBaseName}`;
+    const instanceDisplay =
+      instance.parentInstanceId === -1 ? instance.sourceFileBaseName : `${instance.instanceName} : ${instance.sourceFileBaseName}`;
 
     // Build info string
     const infoParts: string[] = [];
 
     // Get method count for this object
     const distiller = this.resolver.distiller;
-    const record = distiller.records.getRecordAt(instance.objectIndex);
+    const record = distiller.records.getRecordAt(instance.recordIndex);
     if (record) {
       infoParts.push(`${record.methodCount} methods`);
     }
@@ -161,7 +162,7 @@ export class MapGenerator {
     this.writeLine(`${indent}${prefix}${instanceDisplay}${infoStr}`);
 
     // Find children of this instance
-    const children = allInstances.filter((i) => i.parentIndex === instance.objectIndex);
+    const children = allInstances.filter((i) => i.parentInstanceId === instance.instanceId);
     const childIndent = indent + (indent.length > 2 ? (isLast ? '    ' : '|   ') : '    ');
 
     children.forEach((child, idx) => {
@@ -202,9 +203,9 @@ export class MapGenerator {
         const endAddr = startAddr + record.objectSize - 1;
 
         // Get instance info
-        const instance = instances.find((inst) => inst.objectIndex === i);
+        const instance = instances.find((inst) => inst.recordIndex === i);
         const objectName = instance ? instance.sourceFileBaseName : this.getObjectNameByIndex(i);
-        const instanceName = instance && instance.parentIndex !== -1 ? instance.instanceName : '(entry)';
+        const instanceName = instance && instance.parentInstanceId !== -1 ? instance.instanceName : '(entry)';
         const overrides = instance && instance.hasOverrides ? instance.formatOverrides() : '';
 
         const startStr = '$' + this.hexAddr(startAddr);
@@ -253,21 +254,19 @@ export class MapGenerator {
     const instances = this.context.objInstanceStore.getAllInstances();
     const distiller = this.resolver.distiller;
 
-    // Track which source files we've seen to get their symbols
-    const sourceFileSymbolIndex = new Map<string, number>();
-
     for (const instance of instances) {
-      const record = distiller.records.getRecordAt(instance.objectIndex);
+      const record = distiller.records.getRecordAt(instance.recordIndex);
       if (!record) continue;
 
       // Object header
       const startAddr = record.objectOffset;
       const endAddr = startAddr + record.objectSize - 1;
-      const displayName = instance.parentIndex === -1 ? instance.sourceFileBaseName : `${instance.instanceName} : ${instance.sourceFileBaseName}`;
+      const displayName =
+        instance.parentInstanceId === -1 ? instance.sourceFileBaseName : `${instance.instanceName} : ${instance.sourceFileBaseName}`;
 
       // Get VAR base for this object instance from the object image
       // Each object instance has 2 longs: [code_offset, var_base] at index * 8
-      const varBase = this.getVarBaseForInstance(instance.objectIndex);
+      const varBase = this.getVarBaseForInstance(instance.instanceId);
 
       this.writeLine(`--- ${displayName} ---`);
       this.writeLine(`    Location: $${this.hexAddr(startAddr)}-$${this.hexAddr(endAddr)} (${record.objectSize} bytes)`);
@@ -279,15 +278,11 @@ export class MapGenerator {
         this.writeLine(`    Overrides: ${instance.formatOverrides()}`);
       }
 
-      // Get symbols - use the first instance's index for this source file
-      // (symbols are stored per source file, not per instance)
-      let symbolIndex = instance.objectIndex;
-      if (!sourceFileSymbolIndex.has(instance.sourceFileName)) {
-        sourceFileSymbolIndex.set(instance.sourceFileName, instance.objectIndex);
-      } else {
-        symbolIndex = sourceFileSymbolIndex.get(instance.sourceFileName)!;
-      }
-      const symbols = this.context.objectSymbolStore.getSymbols(symbolIndex);
+      // Symbols are stored per source file, not per instance — so read them
+      // with the source-file index directly. The previous code said the same
+      // thing in a comment while passing a value from another index space and
+      // memoizing it by filename to paper over the mismatch.
+      const symbols = this.context.objectSymbolStore.getSymbols(instance.sourceFileIndex);
 
       // Methods - format: Name (20 chars) Relative Entry  Absolute Entry
       // For override instances, show absolute address = code base + relative entry
@@ -391,12 +386,12 @@ export class MapGenerator {
       }
 
       // Child objects
-      const childInstances = this.context.objInstanceStore.getChildInstances(instance.objectIndex);
+      const childInstances = this.context.objInstanceStore.getChildInstances(instance.instanceId);
       if (childInstances.length > 0) {
         this.writeLine('');
         this.writeLine('    Child Objects:');
         for (const child of childInstances) {
-          const childRecord = distiller.records.getRecordAt(child.objectIndex);
+          const childRecord = distiller.records.getRecordAt(child.recordIndex);
           const sizeInfo = childRecord ? ` (${childRecord.objectSize} bytes)` : '';
           const overrideInfo = child.hasOverrides ? ` | ${child.formatOverrides()}` : '';
           this.writeLine(`      ${child.instanceName} : ${child.sourceFileBaseName}${sizeInfo}${overrideInfo}`);
@@ -428,13 +423,13 @@ export class MapGenerator {
 
     // Add object code regions
     for (const instance of instances) {
-      const record = distiller.records.getRecordAt(instance.objectIndex);
+      const record = distiller.records.getRecordAt(instance.recordIndex);
       if (record) {
         entries.push({
           address: record.objectOffset,
           type: 'CODE',
           object: instance.sourceFileBaseName,
-          name: instance.parentIndex === -1 ? '(entry)' : instance.instanceName
+          name: instance.parentInstanceId === -1 ? '(entry)' : instance.instanceName
         });
       }
     }
@@ -442,7 +437,7 @@ export class MapGenerator {
     // Add method symbols from all objects
     const allSymbols = this.context.objectSymbolStore.getAllSymbols();
     for (const [fileIndex, symbols] of allSymbols) {
-      const instance = instances.find((i) => i.objectIndex === fileIndex);
+      const instance = instances.find((i) => i.sourceFileIndex === fileIndex);
       const objectName = instance ? instance.sourceFileBaseName : `Object_${fileIndex}`;
 
       for (const symbol of symbols) {
@@ -504,7 +499,7 @@ export class MapGenerator {
     const distiller = this.resolver.distiller;
 
     for (const [fileIndex, symbols] of allSymbols) {
-      const instance = instances.find((i) => i.objectIndex === fileIndex);
+      const instance = instances.find((i) => i.sourceFileIndex === fileIndex);
       const objectName = instance ? instance.sourceFileBaseName : `Object_${fileIndex}`;
 
       for (const symbol of symbols) {
@@ -519,7 +514,7 @@ export class MapGenerator {
         } else if (this.isVarSymbolType(symbol.type)) {
           type = 'VAR';
           const offset = this.extractVarOffset(symbol.value);
-          const varBase = this.getVarBaseForInstance(fileIndex);
+          const varBase = instance ? this.getVarBaseForInstance(instance.instanceId) : 0;
           const absoluteAddr = varBase + offset;
           location = '$' + this.hexAddr(absoluteAddr);
         } else if (this.isDatSymbolType(symbol.type)) {
@@ -529,7 +524,7 @@ export class MapGenerator {
               type = 'DAT';
               const relativeOffset = this.extractDatOffset(symbol.value);
               // Get code base for this object to calculate absolute address
-              const record = distiller.records.getRecordAt(fileIndex);
+              const record = instance ? distiller.records.getRecordAt(instance.recordIndex) : undefined;
               const codeBase = record ? record.objectOffset : 0;
               const absoluteAddr = codeBase + relativeOffset;
               location = '$' + this.hexAddr(absoluteAddr);
@@ -539,7 +534,7 @@ export class MapGenerator {
               if (symbol.isInline) {
                 // Inline PASM - show as INLINE with relative + hub address
                 type = 'INLINE';
-                const record = distiller.records.getRecordAt(fileIndex);
+                const record = instance ? distiller.records.getRecordAt(instance.recordIndex) : undefined;
                 const codeBase = record ? record.objectOffset : 0;
                 const hubAddr = codeBase + cogAddr * 4;
                 location = '+$' + cogAddr.toString(16).toUpperCase().padStart(3, '0') + '  ($' + this.hexAddr(hubAddr) + ')';
@@ -547,7 +542,7 @@ export class MapGenerator {
                 // DAT PASM - show both COG and HUB addresses
                 type = 'PASM';
                 // Get object start to calculate HUB address
-                const record = distiller.records.getRecordAt(fileIndex);
+                const record = instance ? distiller.records.getRecordAt(instance.recordIndex) : undefined;
                 const codeBase = record ? record.objectOffset : 0;
                 const hubAddr = codeBase + cogAddr * 4;
                 location = 'COG $' + cogAddr.toString(16).toUpperCase().padStart(3, '0') + '  HUB $' + this.hexAddr(hubAddr);
@@ -607,7 +602,7 @@ export class MapGenerator {
       return execSize;
     }
 
-    if (instance.parentIndex === 0) {
+    if (instance.parentInstanceId === 0) {
       // Direct child of top - read VAR offset from top's object header
       const distiller = this.resolver.distiller;
       const parentRecord = distiller.records.getRecordAt(0);
@@ -673,11 +668,16 @@ export class MapGenerator {
     }
   }
 
+  /**
+   * Fallback label for a distiller record no instance claims.
+   *
+   * Deliberately does NOT try to name a source file. It used to look the
+   * record index up in Context.sourceFiles, which is a different index space —
+   * so when the two happened to diverge it confidently printed another
+   * object's name. A record with no instance genuinely has no known source
+   * file, and saying so is better than guessing.
+   */
   private getObjectNameByIndex(recordIndex: number): string {
-    const srcFile = this.context.sourceFiles.getFileAtIndex(recordIndex);
-    if (srcFile) {
-      return srcFile.fileName.replace(/\.spin2$/i, '');
-    }
     return `Object_${recordIndex}`;
   }
 

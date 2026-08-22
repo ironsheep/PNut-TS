@@ -146,6 +146,15 @@ export interface CacheStoreOptions {
    * built from. Written to the `.dep` sidecar and re-checked on every hit.
    */
   manifest?: ManifestEntry[];
+  /**
+   * The instance subtree this child's compile produced. Replayed on a hit so
+   * the .map keeps every level — without it a hit silently flattens the
+   * hierarchy, which is the same short-circuit that caused the staleness this
+   * cache format exists to fix, one axis over.
+   */
+  instances?: CachedInstance[];
+  /** Descendant symbols, so a hit can restore what it never compiles. */
+  subtreeSymbols?: CachedSubtreeSymbols[];
 }
 
 /**
@@ -195,9 +204,48 @@ interface SerializedSymbol {
   i?: 1; // isInline (omitted when false)
 }
 
+/**
+ * One object instance inside a cached subtree, stored so the map can be
+ * rebuilt after a hit skips the compile that would have recorded it.
+ *
+ * Deliberately self-contained rather than index-based: `sourceFileName` not a
+ * source-file index (indices are registration order and need not match on a
+ * later run), and `relativeParent` counted from the subtree root rather than
+ * an absolute instance id (the subtree lands at a different offset in every
+ * compile that reuses it).
+ */
+export interface CachedInstance {
+  relativeParent: number; // -1 = a direct child of the subtree root
+  childPosition: number;
+  sourceFileName: string;
+}
+
+/** One descendant's user symbols, carried so a hit can restore them. */
+export interface CachedSubtreeSymbols {
+  sourceFileName: string;
+  symbols: SymbolEntry[];
+}
+
+interface SerializedSubtreeSymbols {
+  f: string;
+  s: SerializedSymbol[];
+}
+
 interface SerializedSymFile {
   cacheFormatVersion: number;
   symbols: SerializedSymbol[];
+  /** Instance subtree for map generation; absent in entries stored without --map. */
+  instances?: CachedInstance[];
+  /**
+   * Symbols for every DESCENDANT in the subtree.
+   *
+   * The child's own symbols are in `symbols`. These are its grandchildren's
+   * and below — objects a hit never visits, whose methods would otherwise
+   * vanish from the map. Same short-circuit as the bytes and the structure:
+   * a skipped subtree cannot report what it contains, so it has to be
+   * captured when it is compiled.
+   */
+  subtreeSymbols?: SerializedSubtreeSymbols[];
 }
 
 interface SerializedDbgRecord {
@@ -278,6 +326,42 @@ export class ObjectCache {
     }
     this._misses++;
     return undefined;
+  }
+
+  /** Descendant symbols recorded with this entry, for map generation on a hit. */
+  getSubtreeSymbols(key: string): CachedSubtreeSymbols[] | undefined {
+    if (!this.enabled) return undefined;
+    const symPath = this.symPath(key);
+    if (!fs.existsSync(symPath)) return undefined;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(symPath, 'utf8')) as SerializedSymFile;
+      if (parsed.cacheFormatVersion !== CACHE_FORMAT_VERSION) return undefined;
+      if (!Array.isArray(parsed.subtreeSymbols)) return undefined;
+      return parsed.subtreeSymbols.map((entry) => ({
+        sourceFileName: entry.f,
+        symbols: deserializeSymbols(entry.s)
+      }));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Instance subtree recorded with this entry, for map generation on a hit.
+   * Returns undefined when the sidecar is absent or from another format
+   * version; an empty array means the child genuinely had no children.
+   */
+  getInstances(key: string): CachedInstance[] | undefined {
+    if (!this.enabled) return undefined;
+    const symPath = this.symPath(key);
+    if (!fs.existsSync(symPath)) return undefined;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(symPath, 'utf8')) as SerializedSymFile;
+      if (parsed.cacheFormatVersion !== CACHE_FORMAT_VERSION) return undefined;
+      return Array.isArray(parsed.instances) ? parsed.instances : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -406,7 +490,12 @@ export class ObjectCache {
     if (options.symbols !== undefined) {
       const payload: SerializedSymFile = {
         cacheFormatVersion: CACHE_FORMAT_VERSION,
-        symbols: serializeSymbols(options.symbols)
+        symbols: serializeSymbols(options.symbols),
+        instances: options.instances ?? [],
+        subtreeSymbols: (options.subtreeSymbols ?? []).map((entry) => ({
+          f: entry.sourceFileName,
+          s: serializeSymbols(entry.symbols)
+        }))
       };
       fs.writeFileSync(this.symPath(key), JSON.stringify(payload));
     }

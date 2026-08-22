@@ -148,13 +148,15 @@ export class Spin2Parser {
       if (this.isLogging) this.logMessage('* P2MakeFlashFile() - write flash image file');
       this.P2MakeFlashFileImage(objImage); // convert image to flash image
       const outFilename = this.context.compileOptions.flashFilename;
-      // Create a write stream
       if (this.isLogging) this.logMessage(`  -- writing flash image to ${outFilename}`);
-      const stream = fs.createWriteStream(outFilename);
+      // writeObjectFile writes the whole file itself. There used to be an
+      // fs.createWriteStream(outFilename) here as well, never written to and
+      // closed immediately afterwards. createWriteStream truncates, and it does
+      // so asynchronously, so under load that truncation could land AFTER the
+      // real write had finished and leave a zero-byte .flash behind. It showed
+      // up as an intermittent FLASH-tests failure that never reproduced when
+      // the test was run on its own.
       this.writeObjectFile(objImage, 0, objImage.offset, outFilename); // full
-      // Close the stream
-      stream.end();
-      this.context.logger.progressMsg(`Wrote ${outFilename}`);
     }
   }
 
