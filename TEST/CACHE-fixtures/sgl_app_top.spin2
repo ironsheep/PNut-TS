@@ -22,9 +22,9 @@
 '   - exportdef propagation: SGL_TRACE must still reach descendants on a hit
 '
 ' ASSERT ON: the .map `Objects:` count and the DAT symbol addresses for
-' state_lock / state_counter. Do NOT assert on .map instance/source labels —
-' they are untrustworthy until the map index-space work lands, and P2KB
-' documents them as such (p2kbSpin2ObjectImageDedup, map_caveat).
+' state_lock / state_counter. The instance/source labels were untrustworthy
+' when this fixture was written; the map index-space work landed in 1.55.4 and
+' they now name every instance by access path, so they may be asserted on too.
 #pragma exportdef SGL_TRACE
 
 CON

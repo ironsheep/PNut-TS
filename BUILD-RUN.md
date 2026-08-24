@@ -145,6 +145,28 @@ available via `npm run-script`:
     npm run build && jest -c jest-config/jest-loader-only-config.json
   test-spin
     npm run build && jest -c jest-config/jest-spin-only-config.json
+  test-cache
+    npm run build && jest -c jest-config/jest-cache-only-config.json
+  test-cache-sweep
+    npm run build && jest --runInBand -c jest-config/jest-cache-sweep-only-config.json
+  test-map
+    npm run build && jest -c jest-config/jest-map-only-config.json
+  test-inc
+    npm run build && jest -c jest-config/jest-include-only-config.json
+  test-encoding
+    npm run build && jest -c jest-config/jest-encoding-only-config.json
+  test-lang
+    npm run build && jest --verbose -c jest-config/jest-lang-only-config.json
+  test-langfeat
+    npm run build && jest -c jest-config/jest-langfeat-only-config.json
+  test-cleanup
+    npm run build && jest --runInBand -c jest-config/jest-cleanup-only-config.json
+  test-v52a
+    npm run build && jest -c jest-config/jest-v52a-only-config.json
+  test-wummi
+    npm run build && jest -c jest-config/jest-wummi-only-config.json
+  docs-check
+    node scripts/docs-check.js
   test-full-only
     npm run build && jest -c jest-config/jest-full-only-config.json
   test-short-only

@@ -85,7 +85,11 @@ interface MapVarEntry {
 }
 
 interface MapMethodEntry {
+  /** Offset from the object's own base, as printed after `Entry +$`. */
   entry: string;
+  /** Absolute hub address, as printed in parentheses. */
+  absolute: string;
+  objectName: string;
   name: string;
 }
 
@@ -253,11 +257,17 @@ export function parseMap(content: string): MapSummary {
         continue;
       }
 
-      // Methods: (indent)  NAME  Entry $XXXXX
-      const methodMatch = line.match(/^\s+(\S+)\s+Entry\s+\$([0-9A-Fa-f]+)/);
+      // Methods: (indent)  NAME  Entry +$XXXXX  ($YYYYY)
+      // The relative value is a BYTE offset from the object base, and the
+      // parenthesised value is the absolute hub address. Before 1.55.4 this
+      // column carried the method's slot index in the object header table,
+      // which is not an address at all.
+      const methodMatch = line.match(/^\s+(\S+)\s+Entry\s+\+\$([0-9A-Fa-f]+)\s+\(\$([0-9A-Fa-f]+)\)/);
       if (methodMatch && currentObjectName) {
         methods.push({
           entry: methodMatch[2],
+          absolute: methodMatch[3],
+          objectName: currentObjectName,
           name: methodMatch[1]
         });
       }
@@ -493,14 +503,21 @@ export function verifyMapAgainstExpected(testDir: string): VerificationResult {
         actual: 'Not found'
       });
     } else {
-      // Extract lower bits of entry point (ignore upper flags)
-      const lstEntry = parseInt(lstMethod.value, 16) & 0x0000ffff;
+      // The listing's method value carries the SLOT INDEX in the object header
+      // table, not an address — comparing the map's entry against it is what
+      // this check used to do, and it is precisely the defect fixed in 1.55.4:
+      // it passed only while the map printed that index in an address column.
+      //
+      // The invariant that actually holds: a method's bytecode begins AFTER the
+      // object's header table, and that table holds one long per method plus an
+      // end marker (children add two longs each, so this is a lower bound).
+      const methodsInObject = map.methods.filter((m) => m.objectName === mapMethod.objectName).length;
+      const minimumEntry = 4 * (methodsInObject + 1);
       const mapEntry = parseInt(mapMethod.entry, 16);
-      const entryMatch = lstEntry === mapEntry;
       checks.push({
-        name: `Method '${expectedMethod.name}' entry`,
-        passed: entryMatch,
-        expected: `$${lstEntry.toString(16).padStart(5, '0')}`,
+        name: `Method '${expectedMethod.name}' entry is past the header table`,
+        passed: mapEntry >= minimumEntry,
+        expected: `>= $${minimumEntry.toString(16).padStart(5, '0')}`,
         actual: `$${mapEntry.toString(16).padStart(5, '0')}`
       });
     }

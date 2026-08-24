@@ -15,10 +15,12 @@ import { ObjectImage } from './objectImage';
 import path from 'path';
 import { OBJ_LIMIT } from './spinResolver';
 import { ObjInstanceInfo } from './objInstanceInfo';
+import { DuplicateSourceWatch } from '../utils/duplicateSources';
 import { eElementType } from './types';
 import {
   CACHE_FORMAT_VERSION,
   CachedInstance,
+  CachedOverride,
   CachedSubtreeSymbols,
   CacheMetadata,
   DebugInfo,
@@ -107,6 +109,39 @@ export class Compiler {
     this.replayedDescendantSymbols.clear();
   }
 
+  /**
+   * Report a resolved source path, warning once if its bytes were already
+   * reached by a different path.
+   *
+   * A warning, never an error: the build is correct either way. What it costs
+   * the reader is one line; what it buys is sight of a duplication that no
+   * single source file can show them.
+   */
+  /**
+   * An OBJ block's parameter overrides, in the form the map and the cache both
+   * want.
+   *
+   * Values become strings here: the cache sidecar is JSON, which has no bigint,
+   * and the map prints these rather than computing with them.
+   */
+  private overridesFromSymbolTable(overrideSymbolTable: SymbolTable | undefined): CachedOverride[] {
+    if (overrideSymbolTable === undefined) {
+      return [];
+    }
+    return overrideSymbolTable.allSymbols.map((symbol) => ({
+      name: symbol.name,
+      value: typeof symbol.value === 'bigint' ? symbol.value.toString() : symbol.value,
+      isFloat: symbol.type.toString().includes('float')
+    }));
+  }
+
+  private noteSourceFile(fileSpec: string): void {
+    const warning = this.duplicateSources.note(fileSpec);
+    if (warning !== undefined) {
+      this.context.logger.infoMsg(`WARNING: ${warning}`);
+    }
+  }
+
   public getEarlyDeduplicationSavings(): number {
     return this.memoryStats.memoryBytesSaved;
   }
@@ -116,6 +151,8 @@ export class Compiler {
     if (this.isLogging) this.logMessage(`* Compiler LOGGING is enabled!`);
 
     this.srcFile = this.context.sourceFiles.getTopFile();
+    this.duplicateSources.reset();
+    this.noteSourceFile(this.srcFile.fileSpec);
 
     // TESTING: if requested, run our resolver regression test report generator
     if (this.context.reportOptions.writeResolverReport) {
@@ -208,7 +245,13 @@ export class Compiler {
    * knowledge of source files at all — by design — so it cannot be the source
    * of this association.
    */
-  private recordedInstances: { parentInstanceId: number; childPosition: number; sourceFileName: string }[] = [];
+  private recordedInstances: {
+    parentInstanceId: number;
+    childPosition: number;
+    sourceFileName: string;
+    /** Overrides this instance was declared with; the map prints them. */
+    overrides: CachedOverride[];
+  }[] = [];
   private currentInstanceId: number = -1;
 
   /**
@@ -221,6 +264,12 @@ export class Compiler {
    * end, once the whole tree is known.
    */
   private replayedDescendantSymbols: Map<string, SymbolEntry[]> = new Map();
+
+  /**
+   * Sees every resolved source path this build touches, and says so when two
+   * of them hold the same bytes. Per-compile, so nothing leaks between runs.
+   */
+  private duplicateSources: DuplicateSourceWatch = new DuplicateSourceWatch();
 
   private compileRecursively(depth: number, srcFile: SpinDocument, overrideParameters: SymbolTable | undefined = undefined) {
     if (this.isLoggingOutline)
@@ -266,7 +315,13 @@ export class Compiler {
           // earlier ancestors) propagated via `#pragma exportdef`, so the key
           // distinguishes contexts that produce different grandchild content
           // even when this child's own preprocessedLines is identical.
-          defSymbols: this.context.preProcessorOptions.defSymbols
+          defSymbols: this.context.preProcessorOptions.defSymbols,
+          // The resolution root is the TOP-LEVEL file's directory, not this
+          // child's — `DAT ... FILE` and OBJ names both resolve from there.
+          // Two apps in one project reach the same library object through
+          // different roots and need different embedded blobs.
+          resolutionRoot: this.srcFile !== undefined ? this.srcFile.dirName : '',
+          includeFolders: this.context.preProcessorOptions.includeFolders
         });
         // getIfValid re-hashes every file this entry was built from before
         // handing the binary back. An entry whose subtree changed is counted a
@@ -409,7 +464,8 @@ export class Compiler {
                 this.recordedInstances.push({
                   parentInstanceId: cached.relativeParent === -1 ? this.currentInstanceId : subtreeBase + cached.relativeParent,
                   childPosition: cached.childPosition,
-                  sourceFileName: cached.sourceFileName
+                  sourceFileName: cached.sourceFileName,
+                  overrides: cached.overrides ?? []
                 });
               }
             }
@@ -450,6 +506,7 @@ export class Compiler {
             for (let index = 0; index < objFileList.length; index++) {
               const objFile = objFileList[index];
               const fileSpec: string = objFile.fileSpec;
+              this.noteSourceFile(fileSpec);
               // reuse existing document if present
               let childObjSourceFile = this.context.sourceFiles.getFile(fileSpec);
               if (childObjSourceFile === undefined) {
@@ -465,6 +522,7 @@ export class Compiler {
               // is built by parsing the OBJ block in order.
               const childInstanceId = this.recordedInstances.length;
               this.recordedInstances.push({
+                overrides: this.overridesFromSymbolTable(overrideSymbolTable),
                 parentInstanceId: this.currentInstanceId,
                 childPosition: index,
                 sourceFileName: childObjSourceFile.fileName
@@ -663,7 +721,8 @@ export class Compiler {
             const subtreeInstances: CachedInstance[] = this.recordedInstances.slice(instanceMarkAtKey).map((recorded) => ({
               relativeParent: recorded.parentInstanceId === this.currentInstanceId ? -1 : recorded.parentInstanceId - instanceMarkAtKey,
               childPosition: recorded.childPosition,
-              sourceFileName: recorded.sourceFileName
+              sourceFileName: recorded.sourceFileName,
+              overrides: recorded.overrides
             }));
             // Capture every descendant's symbols so a later hit can restore
             // what it will not compile. Deduped by source file — several
@@ -967,6 +1026,12 @@ export class Compiler {
         recorded.childPosition,
         this.context.objInstanceStore.allocateInstanceId()
       );
+      // The Overrides column exists to explain why one source file became
+      // several images. It was printed empty for years because nothing ever
+      // filled it in.
+      for (const override of recorded.overrides) {
+        instance.addOverride(override.name, override.value, override.isFloat);
+      }
       this.context.objInstanceStore.addInstance(instance);
     }
 

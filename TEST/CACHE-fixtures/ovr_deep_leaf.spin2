@@ -1,0 +1,10 @@
+' Deep-override fixture — THE LEAF, whose CON the middle object overrides.
+'
+' Reached only through ovr_deep_mid, and only ever with LSEED overridden. It
+' exists so the map has an instance whose Overrides are declared one level
+' BELOW the top object.
+CON
+  LSEED = 1
+
+PUB val() : result
+  result := LSEED

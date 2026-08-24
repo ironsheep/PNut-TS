@@ -153,7 +153,7 @@ suite is the production-scale verification.
 the SD suite under v1.54.6 and confirm zero compile failures. Reference
 materials are at `REF-CACHE-BUG/cache-bug-v1.54.{3,4,5}/` for comparison.
 
-### 5b. `--cache-verify` CLI flag (M1, deferred)
+### 5b. `--cache-verify` CLI flag (M1)
 
 **What:** a CLI flag that, on every cache hit, also runs a fresh compile
 of the same input and byte-compares the resulting binary. Mismatch raises
@@ -170,6 +170,15 @@ peace of mind") but isn't structurally necessary if every PR has CI green.
 don't have a fixture for, AND the byte-equivalence test passes. That
 combination means we want a runtime tool to reproduce in the user's own
 environment.
+
+Status: **CLOSED in 1.55.4** — shipped as `--cache-verify` (`src/pnut-ts.ts`,
+`src/utils/cacheVerify.ts`). The shipped form is stronger than the one described
+above: rather than re-compiling on every hit, it compiles the whole project twice
+and compares `.bin` and `.map`. The uncached reference runs **first** and in a
+**child process** — in-process it would inherit and perturb the very global state
+under suspicion, and running it second is unsafe because `-o` renames only the
+binary, so a reference compile cannot be redirected away from the `.map`/`.lst`/
+`.obj` paths. Exits non-zero and names the artifact that disagreed.
 
 ### 5c. Typed `CacheContract<T>` registry (M2, deferred)
 
@@ -191,7 +200,7 @@ PR's lifecycle.
 `Context` or the resolver. Or when we've shipped a fifth cache fix in
 six months and want to draw a line.
 
-### 5d. Manifest sidecar (Shape B / M3, deferred)
+### 5d. Manifest sidecar (Shape B / M3, partially done — re-scoped)
 
 **What:** add `<key>.json` per cache entry listing every sidecar with
 content hashes. Hit path validates manifest before reading sidecars;
@@ -206,6 +215,19 @@ discipline ("every sidecar must be declared") that's currently informal.
 LRU-eviction policy or for `--map`'s distiller restore — see
 `Object-Cache-Future-Enhancements.md`). Shape B is essentially free if
 we're already touching the on-disk layout.
+
+Status: **PARTIALLY CLOSED in 1.55.4 — re-scoped, do not read as untouched.** A
+per-entry manifest sidecar did land, as `<key>.dep` rather than `<key>.json`, but
+it solves a *different* problem than the one described above: it lists
+`{resolvedPath, contentHash}` for every **source file in the entry's subtree**,
+and is re-validated on every hit to catch stale transitive inputs. It does **not**
+declare the sidecar set (`.bin`/`.sym`/`.dbg`/`.meta`), so the
+filesystem-corruption case this item was written for — a sidecar swapped between
+entries — remains uncovered.
+
+**What is still open:** extend the manifest to declare and hash the entry's own
+sidecars, giving the structural discipline ("every sidecar must be declared")
+this item asked for. The on-disk layout now has a natural home for it.
 
 ### 5e. Hash DAT FILE bytes into the cache key (theoretical gap A7)
 
@@ -223,6 +245,20 @@ project layouts.
 **Trigger to revisit:** a user reports a "stale embedded blob" failure.
 Fix is ~10 LOC: hash the result of `loadFileAsUint8Array` into the key.
 CACHE_FORMAT_VERSION bump.
+
+Status: **CLOSED in 1.55.4.** Embedded blob bytes now enter the dependency
+manifest — each `datFile.fileSpec` becomes a manifest entry hashed and
+re-validated exactly like a source file — rather than being hashed into the key
+as this entry proposed. Same effect, and it composes up the tree, so a blob
+referenced from a depth-2 object invalidates every level above it.
+
+The "why deferred" reasoning above was **wrong on its facts** and is left in
+place deliberately as a caution. It claimed neither triggering pattern "appears
+in observed project layouts". The second one — two applications in one project
+sharing a library object that embeds a `FILE` blob, each resolving that blob
+against its own directory — is exactly what users hit, and it needed nothing
+unusual: `-C` with the default cache directory was enough. A gap dismissed as
+theoretical was already shipping wrong binaries.
 
 ### 5f. Distiller record replay on cache hit (latent map-fidelity gap)
 
@@ -242,6 +278,18 @@ layer.
 
 **Trigger to revisit:** a user reports a `--cache --map` map file is
 missing a grandchild they expected to see.
+
+Status: **CLOSED in 1.55.4, by a different design.** The distiller-record
+snapshot-and-replay described above was not built, and the ID-remap layer it
+would have needed was never required. Instead the map is generated from an
+explicit instance store (`src/classes/objInstanceInfo.ts`, populated in
+`src/classes/compiler.ts`), which is rebuilt for cached and uncached children
+alike, so a cache-served child's descendants are present by construction rather
+than restored after the fact. Cached-vs-uncached `.map` equality is now asserted
+in the byte-equivalence harness, so this cannot regress silently.
+
+`Object-Cache-Future-Enhancements.md` still describes "Option C — Full
+distiller-state cache" as live work; it is superseded by this.
 
 ### 5g. Eliminate shared mutable state in resolver/preprocessor (M5, far future)
 
@@ -598,7 +646,45 @@ binary can still disagree once the cache is correct. Reproduce with
 `LONG 99` in `sgl_shared_state.spin2`, recompile warm, compare `.map` and `.bin`
 against an uncached build.
 
-Status: **open**, unscheduled.
+Status: **CLOSED**, verified against 1.55.4 (2026-08-22). Re-ran the reproducer
+plus three more mutations — depth-1 singleton DAT value, depth-3 leaf CON, the
+`DAT FILE` blob, and adding a third instance of an already-doubled object. In
+every case the warm-cache `.bin` AND `.map` were byte-identical to an uncached
+build (only the `Generated:` timestamp line differs). The residual question this
+entry existed to hold open — whether map and binary can still disagree once the
+cache is correct — is answered: not for any mutation we can construct.
+
+### `.map` MEMORY LAYOUT has an `Overrides` column that is never populated
+
+Observed 2026-08-22 while adding the warm-vs-uncached `.map` comparison. The
+column exists in the header and is always blank. `ObjInstanceInfo` carries the
+machinery — `addOverride`, `addOverridesFromSymbols`, `hasOverrides`,
+`formatOverrides` — and **nothing in the compiler ever calls it**.
+
+Reproduce with `TEST/MAP-tests/test4-override`: `child2` declares
+`| DEFAULT_VALUE = 20` and `child3` declares `| DEFAULT_VALUE = 30,
+MULTIPLIER = 5`, and the map prints three `param_child` rows with an empty
+`Overrides` cell on each. The overrides are the whole reason three images
+exist, so the reader is shown three identical-looking rows with no account of
+why there are three.
+
+Status: **CLOSED in 1.55.4**, both halves.
+
+The direct-child half reads the override table where the instance is recorded
+(`objFile.parameterSymbolTable`). The half with teeth is an override declared
+BELOW a cached object: the hit is exactly what skips re-parsing that OBJ block,
+so the values now ride in the entry's instance sidecar (`CachedInstance.overrides`,
+serialised with string values because JSON has no bigint). Without that, a warm
+build would print blank cells where a cold build prints values — a warm/cold
+divergence, which is the class this release exists to remove.
+
+Fixed inside the same release that moved `CACHE_FORMAT_VERSION` 7 → 8, so the
+sidecar change cost users no additional cache rebuild. Doing it later would have
+required a second bump.
+
+Regression coverage: `src/tests/CACHE-tests/mapOverrides.test.ts` (top-level and
+below-a-cached-object, warm compared against both cold and uncached), fixtures
+`TEST/CACHE-fixtures/ovr_deep_*`, and the tree is in the mutation sweep.
 
 ### `.map` SYMBOL INDEX shows one row per source file, not per image
 
@@ -623,4 +709,74 @@ image, or it should say which image it is reporting.
 Reproducer: `scratchpad` case in the sprint record, or rebuild from the pattern
 in P2KB `p2kbSpin2ObjectImageDedup` (`cascade_through_tiers`).
 
-Status: **open**, unscheduled.
+Status: **CLOSED in 1.55.4** — and the entry understated it. `ADDRESS INDEX` had
+the same one-row-per-source-file collapse for method rows, and worse: the numbers
+in its `Address` column were method **slot indices** in the object header table,
+not addresses at all. The map test suite asserted the map matched that index,
+so the check passed only while the defect was present.
+
+Fixed by making both index sections iterate INSTANCES rather than the
+source-file-keyed symbol store, and by dereferencing the header slot to get a
+method's real bytecode address. Instances are now named by access path
+(`A.LEAF`, `B.LEAF`), which also gives Object Details unique headings and lets
+the flat sections say which image they mean. Regression coverage in
+`src/tests/MAP-tests/map.test.ts` under "index sections describe every image".
+
+---
+
+## 13. Documentation residue from the 1.55.4 release sweep (added 2026-08-24)
+
+Found by a documentation survey run against the v1.55.4 tag. Each item below was
+**deliberately not fixed at tag time** — none blocks the release, and each is
+recorded here rather than left to be rediscovered.
+
+### 13a. `SPIN2-BIN-Format.md` inline line citations are drifted
+
+The 1.55.4 synchronous-write change added comment blocks to
+`src/classes/spin2Parser.ts`, shifting later definitions by two to three lines.
+The citations naming a **function definition** were re-verified and corrected at
+tag time. The **inline range citations** — patch-point offsets, condition lines —
+were not, and spot-checks found several now landing on a closing brace
+(`spin2Parser.ts:561`, `:540`, `:966` among them). The document carries a caution
+at its head saying which half to trust.
+
+**Fix:** audit all 43 `spin2Parser.ts:NNN` citations against source, and prefer
+citing a symbol name over a line number wherever the line adds nothing — a symbol
+does not drift. Then remove the caution note and stamp `verified`.
+
+### 13b. `Testing.md` never mentions the object cache or `--cache-verify`
+
+`Testing.md` walks a user through validating a release against `.GOLD` files. It
+does not mention the cache at all, and `--cache-verify` is now the most direct
+instrument a user has for the exact failure class 1.55.4 fixed. It belongs in the
+release-validation walkthrough.
+
+### 13c. `DOCs/README.md` has three broken roadmap links and a thin internals index
+
+`Performance-Analysis-and-Optimization-Roadmap.md`,
+`Distiller-Extraction-Roadmap.md` and `Early-Deduplication-Fix-Plan.md` all moved
+to `DOCs/roadmaps/completed/` and the links were not updated. The `/roadmaps/`
+list also omits every cache document, and the `/internals/` index lists three
+documents out of 25 — including neither of the two added in 1.55.4.
+
+### 13d. `Regression-Test-Coverage-Report.md` is a generated file behind its source
+
+Its suite table has no `CACHE-tests` or `CACHE-SWEEP-tests` row and still reports
+13 `MAP-tests`. This is `generated` class — it needs a tooling regeneration, not
+a hand edit, or the next regeneration silently reverts the hand edit.
+
+### 13e. `doc-coverage.json`: the `packaging` area has no documents
+
+`PACKAGING.md` and `DOCs/RELEASE-PROCESS.md` both exist and are both classed
+`process`, which `docs-check` never evaluates for staleness. So a change to
+`.github/workflows/release.yml` or `package.json` can never stale any document —
+which is how `RELEASE-PROCESS.md`'s Release History table fell two releases
+behind without anything noticing. Either govern one of them against `packaging`,
+or accept the gap explicitly.
+
+### 13f. `LICENSE` and `copyright` say 2024 — Stephen's call
+
+Both read `Copyright (c) 2024` while the compiler banner says 2025 and the
+current year is 2026. Both files ship in every release archive. **Not changed at
+tag time:** a copyright notice is a legal statement, not a currency field, and
+updating one is not an agent's unilateral call.

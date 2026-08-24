@@ -82,7 +82,9 @@
       "src/classes/objectSymbolStore.ts"
     ],
     "object-cache": [
-      "src/classes/objectCache.ts"
+      "src/classes/objectCache.ts",
+      "src/utils/cacheVerify.ts",
+      "src/utils/duplicateSources.ts"
     ],
     "distiller": [
       "src/classes/objectDistiller.ts",
@@ -100,7 +102,8 @@
       "src/ext/clock_setter.spin2"
     ],
     "map-file": [
-      "src/classes/mapGenerator.ts"
+      "src/classes/mapGenerator.ts",
+      "src/classes/objInstanceInfo.ts"
     ],
     "diagnostics": [
       "src/classes/logger.ts",
@@ -114,7 +117,7 @@
 
   "documents": {
     "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.4" },
-    "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.4", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: DOCs/voicing/CHANGELOG-Voicing.md" },
+    "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.4", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: central changelog guide, class 2 / Released mode" },
     "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.4", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
     "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.55.3" },
 
@@ -127,7 +130,6 @@
     "DOCs/RELEASE-PROCESS.md": { "class": "process", "verified": "1.55.2" },
     "DOCs/DEV/README-dist.md": { "class": "process", "verified": null },
     "DOCs/voicing/README.md": { "class": "process", "verified": "1.55.2" },
-    "DOCs/voicing/CHANGELOG-Voicing.md": { "class": "process", "verified": "1.55.2" },
     "DOCs/voicing/Usage-Guide-Voicing.md": { "class": "process", "verified": "1.55.2" },
     "DOCs/voicing/Shipped-Docs-Voicing.md": { "class": "process", "verified": "1.55.2" },
     "TEST/MAP-tests/README.md": { "class": "process", "verified": null },
@@ -139,7 +141,9 @@
     "DOCs/internals/Flash-Loader-Theory-of-Operations.md": { "class": "governed", "covers": ["flash-loader"], "verified": null },
     "DOCs/internals/SingleStep-Debugger-Theory-of-Operations.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/Spin2-Interpreter-v55-Theory-of-Operations.md": { "class": "governed", "covers": ["interpreter"], "verified": "1.55.0" },
-    "DOCs/internals/SPIN2-BIN-Format.md":                { "class": "governed", "covers": ["object-format"], "verified": "1.55.3" },
+    "DOCs/internals/SPIN2-BIN-Format.md":                { "class": "governed", "covers": ["object-format"], "verified": "1.55.3", "note": "Inline spin2Parser.ts:NNN range citations are drifted and flagged in-document; audit tracked in Test-Suite-Punch-List.md item 13a" },
+    "DOCs/internals/Object-Cache-Theory-of-Operations.md": { "class": "governed", "covers": ["object-cache"], "verified": "1.55.4", "note": "Describes the SHIPPED cache mechanism. The roadmap documents under DOCs/roadmaps/ argue decisions; this one describes behavior." },
+    "DOCs/internals/MAP-File-Format.md":                 { "class": "governed", "covers": ["map-file"], "verified": "1.55.4", "note": "Parser-grade .map spec. Previously the map-file area had ZERO covering documents, so mapGenerator.ts could change without staling anything." },
     "DOCs/internals/TECHNICAL-DEBT.md":                  { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/PUNCH-LIST.md":                      { "class": "governed", "covers": [], "verified": null },
     "DOCs/internals/PASM2-ASSEMBLY-LABELS.md":           { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4" },

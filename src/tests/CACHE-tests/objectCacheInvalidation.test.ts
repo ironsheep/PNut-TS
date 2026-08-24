@@ -24,10 +24,14 @@
 // asserted as corroboration because the reporter's tree did move them; they are
 // a second net, never the first.
 //
-// Never assert on the .map instance/source NAME columns. They are wrong today
-// (buildObjInstanceInfo mixes four index spaces) and the P2 Knowledge Base
-// documents them as untrustworthy. Counts and addresses are correct while the
-// labels are not.
+// The .map instance/source NAME columns were untrustworthy when these tests
+// were written — buildObjInstanceInfo mixed four index spaces — so the original
+// note here forbade asserting on them. That was repaired in 1.55.4: the labels
+// now name every instance by its access path (`A.LEAF`), and both index
+// sections describe every image. They are fair game to assert on.
+//
+// Byte equality remains the FIRST net regardless. The map is derived state; a
+// map signal can corroborate, but only the binary can be stale.
 
 'use strict';
 

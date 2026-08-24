@@ -43,10 +43,11 @@
 //     returns at replay time.
 //
 // IMPORTANT: any compile option that can change a child object's bytes MUST be
-// folded into computeKey(). Today that means enableDebug and defSymbols (the
-// propagated `#pragma exportdef` + CLI `-D` symbol set). If you add a new flag
-// that affects code generation (e.g. an optimization level), add it to
-// CacheKeyInputs and hash it in computeKey, AND bump CACHE_FORMAT_VERSION.
+// folded into computeKey(). Today that means enableDebug, defSymbols (the
+// propagated `#pragma exportdef` + CLI `-D` symbol set), and the resolution
+// context (top-level directory + -I list). If you add a new flag that affects
+// code generation (e.g. an optimization level), add it to CacheKeyInputs and
+// hash it in computeKey, AND bump CACHE_FORMAT_VERSION.
 //
 // Why defSymbols matters: a child's own `preprocessedLines` is post-#ifdef
 // expansion, so it captures the effect of any preprocessor symbol the CHILD's
@@ -78,7 +79,7 @@ import { BrkSite } from './objectImage';
  * Bumping this invalidates every existing cache entry by changing every key.
  * Old <key>.bin files become unreachable and are cleaned by --cache-clear.
  */
-export const CACHE_FORMAT_VERSION = 7;
+export const CACHE_FORMAT_VERSION = 8;
 
 export interface CacheStats {
   hits: number;
@@ -108,6 +109,17 @@ export interface CacheKeyInputs {
    * sorted+deduped so order/duplication doesn't perturb the key.
    */
   defSymbols: string[];
+  /**
+   * Absolute directory of the TOP-LEVEL source file — the root every logical
+   * name resolves against. Not this object's own directory.
+   */
+  resolutionRoot: string;
+  /**
+   * The `-I` search list, in the order given. Order is significant: it decides
+   * which of two same-named files wins, so this is hashed as given, never
+   * sorted.
+   */
+  includeFolders: string[];
 }
 
 /**
@@ -214,10 +226,32 @@ interface SerializedSymbol {
  * an absolute instance id (the subtree lands at a different offset in every
  * compile that reuses it).
  */
+/**
+ * One OBJ parameter override, as carried through the cache.
+ *
+ * `value` is a STRING here while `ConstantOverride.value` is `bigint | string`,
+ * because the sidecar is plain JSON and JSON cannot represent a bigint. The
+ * map prints these, so the round-trip only has to preserve what a reader sees.
+ */
+export interface CachedOverride {
+  name: string;
+  value: string;
+  isFloat: boolean;
+}
+
 export interface CachedInstance {
   relativeParent: number; // -1 = a direct child of the subtree root
   childPosition: number;
   sourceFileName: string;
+  /**
+   * Overrides this instance was declared with.
+   *
+   * Carried because the map names them, and a hit never revisits the OBJ block
+   * that declared them. Without this a warm build would print an empty
+   * Overrides column where a cold build prints values — a warm/cold divergence
+   * of exactly the kind this release exists to remove.
+   */
+  overrides?: CachedOverride[];
 }
 
 /** One descendant's user symbols, carried so a hit can restore them. */
@@ -284,6 +318,23 @@ export class ObjectCache {
   }
 
   /** Compute cache key from all inputs that affect the compiled binary. */
+  /**
+   * A path expressed relative to the cache directory's parent.
+   *
+   * The cache directory IS the sharing scope, so that parent is the natural
+   * root to measure against — with the default `.pnut-cache` it is the project
+   * root, and `proj/appA` hashes as `appA`. Deliberately NOT the absolute
+   * path: that would bake the checkout location into every key, so the same
+   * tree built at two locations, or on two machines, would share nothing.
+   * Separators are normalized so a key computed on Windows matches one
+   * computed on Linux.
+   */
+  private scopedPath(absPath: string): string {
+    const scopeRoot = path.dirname(this.cacheDir);
+    const rel = path.relative(scopeRoot, path.resolve(absPath));
+    return rel.split(path.sep).join('/');
+  }
+
   computeKey(inputs: CacheKeyInputs): string {
     const hash = crypto.createHash('sha256');
     // Preprocessed source lines (transitively captures all #include content)
@@ -312,6 +363,18 @@ export class ObjectCache {
     const sortedDefs = [...new Set(inputs.defSymbols.map((s) => s.toUpperCase()))].sort();
     for (const sym of sortedDefs) {
       hash.update(`D:${sym}`);
+    }
+    // Resolution context. Which file a logical name reaches — `OBJ k : "kid"`,
+    // or the `"blob.dat"` of a `DAT ... FILE` — is decided by the TOP-LEVEL
+    // file's directory and the -I search list, not by this object's own
+    // source. So two apps in one project can share a library object whose
+    // source AND overrides are identical while legitimately needing different
+    // embedded bytes, because each app's FILE blob resolves under its own
+    // directory. Without this, the second app is served the first app's
+    // binary, silently. Reproduced with plain `-C` and the default cache dir.
+    hash.update(`r:${this.scopedPath(inputs.resolutionRoot)}`);
+    for (const folder of inputs.includeFolders) {
+      hash.update(`I:${this.scopedPath(folder)}`);
     }
     return hash.digest('hex');
   }

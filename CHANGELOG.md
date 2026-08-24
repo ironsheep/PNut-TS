@@ -21,65 +21,115 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
-## [1.55.4] 2026-08-22
+## v1.55.4 (2026-08-24)
 
-The object cache now notices when a file deeper in your object tree changes.
-Before this release it only tracked an object's direct dependencies, so editing
-something two or more levels down could leave you with a binary built from the
-old code, with no warning. The `.map` file also names objects and instances
-correctly when the same object is used more than once.
+Cached builds now detect a change anywhere in the object tree, and `.map` files are correct when an object is used more than once.
 
-### ⚠️ Behavior change — the first build after upgrading is a full rebuild
+### New Features
 
-- **Any existing cache is discarded on upgrade.** The on-disk format changed, so
-  every entry written by an earlier version is unreachable and the first compile
-  after upgrading recompiles everything. Entries written before v1.55.4 can be
-  stale in ways those versions had no way to detect, so they are not reused.
-- **Some builds that used to hit the cache will now miss.** That is the fix
-  working: those hits were returning stale objects. If you measured a speed-up
-  on a multi-level project, the new, lower figure is the honest one.
-- **Moving or renaming a source tree empties its cache.** Entries record the
-  resolved path of every file they were built from; after a move those paths no
-  longer match and the affected objects recompile.
+- **`--cache-verify`**: compiles your project twice, once with the cache and once
+  without, and fails the build if the results differ. The uncached reference runs
+  as a separate process, so nothing about the cached build can influence it.
+  Implies `--cache`. Use it when you suspect a cached build, or in CI on a
+  project layout your own tests do not cover.
 
-### Fixed
+- **Duplicate-source warning**: when one build reaches byte-identical source
+  through two different resolved paths, the compiler names both files. The build
+  still succeeds and is still correct — this is a structural smell, not an
+  error. Declaring one object several times is ordinary Spin2 and does not warn.
 
-- **A change to an object further down the tree is no longer ignored.** With
-  `--cache`, editing a file two or more levels below the top — an object used by
-  an object you use — left every level above it cached, so the build kept the
-  old code. Only direct dependencies were tracked. Each cache entry now records
-  every file its whole subtree was built from, and re-checks them before reusing
-  anything.
+### Bug Fixes
 
-  The most damaging form of this was silent: when a driver is used both directly
-  and through another object, one copy could be rebuilt while the other stayed
-  stale. Because identical objects are merged by comparing their compiled
-  contents, two copies that no longer matched stopped being merged — and a
-  driver written as a `DAT` singleton became **two** independent copies, with
-  separate lock, separate state and separate cog handle. Nothing reported it.
+- **A change two or more levels down is no longer ignored.** With `--cache`,
+  editing an object used by an object you use left every level above it cached,
+  so the build kept the old code. Compiling without `--cache` was always correct.
+  The damaging form was silent: a driver reached both directly and through
+  another object could have one copy rebuilt and the other left stale, and
+  because identical objects are merged by comparing compiled contents, a `DAT`
+  singleton became **two** independent copies — separate lock, separate state,
+  separate cog handle. Nothing reported it.
 
 - **Editing a file embedded with `DAT ... FILE` now rebuilds.** Changing the
   embedded file alone, without touching the `.spin2` that names it, produced a
   binary still carrying the old contents.
 
-- **`.map` object and instance names are correct when an object is used more
-  than once.** Declaring the same object twice listed only one of them; names
-  could be attached to the wrong file; and objects could appear as `object_12`
-  or `Object_1` instead of by name. Nested levels could also go missing
-  entirely.
+- **Two applications sharing a library object no longer swap each other's
+  `FILE` data.** A `FILE` name resolves against the directory of the top-level
+  file being compiled, so a shared object embeds different data for each
+  application that uses it. Both applications keyed to one cache entry, and
+  whichever compiled second was handed the other's binary. Two applications in
+  one project, `-C`, and the default cache directory was enough to hit it, at no
+  severity.
+
+- **`.map` names objects and instances correctly when one is used more than
+  once.** Declaring the same object twice listed only one of them, names could
+  attach to the wrong file, objects could appear as `object_12`, and nested
+  levels could go missing entirely.
 
 - **`.map` symbol addresses agree with the rest of the file.** A `DAT` symbol
   could be listed at one address in the symbol index and a different one in the
-  object details — the symbol index address could even fall outside the object,
-  in VAR space.
+  object details — sometimes outside the object, in VAR space.
 
-- **`.map` output from a cached build now matches an uncached one.** With
-  `--cache --map`, objects below a cached one lost their method listings, and a
-  level of the hierarchy could be missing.
+- **`.map` method entries are real hub addresses.** `ADDRESS INDEX`,
+  `SYMBOL INDEX` and `OBJECT DETAILS` printed a method's slot number in the
+  object header rather than where its bytecode begins, so methods appeared one
+  byte apart.
+
+- **`.map` index sections account for every copy of an object.** `SYMBOL INDEX`
+  listed each symbol once at the first copy's address and `ADDRESS INDEX` listed
+  each method once, so the other copies' addresses appeared nowhere. Both sections
+  are now built per instance, and where several instances genuinely share one
+  address the row names them rather than silently reporting one.
+
+- **`.map` shows the overrides each instance was declared with.** The
+  `MEMORY LAYOUT` `Overrides` column was always empty, so an object used three
+  times with three different `| CONST = N` overrides printed three
+  identical-looking rows.
+
+- **`.map` output from a cached build matches an uncached one.** With
+  `--cache --map`, objects below a cached one lost their method listings and a
+  level of the hierarchy could go missing.
 
 - **`.flash` output could be written empty.** Under load, `-F` could produce a
-  zero-byte `.flash` file. The file was correct whenever it was not truncated,
-  so a rebuild appeared to fix it.
+  zero-byte `.flash` file, so a rebuild appeared to fix it.
+
+- **Output files are complete when the compiler exits.** The `.bin`, `.obj` and
+  `.map` were written through a stream that was closed but not awaited, so a
+  script reading one immediately after a build could see the previous run's
+  contents or a partial file. This is the same hazard behind the empty `.flash`.
+
+### Breaking Changes
+
+- **Any existing cache is discarded on upgrade.** The on-disk format changed, so
+  the first compile after upgrading recompiles everything. Entries written by
+  earlier versions can be stale in ways those versions had no way to detect, so
+  they are not reused.
+
+- **Some builds that used to hit the cache will now miss.** That is the fix
+  working — those hits were returning stale objects. If you measured a speed-up
+  on a multi-level project, the new, lower figure is the honest one.
+
+- **Applications in one project no longer share cached objects with each other.**
+  A cached object is tied to the directory of the top-level file it was built for
+  and the `-I` list in force, so two applications in separate directories each
+  build their own copy of a shared library object. This is what keeps their
+  `FILE` data from being swapped.
+
+- **Moving or renaming a source tree empties its cache.** Entries record the
+  resolved path of every file they were built from; after a move those paths no
+  longer match and the affected objects recompile.
+
+- **Anything that parses `.map` needs updating.** `ADDRESS INDEX` and
+  `SYMBOL INDEX` gained an `Instance` column, and both are now built from object
+  *instances* rather than from source files, so a program that uses an object more
+  than once no longer hides the extra copies. Rows carrying identical content then
+  collapse into one, whose `Instance` cell names the shortest instance path and
+  appends a count of the others sharing it — `SHARED+3` means that row covers four
+  instances. It stays a single whitespace-delimited token, so a row can still be
+  split on whitespace. `OBJECT DETAILS` method entries changed from
+  `Entry $XXXXX` to `Entry +$XXXXX  ($YYYYY)` — offset within the object, then
+  absolute address. Instance names are now paths: a child declared as `leaf`
+  beneath `a` prints as `A.LEAF`.
 
 ## [1.55.3] 2026-08-09
 

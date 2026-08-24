@@ -75,9 +75,22 @@ PUB GetDataSize() : LONG
 
 The compiler searches for the specified file in the following order:
 
-1. **Current Directory** - The directory containing the source file being compiled
+1. **Top-Level Directory** - The directory of the **top-level** file being compiled
 2. **Library Directory** - The built-in `./lib` directory
 3. **Include Directories** - Directories specified with the `-I` command line option
+
+> **Step 1 is the top-level file's directory, not the containing file's.** When
+> a `FILE` directive sits inside a child object, the name is still resolved
+> against the directory of the file you named on the command line — not against
+> the directory the child object lives in, and not against the shell's current
+> working directory. Verified by measurement against 1.55.4.
+>
+> This matters for a library object shared by more than one application: the
+> same `FILE "blob.dat"` inside one shared object resolves to a *different*
+> blob for each application that uses it, because each application is a
+> different top-level file. That is intended — it is how an application supplies
+> its own data to a shared object — and as of 1.55.4 the object cache accounts
+> for it.
 
 ### Path Resolution Examples
 

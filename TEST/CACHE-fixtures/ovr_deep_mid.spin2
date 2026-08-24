@@ -1,0 +1,14 @@
+' Deep-override fixture — THE MIDDLE, the object that gets cached.
+'
+' The override below is the point of the whole fixture. When this object is
+' served from the cache, its child is never revisited: the OBJ block declaring
+' `LSEED = 77` is not re-parsed, because parsing it is exactly what the hit
+' skipped. So the override has to ride in the cache entry's instance sidecar or
+' a warm build prints an empty Overrides column where a cold build prints a
+' value — a warm/cold divergence, which the byte-equivalence harness compares
+' maps precisely to catch.
+OBJ
+  kid : "ovr_deep_leaf" | LSEED = 77
+
+PUB val() : result
+  result := kid.val()

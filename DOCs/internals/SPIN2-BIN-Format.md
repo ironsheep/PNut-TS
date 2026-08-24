@@ -1,5 +1,16 @@
 # SPIN2/PASM2 Binary File Format (.bin) Documentation
 
+
+> **Line citations — read this first.** The `spin2Parser.ts:NNN` references below
+> drift whenever that file changes, and v1.55.4 moved them: the synchronous-write
+> fix added comment blocks that shifted later definitions by two to three lines.
+> The citations naming a **function definition** were re-verified against source
+> on 2026-08-24 and are correct. The **inline range citations** inside each
+> section (patch-point offsets, condition lines) were *not* re-verified, and
+> spot-checks found several now landing on a closing brace. Trust the function
+> names; verify a range before relying on it. A full citation audit is tracked in
+> `DOCs/roadmaps/Test-Suite-Punch-List.md`.
+
 Verified against source 2026-08-09 (build 1.55.3, v55-era interpreter files).
 Line numbers cite the source as of that date; the patch-point offsets quoted
 below track the interpreter/debugger/loader binaries and move when those
@@ -19,13 +30,13 @@ The PNut-TS compiler generates .bin files through a multi-stage process:
 
 1. **Object Image Generation** - Core binary content created by `ObjectImage` class
 2. **Child Object Assembly** - Multiple objects combined by `ChildObjectsImage` class
-3. **Binary File Output** - Final .bin file written by `writeBinaryFile()` (`spin2Parser.ts:577-593`)
+3. **Binary File Output** - Final .bin file written by `writeBinaryFile()` (`spin2Parser.ts:575`)
 
 ## Binary Format Variants
 
 The components present depend on compilation mode, and the combinations are
 **mutually exclusive** in ways the mode flags force (`ComposeRam()`,
-`spin2Parser.ts:525`): the clock setter requires PASM mode *and* no debug
+`spin2Parser.ts:523`): the clock setter requires PASM mode *and* no debug
 (`spin2Parser.ts:561`), so it never coexists with the debugger or the
 interpreter. The real layouts are:
 
@@ -40,16 +51,16 @@ A **`.flash` file** (see Flash File Generation below) additionally prepends a
 144-byte flash-loader subset to whichever of the above was produced.
 
 > **Historical note:** an older `--flash`/`.binf` path
-> (`P2InsertFlashLoader()`, `spin2Parser.ts:879`) still exists in source but
+> (`P2InsertFlashLoader()`, `spin2Parser.ts:876`) still exists in source but
 > is **dormant — never called** (`spin2Parser.ts:527-531`). The live flash
-> path is `--flashfile` → `P2MakeFlashFile()` (`spin2Parser.ts:572-573`).
+> path is `--flashfile` → `P2MakeFlashFile()` (`spin2Parser.ts:570-571`).
 > Earlier revisions of this document described the dormant path's layout
 > (1KB loader, app at 0x0400, checksum at 0x3FC); none of that describes
 > what the compiler emits today.
 
 ## Component Details
 
-### 1. SPIN2 Interpreter (`P2InsertInterpreter()`, `spin2Parser.ts:593`)
+### 1. SPIN2 Interpreter (`P2InsertInterpreter()`, `spin2Parser.ts:590`)
 
 **When included**: always, in Spin2 mode (`spin2Parser.ts:540-542`).
 **Source file**: `Spin2_interpreter.obj` (v55, 2026.05.07; 6,280 bytes —
@@ -72,7 +83,7 @@ Insertion: the user object is moved upward, the interpreter placed at offset
   (`spin2Parser.ts:679-683`); in debug mode the debug-pin-receive value is
   OR'd in instead (`spin2Parser.ts:684-695`)
 
-### 2. Clock Setter (`P2InsertClockSetter()`, `spin2Parser.ts:931`)
+### 2. Clock Setter (`P2InsertClockSetter()`, `spin2Parser.ts:928`)
 
 **When included**: PASM2 mode, not debug, `clockMode != 0`
 (`spin2Parser.ts:561`), and `_AUTOCLK` not defined or non-zero
@@ -90,7 +101,7 @@ Unused instructions are NOPed by mode: RC_SLOW (clkmode 0b01) NOPs the three
 external-clock setup longs, any other mode NOPs the RC-slow long
 (`spin2Parser.ts:953-960`).
 
-### 3. Debugger (`P2InsertDebugger()`, `spin2Parser.ts:716`)
+### 3. Debugger (`P2InsertDebugger()`, `spin2Parser.ts:713`)
 
 **When included**: debug mode (`-d`) (`spin2Parser.ts:557-559`).
 **Requirements**: crystal/external clocking (clock-mode bit 1 set) and clock
@@ -106,11 +117,20 @@ after it (`spin2Parser.ts:752`). Patch points (`spin2Parser.ts:727-736`):
 (0xE0), `_appsize_` (0xE4), `_hubset_` (0xE8), `_brkcond_` (0x11C),
 `_txpin_` (0x140), `_rxpin_` (0x144), `_baud_` (0x148).
 
-### 4. Flash File Generation (`P2MakeFlashFileImage()`, `spin2Parser.ts:826`)
+### 4. Flash File Generation (`P2MakeFlashFileImage()`, `spin2Parser.ts:823`)
 
-**When run**: `--flashfile` only (`spin2Parser.ts:572-573`), against the
-pre-loader copy of the image (`nonLoaderObjImage`, `spin2Parser.ts:565`).
+**When run**: `--flashfile` only (`spin2Parser.ts:570-571`), against the
+pre-loader copy of the image (`nonLoaderObjImage`, `spin2Parser.ts:563`).
 Produces the `.flash` output alongside the normal `.bin`.
+
+**The image is written with a single synchronous call.** Before v1.55.4 this
+output went through a write stream that was closed but never awaited, so the
+process could exit before the bytes reached disk and `-F` could leave a
+**zero-byte `.flash`** behind. The truncation was load-dependent, so it looked
+intermittent and a rebuild appeared to cure it; whenever the file was not
+truncated its contents were correct. The `.bin`, `.obj` and `.map` writers shared
+the same defect and were converted at the same time. Any new output file should
+follow the same synchronous pattern.
 
 - **Loader subset**: bytes 0x160-0x1F0 of `flash_loader.obj` — 0x90 (144)
   bytes (`spin2Parser.ts:829-830, 849`)
@@ -249,7 +269,7 @@ a child (`spinResolver.ts:4818`).
 - **Checksum**: negative byte-sum over a region
   (`childObjectsImage.ts:197-205`)
 
-## Assembly Sequence (`ComposeRam()`, `spin2Parser.ts:525`)
+## Assembly Sequence (`ComposeRam()`, `spin2Parser.ts:523`)
 
 1. Application compilation (core object)
 2. Interpreter insertion — Spin2 mode only (`spin2Parser.ts:540-542`)
@@ -259,8 +279,8 @@ a child (`spinResolver.ts:4818`).
    `HubLimit` (`spin2Parser.ts:38`)
 4. Debugger insertion — debug mode only
 5. Clock setter insertion — PASM2 non-debug, conditional
-6. `nonLoaderObjImage` snapshot (`spin2Parser.ts:565`), `.bin` written via
-   `writeBinaryFile()` (`spin2Parser.ts:569`)
+6. `nonLoaderObjImage` snapshot (`spin2Parser.ts:563`), `.bin` written via
+   `writeBinaryFile()` (`spin2Parser.ts:567`)
 7. `.flash` generation from the snapshot — `--flashfile` only
    (`spin2Parser.ts:572-573`)
 

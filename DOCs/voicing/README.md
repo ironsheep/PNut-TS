@@ -6,7 +6,6 @@ guide for the rules specific to it.
 
 | Guide | Governs |
 |---|---|
-| [`CHANGELOG-Voicing.md`](CHANGELOG-Voicing.md) | `CHANGELOG.md` — which is published verbatim as the release notes |
 | [`Usage-Guide-Voicing.md`](Usage-Guide-Voicing.md) | the usage guides under `DOCs/internals/usage-guides*/` |
 | [`Shipped-Docs-Voicing.md`](Shipped-Docs-Voicing.md) | the documents that ship inside the release package — `README.md`, `Preprocessor.md`, `CommandLine.md`, `AUTHORS`, `LICENSE`, `copyright` |
 

@@ -47,7 +47,9 @@ The features of this new implementation are:
 - Has a full featured light-weight [preprocessor](Preprocessor.md)
 - Listing, object, and binary compatible with PNut of same version.<BR>(PNut v43, initially (at testing release), now at PNut v55 with this release.)
 - A persistent object cache that skips recompiling child objects whose inputs have not changed - including inputs further down the tree, such as an object your object uses, or a file embedded with `DAT ... FILE` (as of v1.55.4)
-- Memory map files (`-m`) describing object structure and memory allocation
+- `--cache-verify` proves a cached build is honest: it compiles the project a second time without the cache, in a separate process, and fails the build if the two results differ (as of v1.55.4)
+- A warning when one build reaches byte-identical source through two different paths, naming both files - the build still succeeds, but duplicated source is a structural smell only the compiler can see (as of v1.55.4)
+- Memory map files (`-m`) describing object structure and memory allocation, including one entry per *instance* when an object is used more than once (the `.map` format changed in v1.55.4 - see the CHANGELOG if you parse these files)
 - Internal table-size-limits are now easy to adjust if we find a need.
 
 ## Installing PNut-TS

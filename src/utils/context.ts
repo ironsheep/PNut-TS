@@ -70,6 +70,7 @@ export interface CompileOptions {
   cache: boolean; // enable object compilation cache
   cacheDir: string; // object cache directory (default: '.pnut-cache')
   cacheClear: boolean; // clear object cache before compiling
+  cacheVerify: boolean; // prove a cached build matches an uncached one
 }
 
 export interface CompileData {
@@ -202,7 +203,8 @@ export class Context {
       mapFilename: '',
       cache: false,
       cacheDir: '.pnut-cache',
-      cacheClear: false
+      cacheClear: false,
+      cacheVerify: false
     };
     this.compileData = {
       objectData: new ChildObjectsImage(this, 'GlbObjData'), // pascal P2.ObjData

@@ -100,6 +100,18 @@ names to the wrong file, and printed placeholder names — `buildObjInstanceInfo
 was mixing four different index spaces that only coincide when every object
 appears exactly once.
 
+> **Superseded 2026-08-22, before this text was applied.** The limitation
+> described below was FIXED in 1.55.4 rather than documented: both index
+> sections now emit one row per image, method rows carry real bytecode
+> addresses instead of header-table slot indices, and instances are named by
+> access path (`A.LEAF`, `B.LEAF`). The steer this section proposed — send
+> readers to `MEMORY LAYOUT` / `ADDRESS INDEX` for per-instance DAT addresses —
+> was also wrong on its own terms: neither section carries DAT rows at all.
+>
+> The section is kept as the record of what was proposed and why. Do not apply
+> it. The P2KB entry is being derived by evaluating the shipped build directly,
+> which sees the corrected behavior.
+
 ## What is still true, and must not be dropped from the entry
 
 **`SYMBOL INDEX` lists one row per source file, not per image.** In the cascade

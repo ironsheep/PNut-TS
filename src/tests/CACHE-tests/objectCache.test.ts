@@ -15,7 +15,15 @@ import { eElementType } from '../../classes/types';
 import { compareObjOrBinFiles } from '../testUtils';
 // Shared scaffolding — see cacheFixtures.ts. Both cache suites use one copy of
 // these so neither drifts from the other.
-import { cleanupCacheDir, cleanupDir, cleanupOutputFiles, compileSpin2, makeTempCacheDir, makeTextLines } from './cacheFixtures';
+import {
+  cleanupCacheDir,
+  cleanupDir,
+  cleanupOutputFiles,
+  compileSpin2,
+  makeTempCacheDir,
+  makeTextLines,
+  readMapForComparison
+} from './cacheFixtures';
 
 // ====================================================================
 // UNIT TESTS — ObjectCache class in isolation
@@ -37,7 +45,15 @@ describe('ObjectCache Unit Tests', () => {
   test('same inputs produce the same cache key', () => {
     const cache = new ObjectCache(true, cacheDir);
     const lines = makeTextLines(['CON', '  _clkfreq = 20_000_000', 'PUB main()']);
-    const inputs = { preprocessedLines: lines, overrides: undefined, compilerVersion: '1.53.2', enableDebug: false, defSymbols: [] };
+    const inputs = {
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.53.2',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    };
 
     const key1 = cache.computeKey(inputs);
     const key2 = cache.computeKey(inputs);
@@ -50,8 +66,24 @@ describe('ObjectCache Unit Tests', () => {
     const lines1 = makeTextLines(['CON', '  X = 1']);
     const lines2 = makeTextLines(['CON', '  X = 2']);
 
-    const key1 = cache.computeKey({ preprocessedLines: lines1, overrides: undefined, compilerVersion: '1.53.2', enableDebug: false, defSymbols: [] });
-    const key2 = cache.computeKey({ preprocessedLines: lines2, overrides: undefined, compilerVersion: '1.53.2', enableDebug: false, defSymbols: [] });
+    const key1 = cache.computeKey({
+      preprocessedLines: lines1,
+      overrides: undefined,
+      compilerVersion: '1.53.2',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
+    const key2 = cache.computeKey({
+      preprocessedLines: lines2,
+      overrides: undefined,
+      compilerVersion: '1.53.2',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
     expect(key1).not.toBe(key2);
   });
 
@@ -67,8 +99,24 @@ describe('ObjectCache Unit Tests', () => {
     const overrides2 = new SymbolTable();
     overrides2.add('DEFAULT_VALUE', eElementType.type_con_int, BigInt(200));
 
-    const key1 = cache.computeKey({ preprocessedLines: lines, overrides: overrides1, compilerVersion: '1.53.2', enableDebug: false, defSymbols: [] });
-    const key2 = cache.computeKey({ preprocessedLines: lines, overrides: overrides2, compilerVersion: '1.53.2', enableDebug: false, defSymbols: [] });
+    const key1 = cache.computeKey({
+      preprocessedLines: lines,
+      overrides: overrides1,
+      compilerVersion: '1.53.2',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
+    const key2 = cache.computeKey({
+      preprocessedLines: lines,
+      overrides: overrides2,
+      compilerVersion: '1.53.2',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
     expect(key1).not.toBe(key2);
   });
 
@@ -84,9 +132,19 @@ describe('ObjectCache Unit Tests', () => {
       overrides: undefined,
       compilerVersion: '1.53.2',
       enableDebug: false,
-      defSymbols: []
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
     });
-    const keyWithOverrides = cache.computeKey({ preprocessedLines: lines, overrides, compilerVersion: '1.53.2', enableDebug: false, defSymbols: [] });
+    const keyWithOverrides = cache.computeKey({
+      preprocessedLines: lines,
+      overrides,
+      compilerVersion: '1.53.2',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
     expect(keyNoOverrides).not.toBe(keyWithOverrides);
   });
 
@@ -96,8 +154,24 @@ describe('ObjectCache Unit Tests', () => {
     const cache = new ObjectCache(true, cacheDir);
     const lines = makeTextLines(['PUB main()']);
 
-    const key1 = cache.computeKey({ preprocessedLines: lines, overrides: undefined, compilerVersion: '1.53.0', enableDebug: false, defSymbols: [] });
-    const key2 = cache.computeKey({ preprocessedLines: lines, overrides: undefined, compilerVersion: '1.53.1', enableDebug: false, defSymbols: [] });
+    const key1 = cache.computeKey({
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.53.0',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
+    const key2 = cache.computeKey({
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.53.1',
+      enableDebug: false,
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    });
     expect(key1).not.toBe(key2);
   });
 
@@ -106,10 +180,17 @@ describe('ObjectCache Unit Tests', () => {
   test('same source with different enableDebug produce different keys', () => {
     const cache = new ObjectCache(true, cacheDir);
     const lines = makeTextLines(['PUB main()', '  DEBUG("hello")']);
-    const baseInputs = { preprocessedLines: lines, overrides: undefined, compilerVersion: '1.54.2', defSymbols: [] };
+    const baseInputs = {
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.54.2',
+      defSymbols: [],
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    };
 
-    const keyNoDebug = cache.computeKey({ ...baseInputs, enableDebug: false });
-    const keyDebug = cache.computeKey({ ...baseInputs, enableDebug: true });
+    const keyNoDebug = cache.computeKey({ ...baseInputs, enableDebug: false, resolutionRoot: cacheDir, includeFolders: [] });
+    const keyDebug = cache.computeKey({ ...baseInputs, enableDebug: true, resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyNoDebug).not.toBe(keyDebug);
   });
 
@@ -118,11 +199,18 @@ describe('ObjectCache Unit Tests', () => {
   test('same source with different defSymbols produce different keys', () => {
     const cache = new ObjectCache(true, cacheDir);
     const lines = makeTextLines(['PUB main()']);
-    const baseInputs = { preprocessedLines: lines, overrides: undefined, compilerVersion: '1.54.5', enableDebug: false };
+    const baseInputs = {
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.54.5',
+      enableDebug: false,
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    };
 
-    const keyA = cache.computeKey({ ...baseInputs, defSymbols: ['SYM_X'] });
-    const keyB = cache.computeKey({ ...baseInputs, defSymbols: ['SYM_Y'] });
-    const keyAll = cache.computeKey({ ...baseInputs, defSymbols: ['SD_INCLUDE_ALL'] });
+    const keyA = cache.computeKey({ ...baseInputs, defSymbols: ['SYM_X'], resolutionRoot: cacheDir, includeFolders: [] });
+    const keyB = cache.computeKey({ ...baseInputs, defSymbols: ['SYM_Y'], resolutionRoot: cacheDir, includeFolders: [] });
+    const keyAll = cache.computeKey({ ...baseInputs, defSymbols: ['SD_INCLUDE_ALL'], resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyA).not.toBe(keyB);
     expect(keyA).not.toBe(keyAll);
     expect(keyB).not.toBe(keyAll);
@@ -131,19 +219,26 @@ describe('ObjectCache Unit Tests', () => {
   test('defSymbols hashing is order- and case-insensitive and dedup-stable', () => {
     const cache = new ObjectCache(true, cacheDir);
     const lines = makeTextLines(['PUB main()']);
-    const baseInputs = { preprocessedLines: lines, overrides: undefined, compilerVersion: '1.54.5', enableDebug: false };
+    const baseInputs = {
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.54.5',
+      enableDebug: false,
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    };
 
     // Order doesn't matter — both insertion sequences must hash identically.
-    const keyOrderA = cache.computeKey({ ...baseInputs, defSymbols: ['ALPHA', 'BETA', 'GAMMA'] });
-    const keyOrderB = cache.computeKey({ ...baseInputs, defSymbols: ['GAMMA', 'ALPHA', 'BETA'] });
+    const keyOrderA = cache.computeKey({ ...baseInputs, defSymbols: ['ALPHA', 'BETA', 'GAMMA'], resolutionRoot: cacheDir, includeFolders: [] });
+    const keyOrderB = cache.computeKey({ ...baseInputs, defSymbols: ['GAMMA', 'ALPHA', 'BETA'], resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyOrderA).toBe(keyOrderB);
 
     // Case is normalized — preprocessor stores symbols uppercase.
-    const keyMixedCase = cache.computeKey({ ...baseInputs, defSymbols: ['alpha', 'Beta', 'GAMMA'] });
+    const keyMixedCase = cache.computeKey({ ...baseInputs, defSymbols: ['alpha', 'Beta', 'GAMMA'], resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyMixedCase).toBe(keyOrderA);
 
     // Duplicates are deduped so a stray double-push doesn't shift the key.
-    const keyDup = cache.computeKey({ ...baseInputs, defSymbols: ['ALPHA', 'ALPHA', 'BETA', 'GAMMA'] });
+    const keyDup = cache.computeKey({ ...baseInputs, defSymbols: ['ALPHA', 'ALPHA', 'BETA', 'GAMMA'], resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyDup).toBe(keyOrderA);
   });
 
@@ -152,12 +247,19 @@ describe('ObjectCache Unit Tests', () => {
     // the symbol set itself does. Two empty sets must hash identically.
     const cache = new ObjectCache(true, cacheDir);
     const lines = makeTextLines(['PUB main()']);
-    const inputs = { preprocessedLines: lines, overrides: undefined, compilerVersion: '1.54.5', enableDebug: false };
+    const inputs = {
+      preprocessedLines: lines,
+      overrides: undefined,
+      compilerVersion: '1.54.5',
+      enableDebug: false,
+      resolutionRoot: cacheDir,
+      includeFolders: []
+    };
 
-    const keyEmpty1 = cache.computeKey({ ...inputs, defSymbols: [] });
-    const keyEmpty2 = cache.computeKey({ ...inputs, defSymbols: [] });
+    const keyEmpty1 = cache.computeKey({ ...inputs, defSymbols: [], resolutionRoot: cacheDir, includeFolders: [] });
+    const keyEmpty2 = cache.computeKey({ ...inputs, defSymbols: [], resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyEmpty1).toBe(keyEmpty2);
-    const keyOne = cache.computeKey({ ...inputs, defSymbols: ['ONE'] });
+    const keyOne = cache.computeKey({ ...inputs, defSymbols: ['ONE'], resolutionRoot: cacheDir, includeFolders: [] });
     expect(keyOne).not.toBe(keyEmpty1);
   });
 
@@ -1158,23 +1260,37 @@ describe('ObjectCache Integration Tests', () => {
         cleanupDir(cacheDirForFixture);
         cleanupOutputFiles(dir, basename);
 
+        // `-m` on all three compiles so the MAP is compared alongside the
+        // binary. The binary is still the first net — it is the artifact that
+        // can carry staleness — but the map is derived from distiller and
+        // symbol state on a different path, so the two can disagree, and until
+        // 1.55.4 the map's own labels were too unreliable to assert on. They
+        // are not any more, which makes a warm map that differs from an
+        // uncached one a real signal rather than noise.
+        const mapFlags = `${flags} -m`.trim();
+        const binPath = path.join(dir, `${basename}.bin`);
+        const mapPath = path.join(dir, `${basename}.map`);
+
         // Reference: fresh, no cache
-        compileSpin2(dir, file, flags);
-        const refBinPath = path.join(dir, `${basename}.bin`);
-        expect(fs.existsSync(refBinPath)).toBe(true);
-        const refBinary = fs.readFileSync(refBinPath);
+        compileSpin2(dir, file, mapFlags);
+        expect(fs.existsSync(binPath)).toBe(true);
+        expect(fs.existsSync(mapPath)).toBe(true);
+        const refBinary = fs.readFileSync(binPath);
+        const refMap = readMapForComparison(mapPath);
         cleanupOutputFiles(dir, basename);
 
         // Cold cache: cache empty, compile populates it
-        compileSpin2(dir, file, `${flags} --cache --cache-clear --cache-dir ${cacheDirForFixture}`);
-        const coldBinary = fs.readFileSync(path.join(dir, `${basename}.bin`));
+        compileSpin2(dir, file, `${mapFlags} --cache --cache-clear --cache-dir ${cacheDirForFixture}`);
+        const coldBinary = fs.readFileSync(binPath);
         expect(Buffer.from(coldBinary).equals(Buffer.from(refBinary))).toBe(true);
+        expect(readMapForComparison(mapPath)).toBe(refMap);
         cleanupOutputFiles(dir, basename);
 
         // Warm cache: every child should hit
-        compileSpin2(dir, file, `${flags} --cache --cache-dir ${cacheDirForFixture}`);
-        const warmBinary = fs.readFileSync(path.join(dir, `${basename}.bin`));
+        compileSpin2(dir, file, `${mapFlags} --cache --cache-dir ${cacheDirForFixture}`);
+        const warmBinary = fs.readFileSync(binPath);
         expect(Buffer.from(warmBinary).equals(Buffer.from(refBinary))).toBe(true);
+        expect(readMapForComparison(mapPath)).toBe(refMap);
 
         cleanupOutputFiles(dir, basename);
         cleanupDir(cacheDirForFixture);

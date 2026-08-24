@@ -8,6 +8,8 @@ This directory contains comprehensive documentation for the PNut-TS SPIN2/PASM2 
 Documents that explain how the existing compiler works:
 
 - **[SPIN2-BIN-Format.md](internals/SPIN2-BIN-Format.md)** - Complete specification of the .bin file format and object organization
+- **[Object-Cache-Theory-of-Operations.md](internals/Object-Cache-Theory-of-Operations.md)** - How the persistent object cache works: key composition, the on-disk entry, the dependency manifest, and `--cache-verify`
+- **[MAP-File-Format.md](internals/MAP-File-Format.md)** - Specification of the `.map` file, including the instance model - read this before writing a `.map` parser
 - **[Theory-of-Operations.md](internals/Theory-of-Operations.md)** - Comprehensive compilation flow from source files to binary output
 - **[Distiller-Theory-of-Operations.md](internals/Distiller-Theory-of-Operations.md)** - How the object distillation mechanism works
 
@@ -24,7 +26,6 @@ Voice and content standards for the project's documents. Read the shared core
 first; each artifact then has a short guide of its own:
 
 - **[README.md](voicing/README.md)** - Shared core: audience, evidence-grounding, no-internals rule, voice. Applies to everything we publish
-- **[CHANGELOG-Voicing.md](voicing/CHANGELOG-Voicing.md)** - `CHANGELOG.md`, which is published verbatim as the GitHub release notes
 - **[Usage-Guide-Voicing.md](voicing/Usage-Guide-Voicing.md)** - The usage guides under `/internals/usage-guides*/`
 
 ### `/roadmaps/` - Future Improvement Plans

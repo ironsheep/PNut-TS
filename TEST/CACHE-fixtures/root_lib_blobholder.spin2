@@ -1,0 +1,18 @@
+' Resolution-root fixture — THE SHARED LIBRARY OBJECT.
+'
+' One physical file, reached by two different top-level apps. Its source is
+' identical for both, it takes no overrides, and yet it must compile to
+' DIFFERENT bytes under each app.
+'
+' Why: `FILE` resolves its name against the TOP-LEVEL file's directory, not
+' against this file's directory. So appA/blob.dat and appB/blob.dat both
+' satisfy the name below, and each app legitimately embeds its own.
+'
+' That makes this object's output a function of (source, overrides,
+' RESOLUTION ROOT). A cache key covering only the first two hands the second
+' app the first app's binary, with no diagnostic at any severity.
+DAT
+  blob  FILE "blob.dat"
+
+PUB probe() : result
+  result := BYTE[@blob]

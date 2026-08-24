@@ -503,7 +503,6 @@ export class Spin2Parser {
   // passed the flash name straight through for the second.
   private writeObjectFile(objImage: ObjectImage, offset: number, byteCount: number, objFilename: string) {
     if (this.isLogging) this.logMessage(`  -- writing OBJ file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
-    const stream = fs.createWriteStream(objFilename);
     if (offset == 8) {
       const firstLong: number = objImage.readLong(0);
       const secondLong: number = objImage.readLong(4);
@@ -518,10 +517,7 @@ export class Spin2Parser {
       const secondLong: number = objImage.readLong(4);
       if (this.isLogging) this.logMessage(`* longs AFTER OBJ write first(${hexLong(firstLong)}), second=(${hexLong(secondLong)})`);
     }
-    stream.write(buffer);
-
-    // Close the stream
-    stream.end();
+    fs.writeFileSync(objFilename, buffer);
     this.context.logger.progressMsg(`Wrote ${objFilename} (${byteCount} bytes)`);
   }
   public ComposeRam() {
@@ -582,13 +578,12 @@ export class Spin2Parser {
     const outputs: iOutputFilespecs = outputFilespecs(this.context);
     const objFilename = hasFlashLoader ? outputs.flashLoaderBinary : outputs.binary;
     if (this.isLogging) this.logMessage(`  -- writing BIN file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
-    const stream = fs.createWriteStream(objFilename);
-
-    const buffer = Buffer.from(objImage.rawUint8Array.buffer, offset, byteCount);
-    stream.write(buffer);
-
-    // Close the stream
-    stream.end();
+    // Synchronous: stream.end() returns before the bytes are on disk, so a
+    // caller that reads the binary straight after a compile can see a stale or
+    // partial file. Same hazard that produced the zero-byte .flash.
+    const buffer = new Uint8Array(byteCount);
+    buffer.set(objImage.rawUint8Array.subarray(offset, offset + byteCount));
+    fs.writeFileSync(objFilename, buffer);
     this.context.logger.progressMsg(`Wrote ${objFilename} (${byteCount} bytes)`);
   }
 

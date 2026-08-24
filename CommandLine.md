@@ -39,6 +39,9 @@ Options:
   --cache-dir <dir>           Set object cache directory (default: .pnut-cache
                               in current directory)
   --cache-clear               Clear object cache before compiling
+  --cache-verify              Prove the cache is honest: also compile without
+                              it and fail if the results differ (implies
+                              --cache)
   --log <objectName...>       objectName (choices: "all", "outline",
                               "compiler", "elementizer", "parser", "distiller",
                               "preproc", "resolver")
@@ -69,7 +72,8 @@ These options should already make sense but here's a light-weight recap:
 | <pre>-F, --flashfile</pre> | control the generation of the additional (.flash) flash-image file |
 | <pre>-a, --altbin</pre> | use alternate `.binary` suffix vs. `.bin` |
 | <pre>-m, --map</pre> | generate a memory map file (.map) describing the compiled object structure, memory allocation and multi-object relationships |
-| <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. As of v1.55.4 "inputs" covers the whole subtree — an object used by an object you use, and any file embedded with `DAT ... FILE` — so editing a file several levels down invalidates everything above it. Before v1.55.4 only a direct dependency was tracked. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory. `--cache-clear` empties it first, and works even when no source file is given. |
+| <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. As of v1.55.4 "inputs" covers the whole subtree — an object used by an object you use, and any file embedded with `DAT ... FILE` — so editing a file several levels down invalidates everything above it. Before v1.55.4 only a direct dependency was tracked. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory. `--cache-clear` empties it first, and works even when no source file is given. A cached object is also tied to the directory of the top-level file it was built for and the `-I` list in force, so two applications in one project each build their own copy of a shared library object. |
+| <pre>--cache-verify</pre> | compile the project twice — once using the cache and once ignoring it — and fail the build if the two results differ. Implies `-C`. The uncached reference compile runs first, as a separate process, so nothing about the cached build can influence it. On success the compiler reports `Object cache verified: output matches an uncached build`; on failure it names the artifact that disagreed and exits non-zero. Use it when you suspect a cached build, or in CI on a project layout your own tests do not cover. |
 | <pre>-q, --quiet,<br>-v, --verbose</pre> | control how little or how much extra messaging is output from the compiler |
 | <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **preprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U prevents a `#pragma exportdef` of the named symbol from taking effect, keeping that symbol private to the file that defined it.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*) |
 
@@ -82,11 +86,32 @@ deliberate — the alternative is accepting an entry we can no longer prove is
 right.
 
 **Sharing one `--cache-dir` across different source trees is at your
-discretion.** It maximizes reuse when the trees are genuinely the same code. It
-is not safe when two projects contain *different* files under the same name and
-feed the same cache directory: entries are matched on file contents and resolved
-paths, not on which project asked. If your trees are unrelated, give each its own
-cache directory.
+discretion.** It maximizes reuse when the trees are genuinely the same code. As
+of v1.55.4 a cached object is identified partly by the directory of the top-level
+file it was built for and the `-I` list in force, so two applications no longer
+collide on one entry for a library object they share — which matters because a
+`DAT ... FILE` name resolves against the top-level file's directory, and the same
+library object therefore embeds different data for each application that uses it.
+What a shared cache directory still cannot distinguish is two unrelated projects
+holding *different* files under the same name in the same relative position. If
+your trees are unrelated, give each its own cache directory.
+
+**The compiler warns when one build reaches the same source twice.** If two
+different resolved paths hold byte-identical source — two `-I` directories each
+carrying a copy of the same object, say — the compiler reports it and names both
+files:
+
+```
+Duplicate source: [libA/utila.spin2] is byte-identical to [libB/utilb.spin2].
+Both were compiled as separate objects. Consider referencing one copy, via -I,
+so edits cannot drift between them.
+```
+
+The build still succeeds and its output is still correct. This is a structural
+warning, not an error: two copies compile to two objects, and an edit to one of
+them silently diverges from the other. Declaring the *same* object several times
+is ordinary Spin2 and does not warn — only two distinct paths holding identical
+bytes do.
 
 **Upgrading to v1.55.4 discards any existing cache.** The on-disk format changed,
 so the first compile after upgrading recompiles everything. This is intended:

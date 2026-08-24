@@ -36,10 +36,13 @@ The compilation begins with command-line argument processing:
 1. **File Validation**: Ensures a single .spin2 file is specified
 2. **Option Processing**: Sets compilation flags (listing, debug, verbose, etc.)
 3. **Context Setup**: Initializes the compilation context with:
-   - Output file specifications (.bin, .lst, .obj)
+   - Output file specifications (.bin, .lst, .obj, .map, .flash)
    - Logging and debug options
-   - Preprocessor symbol definitions (-D flags)
+   - Preprocessor symbol definitions (-D flags) and undefines (-U flags)
    - Include folder paths (-I flags)
+   - Object cache settings (`-C`/`--cache`, `--cache-dir`, `--cache-clear`,
+     `--cache-verify`) — see
+     [Object-Cache-Theory-of-Operations.md](Object-Cache-Theory-of-Operations.md)
 
 ### Compiler Initialization (`src/classes/compiler.ts`)
 The main Compiler class orchestrates the entire process:
@@ -175,7 +178,13 @@ For each source file:
 ├── Load and preprocess source
 ├── Parse OBJ sections → Identify dependencies
 ├── For each child object:
-│   ├── Recursively compile child (depth + 1)
+│   ├── If the object cache is enabled (-C):
+│   │   ├── Compute the child's cache key
+│   │   ├── Re-validate the .dep dependency manifest
+│   │   │   (re-read and re-hash every source in the child's
+│   │   │    whole subtree; any mismatch is treated as a MISS)
+│   │   └── On HIT: replay the cached sidecars and DO NOT recurse
+│   ├── On MISS: recursively compile child (depth + 1)
 │   ├── Generate child's .obj file
 │   └── Record child object metadata
 ├── Perform Pass 1: Symbol discovery
@@ -183,6 +192,14 @@ For each source file:
 ├── Perform Pass 2: Code generation
 └── Generate final object binary
 ```
+
+**A cache hit prunes the recursion.** That is the point of the cache and it is
+also its central hazard: a child served from the cache is never visited, so its
+own children are never reached and their keys are never computed. This is why
+each entry carries a manifest covering its *entire subtree* and why that manifest
+is re-validated at the moment of the hit — validating there is what makes a
+pruned subtree safe to skip. The mechanism is described in full in
+[Object-Cache-Theory-of-Operations.md](Object-Cache-Theory-of-Operations.md).
 
 ## Phase 4: Two-Pass Compilation System
 
@@ -376,6 +393,17 @@ Creates the final output files:
 5. **Symbol Table Append**: PUB/CON symbols (file format only)
 6. **Checksum Append**: Final integrity checksum
 
+**Files reach disk through a single synchronous write.** The `.bin`, `.obj`,
+`.map` and `.flash` outputs are each written with one `fs.writeFileSync` call
+(`src/classes/spin2Parser.ts`), not through a write stream. This is deliberate
+and worth knowing when adding a new output: an earlier implementation closed its
+streams without awaiting them, so the process could exit before the bytes were
+flushed. A script reading an output immediately after the compiler returned could
+then see the *previous* run's contents, or a partially written file, and under
+load the `.flash` output could be left zero-length. Because the failure depended
+on timing it looked intermittent, and a rebuild appeared to fix it. Any new
+output file should follow the same synchronous pattern.
+
 ### 6.4 Hub Memory Management
 The compiler enforces P2 memory constraints:
 
@@ -403,7 +431,7 @@ objSize = executableSize +
 - **Application**: Negative sum of application section
 - **Independence**: Both validated separately
 
-## Phase 7: Listing File Generation
+## Phase 7: Listing and Map File Generation
 
 ### 7.1 Listing Generation Process (`P2List()`)
 When `-l` flag is specified, generates comprehensive listing:
@@ -437,6 +465,30 @@ The .lst file contains:
 5. **Memory Summary**: Variable and code memory usage
 6. **Object Tree**: Hierarchy of compiled objects
 
+### 7.3 Map File Generation (`src/classes/mapGenerator.ts`)
+When the `-m` flag is specified, the compiler writes a `.map` file describing the
+compiled program's structure: where each object landed in hub memory, what each
+object contains, and where every symbol and method entry point resolves to.
+
+Five sections are emitted, in order: `OBJECT HIERARCHY`, `MEMORY LAYOUT`,
+`OBJECT DETAILS`, `ADDRESS INDEX` and `SYMBOL INDEX`.
+
+The concept that governs the whole file is the **instance**. An object may be
+declared more than once, and each declaration is a separate instance with its own
+memory, its own overrides and its own dotted-path name (a child `leaf` declared
+under `a` is `A.LEAF`). The index sections are built from *instances* rather
+than from source files, so extra copies are no longer hidden — but rows with
+identical content then collapse into one, whose `Instance` cell names the
+shortest instance path followed by a count of the others sharing it (`SHARED+3`
+covers four instances). Row counts therefore rise relative to the old
+one-row-per-source-file form without scaling linearly with instantiation. Instance identity is the pair (parent, position within that parent) —
+not the object — which is what allows two declarations of the same object to
+coexist without one overwriting the other.
+
+The complete field-by-field specification, including column meanings and the
+`Entry +$XXXXX  ($YYYYY)` method-entry form, is in
+[MAP-File-Format.md](MAP-File-Format.md).
+
 ## Integration Points and Data Flow
 
 ### Inter-Phase Communication
@@ -456,9 +508,10 @@ Input Files:
 
 Output Files:
 ├── main.bin (primary binary)
-├── main.lst (listing - if requested)
-├── main.obj (object file - if requested)
-└── main.flash (flash binary - if requested)
+├── main.lst (listing - if requested, -l)
+├── main.obj (object file - if requested, -O)
+├── main.map (memory map - if requested, -m)
+└── main.flash (flash binary - if requested, -F)
 ```
 
 ### Error Handling and Diagnostics
@@ -478,7 +531,13 @@ The compiler provides comprehensive error reporting:
 - **Garbage Collection**: Automatic cleanup of temporary data structures
 
 ### Compilation Speed
-- **Incremental Processing**: Only recompiles changed objects
+- **Incremental Processing**: With the object cache enabled (`-C`), child
+  objects whose inputs are unchanged are replayed from disk rather than
+  recompiled. The cache is **opt-in**, not automatic, and "unchanged" means the
+  object's whole transitive subtree — every source file it was built from, and
+  any file embedded with `DAT ... FILE` — as recorded in the entry's dependency
+  manifest. See
+  [Object-Cache-Theory-of-Operations.md](Object-Cache-Theory-of-Operations.md).
 - **Parallel Opportunities**: Independent object compilation could be parallelized
 - **Symbol Table Optimization**: Efficient symbol lookup and resolution
 

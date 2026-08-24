@@ -4,20 +4,27 @@ This file captures cache-related ideas that we deliberately deferred. Each entry
 describes the trigger that should make us reconsider, the design sketch, and
 the risks.
 
-Background: the persistent object cache is implemented per
-`DOCs/roadmaps/completed/Persistent-Object-Cache-Plan.md`. As of v1.54.3 the
-key includes preprocessed source, sorted overrides, compiler version,
-`enableDebug`, and `CACHE_FORMAT_VERSION`. Each cache entry on disk consists of
-a `.bin` (load-bearing binary), a `.sym` (load-bearing serialized user symbols
-for map fidelity, only read when `--map` is requested), a `.dbg` (load-bearing
-serialized debug records contributed by this child, replayed into the shared
-DebugData table on cache hit so the binary's baked-in `brkCode` indices
-resolve correctly — only written when `--debug` was on at store time), and a
-`.meta` (human-readable diagnostic JSON, optional).
+Background: the shipped mechanism is described in
+`DOCs/internals/Object-Cache-Theory-of-Operations.md`. **Read that, not the
+paragraph this one replaced** — the old summary described the v1.54.3 layout and
+was two format versions out of date by v1.55.4, listing neither the `.dep`
+dependency manifest nor the resolution root in the key. A background note that
+silently ages is worse than a pointer, so this is now a pointer.
 
 ---
 
-## Option C — Full distiller-state cache (deferred)
+## Option C — Full distiller-state cache (SUPERSEDED in v1.55.4)
+
+> **Do not implement this.** The gap it addresses was closed in v1.55.4 by a
+> different design, and the premise stated below — that grandchildren of a cached
+> child are missing from the map — is no longer true. The map is now generated
+> from an explicit instance store (`src/classes/objInstanceInfo.ts`, populated in
+> `src/classes/compiler.ts`) that is rebuilt for cached and uncached children
+> alike, so a cache-served child's descendants are present by construction rather
+> than restored after the fact. No distiller-record serialization and no ID-remap
+> layer were needed. Cached-vs-uncached `.map` equality is asserted in the
+> byte-equivalence harness. The rest of this section is retained as a record of
+> the design that was considered and not taken.
 
 ### What it would buy us
 

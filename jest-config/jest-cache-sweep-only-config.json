@@ -1,0 +1,6 @@
+{
+  "displayName": "CACHE mutation sweep",
+  "roots": ["<rootDir>/../dist/tests/CACHE-SWEEP-tests/"],
+  "testMatch": ["**/*.test.js"],
+  "verbose": true
+}

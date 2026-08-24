@@ -172,6 +172,80 @@ describe('Map File Verification', () => {
     });
   });
 
+  /**
+   * The index sections are lookups, and a lookup that omits an image or prints
+   * a non-address is worse than no lookup at all. test4-override forks one
+   * source file into three images, which is the case that exposed both faults:
+   * every symbol appeared once, at the first image's base, and method rows
+   * carried header-table slot indices in a column headed "Address".
+   */
+  describe('test4-override — index sections describe every image', () => {
+    const testDir = path.join(TEST_DIR, 'test4-override');
+    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
+    let mapText = '';
+
+    beforeAll(() => {
+      compileTest(testDir, expectedJson.top_file);
+      mapText = fs.readFileSync(path.join(testDir, expectedJson.top_file.replace(/\.spin2$/, '.map')), 'utf8');
+    });
+
+    afterAll(() => {
+      cleanupGeneratedFiles(testDir);
+    });
+
+    function sectionOf(name: string): string[] {
+      const lines = mapText.split(/\r?\n/);
+      const start = lines.findIndex((l) => l.startsWith(`=== ${name} ===`));
+      expect(start).toBeGreaterThanOrEqual(0);
+      const rest = lines.slice(start + 1);
+      const end = rest.findIndex((l) => l.startsWith('=== '));
+      return (end === -1 ? rest : rest.slice(0, end)).filter((l) => l.trim().length > 0);
+    }
+
+    it('SYMBOL INDEX carries one row per instance, each at its own address', () => {
+      const rows = sectionOf('SYMBOL INDEX').filter((l) => /^\s+COMPUTE\s/.test(l));
+      expect(rows).toHaveLength(3);
+
+      const instances = rows.map((l) => l.trim().split(/\s+/)[2]);
+      expect(instances.sort()).toEqual(['CHILD1', 'CHILD2', 'CHILD3']);
+
+      const addresses = rows.map((l) => l.trim().split(/\s+/)[4]);
+      expect(new Set(addresses).size).toBe(3);
+    });
+
+    it('ADDRESS INDEX lists every image and stays in ascending address order', () => {
+      const rows = sectionOf('ADDRESS INDEX').filter((l) => /^\s+\$[0-9A-F]+\s/.test(l));
+      const addresses = rows.map((l) => parseInt(l.trim().split(/\s+/)[0].replace('$', ''), 16));
+      expect(addresses).toEqual([...addresses].sort((a, b) => a - b));
+
+      // Three CODE rows for param_child — one per image, not one per file.
+      const codeRows = rows.filter((l) => /\sCODE\s/.test(l) && /param_child/.test(l));
+      expect(codeRows).toHaveLength(3);
+    });
+
+    it('every METHOD address falls inside its own object, not at a slot index', () => {
+      const layout = sectionOf('MEMORY LAYOUT')
+        .map((l) => l.match(/^\s*\$([0-9A-F]+)\s+\$([0-9A-F]+)\s+\d+\s+(\S+)\s+(\S+)/))
+        .filter((m): m is RegExpMatchArray => m !== null && m[3] !== 'VAR')
+        .map((m) => ({ start: parseInt(m[1], 16), end: parseInt(m[2], 16), instance: m[4] }));
+      expect(layout.length).toBeGreaterThan(0);
+
+      const methodRows = sectionOf('ADDRESS INDEX').filter((l) => /\sMETHOD\s/.test(l));
+      expect(methodRows.length).toBeGreaterThan(0);
+
+      for (const row of methodRows) {
+        const parts = row.trim().split(/\s+/);
+        const address = parseInt(parts[0].replace('$', ''), 16);
+        const instance = parts[2];
+        const owner = layout.find((o) => o.instance === instance);
+        expect(owner).toBeDefined();
+        // A slot index would be a small number far below its object's base.
+        expect(address).toBeGreaterThanOrEqual(owner!.start);
+        expect(address).toBeLessThanOrEqual(owner!.end);
+      }
+    });
+  });
+
   describe('test7-version', () => {
     const testDir = path.join(TEST_DIR, 'test7-version');
     const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));

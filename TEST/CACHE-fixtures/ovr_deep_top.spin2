@@ -1,0 +1,13 @@
+' Deep-override fixture — TOP LEVEL.
+'
+' Deliberately declares no overrides of its own. A top-level override never
+' exercises the sidecar, because the top object is always compiled fresh; only
+' an override BELOW a cached object does.
+CON
+  _clkfreq = 200_000_000
+
+OBJ
+  m : "ovr_deep_mid"
+
+PUB main() : result
+  result := m.val()

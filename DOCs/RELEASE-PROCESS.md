@@ -73,15 +73,16 @@ grep -oE '\(m[0-9]+\)' src/classes/*.ts | cut -d: -f2 | sort | uniq -d
 - [ ] Update `CHANGELOG.md` with all changes since last release
 
   > **This entry is the release notes.** On tag push the release workflow
-  > extracts the `## [VERSION]` section verbatim and publishes it as the GitHub
+  > extracts this version's section verbatim and publishes it as the GitHub
   > release body — nobody edits it in between. Write it for P2 developers using
-  > the compiler, and follow
-  > [`DOCs/voicing/CHANGELOG-Voicing.md`](voicing/CHANGELOG-Voicing.md) and the
-  > shared [`DOCs/voicing/README.md`](voicing/README.md). Run the changelog
-  > guide's checklist before tagging.
+  > the compiler, and follow the shared
+  > [`DOCs/voicing/README.md`](voicing/README.md) plus the central changelog
+  > guide, `~/.claude/skills-docs/guides/changelog-voicing.md` (PNut-TS is
+  > **class 2 — developer tool**, in **Released** mode).
 
-- [ ] Confirm the entry opens with a **lede** — the workflow uses that prose
-      paragraph as the release headline
+- [ ] Confirm the version heading is `## vX.Y.Z (YYYY-MM-DD)` and that the line
+      immediately under it is a **one-sentence theme line** — the workflow
+      publishes that sentence as the release headline
 - [ ] Run the documentation currency check:
 
   ```bash
@@ -220,6 +221,8 @@ Error codes follow the pattern `(mGGI)` where:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.55.4 | 2026-08-24 | Object cache — transitive dependency manifest, resolution-root keying, `--cache-verify`; `.map` instance model |
+| 1.55.3 | 2026-08-09 | Preprocessor symbol-table corrections (`#undef`, rest-of-line values, `__VERSION__`) |
 | 1.55.2 | 2026-08-08 | Preprocessor diagnostics, single plain-text errors, delete-artifacts-on-failure |
 | 1.55.1 | 2026-07-12 | DEBUG_PIN_RX clobbered the TX pin |
 | 1.55.0 | 2026-05-13 | PNut v55 support; interpreter ABI break |

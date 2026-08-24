@@ -1,0 +1,14 @@
+' Resolution-root fixture — THE APP TOP.
+'
+' Staged into BOTH appA/ and appB/ byte-for-byte identically, and neither
+' copy declares an override. The only thing distinguishing the two builds is
+' which directory they are compiled from — which is exactly the input the
+' cache key was missing.
+CON
+  _clkfreq = 200_000_000
+
+OBJ
+  k : "root_lib_blobholder"
+
+PUB main() : result
+  result := k.probe()

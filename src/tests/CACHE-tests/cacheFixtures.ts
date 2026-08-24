@@ -14,13 +14,15 @@
 // fixtures and leave the tree dirty on failure. So mutation tests stage a copy
 // into a temp directory and mutate that.
 //
-// ASSERTION SIGNALS. Read the `Objects:` count and DAT symbol addresses, never
-// the .map's instance/source name columns. Those labels are wrong today —
-// buildObjInstanceInfo() mixes four different index spaces — and the P2
-// Knowledge Base independently documents them as untrustworthy
-// (p2kbSpin2ObjectImageDedup, map_caveat). Addresses and counts are correct
-// even while the labels are not, so tests keyed on them stay meaningful and
-// stay independent of the map repair work.
+// ASSERTION SIGNALS. The `Objects:` count and DAT symbol addresses are the
+// primary map signals. The instance/source name columns were wrong when these
+// helpers were written (buildObjInstanceInfo mixed four index spaces) and the
+// note here said never to assert on them; 1.55.4 repaired the labels and both
+// index sections, so that restriction no longer applies.
+//
+// What has not changed: a map signal is corroboration, never the first net.
+// The map is derived from symbol and distiller state while the binary is
+// assembled from cached images, so only the binary can carry staleness.
 
 'use strict';
 
@@ -214,12 +216,19 @@ export function readObjectCount(mapPath: string): number {
  * singleton must resolve to exactly ONE address however many objects declare
  * it. Two addresses means the image forked and the "singleton" is now two
  * independent regions with separate state.
+ *
+ * One row per ADDRESS, not per instance: instances sharing an image share its
+ * addresses, so the map collapses them to a single row naming the sharers. A
+ * fork is therefore still exactly what this counts — two rows, two addresses.
  */
 export function readDatSymbolAddresses(mapPath: string): Map<string, string[]> {
   const map = fs.readFileSync(mapPath, 'utf8');
   const found = new Map<string, string[]>();
   for (const line of map.split('\n')) {
-    const match = line.match(/^\s*(\S+)\s+\S+\s+DAT\s+(\$[0-9A-Fa-f]+)\s*$/);
+    // Symbol  Object  Instance  DAT  $ADDR
+    // The Instance column arrived in 1.55.4, when the index sections started
+    // describing every image rather than every source file.
+    const match = line.match(/^\s*(\S+)\s+\S+\s+\S+\s+DAT\s+(\$[0-9A-Fa-f]+)\s*$/);
     if (match !== null) {
       const [, name, address] = match;
       const addresses = found.get(name) ?? [];
@@ -228,6 +237,21 @@ export function readDatSymbolAddresses(mapPath: string): Map<string, string[]> {
     }
   }
   return found;
+}
+
+/**
+ * A `.map` normalised for comparison: the `Generated:` timestamp removed.
+ *
+ * That line is the only part of a map that legitimately differs between two
+ * compiles of identical source, so stripping it makes the rest of the file a
+ * fair byte-for-byte comparison.
+ */
+export function readMapForComparison(mapPath: string): string {
+  return fs
+    .readFileSync(mapPath, 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith('Generated:'))
+    .join('\n');
 }
 
 /**

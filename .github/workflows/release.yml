@@ -674,14 +674,26 @@ jobs:
           PACKED_VERSION="${{ steps.version.outputs.PACKED_VERSION }}"
           TAG="${{ github.ref_name }}"
 
-          # Extract changelog section for this version
-          CHANGELOG_CONTENT=$(awk "/^## \[${VERSION}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md | sed '/^$/N;/^\n$/d')
+          # Extract changelog section for this version.
+          # Tolerates BOTH heading forms on purpose: the current one
+          #   ## v1.55.4 (2026-08-24)
+          # and the older Keep a Changelog form still carried by archived entries
+          #   ## [1.55.3] 2026-08-09
+          # The central changelog guide (skills-docs/guides/changelog-voicing.md
+          # §1.5) specifies exactly this tolerant match. Do NOT narrow it back to
+          # one form: archived releases would silently stop extracting, and the
+          # workflow still succeeds while publishing an empty release body.
+          VERSION_RE=$(printf '%s' "${VERSION}" | sed 's/\./\\./g')
+          CHANGELOG_CONTENT=$(awk "/^## \[?v?${VERSION_RE}\]? /{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md | sed '/^$/N;/^\n$/d')
 
           # Extract the one-line summary from the entry's lede — the prose
           # paragraph that opens the entry, before any section heading or
           # bullet. Wrapped lines are joined back into a single line.
-          # Every entry is expected to open with one; see
-          # DOCs/voicing/CHANGELOG-Voicing.md.
+          # Every entry is expected to open with one: it is the mandated
+          # "theme line" of the central changelog guide
+          # (skills-docs/guides/changelog-voicing.md §1.5), one sentence placed
+          # immediately under the version heading precisely so tooling like this
+          # can rely on it instead of scraping the first bullet.
           SUMMARY_LINE=$(echo "${CHANGELOG_CONTENT}" | awk '
             /^(#|-)/ { exit }
             /^[[:space:]]*$/ { if (n) exit; next }

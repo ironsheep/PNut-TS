@@ -34,8 +34,18 @@ Each release fixed one piece of the gap between those two models:
 - v1.54.5: `defSymbols` snapshot added to key (read-side state missing — propagated `#pragma exportdef` set)
 - v1.54.6: replay subtree's `defSymbols` mutations on hit (write-side state missing — skipped subtree's `#pragma exportdef` pushes)
 - v1.55.4: `.dep` manifest revalidated on every hit (read-side state missing — **the descendants' source content itself**, plus DAT FILE blobs); instance subtree and descendant symbols replayed so `--map` survives a hit
+- v1.55.4: resolution context added to key — the top-level file's directory and the `-I` list (read-side state missing — **which file a logical name reaches**, so one library object shared by two apps embedded the wrong `FILE` blob)
 
-Each fix is a different concrete instance of the same abstract bug: **a piece of process-global mutable state participates in the compile and the cache contract didn't account for it.**
+Most of these are one abstract bug: **a piece of process-global mutable state participates in the compile and the cache contract didn't account for it.**
+
+The resolution-context fix is the exception, and worth separating. Nothing
+mutable was involved: the missing input was **the question the compiler asks the
+filesystem**. `OBJ k : "kid"` and `FILE "blob.dat"` are logical names, and the
+same name reaches different files from different roots. That is not state
+leaking across a boundary — it is an input that was never modelled as one. It is
+also the only entry here closed *by construction* rather than by remembering to
+replay something: two compiles whose resolution context differs can no longer
+collide.
 
 ---
 
@@ -55,6 +65,7 @@ The earlier audit lumped together state that affects compile output with state t
 | A6 | `context.preProcessorOptions.defSymbols` snapshot at child preprocess end | yes (v1.54.5) | Captures CLI `-D` + propagated `#pragma exportdef` from any ancestor's preprocess |
 | A7 | DAT FILE bytes (`DAT data byte FILE "blob.bin"`) | **yes** (v1.55.4) | Loaded from disk at compile time, written into binary. Not in the *key*; hashed into the `.dep` manifest and revalidated on every hit (§7). Before v1.55.4 this was `no`, and editing a blob alone served a binary carrying the old bytes with no diagnostic. |
 | A8 | Each grandchild's compiled binary | **yes** (v1.55.4), via manifest | See the correction below — this row was wrong from the first draft until v1.55.4. |
+| A10 | Resolution context — the top-level file's directory and the `-I` search list | **yes** (v1.55.4) | Decides which file a *logical* name reaches (`OBJ k : "kid"`, `FILE "blob.dat"`), so a child's bytes depend on it even when its own source and overrides are identical. Hashed relative to the cache directory's parent, never as an absolute path. Before v1.55.4 this was `no`: two apps in one project sharing a library object collided in the default cache and the second was served the first's binary. See §5.4. |
 | A9 | Shared `DebugData` table state at the moment each `debug()` is compiled | not in key | Affects which `brkCode` index gets baked. Handled on the *output* side via `.dbg` replay + brkSite remap, not the *input* side. |
 
 #### Correction to row A8 — the assumption that cost four releases
@@ -242,14 +253,43 @@ For the cache, the class of bugs is:
 
 ### 4.5 Recommended mitigation stack
 
-> **Status check, v1.55.4: M1 is still not built.** The invalidation suite added
-> in v1.55.4 (`objectCacheInvalidation.test.ts`) is adjacent but is not M1: it
-> asserts that specific *mutations* invalidate, whereas M1 byte-compares *every
-> hit* against a fresh compile across the whole suite. M1 would have caught this
-> release's defect without anyone thinking to write a mutation test for depth 3.
-> It remains the highest-leverage item in this document.
+> **Status, v1.55.4: M1 is built — in a corrected form, and its original
+> justification did not survive checking.**
+>
+> The claim this row carried — that M1 "would have caught all five bugs at
+> PR-time" — was tested and could not be confirmed, on two counts. First,
+> coverage: the pre-sprint fixtures reached depth 2 at most, so no harness could
+> have exercised the depth-3 tree; someone still had to build that fixture.
+> Second, and more fundamental: passive hit-verification compares a hit against
+> a fresh compile *of the same source state*, while the staleness class only
+> diverges when an un-keyed input changes *between* store and hit. A CI run that
+> compiles cold then warm with nothing edited gets a hit that agrees, and passes
+> clean while the bug sits there.
+>
+> What shipped instead, in three parts:
+>
+> - **`--cache-verify`** (`src/utils/cacheVerify.ts`) — a user-facing flag that
+>   compiles once cached and once not, and fails on any difference. The
+>   reference compile runs in a **child process**: compilation reads and writes
+>   process-global state, so an in-process reference would inherit and perturb
+>   the very state the cache is suspected of corrupting.
+> - **The mutation sweep** (`src/tests/CACHE-SWEEP-tests/`, `npm run
+>   test-cache-sweep`) — mutates every input of every fixture tree one at a
+>   time and requires byte equality of `.bin` and `.map` against an uncached
+>   build. This is the part that makes the staleness class visible, because
+>   mutation is what creates the divergence.
+> - **`.map` comparison** folded into the existing byte-equivalence harness, so
+>   all ten fixtures now compare both artifacts rather than the binary alone.
+>
+> A measured note on value: run against 1.55.4, the sweep found **nothing** —
+> 38 mutation checks across eight configurations, all clean, with the harness
+> proven able to fail (disabling the resolution-root fix produced 5/5 detections).
+> That is the honest scope of this instrument. It is insurance against the next
+> change to cache code, not evidence about this one, and it is structurally
+> incapable of finding an input category nobody imagined — which is precisely
+> the class that has bitten this project five times.
 
-**Tier 1 (this release window):** M1. The verification harness is the highest-leverage correctness backstop available. It would have caught all five bugs we've shipped at PR-time. Independent of any other work. Cost is small.
+**Tier 1 (this release window):** M1 — **done in v1.55.4**, in the corrected form described above. Treat its value as regression insurance for the next cache change rather than as validation of the current one; see the measured note.
 
 **Tier 2 (next release window):** M2 + M4. After the next bug we don't catch via the SD suite, the question won't be "what did we miss?" — the registry will tell us. Plus golden tests catch semantic drift in serializers.
 
@@ -317,33 +357,66 @@ Traced the recursive replay logic on paper:
 > reading is part of how row A8 survived. Effects out: capture at the boundary.
 > Inputs in: revalidate the whole subtree, which is what `.dep` does.
 
-### 5.4 Path-relative resolution for OBJ children — **real but narrow, not on critical path**
+### 5.4 Resolution context for OBJ children and FILE blobs — **CLOSED in v1.55.4 by keying on it**
 
-Two parent compiles with the same source but different working directories or `-I` paths can resolve `OBJ k : "kid"` to different files. Three sub-cases:
+`OBJ k : "kid"` and `DAT ... FILE "blob.dat"` are *logical* names. Which file
+each reaches is decided by the **top-level file's directory** and the `-I`
+search list — measured, not assumed: a `FILE` name resolves against the
+top-level file's directory, beating both the process CWD and the directory of
+the file that contains the directive.
 
-1. **Different `kid` content at different paths.** Each `kid` resolves to a different file → different `preprocessedLines` → different cache key → recursion bottoms out correctly. *No bug.*
-2. **Same `kid` content but different paths, where `kid` itself has DAT FILE / nested OBJ that resolves differently per directory.** `kid`'s cache key matches across paths (same source), but its embedded blob/grandchild bytes differ.
+So a child object's compiled bytes are a function of **(its source, its
+overrides, the resolution context)**. Through v1.55.3 the cache key carried
+only the first two.
 
-   **STILL OPEN after v1.55.4 — and do not read the manifest as covering it.**
-   The `.dep` manifest hashes the file that was resolved **at store time** and
-   revalidates *that path*. It never re-runs name resolution on a hit, so a
-   logical name now resolving to a different file passes validation cleanly:
-   the recorded path still exists and still holds the recorded bytes. Closing
-   this needs re-resolution at hit time, which is a different mechanism from
-   content hashing. Recorded as open rather than quietly folded into A7,
-   because a manifest that revalidates *most* inputs invites the assumption
-   that it revalidates all of them — the same shape of error as row A8.
-3. **Cross-project cache sharing via `--cache-dir`** explicitly trades correctness for sharing: if two projects use different `kid.spin2` content under the same logical name but feed into the same cache directory, sub-case 2 bites.
+**The trigger is narrower to describe and far broader to hit than earlier
+drafts of this section claimed.** This section previously framed it as "same
+`kid` content at *different paths*," reachable only via deliberate
+cross-project `--cache-dir` sharing. Both halves were wrong. The real shape is
+one shared library object at **one** path, reached by two top-level apps:
 
-   **v1.55.4 makes entries path-anchored, which narrows this.** A manifest
-   entry records a resolved absolute path, and validation re-reads that path.
-   Move or rename a tree and its entries stop validating — they miss and
-   recompile rather than silently matching. That is deliberately conservative:
-   it costs a rebuild after a move and removes a class of silent wrong output.
-   It does not rescue sub-case 2, where the path is unchanged and the file
-   behind it is not.
+```
+proj/
+  lib/kid.spin2        DAT blob FILE "blob.dat"
+  appA/top.spin2  +  appA/blob.dat
+  appB/top.spin2  +  appB/blob.dat
+```
 
-**Recommendation:** Document explicitly that cross-directory or cross-project cache sharing is at user discretion and requires either (a) identical project tree layouts or (b) accepting that path-relative resolution can shadow source-content equivalence. Don't fix in code yet; revisit only if a user reports it.
+Built from the project root, both apps share the **default** `.pnut-cache`.
+`lib/kid.spin2` keys identically for both, so the second app was served the
+first app's binary — silently, with no flag beyond `-C`. Uncached, each app
+correctly embeds its own blob; only the cache cross-contaminated.
+
+**How it is closed (v1.55.4).** `computeKey` now hashes the resolution context:
+the top-level file's directory plus the `-I` list, in the order given, since
+`-I` order decides which of two same-named files wins. Both are expressed
+**relative to the cache directory's parent**, not as absolute paths — the cache
+directory is the sharing scope, so that parent is the natural root to measure
+against, and with the default `.pnut-cache` it *is* the project root. Keying on
+absolute paths would bake the checkout location into every entry, so the same
+tree built at two locations or on two machines would share nothing.
+`CACHE_FORMAT_VERSION` 7 → 8.
+
+This is correct by construction rather than by vigilance: two compiles whose
+resolution context differs cannot collide, and two whose context matches
+resolve every logical name identically, so sharing between them is sound.
+
+Regression coverage: `src/tests/CACHE-tests/objectCacheResolutionRoot.test.ts`,
+four cases — two apps under the default cache dir, the same pair in reverse
+build order, two roots sharing one explicit `--cache-dir`, and a single-app
+warm rebuild as the control. Verified red without the fix (the first three fail;
+the control correctly does not move).
+
+**Residual, honestly stated.** The `FILE` half is reproduced and test-covered.
+The nested-`OBJ`-under-different-`-I` half is covered by the same mechanism —
+the `-I` list is in the key — but no reproducer was built for it, so it is
+covered by construction rather than demonstrated.
+
+**Superseded recommendation.** This section previously recommended documenting
+cross-directory sharing as "at user discretion" and not fixing in code. That
+rested on the belief that the trigger required a deliberate non-default setup.
+It did not, and a documented hazard was the wrong disposition for a silent
+wrong binary reachable with `-C` alone.
 
 ### 5.5 `--regression` / `--coverage` flag effects on bytecode — **currently no impact, future risk**
 
@@ -380,18 +453,37 @@ Re-walked the whole compile path looking for state reads not in §2.1's list:
 
 ## 6. Where to next
 
-> **v1.55.4 status.** Items 1 and 3 below are spent — v1.54.6 shipped, and this
-> document has been confirmed by being wrong in a way that cost four releases
-> (row A8). Item 2 stands unchanged and unstarted: **M1, the verification
-> harness, is still the highest-leverage correctness work available here.** Every
-> defect this document records — including v1.55.4's — would have been caught at
-> PR time by a lane that byte-compares every cache hit against a fresh compile.
-> Each release instead found its defect through a user's project.
+> **v1.55.4 status.** The mitigation stack below is largely spent. **M1 is
+> built** — see §4.5 — in two forms: the byte-equivalence harness that compares
+> every fixture's cached output against an uncached compile (`.bin` *and* `.map`),
+> and the user-facing `--cache-verify` flag that does the same for a real project.
+> A mutation sweep (`npm run test-cache-sweep`) additionally mutates every input
+> of every fixture tree one at a time. **M3, the manifest, is built** in the
+> dependency-manifest form (`<key>.dep`), though not in the sidecar-integrity form
+> originally proposed — see punch-list item 5b/5d for the exact scope split.
+> **M2 (typed contracts) and M4 (golden serializer tests) remain unstarted.**
+>
+> The lesson this document records still stands and should not be softened: every
+> defect catalogued here — including v1.55.4's — reached a release, and each was
+> found by a user's project rather than by our own tests. What changed in 1.55.4
+> is that the lane which would have caught them now exists. It has not yet caught
+> anything, because it was built after the fact: run against 1.55.4 the sweep
+> found zero defects across 38 checks and 8 configurations. That is insurance for
+> the *next* cache change, not validation of this one, and it was proved able to
+> fail before it was trusted (disabling the resolution-root fix produces 5/5
+> detections).
 
-Before writing any v1.54.6 code:
+Remaining work, in recommended order:
 
-1. **Confirm the analysis above** — push back on any state I've miscategorized.
-2. **Decide the mitigation stack.** Recommended: M1 (verification harness) → ship → M2 (typed contracts) → M4 (golden serializer tests) → M3 (manifest) when adding the next sidecar.
-3. **Decide whether v1.54.6 lands before or after M1.** I'd argue M1 first: ship the verification harness, run it against the current SD suite, document what fails. *Then* fix. That sequence proves the harness works and gives us a checkpoint to confirm v1.54.6 actually fixes what we think it fixes.
+1. **M2 — typed `CacheContract<T>` registry.** Punch-list item 5c.
+2. **M4 — golden serializer tests** for each sidecar's on-disk form.
+3. **M3 (remainder) — sidecar-integrity manifest.** The `.dep` manifest declares
+   the entry's *source inputs*; it does not yet declare the entry's own sidecar
+   set, so a sidecar swapped between entries is still undetected. Punch-list 5d.
+
+The open correctness gap is recorded in §5.4-2 and is **not** closed by the
+manifest: manifest entries are validated by re-reading the path recorded at store
+time, so the same logical name later resolving to a *different* file under
+different `-I` paths still validates clean.
 
 This document gets updated as we research more — particularly section 5.

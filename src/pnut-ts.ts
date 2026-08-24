@@ -10,6 +10,7 @@ import { fileExists, isSpin2File } from './utils/files';
 import { iOutputFilespecs, outputFilespecs } from './utils/outputFilespecs';
 import { Compiler } from './classes/compiler';
 import { ObjectCache } from './classes/objectCache';
+import { captureReference, verifyAgainstReference, VerifySnapshot } from './utils/cacheVerify';
 import { PreprocessorError, SpinDocument } from './classes/spinDocument';
 import path from 'path';
 import fs from 'fs';
@@ -177,6 +178,7 @@ export class PNutInTypeScript {
       .option('-C, --cache', 'Enable object compilation cache')
       .option('--cache-dir <dir>', 'Set object cache directory (default: .pnut-cache in current directory)')
       .option('--cache-clear', 'Clear object cache before compiling')
+      .option('--cache-verify', 'Prove the cache is honest: also compile without it and fail if the results differ (implies --cache)')
       .addOption(
         new Option('--log <objectName...>', 'objectName').choices([
           'all',
@@ -322,6 +324,11 @@ export class PNutInTypeScript {
 
     if (this.options.cache) {
       this.context.compileOptions.cache = true;
+    }
+    if (this.options.cacheVerify) {
+      // Verification without the cache would compare a build to itself.
+      this.context.compileOptions.cache = true;
+      this.context.compileOptions.cacheVerify = true;
     }
     if (this.options.cacheDir) {
       this.context.compileOptions.cacheDir = this.options.cacheDir;
@@ -653,11 +660,27 @@ export class PNutInTypeScript {
     if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
       this.context.logger.verboseMsg(`Compiling file [${filename}]`);
       if (!this.context.passOptions.afterPreprocess) {
+        // --cache-verify builds its uncached reference BEFORE the real compile.
+        // `-o` renames only the binary, so a reference run cannot be redirected
+        // away from the listing/map/object paths — it necessarily writes over
+        // them. Running it first and snapshotting what it produced lets the
+        // cached compile overwrite them normally, and the comparison is made
+        // against the snapshot.
+        let reference: VerifySnapshot | undefined = undefined;
+        if (this.context.compileOptions.cacheVerify) {
+          reference = captureReference(this.context);
+          if (reference === undefined) {
+            return Promise.resolve(1);
+          }
+        }
         const theCompiler = new Compiler(this.context);
         try {
           await theCompiler.Compile();
         } catch {
           // Error already logged by Compiler.Compile()
+          return Promise.resolve(1);
+        }
+        if (reference !== undefined && !verifyAgainstReference(this.context, reference)) {
           return Promise.resolve(1);
         }
       }

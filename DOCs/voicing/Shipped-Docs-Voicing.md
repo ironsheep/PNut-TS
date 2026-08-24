@@ -9,8 +9,11 @@ How the documents that ship **inside the release package** are written:
 evidence-grounding rule, the no-internals/no-churning-values rule, and the voice.
 This document adds only what is specific to a document that leaves the repo.
 
-`CHANGELOG.md` is governed by [`CHANGELOG-Voicing.md`](CHANGELOG-Voicing.md)
-instead; it is the one shipped document with its own shape.
+`CHANGELOG.md` is governed instead by the central changelog guide,
+`~/.claude/skills-docs/guides/changelog-voicing.md` — PNut-TS is **class 2
+(developer tool)** in **Released** mode, and that guide authors the class in
+full: voice, gates, length, version-heading form and section taxonomy. It is the
+one shipped document with its own shape, and that shape is not defined here.
 
 ---
 
