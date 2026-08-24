@@ -481,9 +481,18 @@ Remaining work, in recommended order:
    the entry's *source inputs*; it does not yet declare the entry's own sidecar
    set, so a sidecar swapped between entries is still undetected. Punch-list 5d.
 
-The open correctness gap is recorded in §5.4-2 and is **not** closed by the
-manifest: manifest entries are validated by re-reading the path recorded at store
-time, so the same logical name later resolving to a *different* file under
-different `-I` paths still validates clean.
+**The residual gap, stated narrowly.** §5.4 is closed for the case it was written
+about: the resolution root and the `-I` list are now in the key, so *changing*
+either produces a different entry. What remains open is narrower, and it is worth
+naming precisely rather than restating the closed case. The manifest records the
+absolute path each input **resolved to at store time** and re-validates by
+re-reading that path. So if the search list is unchanged but a file later appears
+at a *higher-precedence location within it*, the same logical name now resolves
+to a different file — while the recorded path still exists, still hashes the
+same, and still validates clean. The key is unchanged because the search list is
+unchanged. Resolution is not re-run at hit time.
+
+Closing it means re-running name resolution during validation and comparing the
+result against the recorded path, not merely re-hashing that path.
 
 This document gets updated as we research more — particularly section 5.

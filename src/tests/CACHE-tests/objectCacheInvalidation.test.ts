@@ -51,6 +51,22 @@ import {
   touchFile
 } from './cacheFixtures';
 
+/**
+ * The SECOND NET. Plan §6, as corrected 2026-08-21 against measurement: byte
+ * equality is the primary and required gate, and these corroborate it — they are
+ * never the gate themselves. Measured on this fixture, editing the diamond node
+ * produces a warm binary 88 bytes larger than truth while the warm `.map` is
+ * byte-for-byte identical, so a test gated on these alone would pass on a
+ * provably wrong binary.
+ *
+ * They are asserted anyway because they catch a shape byte equality does not:
+ * the reporter's original tree moved `Objects: 3` -> `4`. Two nets, per test.
+ */
+function expectMapCorroborates(warm: CompileResult, truth: CompileResult): void {
+  expect(readObjectCount(warm.mapPath)).toBe(readObjectCount(truth.mapPath));
+  expect(expectSingleDatRegion(warm.mapPath, 'STATE_LOCK')).toBe(expectSingleDatRegion(truth.mapPath, 'STATE_LOCK'));
+}
+
 /** Every file the sgl_* tree needs, blob included. */
 const FIXTURE_FILES = [
   'sgl_app_top.spin2',
@@ -99,11 +115,13 @@ describe('ObjectCache invalidation — a changed input must not be served stale'
       mutateFile(t, 'sgl_svc_config.spin2', 'PUB reading() : value', 'PUB reading() : value | unused')
     );
     expect(warm.binary.equals(truth.binary)).toBe(true);
+    expectMapCorroborates(warm, truth);
   });
 
   test('depth-2 grandchild change invalidates', () => {
     const { warm, truth } = compileMutateRecompile(tree, (t) => mutateFile(t, 'sgl_fmt_util.spin2', 'digits := 1', 'digits := 2'));
     expect(warm.binary.equals(truth.binary)).toBe(true);
+    expectMapCorroborates(warm, truth);
   });
 
   // The headline defect. sgl_tick_leaf is reached ONLY through
@@ -112,6 +130,7 @@ describe('ObjectCache invalidation — a changed input must not be served stale'
   test('depth-3 leaf change invalidates the whole chain above it', () => {
     const { warm, truth } = compileMutateRecompile(tree, (t) => mutateFile(t, 'sgl_tick_leaf.spin2', 'TICK_STEP = 1', 'TICK_STEP = 7'));
     expect(warm.binary.equals(truth.binary)).toBe(true);
+    expectMapCorroborates(warm, truth);
   });
 
   // Distinct from the leaf case above, and the two must not be collapsed.
@@ -124,6 +143,7 @@ describe('ObjectCache invalidation — a changed input must not be served stale'
       mutateFile(t, 'sgl_shared_state.spin2', 'state_counter LONG  0', 'state_counter LONG  99')
     );
     expect(warm.binary.equals(truth.binary)).toBe(true);
+    expectMapCorroborates(warm, truth);
   });
 
   // --- DAT FILE blob (row A7) -------------------------------------------
@@ -133,6 +153,7 @@ describe('ObjectCache invalidation — a changed input must not be served stale'
       mutateBlob(t, 'sgl_cfg_defaults.dat', Buffer.from('SGLCFGv2\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10', 'binary'))
     );
     expect(warm.binary.equals(truth.binary)).toBe(true);
+    expectMapCorroborates(warm, truth);
   });
 
   // --- The DAT-singleton guarantee --------------------------------------

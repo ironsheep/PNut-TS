@@ -1,8 +1,16 @@
 /** @format */
 
 // Persistent object cache for avoiding recompilation of identical child objects.
-// Content-addressed storage: SHA-256(preprocessed_source + overrides + compiler_version
-//                                    + enable_debug + cache_format_version)
+// Content-addressed storage. The key is the SHA-256 of, in order:
+//   preprocessed_source + overrides + compiler_version + enable_debug
+//   + cache_format_version + defSymbols (v1.54.5) + resolution context (v1.55.4)
+// "Resolution context" is the top-level file's directory plus the ordered -I
+// list, stored relative to the cache directory's parent (see scopedPath). It is
+// part of the key because a `DAT ... FILE` name resolves against the top-level
+// file's directory, so one library object legitimately compiles to different
+// bytes for two different applications in the same project.
+// computeKey() is the authority on this list — if you add an input there, update
+// this comment in the same edit.
 //
 // On-disk layout per entry (key = SHA-256 hex):
 //   <key>.bin  — compiled child binary (load-bearing)
@@ -14,6 +22,13 @@
 //                produced when --debug was on at store time)
 //   <key>.meta — human-readable JSON diagnostic (optional, never required by
 //                the hit path)
+//   <key>.dep  — dependency manifest: {resolvedPath, contentHash} for EVERY
+//                source file in this child's whole subtree, plus every file it
+//                embeds with `DAT ... FILE` (load-bearing; read and re-validated
+//                BEFORE the .bin is handed back). It is validated beside the key,
+//                never hashed into it. This is what makes a cache hit safe to
+//                prune the recursion with: the entry vouches for its descendants,
+//                which are never visited on a hit.
 //
 // Why .dbg exists: each debug() call bakes a brkCode (an index into the
 // compile's shared DebugData table) into the child's binary. The actual

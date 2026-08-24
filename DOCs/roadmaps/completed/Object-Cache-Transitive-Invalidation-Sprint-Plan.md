@@ -1,5 +1,14 @@
 # Object Cache Transitive Invalidation — Sprint Plan
 
+> **STATUS: CLOSED — 2026-08-24.** Twelve of thirteen sections certified SHIPPED
+> against current code; §12 (the P2KB `map_caveat` retraction) is PARTIAL and
+> carried over, blocked outside this repository. §6 and §9 audited PARTIAL at
+> closeout and were fixed before closing. Shipped in build **1.55.4**, tag
+> `v1.55.4` on `main`.
+> Closeout audit: [`2026-08-24-Object-Cache-Transitive-Invalidation-CLOSEOUT.md`](2026-08-24-Object-Cache-Transitive-Invalidation-CLOSEOUT.md)
+> — read it for per-section evidence, the exit baseline, the six deliverables
+> that shipped outside this plan, and carryover items.
+
 **Status:** started 2026-08-21
 **Planned:** 2026-08-21
 **Ships as:** 1.55.4 (`package.json`; mirror to `package-lock.json` and `src/pnut-ts.ts`)

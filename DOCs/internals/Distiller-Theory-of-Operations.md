@@ -58,6 +58,14 @@ class DistillerRecord {
   methodCount: number;     // Number of PUB/PRI methods
   objectSize: number;      // Total size in bytes
   subObjectIds: number[];  // Child object references (bit 31 = completion flag)
+
+// NOTE (v1.55.4): `subObjectIds` still describes the binary object tree and is
+// still what dedup compares. It is NO LONGER how the `.map` file's hierarchy is
+// derived. Map generation now reads an explicit instance store built during
+// compilation (`src/classes/objInstanceInfo.ts`), because walking `subObjectIds`
+// could not distinguish two declarations of one object and could not see the
+// descendants of a cache-served child at all. `mapGenerator` still reads
+// distiller records — but by RECORD index, never by objectId.
 }
 ```
 
