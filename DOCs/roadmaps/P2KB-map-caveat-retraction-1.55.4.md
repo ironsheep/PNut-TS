@@ -63,6 +63,18 @@ Rebuilt from the fixtures the entry itself specifies (`forking_a_dat_region`
 and `cascade_through_tiers`) and read the same way it says to read them —
 `-m`, then the `Objects:` count and DAT addresses.
 
+> **This is now runnable, not just recorded.** The table below was originally
+> produced by hand from the entry's prose. It is now reproduced by
+> `npm run p2kb-verify` (`scripts/p2kb-dedup-verify`), which stages the entry's
+> fixtures, compiles each with `-m`, checks the `Objects:` count against the
+> value the entry records, and dumps the `MEMORY LAYOUT` label columns so the
+> `map_caveat` question can be answered by looking rather than by trusting this
+> document. Exit 0 = every case matched; exit 1 names which diverged.
+>
+> The entry self-flags *"compiler-coupled behaviour: re-measure rather than
+> assume"*, so this is owed again at every compiler version bump — which is why
+> it is a script and not a paragraph.
+
 | Case | v1.55.0 (entry) | v1.55.4 (measured) | |
 |---|---|---|---|
 | identical overrides (100,100), seeded probe | `Objects: 2`, one shared DAT | `Objects: 2`, one shared DAT | ✅ |
@@ -138,17 +150,31 @@ Replace `map_caveat:` with:
     Fixed in pnut-ts 1.55.4. Through 1.55.3 the multi-instance .map could show
     instance-name / source-name columns that were internally inconsistent —
     instances missing, names attached to the wrong source file, or placeholder
-    names like object_12 — and those labels were not to be trusted. As of
-    1.55.4 the hierarchy, memory layout and address index name every instance
-    and its source correctly, including an object declared more than once.
+    names like object_12 — and those labels were not to be trusted. SYMBOL
+    INDEX and ADDRESS INDEX also reported one row per SOURCE FILE, so when an
+    override forked a file into several images only the first image's addresses
+    appeared.
 
-    One limitation remains: SYMBOL INDEX reports one row per SOURCE FILE, so
-    when an override forks a file into several images only the first image's
-    DAT address appears there. For per-instance DAT addresses read MEMORY
-    LAYOUT or ADDRESS INDEX, which list every image.
+    As of 1.55.4 the hierarchy, memory layout and both index sections name
+    every instance and its source correctly, including an object declared more
+    than once, and both index sections report per INSTANCE rather than per
+    source file. Instances are named by path (A.LEAF, B.LEAF) and the MEMORY
+    LAYOUT Overrides column shows the override that forked each image. Where
+    several instances genuinely share one region the row names them (A+1).
 
-    The Objects: count is reliable in every version.
+    On 1.55.3 and earlier, prefer the Objects: count and the DAT symbol
+    addresses. The Objects: count is reliable in every version.
 ```
+
+> **Corrected 2026-08-24 — do not use an earlier draft of this block.** The
+> version drafted on 2026-08-22 retained a limitation reading *"SYMBOL INDEX
+> reports one row per SOURCE FILE… For per-instance DAT addresses read MEMORY
+> LAYOUT or ADDRESS INDEX."* That was true when it was written and **was fixed
+> later in the same release** by the index-space work — the punch-list item
+> recording it is archived as CLOSED in 1.55.4. Publishing it would have
+> steered P2 developers away from the section that now answers their question.
+> Caught by `npm run p2kb-verify`, which now asserts the per-instance behaviour
+> rather than printing it.
 
 No `toolchain:` change is proposed — the field no longer exists. If a version
 anchor is still wanted, `verification.method` is where it now belongs; a line
@@ -170,3 +196,26 @@ against the shipping build. It is confirmed, not taken on faith.
 Also note `p2kb-mcp` serves a boot-time snapshot and does not reload on
 republish: after this amendment is applied, a stale read needs a session
 restart, not `p2kb_refresh`.
+
+## Reproducing this yourself
+
+```
+npm run p2kb-verify
+```
+
+Measured 2026-08-24 against v1.55.4: **6 of 6 cases matched the entry.** Both
+halves of the proposed amendment are demonstrated by its output rather than
+asserted here:
+
+- **The labels are correct.** The fork case prints two clearly distinguished
+  rows — `drv  A  BUS_TAG=100` at `$00024` and `drv  B  BUS_TAG=200` at
+  `$00038` — with the right source file, the right instance name, and the
+  override that caused the fork. The 3-tier case names instances by path
+  (`A.LEAF`, `B.LEAF`) with each tier's forwarded value. A singleton prints
+  `A+1`, naming the region's occupants rather than silently showing one.
+- **The per-source-file collapse is gone.** In that same forked program
+  `SYMBOL INDEX` prints **two** `TAG` rows — `drv  A  DAT  $0002C` and
+  `drv  B  DAT  $00040` — and those addresses fall inside A's region
+  (`$00024-$00035`) and B's (`$00038-$00049`) respectively. The harness asserts
+  this rather than displaying it, because a draft of the amendment retained a
+  limitation that had already been fixed.

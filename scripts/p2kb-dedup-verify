@@ -1,0 +1,204 @@
+#!/bin/bash
+# p2kb-dedup-verify — re-measure the P2 Knowledge Base entry
+# `p2kbSpin2ObjectImageDedup` against the compiler in dist/.
+#
+# WHY THIS EXISTS
+#   That entry documents object-image deduplication using measurements taken
+#   against a specific pnut-ts build, and it self-flags:
+#       "Compiler-coupled behaviour: re-measure rather than assume if a result
+#        surprises you."
+#   Its fixtures live in the entry, not in this repo, so verifying it used to
+#   mean rebuilding them by hand from prose. This script stages them, compiles
+#   each with -m, and reports the exact signals the entry's own
+#   `verification.method` says to read: the `Objects:` count and the DAT symbol
+#   addresses.
+#
+#   It also dumps the MEMORY LAYOUT label columns, because the entry carries a
+#   `map_caveat` warning P2 developers away from those labels. Whether that
+#   caveat is still warranted is a thing you should SEE, not take on trust.
+#
+# USAGE
+#   npm run build && ./scripts/p2kb-dedup-verify [-k]
+#     -k   keep the scratch directory and print its path
+#
+# EXIT
+#   0 = every case matched the entry's recorded measurement
+#   1 = at least one diverged — the entry needs re-measurement, or the
+#       compiler regressed. Read the dump before deciding which.
+
+set -u
+SCRIPT=${0##*/}
+KEEP=0
+[ "${1:-}" = "-k" ] && KEEP=1
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+PNUT="${REPO}/dist/pnut-ts.js"
+if [ ! -f "${PNUT}" ]; then
+  echo "${SCRIPT}: ${PNUT} not found — run 'npm run build' first" >&2
+  exit 1
+fi
+
+WORK="$(mktemp -d)"
+trap '[ "${KEEP}" -eq 0 ] && rm -rf "${WORK}"' EXIT
+
+PASS=0
+FAIL=0
+
+# --- the entry's fixtures, staged verbatim from its own code blocks ---------
+
+# Seeded driver: BUS_TAG reaches a DAT long, so an override changes image bytes.
+cat > "${WORK}/drv.spin2" <<'EOF'
+CON
+  BUS_TAG = -1
+DAT
+  tag  LONG  BUS_TAG
+PUB start() : r
+  r := tag
+EOF
+
+# Unseeded driver: BUS_TAG is never referenced, so an override cannot fork.
+cat > "${WORK}/drv_unref.spin2" <<'EOF'
+CON
+  BUS_TAG = -1
+DAT
+  tag  LONG  0
+PUB start() : r
+  r := tag
+EOF
+
+# 3-tier cascade: each tier seeds its own DAT and forwards to the child.
+cat > "${WORK}/casc_leaf.spin2" <<'EOF'
+CON
+  LEAF_TAG = -1
+DAT
+  ltag  LONG  LEAF_TAG
+PUB go() : r
+  r := ltag
+EOF
+cat > "${WORK}/casc_mid.spin2" <<'EOF'
+CON
+  MID_TAG = -1
+OBJ
+  leaf : "casc_leaf" | LEAF_TAG = MID_TAG
+DAT
+  mtag  LONG  MID_TAG
+PUB go() : r
+  r := mtag + leaf.go()
+EOF
+
+mk_top() {  # $1 = filename, $2... = OBJ lines
+  local out="${WORK}/$1"; shift
+  { echo "OBJ"
+    for line in "$@"; do echo "  ${line}"; done
+    echo "PUB main() : r"
+    echo "  r := a.${CALL}() + b.${CALL}()"
+  } > "${out}"
+}
+
+# --- runner ----------------------------------------------------------------
+
+run_case() {
+  local label="$1" top="$2" expect="$3" note="$4"
+  local base="${top%.spin2}"
+  ( cd "${WORK}" && node "${PNUT}" -m "${top}" >/dev/null 2>&1 )
+  local map="${WORK}/${base}.map"
+  if [ ! -f "${map}" ]; then
+    echo "  ✗ ${label}"
+    echo "      compile FAILED — no ${base}.map produced"
+    ( cd "${WORK}" && node "${PNUT}" -m "${top}" 2>&1 | grep -i error | head -3 | sed 's/^/      /' )
+    FAIL=$((FAIL+1)); return
+  fi
+  local got
+  got=$(grep -m1 'Objects:' "${map}" | tr -dc '0-9')
+  if [ "${got}" = "${expect}" ]; then
+    echo "  ✓ ${label}"
+    PASS=$((PASS+1))
+  else
+    echo "  ✗ ${label}"
+    echo "      entry says Objects: ${expect} — measured Objects: ${got}"
+    FAIL=$((FAIL+1))
+  fi
+  echo "      ${note}"
+  # The two signals the entry's verification.method names, plus the labels its
+  # map_caveat warns about. Printed for every case, pass or fail.
+  sed -n '/=== MEMORY LAYOUT ===/,/^=== /p' "${map}" \
+    | grep -E '^\s+\$[0-9A-F]' | sed 's/^/      /'
+  echo ""
+}
+
+echo ""
+echo "${SCRIPT}: re-measuring p2kbSpin2ObjectImageDedup"
+echo "  compiler: $(node "${PNUT}" --version 2>&1 | tr -d '\r')"
+echo "  scratch:  ${WORK}"
+echo ""
+echo "Each case prints its MEMORY LAYOUT rows: address range, size, source"
+echo "object, instance label, and overrides. 'A+1' means one region shared by"
+echo "A and one other instance."
+echo ""
+
+CALL=start
+mk_top t1.spin2 'a : "drv" | BUS_TAG = 100' 'b : "drv" | BUS_TAG = 100'
+run_case "identical overrides (100,100), seeded" t1.spin2 2 \
+         "one shared image, one shared DAT — the singleton"
+
+mk_top t2.spin2 'a : "drv" | BUS_TAG = 100' 'b : "drv" | BUS_TAG = 200'
+run_case "differing overrides (100,200), seeded" t2.spin2 3 \
+         "two images, independent DAT — the override changed image bytes"
+
+mk_top t3.spin2 'a : "drv_unref" | BUS_TAG = 100' 'b : "drv_unref" | BUS_TAG = 200'
+run_case "differing overrides, CON unreferenced" t3.spin2 2 \
+         "SILENTLY MERGED — wanted two, got one (the_silent_trap)"
+
+mk_top t4.spin2 'a : "drv" | BUS_TAG = 6' 'b : "drv"'
+run_case "one declaration overridden, sibling not" t4.spin2 3 \
+         "SILENTLY FORKED — wanted one, got two (the_other_silent_trap)"
+
+mk_top t5.spin2 'a : "drv" | BUS_TAG = 6' 'b : "drv" | BUS_TAG = 6'
+run_case "the same override applied to both" t5.spin2 2 \
+         "the correct form of the case above"
+
+CALL=go
+mk_top t6.spin2 'a : "casc_mid" | MID_TAG = 1' 'b : "casc_mid" | MID_TAG = 2'
+run_case "one top override, 3-tier seeded+forwarding chain" t6.spin2 5 \
+         "every DAT-bearing tier forked: top + 2 mid + 2 leaf"
+
+# --- map_caveat evidence, asserted rather than printed ---------------------
+
+echo "map_caveat evidence (entry says: 'do NOT trust those labels')"
+echo ""
+echo "  1. Forked instances must be distinguishable — name, source, override:"
+sed -n '/=== MEMORY LAYOUT ===/,/^=== /p' "${WORK}/t2.map" \
+  | grep -E '^\s+\$[0-9A-F]' | sed 's/^/       /'
+echo ""
+
+# A forked file has one DAT region per image. SYMBOL INDEX must report the DAT
+# symbol once PER INSTANCE, not once per source file.
+#
+# This is asserted, not merely displayed, because it is the exact claim that
+# went stale: it was TRUE when the retraction was drafted on 2026-08-22 and was
+# fixed later in the same release. An amendment retaining it would have told P2
+# developers to avoid the section that now answers their question.
+SYMROWS=$(sed -n '/=== SYMBOL INDEX ===/,$p' "${WORK}/t2.map" | grep -cE '^\s+TAG\s')
+echo "  2. SYMBOL INDEX must give per-INSTANCE DAT addresses (expect 2 rows):"
+sed -n '/=== SYMBOL INDEX ===/,$p' "${WORK}/t2.map" | grep -E '^\s+TAG\s' | sed 's/^/       /'
+if [ "${SYMROWS}" -eq 2 ]; then
+  echo "     ✓ ${SYMROWS} rows — one per image. The per-source-file collapse is gone."
+  PASS=$((PASS+1))
+else
+  echo "     ✗ ${SYMROWS} row(s) — expected 2, one per image."
+  echo "       The per-source-file collapse has returned. Any P2KB amendment"
+  echo "       claiming SYMBOL INDEX is per-instance is now wrong."
+  FAIL=$((FAIL+1))
+fi
+echo ""
+
+echo "----------------------------------------------------------------------"
+if [ "${FAIL}" -eq 0 ]; then
+  echo "${SCRIPT}: ${PASS} case(s) matched the entry. Every dedup claim holds."
+else
+  echo "${SCRIPT}: ${PASS} matched, ${FAIL} DIVERGED — the entry is stale for"
+  echo "           this build, or the compiler regressed. Read the dumps above."
+fi
+[ "${KEEP}" -eq 1 ] && echo "${SCRIPT}: scratch kept at ${WORK}"
+echo ""
+exit $([ "${FAIL}" -eq 0 ] && echo 0 || echo 1)

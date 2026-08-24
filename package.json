@@ -72,6 +72,7 @@
     "bld-dist": "npm run build && npm run esbuild && npm pack && npx @yao-pkg/pkg .",
     "gen-regold-tarball": "./scripts/gold/bundle.sh",
     "apply-regold-tarball": "./scripts/gold/apply.sh",
+    "p2kb-verify": "npm run build && ./scripts/p2kb-dedup-verify",
     "docs-check": "node scripts/docs-check.js"
   },
   "repository": {
