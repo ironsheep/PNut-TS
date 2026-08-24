@@ -56,7 +56,7 @@ Options:
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
          
 
-pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2025 Iron Sheep Productions, LLC., Parallax Inc.
+pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024-2026 Iron Sheep Productions, LLC., Parallax Inc.
 pnut-ts: * Version 1.55.4, {buildDateHere}
 ```
 

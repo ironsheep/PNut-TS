@@ -125,6 +125,28 @@ The version string lives in **three** places and all three must agree:
       (e.g. 1.55.x for PNut v55). When the PNut version bumps, the patch resets
       to 0; within a PNut version only the patch digit is ours to advance.
 
+#### Copyright year — only on the first release of a new calendar year
+
+The notice is a **range**, `2024-<current year>`. 2024 is the year of first
+publication and never changes; only the end of the range advances, and only when
+a release falls in a year the range does not yet cover. Do **not** replace 2024
+with the current year — that discards the first-publication year, which is the
+half with legal weight.
+
+Three places must agree, and one of them prints on every compiler run:
+
+- [ ] `LICENSE` — the `Copyright (c)` line
+- [ ] `copyright` — the `Copyright ©` line
+- [ ] `src/pnut-ts.ts` — `signOnCompiler`, the banner
+- [ ] `CommandLine.md` — the banner is reproduced in its transcript; regenerate
+      it from the built compiler rather than hand-editing
+      (`node dist/pnut-ts.js --help`)
+
+They drifted before this was written down: `LICENSE` and `copyright` said 2024
+while the banner said 2025, and nothing detects it — the `packaging` area of
+`DOCs/doc-coverage.json` governs no documents, so `docs-check` cannot see any of
+these files.
+
 ---
 
 ## Release Build
