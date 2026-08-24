@@ -4,6 +4,7 @@
 **Plan:** `DOCs/roadmaps/completed/Object-Cache-Transitive-Invalidation-Sprint-Plan.md`
 **Shipped as:** v1.55.4 (tag `v1.55.4`, commit `b00940d`)
 **Tasks:** «#27»–«#44» (18), all complete
+**Retrospective:** [`2026-08-24-Object-Cache-Transitive-Invalidation-Retrospective.md`](2026-08-24-Object-Cache-Transitive-Invalidation-Retrospective.md)
 
 ---
 
