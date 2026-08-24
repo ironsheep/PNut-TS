@@ -61,9 +61,9 @@
 ## Quality and efficiency observations
 
 - **Estimates ran ~12× actuals** — 29h 50m estimated, 2h 31m tracked, across 18
-  tasks. **Fourth sighting of the same ratio.** It is very likely a units
-  mismatch (human-hours estimated, agent wall-clock recorded) rather than
-  estimation error, and it still has no ruling.
+  tasks. Recorded as an observation only: Stephen ruled on 2026-08-24 that this
+  is **never** a concern and needs no action. The gap is useful to him as a read
+  on how an agent models effort, not as a defect.
 - **Half the sprint shipped outside the plan** — six deliverables («#39»–«#44»)
   with no plan section. Not a planning failure in itself; they were discovered by
   executing. But nothing in the closeout format asks for plan coverage, so a
@@ -114,7 +114,7 @@ sidecar-swap corruption remains undetected (punch 5d).
 | Compatibility-impact plan-close gate (2026-08-07) | **Promote** — adopted, certified twice, re-measured against central at v9 and still central-absent. Needs the generality gate + owner-judgment override. |
 | "Excluded" row silently asserts the doc is TRUE (2026-08-09) | **Adopted**, `certified: PENDING`. Note: this sprint's misses were on the *Update* side, not the Excluded side — see methodology lesson 1. |
 | `DISPATCH_MODEL` precedence + dispatch conserves-not-clears (2026-08-24) | **Proposal** — fleet-wide, not project-shaped; central already has the session's write-up. |
-| Estimate vs. actual ~12× (2026-08-08) | **Deferred — fourth sighting.** Past the three-retrospective threshold. Needs an explicit address-now or closed-no-change ruling from Stephen. |
+| Estimate vs. actual ~12× (2026-08-08) | **Closed-no-change 2026-08-24, permanently, by Stephen.** The variance is not a defect and needs no correction, ever. He reads it as a signal about how an agent models effort versus how he does — which is information he wants, not a process problem to fix. Entry deleted from the buffer; do not re-open it on a fifth sighting. |
 | planning→execution handoff boundary (2026-08-07) | **Deferred** — not exercised this sprint. |
 | External static-analysis triage (2026-08-08) | **Deferred** — no analyzer run this sprint. |
 | Per-task `simplify` fan-out on micro-diffs (2026-08-09) | **Deferred** — not exercised. |

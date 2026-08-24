@@ -50,9 +50,10 @@ plan that describes half the sprint is a planning signal, and it belongs in the
 retrospective rather than being absorbed silently.
 
 **Estimates and actuals differ by roughly 12×.** 29h 50m estimated across 18
-tasks; 2h 31m of recorded todo-mcp wall-clock. This is the fourth sighting of the
-same ratio and it remains unresolved pending Stephen's ruling on what an estimate
-denotes. Tracked in the promotion buffer.
+tasks; 2h 31m of recorded todo-mcp wall-clock. **Recorded as an observation, not
+a finding** — Stephen ruled on 2026-08-24 that this variance needs no action, now
+or later. It is useful to him as a read on how an agent models effort versus how
+he does. Not tracked further.
 
 **Two Documentation Blast Radius rows the plan declared were never touched** —
 `TEST/MAP-tests/README.md` and `DOCs/internals/Distiller-Theory-of-Operations.md`.
@@ -80,7 +81,8 @@ and the new suites from «#41»–«#44».
 1. **§12 — apply the P2KB `map_caveat` amendment.** The prepared text is in
    `DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md:132-171`. Until it lands,
    `p2kbSpin2ObjectImageDedup` tells P2 developers to distrust `.map` instance
-   and source labels that are now correct. Outside this repo; needs Stephen.
+   and source labels that are now correct. **In progress in the P2KB project as
+   of 2026-08-24** — outside this repository and not this project's to drive.
 2. **Punch-list §13** — documentation residue from the release sweep
    (`SPIN2-BIN-Format.md` citation audit, `Testing.md`, `DOCs/README.md` links,
    the generated coverage report, the empty `packaging` doc area, and the
