@@ -15,7 +15,7 @@ Reimplementation Pnut for Windows in a platform agnostic language.
 
 ## We welcome testing help
 
-While this is no longer our first release, we hope is that our community can help us expand our testing beyond what we've been able to do to help us find any compilation issues we may not have found. Our regression test suite is reasonably large - as of v1.55.4 it runs 393 tests, of which 325 are individual .spin2 compiles, and it generates coverage reports that let us quickly find regions of code we haven't tested - but there is no such thing as too much testing!
+While this is no longer our first release, we hope is that our community can help us expand our testing beyond what we've been able to do to help us find any compilation issues we may not have found. Our regression test suite is reasonably large - as of v1.55.5 `npm test` runs 426 tests across 26 suites, 267 of which compile an individual .spin2 fixture, and it generates coverage reports that let us quickly find regions of code we haven't tested - but there is no such thing as too much testing!
 
 The page [Testing PNut-TS](https://github.com/ironsheep/PNut-TS/blob/main/Testing.md) will help you learn how to test and identify what to report when you find an issue.
 
@@ -49,6 +49,7 @@ The features of this new implementation are:
 - A persistent object cache that skips recompiling child objects whose inputs have not changed - including inputs further down the tree, such as an object your object uses, or a file embedded with `DAT ... FILE` (as of v1.55.4)
 - `--cache-verify` proves a cached build is honest: it compiles the project a second time without the cache, in a separate process, and fails the build if the two results differ (as of v1.55.4)
 - A warning when one build reaches byte-identical source through two different paths, naming both files - the build still succeeds, but duplicated source is a structural smell only the compiler can see (as of v1.55.4)
+- The cache is checked for correctness, not just for speed: as of v1.55.5 a cached object also carries its nested objects' `debug()` information, so a cached build with `-d` produces the same binary as an uncached one whichever program filled the cache first (upgrading discards any existing cache, so the first build after it recompiles)
 - Memory map files (`-m`) describing object structure and memory allocation, including one entry per *instance* when an object is used more than once (the `.map` format changed in v1.55.4 - see the CHANGELOG if you parse these files)
 - Internal table-size-limits are now easy to adjust if we find a need.
 

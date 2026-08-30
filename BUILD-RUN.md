@@ -75,15 +75,15 @@ Do a test lint & build on the project.
 ```bash
 $ npm run build
 
-> p2-pnut-ts@0.43.0 prebuild
+> p2-pnut-ts@1.55.5 prebuild
 > mkdir -p dist/ext && ./scripts/prepExt
 
 
-> p2-pnut-ts@0.43.0 build
+> p2-pnut-ts@1.55.5 build
 > tsc
 
 
-> p2-pnut-ts@0.43.0 postbuild
+> p2-pnut-ts@1.55.5 postbuild
 > chmod +x dist/pnut-ts.js
 
 ```
@@ -92,15 +92,14 @@ You can see available scripts in the package.json by entering: <BR>(**NOTE**: *n
 
 ```bash
 $ npm run
-Lifecycle scripts included in p2-pnut-ts@0.43.0:
+Lifecycle scripts included in p2-pnut-ts@1.55.5:
+  prepack
+    npm run esbuild-base -- --minify
   pretest
     npm run build && npm run lint
   test
     npm run build && jest -c smm.jestconfig.js
-
-available via `npm run-script`:
-  prepack
-    npm run esbuild-base -- --minify
+available via `npm run`:
   esbuild-base
     npm run copy-ext && esbuild ./src/pnut-ts.ts  --bundle --outdir=./out --entry-names=[dir]/../out/[name] --format=cjs --platform=node && node scripts/insertBuildDate.js
   esbuild
@@ -123,6 +122,8 @@ available via `npm run-script`:
     npm run build && jest -c jest-config/jest-full-config.json
   test-datpasm
     npm run build && jest -c jest-config/jest-datpasm-only-config.json
+  test-encoding
+    npm run build && jest -c jest-config/jest-encoding-only-config.json
   test-dbg
     npm run build && jest -c jest-config/jest-dbg-only-config.json
   test-ext
@@ -133,40 +134,38 @@ available via `npm run-script`:
     npm run build && jest -c jest-config/jest-cov-only-config.json
   test-lrg
     npm run build && jest --verbose -c jest-config/jest-large-only-config.json
+  test-lang
+    npm run build && jest --verbose -c jest-config/jest-lang-only-config.json
   test-pre
     npm run build && jest --verbose -c jest-config/jest-preproc-only-config.json
   test-exc
     npm run build && jest -c jest-config/jest-except-only-config.json
+  test-cleanup
+    npm run build && jest --runInBand -c jest-config/jest-cleanup-only-config.json
   test-obj
     npm run build && jest -c jest-config/jest-obj-only-config.json
+  test-inc
+    npm run build && jest -c jest-config/jest-include-only-config.json
+  test-cache
+    npm run build && jest -c jest-config/jest-cache-only-config.json
+  test-cache-sweep
+    npm run build && jest --runInBand -c jest-config/jest-cache-sweep-only-config.json
+  cache-fuzz
+    npm run build && sh scripts/cache-order-fuzz.sh
   test-var
     npm run build && jest -c jest-config/jest-var-only-config.json
   test-loader
     npm run build && jest -c jest-config/jest-loader-only-config.json
   test-spin
     npm run build && jest -c jest-config/jest-spin-only-config.json
-  test-cache
-    npm run build && jest -c jest-config/jest-cache-only-config.json
-  test-cache-sweep
-    npm run build && jest --runInBand -c jest-config/jest-cache-sweep-only-config.json
   test-map
     npm run build && jest -c jest-config/jest-map-only-config.json
-  test-inc
-    npm run build && jest -c jest-config/jest-include-only-config.json
-  test-encoding
-    npm run build && jest -c jest-config/jest-encoding-only-config.json
-  test-lang
-    npm run build && jest --verbose -c jest-config/jest-lang-only-config.json
-  test-langfeat
-    npm run build && jest -c jest-config/jest-langfeat-only-config.json
-  test-cleanup
-    npm run build && jest --runInBand -c jest-config/jest-cleanup-only-config.json
-  test-v52a
-    npm run build && jest -c jest-config/jest-v52a-only-config.json
   test-wummi
     npm run build && jest -c jest-config/jest-wummi-only-config.json
-  docs-check
-    node scripts/docs-check.js
+  test-langfeat
+    npm run build && jest -c jest-config/jest-langfeat-only-config.json
+  test-v52a
+    npm run build && jest -c jest-config/jest-v52a-only-config.json
   test-full-only
     npm run build && jest -c jest-config/jest-full-only-config.json
   test-short-only
@@ -181,6 +180,8 @@ available via `npm run-script`:
     ./scripts/fmCov
   jest-clear
     rm -rf jest-coverage && jest --clearCache
+  jest-show
+    jest --showConfig
   jest-only
     jest
   watch
@@ -189,8 +190,22 @@ available via `npm run-script`:
     eslint ./src --ext .ts,.tsx
   prettier-format
     prettier --config .prettierrc.json 'src/**/*.ts' --write
+  audit-errors
+    npx ts-node scripts/audit-error-codes.ts
+  perf
+    npm run build && node dist/tests/PERF/perf-benchmark.js
+  perf-compare
+    node dist/tests/PERF/perf-compare.js
   bld-dist
-    npm run build && npm run esbuild && npm pack && pkg .
+    npm run build && npm run esbuild && npm pack && npx @yao-pkg/pkg .
+  gen-regold-tarball
+    ./scripts/gold/bundle.sh
+  apply-regold-tarball
+    ./scripts/gold/apply.sh
+  p2kb-verify
+    npm run build && ./scripts/p2kb-dedup-verify
+  docs-check
+    node scripts/docs-check.js
 ```
 
 Commands in this list are described in more detail below. See the "**Container Built-in Commands**" reference.

@@ -17,7 +17,7 @@ Our new PNut-TS compiler will show you the following when you specify `-h` or `-
 ```text
 PNut-TS: Usage: pnut-ts [options] filename
 
-Propeller Spin2 compiler - v1.55.4
+Propeller Spin2 compiler - v1.55.5
 
 Options:
   -V, --version               Output the version number
@@ -57,7 +57,7 @@ Options:
          
 
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024-2026 Iron Sheep Productions, LLC., Parallax Inc.
-pnut-ts: * Version 1.55.4, {buildDateHere}
+pnut-ts: * Version 1.55.5, {buildDateHere}
 ```
 
 These options should already make sense but here's a light-weight recap:
@@ -73,7 +73,7 @@ These options should already make sense but here's a light-weight recap:
 | <pre>-a, --altbin</pre> | use alternate `.binary` suffix vs. `.bin` |
 | <pre>-m, --map</pre> | generate a memory map file (.map) describing the compiled object structure, memory allocation and multi-object relationships |
 | <pre>-C, --cache,<br>--cache-dir \<dir\>,<br>--cache-clear</pre> | control the persistent object cache, which skips recompiling child objects whose inputs have not changed. As of v1.55.4 "inputs" covers the whole subtree — an object used by an object you use, and any file embedded with `DAT ... FILE` — so editing a file several levels down invalidates everything above it. Before v1.55.4 only a direct dependency was tracked. `--cache-dir` places the cache somewhere other than `.pnut-cache` in the current directory. `--cache-clear` empties it first, and works even when no source file is given. A cached object is also tied to the directory of the top-level file it was built for and the `-I` list in force, so two applications in one project each build their own copy of a shared library object. |
-| <pre>--cache-verify</pre> | compile the project twice — once using the cache and once ignoring it — and fail the build if the two results differ. Implies `-C`. The uncached reference compile runs first, as a separate process, so nothing about the cached build can influence it. On success the compiler reports `Object cache verified: output matches an uncached build`; on failure it names the artifact that disagreed and exits non-zero. Use it when you suspect a cached build, or in CI on a project layout your own tests do not cover. |
+| <pre>--cache-verify</pre> | compile the project twice — once using the cache and once ignoring it — and fail the build if the two results differ. Implies `-C`. The uncached reference compile runs first, as a separate process, so nothing about the cached build can influence it. On success the compiler reports `Object cache verified: output matches an uncached build`; on failure it names the artifact that disagreed and exits non-zero, leaving no binary on disk. When the two binaries are the **same size** it reports the shared size and the first differing byte, counted from 1 so it matches `cmp` (as of v1.55.5) — an equal-size mismatch is a real case, not a rounding error. Use it when you suspect a cached build, or in CI on a project layout your own tests do not cover. |
 | <pre>-q, --quiet,<br>-v, --verbose</pre> | control how little or how much extra messaging is output from the compiler |
 | <pre>-I \<dir...\>, --Include \<dir...\>,<br>-U \<symbol...\>, --Undefine \<symbol...\>,<br>-D \<symbol...\>, --Define \<symbol...\> | Are all **preprocessor directives** where:<br> -I adds search directories containing files to be included (using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`)<br> -D defines one or more symbols on the command line (*Equivalent to #define SYMBOL but affects all files in the compilation effort.*)<br> -U prevents a `#pragma exportdef` of the named symbol from taking effect, keeping that symbol private to the file that defined it.<BR>&nbsp;&nbsp;(**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*) |
 
@@ -113,10 +113,11 @@ them silently diverges from the other. Declaring the *same* object several times
 is ordinary Spin2 and does not warn — only two distinct paths holding identical
 bytes do.
 
-**Upgrading to v1.55.4 discards any existing cache.** The on-disk format changed,
-so the first compile after upgrading recompiles everything. This is intended:
+**A release that changes the cache format discards any existing cache.** The
+first compile after such an upgrade recompiles everything. This is intended:
 entries written by earlier versions could be stale in ways those versions could
-not detect.
+not detect. Both v1.55.4 and v1.55.5 changed the format, so upgrading across
+either boundary rebuilds once.
 
 And of course `-h` or `--help` produces the output as shown above.
 

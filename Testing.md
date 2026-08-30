@@ -86,6 +86,43 @@ PNut v43 and PNut-TS v1.43.0 count these bytes differently. So just ignore any d
 
 ![Cmp Script output MD5](./DOCs/images/diff-removed-np.png)<BR>**FIGURE 6:** Redundant Obj Bytes Removed just not present, OK!
 
+## If you use the object cache
+
+The object cache (`-C` / `--cache`) skips recompiling child objects whose inputs
+have not changed. It is a large speed win on a multi-object project, and it is
+also the one part of the compiler that can hand you a **wrong binary while
+reporting success** — a cache defect looks exactly like a good build until you
+compare bytes.
+
+So if you build with `--cache`, add one more step to the checks above:
+
+```bash
+pnut-ts --cache-verify -d -m my-top-level.spin2
+```
+
+`--cache-verify` compiles your project **twice** — once using the cache and once
+ignoring it, the uncached one first and in a separate process so nothing about
+the cached build can influence it — and fails the build if the two results
+differ. On success it prints `Object cache verified: output matches an uncached
+build`. On failure it names the artifact that disagreed, exits non-zero, and
+leaves **no binary on disk**, so a bad image cannot be flashed by accident.
+
+Two things worth knowing:
+
+- **It is opt-in.** A plain `--cache` build that hits this kind of defect emits
+  the wrong binary and exits 0 with no warning. If you script your builds, this
+  is a cheap thing to run in CI on a layout your own tests do not cover.
+- **A mismatch is worth reporting, always.** It means a cache hit served content
+  a fresh compile would not have produced. Include the command line, the
+  `--cache-verify` output, and — if you can — the sources, since these defects
+  depend on the *shape* of your object tree and on which program filled the
+  cache first. Two such defects were found and fixed in v1.55.5 exactly this
+  way, from a user's reproducer.
+
+**After upgrading the compiler**, expect the first build to be slow: a release
+that changes the cache format discards every existing entry, and the first
+compile afterwards recompiles everything. That is intended, not a fault.
+
 ## Send us your project
 
 You've compiled your project and have found differences that appear to be more than any of the expected differences.  In this case, we would like you to send us your project (.zip of all files needed to compile your project) and a narrative describing what you found to be different.  Screen captures are good here too.  (Send to **stephen "at" ironsheep.biz**)  We will then perform the same steps you did and inspect everything ourselves. If you did indeed find a compiler issue, then we will make a smaller version of your code which causes the same failure, enter this new code into our regression test suite, find and fix the problem, then record a new issue in our repostory annotating the problem we found and how it was fixed along with indicating which version of the compiler will have the corresponding fix so that your code conpiles without error.

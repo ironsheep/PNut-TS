@@ -20,7 +20,7 @@ stored — the recursion gate is `depth > 0`
 (`src/classes/compiler.ts:304`).
 
 This document describes the mechanism as it stands at v1.55.4, with
-`CACHE_FORMAT_VERSION` 8.
+`CACHE_FORMAT_VERSION` 9.
 
 ## Command-line surface
 
@@ -236,7 +236,7 @@ read by a human staring at a cache directory.
 ## `CACHE_FORMAT_VERSION`
 
 ```ts
-export const CACHE_FORMAT_VERSION = 8;
+export const CACHE_FORMAT_VERSION = 9;
 ```
 
 `src/classes/objectCache.ts:82`.
@@ -251,13 +251,44 @@ That is the property to reach for when a defect is found in what the cache
 stores or how it keys. Entries poisoned by the old behavior self-invalidate on
 upgrade; users do not have to be told to run `--cache-clear`.
 
-The three most recent bumps:
+The most recent bumps:
 
 | Version | What it was for |
 |---|---|
 | 6 | The `.dbg` sidecar gained `subtreeExports`, so a hit replays the `#pragma exportdef` symbols its skipped subtree would have pushed. |
 | 7 | The `.dep` dependency manifest was added, so a hit revalidates every file its subtree was built from. |
 | 8 | The resolution root and the `-I` list joined the key, and `CachedInstance` gained `overrides`. |
+| 9 | The `.dbg` sidecar became subtree-scoped in both halves — its record set is folded up from descendants rather than derived from a `debugRawData` count delta, and its `brkSites` now cover the descendants embedded in the stored `.bin` as well as the object's own region. |
+
+### Every sidecar is subtree-scoped
+
+An entry's `.bin` holds the object's own image **and its descendants'**, so
+every sidecar beside it has to describe the same span. As of format 9 they all
+do — `.dep`, `.sym`, the instance list, the `.dbg` record set and the `.dbg`
+brkSites. A new sidecar must be built that way or it re-opens a defect class
+that has now cost two releases.
+
+Both members of that class shipped in v1.55.5 and were the same mistake wearing
+different clothes:
+
+- **A delta over shared mutable state that other subtrees also write.** The
+  record set was captured as a `debugRawData` count delta. `injectRecord`
+  deduplicates — it returns the existing index without growing the table — so a
+  record an earlier *sibling* had already contributed was invisible to the
+  capture. The stored payload became a function of compile ORDER while the key
+  stayed a function of content: one key, two payloads, and whichever compile ran
+  first won.
+- **A payload captured at own-object scope.** `brkSites` covered only the
+  object's own region while the `.bin` carried its descendants' relocated code,
+  so on a hit the descendants' `brkCode` bytes were never re-patched and a
+  nested `debug()` pointed at another object's record. This one keeps the
+  binary's SIZE intact, so only byte comparison against an uncached build
+  catches it.
+
+The instrument for both is `npm run cache-fuzz` (`scripts/cache-order-fuzz.sh`):
+it primes a cache with program A, compiles B, and compares B against its
+uncached reference for every ordered pair. It needs no model of the cache, which
+is why it found the second defect unaided. **Run it after any change here.**
 
 ## The dependency manifest
 

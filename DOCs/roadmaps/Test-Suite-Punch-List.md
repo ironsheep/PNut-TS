@@ -557,42 +557,60 @@ at its head saying which half to trust.
 citing a symbol name over a line number wherever the line adds nothing — a symbol
 does not drift. Then remove the caution note and stamp `verified`.
 
-### 13b. `Testing.md` never mentions the object cache or `--cache-verify`
+### 13b. — closed 2026-08-30
 
-`Testing.md` walks a user through validating a release against `.GOLD` files. It
-does not mention the cache at all, and `--cache-verify` is now the most direct
-instrument a user has for the exact failure class 1.55.4 fixed. It belongs in the
-release-validation walkthrough.
+`Testing.md` gained an "If you use the object cache" section: what
+`--cache-verify` does, that it is opt-in so a plain `--cache` build ships a bad
+binary silently, that a mismatch is always worth reporting and what to include,
+and that the first build after a format bump is slow on purpose.
 
-### 13c. `DOCs/README.md` has three broken roadmap links and a thin internals index
+*Correction to the original entry:* it named `DOCs/internals/Testing.md`, which
+does not exist. The file is top-level `Testing.md`, linked from `README.md`.
 
-`Performance-Analysis-and-Optimization-Roadmap.md`,
-`Distiller-Extraction-Roadmap.md` and `Early-Deduplication-Fix-Plan.md` all moved
-to `DOCs/roadmaps/completed/` and the links were not updated. The `/roadmaps/`
-list also omits every cache document, and the `/internals/` index lists three
-documents out of 25 — including neither of the two added in 1.55.4.
+### 13c. — closed 2026-08-30
 
-### 13d. `Regression-Test-Coverage-Report.md` is a generated file behind its source
+All three roadmap links repaired (the documents had moved to
+`roadmaps/completed/`; the index now says so rather than linking into the void).
+The `/internals/` index went from 5 entries to the full set, grouped — compiler
+and output formats, runtime and silicon, DEBUG windows, usage guides, briefings
+— and the `/roadmaps/` list now names the punch list and both cache documents.
+Every relative link in the file was checked and resolves. The hour-estimate
+framing ("~600+ hours across all roadmaps") was dropped; it is not how this
+project plans.
 
-Its suite table has no `CACHE-tests` or `CACHE-SWEEP-tests` row and still reports
-13 `MAP-tests`. This is `generated` class — it needs a tooling regeneration, not
-a hand edit, or the next regeneration silently reverts the hand edit.
+### 13d. `Regression-Test-Coverage-Report.md` is marked generated but has no generator
 
-### 13e. `doc-coverage.json`: the `packaging` area has no documents
+**Sharpened 2026-08-30.** The original entry said it needs "a tooling
+regeneration, not a hand edit." Searched for that tooling: **nothing in
+`scripts/` or `package.json` produces this file.** It is classed `generated`
+with a do-not-hand-edit note, and no mechanism can refresh it — so it has sat at
+v1.51.7 (357 files, 18 categories) while the suite reached 426 tests across 26
+suites, 267 of them individual `.spin2` compiles.
 
-`PACKAGING.md` and `DOCs/RELEASE-PROCESS.md` both exist and are both classed
-`process`, which `docs-check` never evaluates for staleness. So a change to
-`.github/workflows/release.yml` or `package.json` can never stale any document —
-which is how `RELEASE-PROCESS.md`'s Release History table fell two releases
-behind without anything noticing. Either govern one of them against `packaging`,
-or accept the gap explicitly.
+That is the defect. The stale numbers are the symptom, and they will recur after
+any hand fix.
 
-### 13f. `LICENSE` and `copyright` say 2024 — Stephen's call
+**Done meanwhile:** a banner at the head of the document says every number in it
+is stale, gives the measured current figures, states that no generator exists,
+and points at `npx jest --runInBand --verbose -c smm.jestconfig.js` for the real
+count. A banner is safe against a future regeneration in a way that editing the
+body is not.
 
-Both read `Copyright (c) 2024` while the compiler banner says 2025 and the
-current year is 2026. Both files ship in every release archive. **Not changed at
-tag time:** a copyright notice is a legal statement, not a currency field, and
-updating one is not an agent's unilateral call.
+**Fix:** either write the generator and wire it to an npm script, or reclassify
+the document as hand-maintained and own it. Leaving it `generated` with no
+generator is the one option that keeps lying.
+
+### 13e. — closed 2026-08-30
+
+`DOCs/RELEASE-PROCESS.md` is now class `governed` covering `packaging`, so a
+change to `.github/workflows/release.yml` or `package.json` can stale it. Its
+Release History table also gained the 1.55.5 row it was missing. `docs-check`
+now reports `process=13 governed=60` where it read 14/59.
+
+### 13f. — closed 2026-08-24
+
+Both faces now read `2024-2026` as a range, decided by Stephen and applied in
+commit `c813767`.
 
 ---
 
