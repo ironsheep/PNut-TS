@@ -16,7 +16,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import { referenceArgs } from '../../utils/cacheVerify';
+import { firstDifferingByte, referenceArgs } from '../../utils/cacheVerify';
 import { fixturesDir, cleanupDir, cleanupOutputFiles } from './cacheFixtures';
 
 const toolPath = path.resolve(__dirname, '../../pnut-ts.js');
@@ -108,5 +108,36 @@ describe('--cache-verify', () => {
       const after = fs.readFileSync(path.join(dir, 'sgl_app_top.bin'));
       expect(Buffer.compare(before, after)).not.toBe(0);
     }, 60_000);
+  });
+});
+
+describe('firstDifferingByte', () => {
+  // Reported to the user beside a size, so it follows `cmp`'s convention:
+  // 1-based, and EOF-on-prefix counts as the position past the shorter buffer.
+  // Verified against cmp on the real §17 mismatch, which both put at byte 9566.
+  it('is 1-based, like the cmp output a reader will compare it against', () => {
+    expect(firstDifferingByte(Buffer.from([9, 2, 3]), Buffer.from([1, 2, 3]))).toBe(1);
+  });
+
+  it('finds a difference in the middle', () => {
+    expect(firstDifferingByte(Buffer.from([1, 2, 9, 4]), Buffer.from([1, 2, 3, 4]))).toBe(3);
+  });
+
+  it('finds a difference in the last byte', () => {
+    expect(firstDifferingByte(Buffer.from([1, 2, 9]), Buffer.from([1, 2, 3]))).toBe(3);
+  });
+
+  it('reports the position past the end when one buffer is a prefix of the other', () => {
+    expect(firstDifferingByte(Buffer.from([1, 2]), Buffer.from([1, 2, 3]))).toBe(3);
+  });
+
+  // The equal-length case is the one this exists for -- an identical-size
+  // mismatch is what the whole §17 defect class produces, and printing the
+  // same byte count twice reads like a broken checker.
+  it('handles equal-length buffers that differ, which is the case it exists for', () => {
+    const a = Buffer.alloc(64, 7);
+    const b = Buffer.alloc(64, 7);
+    b[40] = 8;
+    expect(firstDifferingByte(a, b)).toBe(41);
   });
 });

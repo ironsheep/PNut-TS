@@ -44,6 +44,15 @@ Cached builds with `-d` now reproduce an uncached build exactly, whichever progr
   **Rebuild once after upgrading.** Cache entries written by earlier versions
   are discarded automatically, so the first build after the upgrade recompiles.
 
+### Changed
+
+- **`--cache-verify` now says how two binaries differ when they are the same
+  size.** It reported `cached 9585 bytes, uncached 9585 bytes` — the same number
+  twice, which reads like a broken check rather than a finding. It now reports
+  the shared size and the first differing byte, numbered from 1 so it lines up
+  with `cmp`. Equal-size mismatches are exactly what the defects above produce,
+  so this is the message most likely to be read when it matters.
+
 ## v1.55.4 (2026-08-24)
 
 Cached builds now detect a change anywhere in the object tree, and `.map` files are correct when an object is used more than once.

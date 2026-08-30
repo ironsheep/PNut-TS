@@ -92,6 +92,24 @@ export function captureReference(context: Context): VerifySnapshot | undefined {
 }
 
 /**
+/**
+ * 1-based index of the first byte at which two buffers disagree.
+ *
+ * 1-based because it is read by a person beside `cmp`, which numbers bytes
+ * from 1. Returns the length of the shorter buffer plus one when one is a
+ * prefix of the other, which is the same convention `cmp` uses for EOF.
+ */
+export function firstDifferingByte(a: Buffer, b: Buffer): number {
+  const shared = Math.min(a.length, b.length);
+  for (let index = 0; index < shared; index++) {
+    if (a[index] !== b[index]) {
+      return index + 1;
+    }
+  }
+  return shared + 1;
+}
+
+/**
  * Compare what the cached build left on disk against the reference snapshot.
  *
  * Returns true when they agree. A mismatch names the artifact and the sizes,
@@ -108,7 +126,18 @@ export function verifyAgainstReference(context: Context, reference: VerifySnapsh
     } else {
       const cached = fs.readFileSync(outputs.binary);
       if (!cached.equals(reference.binary)) {
-        problems.push(`binary differs — cached ${cached.length} bytes, uncached ${reference.binary.length} bytes`);
+        // Say WHICH way it differs. An equal-length mismatch is a real and
+        // nastier case — the whole §17 defect class produces one — and
+        // reporting "cached 9585 bytes, uncached 9585 bytes" prints the same
+        // number twice, which reads like a broken checker at exactly the
+        // moment someone is deciding whether to trust it.
+        if (cached.length === reference.binary.length) {
+          problems.push(
+            `binary differs — same size (${cached.length} bytes), first difference at byte ${firstDifferingByte(cached, reference.binary)}`
+          );
+        } else {
+          problems.push(`binary differs — cached ${cached.length} bytes, uncached ${reference.binary.length} bytes`);
+        }
       }
     }
   }
