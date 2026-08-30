@@ -21,6 +21,20 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Cached builds with `-d` no longer drop a nested object's DEBUG data.** When
+  one program's build had already put an object's debug records in place,
+  compiling a *different* program that reached that object more deeply could
+  reuse a cached subtree and emit a binary missing those records. Because
+  dropping records renumbers the debug table, the emitted code of unrelated
+  objects changed too, and the build exited 0 with no warning. Reported by the
+  P2-uSD-FAT32-FS project against a 29-file tree, where the affected program
+  came out 221 bytes short.
+
+  **Rebuild once after upgrading.** Cache entries written by earlier versions
+  are discarded automatically, so the first build after the upgrade recompiles.
+
 ## v1.55.4 (2026-08-24)
 
 Cached builds now detect a change anywhere in the object tree, and `.map` files are correct when an object is used more than once.

@@ -16,13 +16,18 @@ import { compareObjOrBinFiles } from '../testUtils';
 // Shared scaffolding — see cacheFixtures.ts. Both cache suites use one copy of
 // these so neither drifts from the other.
 import {
+  StagedTree,
   cleanupCacheDir,
   cleanupDir,
   cleanupOutputFiles,
+  compileCold,
   compileSpin2,
+  compileUncached,
+  compileWarm,
   makeTempCacheDir,
   makeTextLines,
-  readMapForComparison
+  readMapForComparison,
+  stageTree
 } from './cacheFixtures';
 
 // ====================================================================
@@ -1298,6 +1303,143 @@ describe('ObjectCache Integration Tests', () => {
       // 30 second per-fixture timeout — even the slowest fixture (-d -O) is
       // well under this in practice. Generous to absorb CI noise.
       30_000
+    );
+  });
+
+  // ----------------------------------------------------------------------
+  // CROSS-PROGRAM priming. Everything above compiles ONE program cold then
+  // warm, so every entry it reads was written by the same compile that reads
+  // it. That is the shape the defect below escapes through: the poisoned entry
+  // is written by a DIFFERENT program, and is wrong only relative to a compile
+  // that never ran in the same process.
+  // ----------------------------------------------------------------------
+  describe('a cache primed by another program must not change what this one compiles to', () => {
+    const SIBREC_FILES = ['sibrec_leaf.spin2', 'sibrec_mid.spin2', 'sibrec_utils.spin2', 'sibrec_primer.spin2', 'sibrec_target.spin2'];
+
+    let tree: StagedTree;
+
+    beforeEach(() => {
+      tree = stageTree(SIBREC_FILES, 'sibrec');
+    });
+
+    afterEach(() => {
+      tree.cleanup();
+    });
+
+    // Reported by the P2-uSD-FAT32-FS project 2026-08-30
+    // (REF-CACHE-BUG/findings-260830) and reduced to this fixture graph.
+    //
+    // The primer declares `mid` at depth 1 AND `utils` at depth 1, so `mid`'s
+    // and `leaf`'s debug records enter the shared table BEFORE utils' subtree
+    // compiles. Utils' own `mid` is then a cache hit whose records dedup
+    // against the ones already present — injectRecord returns existing indices
+    // and does not grow the table — so a capture derived from a record COUNT
+    // sees nothing and stores a utils entry missing its grandchild's records.
+    //
+    // The target reaches `leaf` only at depth 2, so on a hit it never compiles
+    // leaf and those records are the only copy it will ever get. Byte equality
+    // against the uncached build is the gate: measured on the reporter's tree,
+    // both maps report identical CODE/DATA and PROGRAM totals, so a map-only
+    // assertion passes on a provably wrong binary.
+    it("does not drop a depth-2 grandchild's debug records when a sibling contributed them first", () => {
+      const reference = compileUncached(tree, 'sibrec_target.spin2', '-d');
+
+      compileCold(tree, 'sibrec_primer.spin2', '-d');
+      const afterPriming = compileWarm(tree, 'sibrec_target.spin2', '-d');
+
+      // The hit is the point — a miss here would pass for the wrong reason.
+      expect(afterPriming.stdout).toMatch(/Object cache: [1-9]\d* hit/);
+      expect(afterPriming.binary.length).toBe(reference.binary.length);
+      expect(afterPriming.binary.equals(reference.binary)).toBe(true);
+    }, 60_000);
+
+    // The same invariant stated on the stored artifact rather than on the
+    // output: a content-addressed key promises one payload per key. When the
+    // payload is derived from a delta over a table earlier siblings also write
+    // to, that promise silently depends on compile ORDER instead.
+    it('stores byte-identical sidecars for one key regardless of which program filled the cache', () => {
+      const viaPrimer = stageTree(SIBREC_FILES, 'sibrec-a');
+      const viaTarget = stageTree(SIBREC_FILES, 'sibrec-b');
+      try {
+        compileCold(viaPrimer, 'sibrec_primer.spin2', '-d');
+        compileCold(viaTarget, 'sibrec_target.spin2', '-d');
+
+        const sidecars = (dir: string): Map<string, string> => {
+          const found = new Map<string, string>();
+          for (const name of fs.readdirSync(dir)) {
+            if (name.endsWith('.dbg')) {
+              found.set(name, fs.readFileSync(path.join(dir, name), 'utf8'));
+            }
+          }
+          return found;
+        };
+
+        const fromPrimer = sidecars(viaPrimer.cacheDir);
+        const fromTarget = sidecars(viaTarget.cacheDir);
+
+        // Keys present in both caches describe the same object compiled the
+        // same way; their payloads must agree byte for byte.
+        const shared = [...fromTarget.keys()].filter((key) => fromPrimer.has(key));
+        expect(shared.length).toBeGreaterThan(0);
+        for (const key of shared) {
+          expect(fromTarget.get(key)).toBe(fromPrimer.get(key));
+        }
+      } finally {
+        viaPrimer.cleanup();
+        viaTarget.cleanup();
+      }
+    }, 60_000);
+
+    // ------------------------------------------------------------------
+    // KNOWN DEFECT, recorded rather than hidden. `it.failing` asserts the bug
+    // is STILL THERE: it passes while the binaries differ and turns into a
+    // loud failure the moment someone fixes it, at which point delete the
+    // `.failing` and keep the test.
+    //
+    // Found 2026-08-30 while auditing the reported defect for others of its
+    // class. Same family, different member: a payload captured at OWN-OBJECT
+    // scope while the artifact it describes is SUBTREE scope.
+    //
+    // A parent's cached .bin carries its descendants' relocated code, brkCodes
+    // and all, but `objImage.brkSites` only ever covers the parent's own
+    // region — measured on the reporter's tree, isp_rt_utilities stored a
+    // 29_860-byte blob whose 62 patch sites all lay at offsets 195-1661, and
+    // micro_sd_fat32_fs stored 33_890 bytes with ZERO sites while embedding a
+    // grandchild that had 7. So on a hit, injectRecord can legitimately return
+    // different indices, the parent's own brkCodes are patched to match, and
+    // the descendants' are left pointing at whatever now occupies their old
+    // indices.
+    //
+    // Nastier than the defect above because the SIZE is unchanged — only
+    // content moves — so a length assertion passes and only byte comparison
+    // catches it.
+    //
+    // Not fixed here because the fix is not local: descendant brkSites would
+    // have to be registered as compile_obj_blocks copies each child in, and
+    // then tracked through distillObjects, which REMOVES bytes and so shifts
+    // every region after a dropped duplicate.
+    // Punch list §17.
+    it.failing(
+      "patches brkCodes baked into a cached parent's DESCENDANTS, not just its own",
+      () => {
+        const shifted = stageTree([...SIBREC_FILES, 'sibrec_filler.spin2', 'sibrec_shifted.spin2'], 'sibrec-shift');
+        try {
+          const reference = compileUncached(shifted, 'sibrec_shifted.spin2', '-d');
+
+          // Store the utils entry from a compile where its subtree's records take
+          // the LOW table indices...
+          compileCold(shifted, 'sibrec_target.spin2', '-d');
+          // ...then hit it from a program that fills those indices with filler's
+          // records first, so the replay lands the subtree somewhere else.
+          const afterShift = compileWarm(shifted, 'sibrec_shifted.spin2', '-d');
+
+          expect(afterShift.stdout).toMatch(/Object cache: [1-9]\d* hit/);
+          expect(afterShift.binary.equals(reference.binary)).toBe(true);
+        } finally {
+          shifted.cleanup();
+        }
+      },
+      60_000
     );
   });
 });

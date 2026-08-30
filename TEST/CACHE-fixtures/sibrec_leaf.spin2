@@ -1,0 +1,10 @@
+' Sibling-dedup regression: the DEPTH-3 grandchild whose debug records go
+' missing. Its records are what a poisoned parent entry fails to carry.
+' Several distinct records so a partial loss is visible as a size change.
+PUB probe(mark) | i
+  debug("sibrec leaf enter: mark=", uhex_(mark))
+  i := 0
+  repeat 3
+    i += 1
+    debug("sibrec leaf step: i=", udec_(i))
+  debug("sibrec leaf exit")

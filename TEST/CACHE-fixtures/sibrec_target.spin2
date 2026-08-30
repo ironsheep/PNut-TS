@@ -1,0 +1,12 @@
+' Sibling-dedup regression: the TARGET whose binary comes out wrong.
+' Declares ONLY utils, so it reaches the leaf at depth 2 and never compiles it
+' itself -- every leaf record must arrive by replay from the utils entry.
+CON
+  _clkfreq = 200_000_000
+
+OBJ
+  utils : "sibrec_utils"
+
+PUB main() | v
+  v := $3C
+  utils.work(v)

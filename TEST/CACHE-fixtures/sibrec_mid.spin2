@@ -1,0 +1,9 @@
+' Sibling-dedup regression: the middle object (stands in for the SD driver).
+' Declares the leaf and carries NO debug() of its own, so every record in its
+' cached subtree belongs to the leaf -- which is what makes a dropped record
+' unambiguous rather than merged with the parent's own.
+OBJ
+  leaf : "sibrec_leaf"
+
+PUB run(value)
+  leaf.probe(value)

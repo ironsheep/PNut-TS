@@ -233,6 +233,32 @@ export class Compiler {
   private subtreeManifests: ManifestEntry[][] = [];
 
   /**
+   * Debug records contributed by each child that has finished compiling (or
+   * cache-hit) at the current recursion level, in THIS compile's index space.
+   *
+   * Exists because a count delta cannot see a record an earlier sibling
+   * already contributed. `injectRecord` deduplicates: it returns the existing
+   * index and does not grow the table when a matching record is already
+   * present. So `[recordCountAtKey+1 .. recordCountAfter]` captures only the
+   * records a subtree added that nothing before it had added — which makes the
+   * stored payload a function of COMPILE ORDER, while the key is a function of
+   * content alone. One key, two payloads; whichever compile ran first wins.
+   *
+   * Measured (REF-CACHE-BUG/findings-260830, reported by the P2-uSD-FAT32-FS
+   * project): compiling a program that declares the SD driver at depth 1 and
+   * again under `isp_rt_utilities` stored the utils entry with 45 records;
+   * compiling the same object cold stored the same key with 50. The five
+   * missing ones belonged to a depth-3 grandchild whose records the depth-1
+   * sibling had already contributed. A later build that hit that entry emitted
+   * a binary 221 bytes short, and because dropping records renumbers the whole
+   * debug table, the emitted code of UNRELATED objects changed too.
+   *
+   * Accumulating the real record sets instead makes the payload
+   * order-independent, which is what the key already assumes it is.
+   */
+  private subtreeDebugRecords: { origIndex: number; bytes: Uint8Array }[][] = [];
+
+  /**
    * The object instance tree, recorded while compiling rather than
    * reconstructed afterwards.
    *
@@ -298,6 +324,10 @@ export class Compiler {
       // Mark where this child's descendants will push their manifests, so the
       // store path can splice out exactly this subtree's contribution.
       const manifestMarkAtKey: number = this.subtreeManifests.length;
+      // Mark where this child's descendants will push their debug records. The
+      // store path splices exactly this subtree's contribution back off and
+      // folds it in, the same way manifests fold. See subtreeDebugRecords.
+      const debugRecordMarkAtKey: number = this.subtreeDebugRecords.length;
       // Mark where this child's subtree instances begin, so the store path can
       // slice out exactly what this compile contributed.
       const instanceMarkAtKey: number = this.recordedInstances.length;
@@ -363,10 +393,21 @@ export class Compiler {
           // walk on the common path.
           if (this.context.compileOptions.enableDebug) {
             const indexRemap = new Map<number, number>();
+            // Hand this subtree's records up to the declaring parent, rebased
+            // into THIS compile's index space. A hit returns before any
+            // descendant compiles, so these records are the only evidence the
+            // parent will ever get that its subtree references them — and
+            // injectRecord may have deduplicated them against records already
+            // in the table, in which case the parent's own count delta sees
+            // nothing. That is the defect this accumulator exists to close;
+            // see subtreeDebugRecords.
+            const replayedRecords: { origIndex: number; bytes: Uint8Array }[] = [];
             for (const record of cachedDebugInfo.records) {
               const newIndex = this.spin2Parser.debugRawData.injectRecord(record.bytes);
               indexRemap.set(record.origIndex, newIndex);
+              replayedRecords.push({ origIndex: newIndex, bytes: record.bytes });
             }
+            this.subtreeDebugRecords.push(replayedRecords);
             let needsChecksumFix = false;
             for (const site of cachedDebugInfo.brkSites) {
               const newIndex = indexRemap.get(site.origIndex);
@@ -636,6 +677,10 @@ export class Compiler {
           // depth-0 top level still has to hand nothing upward while its
           // children's entries must not be left dangling on the accumulator.
           const descendantManifests = this.subtreeManifests.splice(manifestMarkAtKey);
+          // Spliced unconditionally, exactly like the manifests above: leaving
+          // a descendant's contribution on the accumulator would fold it into
+          // the NEXT sibling's entry as well.
+          const descendantDebugRecords = this.subtreeDebugRecords.splice(debugRecordMarkAtKey).flat();
           // `DAT ... FILE` blobs are inputs with no presence in the source: the
           // bytes land in this object's binary but the .spin2 text only names
           // the file. Nothing in the cache key sees them (row A7), so editing a
@@ -689,11 +734,26 @@ export class Compiler {
               }
             }
             const brkSiteOrigIndices = childBrkSites.map((s) => s.origIndex);
-            const uniqueOrigIndices: number[] = [...new Set([...subtreeOrigIndices, ...brkSiteOrigIndices])].sort((a, b) => a - b);
+            //   (c) records every DESCENDANT reported contributing, rebased
+            //       into this compile's index space. This is the piece the
+            //       count delta in (a) structurally cannot supply: a record an
+            //       earlier sibling already added does not grow the table when
+            //       this subtree injects it, so (a) is empty for exactly the
+            //       records that matter. Without (c) the payload stored under a
+            //       content-addressed key depends on compile ORDER.
+            const descendantOrigIndices = descendantDebugRecords.map((r) => r.origIndex);
+            const uniqueOrigIndices: number[] = [...new Set([...subtreeOrigIndices, ...brkSiteOrigIndices, ...descendantOrigIndices])].sort(
+              (a, b) => a - b
+            );
             const records = uniqueOrigIndices.map((origIndex) => ({
               origIndex,
               bytes: this.spin2Parser.debugRawData.getRecordBytes(origIndex)
             }));
+            // Hand this subtree's complete set up to the declaring parent, so
+            // the fold is recursive the way the manifest fold is.
+            if (depth > 0) {
+              this.subtreeDebugRecords.push(records.map((r) => ({ origIndex: r.origIndex, bytes: r.bytes })));
+            }
             // Slice defSymbols additions made during this child's subtree
             // compile. The slice covers descendant preprocesses that pushed
             // exportdefs AND any subtree-exports replays from grandchildren

@@ -1,0 +1,11 @@
+' Sibling-dedup regression: the object that gets cached and later replayed
+' (stands in for isp_rt_utilities). Reaches the leaf only THROUGH mid, so on a
+' cache hit here the leaf is never visited and its records must have travelled
+' inside this entry.
+OBJ
+  mid : "sibrec_mid"
+
+PUB work(value)
+  debug("sibrec utils enter")
+  mid.run(value)
+  debug("sibrec utils exit: value=", uhex_(value))

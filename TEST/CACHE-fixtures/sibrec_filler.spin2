@@ -1,0 +1,10 @@
+' Sibling-dedup regression, index-shift arm: a sibling with debug records of
+' its own that match nothing else, so they occupy low table indices and push a
+' later subtree's records to different indices than it was stored with.
+PUB churn() | n
+  n := 0
+  debug("sibrec filler alpha")
+  repeat 2
+    n += 1
+    debug("sibrec filler beta: n=", udec_(n))
+  debug("sibrec filler gamma")

@@ -1,0 +1,15 @@
+' Sibling-dedup regression, index-shift arm: declares filler FIRST so the
+' debug table is already occupied when utils cache-hits. Utils' own brkSites
+' are patched to the new indices on replay; the question this fixture asks is
+' whether the brkCodes baked into its DESCENDANTS are patched too.
+CON
+  _clkfreq = 200_000_000
+
+OBJ
+  filler : "sibrec_filler"
+  utils  : "sibrec_utils"
+
+PUB main() | v
+  v := $7E
+  filler.churn()
+  utils.work(v)

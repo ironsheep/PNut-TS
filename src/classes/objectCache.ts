@@ -94,7 +94,16 @@ import { BrkSite } from './objectImage';
  * Bumping this invalidates every existing cache entry by changing every key.
  * Old <key>.bin files become unreachable and are cleaned by --cache-clear.
  */
-export const CACHE_FORMAT_VERSION = 8;
+export const CACHE_FORMAT_VERSION = 9;
+// v9 (2026-08-30): the .dbg record set is now folded up from descendants rather
+// than derived from a debugRawData count delta. The delta could not see a
+// record an earlier sibling had already contributed — injectRecord dedups and
+// does not grow the table — so an entry's payload depended on compile ORDER
+// while its key depended only on content. Two compiles produced two different
+// payloads under one key (measured: 45 records vs 50, same key), and a build
+// that hit the short one emitted a binary a clean compile never produces.
+// The bump is load-bearing: poisoned v8 entries are keyed identically to good
+// ones, so nothing but a format change can evict them from a user's cache.
 
 export interface CacheStats {
   hits: number;

@@ -1,0 +1,17 @@
+' Sibling-dedup regression: the PREDECESSOR that poisons the cache.
+' Declares mid FIRST -- so mid's and leaf's debug records are already in the
+' shared table -- and utils SECOND. When utils' subtree then compiles, its mid
+' is a cache hit whose records dedup against the ones already present, so the
+' table does not grow and a count-delta capture sees nothing to store.
+' Declaration ORDER is the whole fixture: reverse it and nothing is primed.
+CON
+  _clkfreq = 200_000_000
+
+OBJ
+  mid   : "sibrec_mid"
+  utils : "sibrec_utils"
+
+PUB main() | v
+  v := $C5
+  mid.run(v)
+  utils.work(v)
