@@ -1,0 +1,7 @@
+' Order-fuzz graph A: leaf gated on a symbol an ancestor exportdefs.
+PUB value() : r
+#ifdef ORDFZ_FEATURE
+  r := $AAAA
+#else
+  r := $5555
+#endif

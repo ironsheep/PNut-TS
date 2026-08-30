@@ -1,0 +1,6 @@
+' Order-fuzz graph B: level 3.
+OBJ
+  l4 : "ordfz_deep_l4"
+PUB tick(v)
+  debug("ordfz L3 enter")
+  l4.tick(v)

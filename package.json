@@ -46,6 +46,7 @@
     "test-inc": "npm run build && jest -c jest-config/jest-include-only-config.json",
     "test-cache": "npm run build && jest -c jest-config/jest-cache-only-config.json",
     "test-cache-sweep": "npm run build && jest --runInBand -c jest-config/jest-cache-sweep-only-config.json",
+    "cache-fuzz": "npm run build && sh scripts/cache-order-fuzz.sh",
     "test-var": "npm run build && jest -c jest-config/jest-var-only-config.json",
     "test-loader": "npm run build && jest -c jest-config/jest-loader-only-config.json",
     "test-spin": "npm run build && jest -c jest-config/jest-spin-only-config.json",

@@ -1,0 +1,7 @@
+' Order-fuzz graph A, TARGET: reaches the exporter only at depth 2.
+CON
+  _clkfreq = 200_000_000
+OBJ
+  utils : "ordfz_exp_utils"
+PUB main() | a
+  a := utils.get()

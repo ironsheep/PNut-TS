@@ -1,0 +1,7 @@
+' Order-fuzz graph B: deepest level. Records here must travel up three folds.
+PUB tick(v) | i
+  debug("ordfz L4 enter", uhex_(v))
+  i := 0
+  repeat 2
+    i += 1
+    debug("ordfz L4 step", udec_(i))

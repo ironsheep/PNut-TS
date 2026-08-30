@@ -1,0 +1,10 @@
+' Order-fuzz graph A, PRIMER: declares mid at depth 1 (so ORDFZ_FEATURE lands
+' on the shared defSymbols array first) and utils second.
+CON
+  _clkfreq = 200_000_000
+OBJ
+  mid   : "ordfz_exp_mid"
+  utils : "ordfz_exp_utils"
+PUB main() | a, b
+  a := mid.get()
+  b := utils.get()

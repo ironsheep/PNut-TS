@@ -1,0 +1,6 @@
+' Order-fuzz graph A: exports the symbol its own child is gated on.
+#pragma exportdef ORDFZ_FEATURE
+OBJ
+  leaf : "ordfz_exp_leaf"
+PUB get() : r
+  r := leaf.value()

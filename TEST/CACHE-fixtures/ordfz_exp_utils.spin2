@@ -1,0 +1,5 @@
+' Order-fuzz graph A: reaches the exporting object at depth 2.
+OBJ
+  mid : "ordfz_exp_mid"
+PUB get() : r
+  r := mid.get()

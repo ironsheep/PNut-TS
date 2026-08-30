@@ -1,0 +1,8 @@
+' Order-fuzz graph B, TARGET: reaches the deep levels only through l1.
+CON
+  _clkfreq = 200_000_000
+OBJ
+  l1 : "ordfz_deep_l1"
+PUB main() | v
+  v := $22
+  l1.tick(v)

@@ -1390,6 +1390,60 @@ describe('ObjectCache Integration Tests', () => {
       }
     }, 60_000);
 
+    // The fold hands records up ONE level at a time, so a two-level graph
+    // cannot distinguish a recursive fold from a fold that happens to reach
+    // far enough. This chain is four deep and the target compiles with ZERO
+    // misses -- the whole chain arrives from one replayed entry.
+    it("folds a deep chain's records up every level, not just the first", () => {
+      const deep = stageTree(
+        [
+          'ordfz_deep_l4.spin2',
+          'ordfz_deep_l3.spin2',
+          'ordfz_deep_l2.spin2',
+          'ordfz_deep_l1.spin2',
+          'ordfz_deep_primer.spin2',
+          'ordfz_deep_target.spin2'
+        ],
+        'ordfz-deep'
+      );
+      try {
+        const reference = compileUncached(deep, 'ordfz_deep_target.spin2', '-d');
+        compileCold(deep, 'ordfz_deep_primer.spin2', '-d');
+        const warm = compileWarm(deep, 'ordfz_deep_target.spin2', '-d');
+
+        // 0 misses is the assertion that makes this test mean something: the
+        // entire four-level subtree came back from one entry.
+        expect(warm.stdout).toMatch(/Object cache: [1-9]\d* hit\(s\), 0 miss/);
+        expect(warm.binary.equals(reference.binary)).toBe(true);
+      } finally {
+        deep.cleanup();
+      }
+    }, 60_000);
+
+    // `#pragma exportdef` pushes onto the shared defSymbols array behind an
+    // `!alreadyDefined` guard, so a symbol an earlier sibling already pushed
+    // does not grow the array -- the same delta-over-deduplicating-accumulator
+    // shape as the record defect. The audit argued the cache KEY discriminates
+    // the two cases (defSymbols is a key input, snapshotted before the child's
+    // own subtree contributes) and that the omission is therefore benign. This
+    // test is that argument checked rather than trusted.
+    it('is unaffected by whether an exportdef arrived from a sibling or from its own subtree', () => {
+      const exp = stageTree(
+        ['ordfz_exp_leaf.spin2', 'ordfz_exp_mid.spin2', 'ordfz_exp_utils.spin2', 'ordfz_exp_direct.spin2', 'ordfz_exp_indirect.spin2'],
+        'ordfz-exp'
+      );
+      try {
+        const reference = compileUncached(exp, 'ordfz_exp_indirect.spin2', '-d');
+        compileCold(exp, 'ordfz_exp_direct.spin2', '-d');
+        const warm = compileWarm(exp, 'ordfz_exp_indirect.spin2', '-d');
+
+        expect(warm.stdout).toMatch(/Object cache: [1-9]\d* hit/);
+        expect(warm.binary.equals(reference.binary)).toBe(true);
+      } finally {
+        exp.cleanup();
+      }
+    }, 60_000);
+
     // ------------------------------------------------------------------
     // KNOWN DEFECT, recorded rather than hidden. `it.failing` asserts the bug
     // is STILL THERE: it passes while the binaries differ and turns into a

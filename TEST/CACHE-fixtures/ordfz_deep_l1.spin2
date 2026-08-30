@@ -1,0 +1,6 @@
+' Order-fuzz graph B: level 1 -- the object that gets cached and replayed.
+OBJ
+  l2 : "ordfz_deep_l2"
+PUB tick(v)
+  debug("ordfz L1 enter")
+  l2.tick(v)

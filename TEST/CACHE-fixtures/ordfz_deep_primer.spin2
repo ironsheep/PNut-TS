@@ -1,0 +1,11 @@
+' Order-fuzz graph B, PRIMER: declares the DEEP levels first so their records
+' occupy the table, then l1 -- whose subtree then dedups against them.
+CON
+  _clkfreq = 200_000_000
+OBJ
+  deep : "ordfz_deep_l3"
+  l1   : "ordfz_deep_l1"
+PUB main() | v
+  v := $11
+  deep.tick(v)
+  l1.tick(v)
