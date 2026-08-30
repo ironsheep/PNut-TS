@@ -635,3 +635,65 @@ recorded intent; or convert `objectCache.test.ts` onto the `stageTree` scaffoldi
 the rest of the directory already uses, and correct the conventions file instead.
 The second is the better end state — it removes the hazard rather than
 serialising around it.
+
+## 15. Preprocessor diagnostics (added 2026-08-09, merged here 2026-08-30)
+
+Both are **silent or misdirecting** failures: the compiler accepts the input,
+does something other than what the user asked, and either says nothing or points
+at the wrong line. Neither is covered by any fixture. Recorded during the
+Preproc-Symbols sprint (commit `f628b91`).
+
+> **These rank higher than they read, because of who consumes the diagnostic.**
+> Re-ranked 2026-08-30 after Stephen confirmed an `agent-consumer` deliverable
+> head. An agent's entire interaction with this compiler is the compile → read
+> error → fix loop, and our error format (`path:line:error:text`, non-zero exit,
+> gcc-adjacent) makes that loop mechanically drivable — which is exactly why
+> these two break it. **15a emits no diagnostic at all**, so there is nothing for
+> the loop to react to and it never converges. **15b names the wrong line**, so
+> the agent edits the `#endif` — a divergent fix, not a slow one. A person hits
+> either and thinks *"that's odd"*; an agent acts on the message. Both also sit
+> where a C-trained prior is wrong (`-D` is presence-only; `#if`/`#elseif` do not
+> exist), so they are hit by exactly the reader least able to recover.
+> These are not diagnostic polish.
+
+### 15a. `-D SYM=value` silently registers a symbol literally named `SYM=VALUE`
+
+`-D` takes presence-only symbols, but the `=value` form is accepted without
+complaint: the whole argument is uppercased and registered as a symbol literally
+named `SYM=VALUE`. The intended `#ifdef SYM` never matches and the user gets no
+clue why.
+
+**Fix:** emit a diagnostic naming the unsupported form.
+(`src/pnut-ts.ts`, the `this.options.Define` loop.)
+
+### 15b. `#if` / `#elseif` surface as a stray-`#endif` error
+
+Only `#ifdef` / `#ifndef` / `#elseifdef` / `#elseifndef` are recognized. A
+C-style `#if` falls through as an unrecognized line, so the first error the user
+sees is the now-unbalanced `#endif` — pointing at the wrong line and describing
+the wrong problem.
+
+**Fix:** diagnose at the `#if` / `#elseif` line itself, ideally naming the
+supported spelling. (`src/classes/spinDocument.ts`.)
+
+## 16. MAP test cases do not cover structures (added 2026-08-09, merged here 2026-08-30)
+
+No MAP fixture exercises a `STRUCT`, so nothing verifies how structures and
+their fields display in map output. The 1.55.4 map redesign (instance model,
+`Entry +$rel  ($abs)`) went in without a structure case, and item 14a's proposed
+exact-address assertion would land on the same uncovered surface.
+
+**Fix:** add structures to the MAP test fixtures and assert their field display.
+
+---
+
+> **Merge note, 2026-08-30.** Sections 15 and 16 arrived from
+> `DOCs/internals/PUNCH-LIST.md`, a second punch list that predated this one and
+> was invisible to planning: since central `sprint-plan` §1 reads only the
+> `PUNCH_LIST_DOC` slot, its items were being silently deferred every sprint.
+> Stephen ruled to merge on 2026-08-30 and that file was deleted. Its remaining
+> content was three already-completed Build-and-Packaging items — audit the
+> packaging and build scripts, transition to GitHub workflows, and the macOS
+> drag-to-Applications DMG installer — all shipped and visible in the repo; they
+> were not carried into a dated archive because their completion is recorded in
+> `DOCs/RELEASE-PROCESS.md` and the release workflow itself.

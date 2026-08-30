@@ -145,7 +145,6 @@
     "DOCs/internals/Object-Cache-Theory-of-Operations.md": { "class": "governed", "covers": ["object-cache"], "verified": "1.55.4", "note": "Describes the SHIPPED cache mechanism. The roadmap documents under DOCs/roadmaps/ argue decisions; this one describes behavior." },
     "DOCs/internals/MAP-File-Format.md":                 { "class": "governed", "covers": ["map-file"], "verified": "1.55.4", "note": "Parser-grade .map spec. Previously the map-file area had ZERO covering documents, so mapGenerator.ts could change without staling anything." },
     "DOCs/internals/TECHNICAL-DEBT.md":                  { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/PUNCH-LIST.md":                      { "class": "governed", "covers": [], "verified": null },
     "DOCs/internals/PASM2-ASSEMBLY-LABELS.md":           { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4" },
     "DOCs/internals/DEBUG-WINDOW-DIRECTIVE-MATRIX.md":   { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
     "DOCs/internals/MANUAL-FEATURE-DISTRIBUTION-GUIDE.md": { "class": "governed", "covers": [], "verified": null },
