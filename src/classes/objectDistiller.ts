@@ -4,7 +4,7 @@
 
 import { Context } from '../utils/context';
 import { DistillerList, DistillerRecord } from './distillerList';
-import { ObjectImage } from './objectImage';
+import { BrkSite, ObjectImage } from './objectImage';
 
 /**
  * ObjectDistiller - Handles object deduplication and optimization for compiled Spin2/PASM2 code.
@@ -227,6 +227,11 @@ export class ObjectDistiller {
     const rebuildImage = new ObjectImage(this.context, 'rebuildImage');
     rebuildImage.setOffsetTo(0);
 
+    // Old -> new region map, captured as the copy happens. This is the only
+    // place the correspondence exists: record.objectOffset is overwritten in
+    // the same loop that reads it.
+    const moves: { from: number; to: number; size: number }[] = [];
+
     // Copy each object's content to new positions
     for (const [, record] of this.distillerList.records()) {
       const sourceOffset = record.objectOffset;
@@ -236,11 +241,33 @@ export class ObjectDistiller {
 
       // Copy object content (convert bytes to longs, rounded up)
       const sizeInLongs = (record.objectSize + 3) >> 2;
+      moves.push({ from: sourceOffset, to: record.objectOffset, size: sizeInLongs * 4 });
       for (let longIndex = 0; longIndex < sizeInLongs; longIndex++) {
         const sourceLong = objImage.readLong(sourceOffset + longIndex * 4);
         rebuildImage.appendLong(sourceLong);
       }
     }
+
+    // Move the brkCode write sites with the bytes they point at.
+    //
+    // Two reasons this cannot be skipped. A site left at a pre-rebuild offset
+    // makes the cache patch an unrelated byte on a later hit, and the loader
+    // rejects an image whose checksum then fails to match. And a site inside a
+    // region eliminateRedundantObjects DROPPED must go: those bytes are gone,
+    // and the surviving twin carries its own sites for the identical content.
+    // Dropping is therefore not a loss — it is the duplicate being deduped.
+    //
+    // Done BEFORE setOffsetTo below, which shrinks the image and discards any
+    // site at or beyond the new end. Remapping first means the survivors are
+    // already at their new, smaller offsets when that runs.
+    const relocatedSites: BrkSite[] = [];
+    for (const site of objImage.brkSites) {
+      const move = moves.find((m) => site.offset >= m.from && site.offset < m.from + m.size);
+      if (move !== undefined) {
+        relocatedSites.push({ ...site, offset: move.to + (site.offset - move.from) });
+      }
+    }
+    objImage.replaceBrkSites(relocatedSites);
 
     // Replace original image content with rebuilt content
     objImage.rawUint8Array.set(rebuildImage.rawUint8Array.subarray(0, rebuildImage.offset));

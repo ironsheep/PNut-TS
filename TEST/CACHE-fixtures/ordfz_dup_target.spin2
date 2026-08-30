@@ -1,0 +1,8 @@
+' Order-fuzz graph C, TARGET: reaches the deduped pair only through holder.
+CON
+  _clkfreq = 200_000_000
+OBJ
+  holder : "ordfz_dup_holder"
+PUB main() | v
+  v := $80
+  holder.both(v)

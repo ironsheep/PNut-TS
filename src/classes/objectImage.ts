@@ -312,6 +312,16 @@ export class ObjectImage {
     this._brkSites.push(site);
   }
 
+  /**
+   * Replace the whole site list — for the distiller, which relocates every
+   * site at once when it compacts the image and drops the ones whose bytes it
+   * eliminated. A caller that merely moves the image should use
+   * `shiftBrkSites`; this is for a remap that is not a single delta.
+   */
+  public replaceBrkSites(sites: BrkSite[]) {
+    this._brkSites = sites.map((site) => ({ ...site }));
+  }
+
   /** Snapshot of brkCode write sites captured during the current image's
    *  emission pass. Returned as a copy so callers can hold a stable list. */
   public get brkSites(): BrkSite[] {

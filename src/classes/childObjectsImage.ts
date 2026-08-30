@@ -6,6 +6,7 @@ import { Context } from '../utils/context';
 import { dumpBytes, OVERRIDE_MESSAGE } from '../utils/dumpUtils';
 import { hexAddress, hexByte, hexLong, hexWord } from '../utils/formatUtils';
 import { OBJ_LIMIT } from './spinResolver';
+import { BrkSite } from './objectImage';
 
 // src/classes/childObjectImage.ts
 
@@ -24,6 +25,18 @@ export class ChildObjectsImage {
   private isLoggingOutline: boolean;
   private _id: string;
   private _fileDetails: iFileDetails[] = [];
+  /**
+   * brkCode write sites inside each stored child image, in that image's OWN
+   * coordinates (which include the 8-byte vsize/psize header compile_final
+   * prepends, since shiftBrkSites(8) runs with the prepend).
+   *
+   * Parallel to `_fileDetails` and indexed the same way. Held here because a
+   * parent's `compile_obj_blocks` copies these images into its own object
+   * image and, until it also carried their brkSites across, the parent's
+   * entry described a binary whose descendants it could not patch — the
+   * defect recorded as punch list §17.
+   */
+  private _fileBrkSites: BrkSite[][] = [];
   private _offset: number = 0;
   private readonly obj_limit: number = OBJ_LIMIT; // max object size (2MB) PNut obj_limit as of v49
   private readonly ALLOC_SIZE_IN_BYTES: number = this.obj_limit / 16;
@@ -82,6 +95,7 @@ export class ChildObjectsImage {
 
   public clear() {
     this._fileDetails = []; // empty tracking table
+    this._fileBrkSites = []; // and the sites parallel to it
     this.contentHashCache.clear(); // Clear hash cache
   }
 
@@ -209,6 +223,9 @@ export class ChildObjectsImage {
     this.logMessage(`* cOBJ[${this._id}] recordLengthOffsetForFile([${expectedFileIndex}] ofs(${newOffset}), len(${newLength}))`);
     const details: iFileDetails = { name: '', offset: newOffset, length: newLength };
     this._fileDetails.push(details);
+    // Keep the brkSite array index-aligned with _fileDetails even when the
+    // caller has no sites to record, so the two never drift apart.
+    this._fileBrkSites.push([]);
     // flying monkeys throw exception on dupe entry
     const latestIndex: number = this._fileDetails.length - 1;
     if (expectedFileIndex != latestIndex) {
@@ -243,6 +260,27 @@ export class ChildObjectsImage {
       this.logMessage(`getOffsetAndLengthForFile(${fileIndex}) ERROR: no such index on file`);
     }
     return [details.offset, details.length];
+  }
+
+  /**
+   * Record the brkCode write sites inside the child image just stored at
+   * `fileIndex`, in that image's own coordinates. Call it immediately after
+   * `recordLengthOffsetForFile` for the same index.
+   */
+  public recordBrkSitesForFile(fileIndex: number, sites: BrkSite[]) {
+    while (this._fileBrkSites.length <= fileIndex) {
+      this._fileBrkSites.push([]);
+    }
+    this._fileBrkSites[fileIndex] = sites.map((site) => ({ ...site }));
+    this.logMessage(`* cOBJ[${this._id}] recordBrkSitesForFile([${fileIndex}] count(${sites.length}))`);
+  }
+
+  /** The brkSites of the child image at `fileIndex`, in its own coordinates. */
+  public getBrkSitesForFile(fileIndex: number): BrkSite[] {
+    if (fileIndex < 0 || fileIndex >= this._fileBrkSites.length) {
+      return [];
+    }
+    return this._fileBrkSites[fileIndex].map((site) => ({ ...site }));
   }
 
   public getOffsetAndLengthForFilename(fileBasename: string): [number, number] {

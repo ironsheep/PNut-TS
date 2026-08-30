@@ -698,39 +698,18 @@ exact-address assertion would land on the same uncovered surface.
 > were not carried into a dated archive because their completion is recorded in
 > `DOCs/RELEASE-PROCESS.md` and the release workflow itself.
 
-## 17. Cached parents do not patch their descendants' brkCodes (added 2026-08-30)
+## 17. — closed 2026-08-30, fixed in v1.55.5
 
-**Live, reproducible, and covered by an `it.failing` test** —
-`src/tests/CACHE-tests/objectCache.test.ts`, *"patches brkCodes baked into a
-cached parent's DESCENDANTS, not just its own"*. That test passes while the
-defect exists and turns into a real failure the moment it is fixed; delete the
-`.failing` then and keep the test.
+Cached parents did not patch their descendants' brkCodes: a parent's `.bin`
+carried its descendants' relocated code, but its brkSite list covered only its
+own region, so on a cache hit `injectRecord` could return different indices and
+every descendant brkCode was left pointing at whatever now occupied its old
+one. The binary came out the **right size** with wrong content, so only byte
+comparison against an uncached build caught it.
 
-Found while auditing the reported debug-record defect (§ below / v1.55.5) for
-others of its class, on Stephen's instruction to treat a found defect as a
-class rather than an instance. Same family, different member: **a payload
-captured at own-object scope while the artifact it describes is subtree scope.**
-
-**What is wrong.** A parent's cached `.bin` carries its descendants' relocated
-code, baked brkCodes and all, but `objImage.brkSites` only ever covers the
-parent's own region. Measured on the reporter's tree: `isp_rt_utilities` stored
-a 29_860-byte blob whose 62 patch sites all lie at offsets **195–1661**, and
-`micro_sd_fat32_fs` stored **33_890 bytes with zero sites** while embedding a
-grandchild that has 7. So on a cache hit `injectRecord` can legitimately return
-different indices, the parent's own brkCodes are patched to match, and its
-descendants' are left pointing at whatever now occupies their old indices.
-
-**Why it is nastier than the defect it was found beside.** The binary is the
-**right size** — only content moves. A length check passes; only byte
-comparison against an uncached build catches it. Reproduced at 9_585 bytes both
-ways, differing at byte 9566.
-
-**Why it was not fixed in the same change.** The fix is not local. Descendant
-brkSites would have to be registered as `compile_obj_blocks` copies each child
-image in (it knows `fileStartObjOffset`), and then tracked through
-`distillObjects`, which **removes** bytes and therefore shifts every region
-after a dropped duplicate. That is a change to the distiller's relocation
-behaviour, with its own verification, not a fold-up like the record fix.
-
-**Fixtures already committed:** `TEST/CACHE-fixtures/sibrec_filler.spin2` and
-`sibrec_shifted.spin2` alongside the `sibrec_*` graph.
+Filed and fixed the same day. Descendant brkSites are now registered as
+`compile_obj_blocks` copies each child image in — rebased past the 8-byte
+vsize/psize header their coordinates include — and relocated through
+`distillObjects`, which compacts the image and drops the regions it eliminates.
+Covered by three tests in `src/tests/CACHE-tests/objectCache.test.ts` and by
+`npm run cache-fuzz` (306 ordered pairs, 0 mismatches).

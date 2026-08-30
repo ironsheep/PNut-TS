@@ -1,0 +1,8 @@
+' Order-fuzz graph C: declares the same debug-carrying object twice.
+OBJ
+  a : "ordfz_dup_leaf"
+  b : "ordfz_dup_leaf"
+PUB both(v)
+  debug("ordfz holder enter")
+  a.emit(v)
+  b.emit(v + 1)

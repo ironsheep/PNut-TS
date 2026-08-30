@@ -21,16 +21,25 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## v1.55.5 (2026-08-30)
+
+Cached builds with `-d` now reproduce an uncached build exactly, whichever program filled the cache first.
+
 ### Fixed
 
-- **Cached builds with `-d` no longer drop a nested object's DEBUG data.** When
-  one program's build had already put an object's debug records in place,
-  compiling a *different* program that reached that object more deeply could
-  reuse a cached subtree and emit a binary missing those records. Because
-  dropping records renumbers the debug table, the emitted code of unrelated
-  objects changed too, and the build exited 0 with no warning. Reported by the
-  P2-uSD-FAT32-FS project against a 29-file tree, where the affected program
-  came out 221 bytes short.
+- **A cached object could lose a nested object's DEBUG data.** When one
+  program's build had already put an object's debug records in place, compiling
+  a *different* program that reached that object more deeply reused a cached
+  subtree and emitted a binary missing those records. Reported against a 29-file
+  driver tree, where the affected program came out 221 bytes short.
+- **A cached object could aim a nested object's `debug()` at the wrong record.**
+  On a cache hit the parent's own debug references were corrected but its
+  children's were not, so a nested `debug()` printed another object's message,
+  or garbage. The binary was the **right size** in this case, which is why it
+  went unnoticed alongside the defect above.
+
+  Both produced a working-looking build that exited 0. Because either one
+  renumbers the debug table, the emitted code of unrelated objects changed too.
 
   **Rebuild once after upgrading.** Cache entries written by earlier versions
   are discarded automatically, so the first build after the upgrade recompiles.

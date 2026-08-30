@@ -1,0 +1,10 @@
+' Order-fuzz graph C: a debug-carrying object declared TWICE by its parent, so
+' the distiller eliminates one copy. Exercises the branch that DROPS brkSites
+' inside an eliminated region -- the surviving twin has identical content and
+' carries its own sites, so dropping is dedup, not loss.
+PUB emit(tag) | k
+  debug("ordfz dup enter", uhex_(tag))
+  k := 0
+  repeat 2
+    k += 1
+    debug("ordfz dup step", udec_(k))

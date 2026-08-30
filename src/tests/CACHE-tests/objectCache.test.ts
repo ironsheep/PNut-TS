@@ -1444,15 +1444,32 @@ describe('ObjectCache Integration Tests', () => {
       }
     }, 60_000);
 
+    // The riskiest branch of the §17 fix: a site inside a region the distiller
+    // ELIMINATES must be dropped, not relocated. The holder declares one
+    // debug-carrying object twice, so eliminateRedundantObjects collapses the
+    // pair. Measured at the time of writing: the leaf stores 2 brkSites, and
+    // the holder stores 3 — its own 1 plus ONE surviving copy's 2, not 5. The
+    // dropped copy is not a loss; the survivor carries identical content and
+    // its own sites.
+    it("drops brkSites belonging to an object the distiller eliminated, and keeps the survivor's", () => {
+      const dup = stageTree(['ordfz_dup_leaf.spin2', 'ordfz_dup_holder.spin2', 'ordfz_dup_primer.spin2', 'ordfz_dup_target.spin2'], 'ordfz-dup');
+      try {
+        const reference = compileUncached(dup, 'ordfz_dup_target.spin2', '-d');
+        compileCold(dup, 'ordfz_dup_primer.spin2', '-d');
+        const warm = compileWarm(dup, 'ordfz_dup_target.spin2', '-d');
+
+        expect(warm.stdout).toMatch(/Object cache: [1-9]\d* hit\(s\), 0 miss/);
+        expect(warm.binary.equals(reference.binary)).toBe(true);
+      } finally {
+        dup.cleanup();
+      }
+    }, 60_000);
+
     // ------------------------------------------------------------------
-    // KNOWN DEFECT, recorded rather than hidden. `it.failing` asserts the bug
-    // is STILL THERE: it passes while the binaries differ and turns into a
-    // loud failure the moment someone fixes it, at which point delete the
-    // `.failing` and keep the test.
-    //
-    // Found 2026-08-30 while auditing the reported defect for others of its
-    // class. Same family, different member: a payload captured at OWN-OBJECT
-    // scope while the artifact it describes is SUBTREE scope.
+    // Was punch list §17, carried briefly as `it.failing` and fixed in the same
+    // release. Found 2026-08-30 while auditing the reported defect for others
+    // of its class. Same family, different member: a payload captured at
+    // OWN-OBJECT scope while the artifact it describes is SUBTREE scope.
     //
     // A parent's cached .bin carries its descendants' relocated code, brkCodes
     // and all, but `objImage.brkSites` only ever covers the parent's own
@@ -1468,32 +1485,28 @@ describe('ObjectCache Integration Tests', () => {
     // content moves — so a length assertion passes and only byte comparison
     // catches it.
     //
-    // Not fixed here because the fix is not local: descendant brkSites would
-    // have to be registered as compile_obj_blocks copies each child in, and
-    // then tracked through distillObjects, which REMOVES bytes and so shifts
-    // every region after a dropped duplicate.
-    // Punch list §17.
-    it.failing(
-      "patches brkCodes baked into a cached parent's DESCENDANTS, not just its own",
-      () => {
-        const shifted = stageTree([...SIBREC_FILES, 'sibrec_filler.spin2', 'sibrec_shifted.spin2'], 'sibrec-shift');
-        try {
-          const reference = compileUncached(shifted, 'sibrec_shifted.spin2', '-d');
+    // The fix was not local. Descendant brkSites are now registered as
+    // compile_obj_blocks copies each child in — rebased past the 8-byte
+    // vsize/psize header their coordinates include, since shiftBrkSites(8)
+    // runs with that prepend — and then relocated through distillObjects,
+    // which compacts the image and drops the regions it eliminates.
+    it("patches brkCodes baked into a cached parent's DESCENDANTS, not just its own", () => {
+      const shifted = stageTree([...SIBREC_FILES, 'sibrec_filler.spin2', 'sibrec_shifted.spin2'], 'sibrec-shift');
+      try {
+        const reference = compileUncached(shifted, 'sibrec_shifted.spin2', '-d');
 
-          // Store the utils entry from a compile where its subtree's records take
-          // the LOW table indices...
-          compileCold(shifted, 'sibrec_target.spin2', '-d');
-          // ...then hit it from a program that fills those indices with filler's
-          // records first, so the replay lands the subtree somewhere else.
-          const afterShift = compileWarm(shifted, 'sibrec_shifted.spin2', '-d');
+        // Store the utils entry from a compile where its subtree's records take
+        // the LOW table indices...
+        compileCold(shifted, 'sibrec_target.spin2', '-d');
+        // ...then hit it from a program that fills those indices with filler's
+        // records first, so the replay lands the subtree somewhere else.
+        const afterShift = compileWarm(shifted, 'sibrec_shifted.spin2', '-d');
 
-          expect(afterShift.stdout).toMatch(/Object cache: [1-9]\d* hit/);
-          expect(afterShift.binary.equals(reference.binary)).toBe(true);
-        } finally {
-          shifted.cleanup();
-        }
-      },
-      60_000
-    );
+        expect(afterShift.stdout).toMatch(/Object cache: [1-9]\d* hit/);
+        expect(afterShift.binary.equals(reference.binary)).toBe(true);
+      } finally {
+        shifted.cleanup();
+      }
+    }, 60_000);
   });
 });

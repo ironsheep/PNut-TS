@@ -4975,6 +4975,28 @@ export class SpinResolver {
           //if (this.isLogging) this.logMessage(`  -- compObjBlks() uint8byte=(${uint8byte})`);
           this.objImage.appendByte(uint8byte);
         }
+        // Carry the child's brkCode write sites across with its bytes.
+        //
+        // appendByte cannot know a byte it copies is a brkCode — only the
+        // compile that EMITTED it knew that — so without this the parent's
+        // image holds its descendants' brkCodes with nothing recording where
+        // they are. A later cache hit on this parent then replays the whole
+        // subtree's debug records, gets different indices for them, patches
+        // only the parent's OWN sites, and leaves every descendant brkCode
+        // pointing at whatever now occupies its old index. Punch list §17.
+        //
+        // The child's sites are in its own image coordinates, which include
+        // the 8-byte vsize/psize header compile_final prepends (shiftBrkSites(8)
+        // runs with that prepend). The two nextLong() calls above consumed
+        // exactly that header, so a child site at `o` lands at
+        // fileStartObjOffset + o - 8.
+        const childSites = this.objectData.getBrkSitesForFile(objFileIndex);
+        for (const site of childSites) {
+          const relocated = site.offset - 8;
+          if (relocated >= 0 && relocated < remainingObjLength) {
+            this.objImage.addBrkSite({ ...site, offset: fileStartObjOffset + relocated });
+          }
+        }
       }
 
       // 2nd pass

@@ -448,6 +448,10 @@ export class Compiler {
             this.childImages.ensureFits(this.objectFileOffset, cachedBinary.length);
             this.childImages.rawUint8Array.set(cachedBinary, this.objectFileOffset);
             this.childImages.recordLengthOffsetForFile(this.objectFileCount, this.objectFileOffset, cachedBinary.length);
+            // Same as the miss path, but these sites have ALREADY been patched
+            // in cachedBinary to this compile's indices — so what travels up is
+            // where the parent must look, not what it must write.
+            this.childImages.recordBrkSitesForFile(this.objectFileCount, this.context.compileOptions.enableDebug ? cachedDebugInfo.brkSites : []);
             this.objectFileOffset += cachedBinary.length;
             this.objectFileCount++;
           }
@@ -610,6 +614,9 @@ export class Compiler {
               this.objectData.rawUint8Array.set(this.childImages.rawUint8Array.subarray(objOffset, objOffset + objLength), objDataOffset);
               // Record using childIdx (position in parent's child list), not physical file index
               this.objectData.recordLengthOffsetForFile(childIdx, objDataOffset, objLength);
+              // Re-key the sites from physical file index to this parent's child
+              // position, which is the index compile_obj_blocks walks.
+              this.objectData.recordBrkSitesForFile(childIdx, this.childImages.getBrkSitesForFile(physicalFileIdx));
               objDataOffset += objLength;
               // DEBUG dump into .obj file for inspection
               //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data'); // REMOVE BEFORE FLIGHT
@@ -849,6 +856,11 @@ export class Compiler {
             this.childImages.rawUint8Array.set(childImage, this.objectFileOffset);
 
             this.childImages.recordLengthOffsetForFile(this.objectFileCount, this.objectFileOffset, objectLength);
+            // Carry this child's brkSites alongside its bytes. compile_obj_blocks
+            // copies the bytes into the declaring parent's image; without the
+            // sites travelling too, the parent's cache entry describes a binary
+            // whose descendants' brkCodes it cannot patch on replay (§17).
+            this.childImages.recordBrkSitesForFile(this.objectFileCount, this.context.compileOptions.enableDebug ? this.objImage.brkSites : []);
             this.objectFileOffset += objectLength;
             this.objectFileCount++;
             // DEBUG dump into .obj file for inspection

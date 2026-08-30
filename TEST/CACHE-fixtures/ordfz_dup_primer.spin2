@@ -1,0 +1,12 @@
+' Order-fuzz graph C, PRIMER: puts the leaf's records in the table first, then
+' reaches the holder -- so the holder's entry is stored with its subtree's
+' records already present.
+CON
+  _clkfreq = 200_000_000
+OBJ
+  direct : "ordfz_dup_leaf"
+  holder : "ordfz_dup_holder"
+PUB main() | v
+  v := $40
+  direct.emit(v)
+  holder.both(v)

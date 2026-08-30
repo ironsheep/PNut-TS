@@ -37,7 +37,7 @@ cd "$WORK" || exit 1
 
 PROGS="dbg_cache_parentA dbg_cache_parentB expdef_parentX expdef_parentY \
 expdef_subtree_parent optblock_rewind_parent ovr_deep_top root_app_top \
-sgl_app_top ordfz_exp_direct ordfz_exp_indirect ordfz_deep_primer ordfz_deep_target sibrec_primer sibrec_shifted sibrec_target spin_dbg_cache_parent"
+sgl_app_top ordfz_exp_direct ordfz_exp_indirect ordfz_deep_primer ordfz_deep_target ordfz_dup_primer ordfz_dup_target sibrec_primer sibrec_shifted sibrec_target spin_dbg_cache_parent"
 
 echo "flags: [$FLAGS]   workdir: $WORK"
 
