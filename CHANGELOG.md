@@ -21,13 +21,15 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## v1.55.7 (2026-09-13)
+
+`#include` in the file you compile builds that file.
+
 ### Fixed
 
-- **`#include` in the top-level file** now compiles that file. The included
-  file was compiled in its place: including a file with no `PUB` failed with
-  `No PUB method or DAT block found`, and including a file with a `PUB` built,
-  silently, a binary of the included file alone. `#include` inside an `OBJ`
-  child object was unaffected.
+- **`#include` in the file you compile** no longer builds the included file
+  instead: silently if it has a `PUB`, otherwise as `No PUB method or DAT block
+  found`. Child objects were unaffected.
 
 ## v1.55.6 (2026-09-13)
 
