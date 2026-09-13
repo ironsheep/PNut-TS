@@ -377,27 +377,20 @@ is the cause. Pick the handling option then.
 Swept to `completed/2026-08-09-Punch-List-Archive.md` (copyright reconciled
 and shipped, Preproc-Symbols §9, v1.55.3).
 
-## 8. `#include` of a constants-only file fails (added 2026-08-08)
+## 8. — closed 2026-09-13, fixed in commit `1a98da4`
 
-**Surfaced by:** CLI-Robustness sprint; pre-existing, reproduced on the
-pre-sprint build `58180b1`.
+`#include` in a top-level file compiled the **included** file in its place. Its
+document registered in `Context.sourceFiles` while the top file was still
+preprocessing in its constructor, so it sat at index 0 where `getTopFile()`
+looks. A constants-only include failed with `No PUB method or DAT block found`;
+an include carrying a `PUB` did *not* "work" as first recorded here — it
+silently built a binary of the included file alone. `#include` inside an `OBJ`
+child was never affected.
 
-`#include` of a file containing only CON declarations fails with
-`<inc>:N:error:No PUB method or DAT block found`, blamed on the *included* file —
-even though the including file has a `PUB` and the preprocessed output is
-correct. Including a file that itself contains a `PUB` works.
-
-Uncovered because `TEST/PREPROC-tests/inc/included.spin2` has `PUB` methods, and
-that suite runs `--pass preprocess`, stopping before compilation. **Nothing
-covers full compilation of an `#include`.**
-
-Related to item 2's second root cause (CON-only sources are legal as imported
-objects but not as top-level) but distinct: here the CON-only file is *included*,
-not compiled top-level, so the top-level check is being applied to the wrong
-file.
-
-Sharing constants is arguably the main reason to use `#include`, so this likely
-deserves its own defect sprint rather than a punch-list line.
+Fixed by `SourceFiles.addTopFile()`. Covered by `inc_consts_only` and
+`inc_with_pub` in `src/tests/INCLUDE-tests/pnut-ts-include.test.ts`, compared
+against Windows PNut GOLDs built from hand-flattened twins in
+`TEST/INCLUDE-tests/flattened/` (PNut has no `#include`).
 
 ## 9. `TEST/FULL` `dumpTables` failure + `-I` relative-path bug (added 2026-08-08)
 
