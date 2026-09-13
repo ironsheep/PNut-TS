@@ -732,22 +732,19 @@ vsize/psize header their coordinates include — and relocated through
 Covered by three tests in `src/tests/CACHE-tests/objectCache.test.ts` and by
 `npm run cache-fuzz` (306 ordered pairs, 0 mismatches).
 
-## 18. Conditional explicit `AUGS`/`AUGD` has no GOLD-backed test (added 2026-09-13)
+## 18. — closed 2026-09-13
 
-v1.55.6 fixed explicit `AUGS #v` / `AUGD #v` with bit 31 of `v` set: the
-operand's arithmetic `>> 9` was OR'd in unmasked, forcing bits 31..23 to 1 —
-the condition field to `%1111` and AUGS's opcode bit to AUGD. The committed
-fixture `TEST/DAT-PASM-tests/pnut-ts-augs-sign.spin2` (PNut v55 GOLDs) covers
-only the **unconditional** form, where the condition field is already `%1111`,
-so half the defect is guarded by nothing: `if_z augs #$80000000` emitted
-`$FFC00000` for `$AF400000`, and conditional `AUGD` was hit too. Verified by
-hand against the fixed build only.
+Conditional explicit `AUGS`/`AUGD` had no GOLD-backed test. v1.55.6 fixed
+`AUGS #v` / `AUGD #v` with bit 31 of `v` set — the arithmetic `>> 9` OR'd in
+unmasked forced bits 31..23 to 1, overwriting the condition field as well as
+AUGS's opcode bit — but its fixture `pnut-ts-augs-sign.spin2` covers only the
+unconditional form, where the condition field is already `%1111`.
 
-**Fix:** add a DAT-PASM fixture with `if_xx augs`/`augd` cases whose operands
-have bit 31 set (and a `#-1`), and regenerate GOLDs with `rebuild-gold.ps1`.
-
-A survey of every other right-shift and encoded-field OR in `src/` for the same
-signed-vs-logical class found no further instances.
+Closed by `TEST/DAT-PASM-tests/pnut-ts-augs-cond.spin2` with PNut v55 GOLDs:
+`if_z`/`if_nz`/`if_c`/`if_nc` forms of both instructions with bit-31 operands
+(including `#-1`), bit-31-clear controls, and a conditional `##` auto-prefix.
+The fixed build matches the GOLDs. A survey of every other right-shift and
+encoded-field OR in `src/` for the same class found no further instances.
 
 ## 19. `RELEASE-PROCESS.md` coverage gate cannot be met (added 2026-09-13)
 

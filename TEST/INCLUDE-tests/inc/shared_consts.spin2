@@ -1,0 +1,5 @@
+'' Included by ../inc_consts_only.spin2 -- constants only: no PUB, PRI, VAR or DAT.
+
+CON
+  LED_PIN  = 56
+  BLINK_MS = 250

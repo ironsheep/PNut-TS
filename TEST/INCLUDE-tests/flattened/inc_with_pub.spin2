@@ -1,0 +1,13 @@
+'' Hand-flattened twin of ../inc_with_pub.spin2 for Windows PNut GOLD generation:
+'' the #include line is replaced by the contents of ../inc/shared_pub.spin2.
+
+PUB main()
+  repeat
+    helper(57)
+
+CON
+  STEP_MS = 100
+
+PUB helper(pin)
+  pintoggle(pin)
+  waitms(STEP_MS)

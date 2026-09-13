@@ -1,0 +1,11 @@
+'' #include of a constants-only file (compile with -I inc).
+''
+'' Windows PNut has no #include, so the GOLDs come from the hand-flattened twin
+'' flattened/inc_consts_only.spin2 -- its output must match this file's byte for byte.
+
+#include "shared_consts.spin2"
+
+PUB main()
+  repeat
+    pintoggle(LED_PIN)
+    waitms(BLINK_MS)

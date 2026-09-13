@@ -1,0 +1,8 @@
+'' Included by ../inc_with_pub.spin2 -- carries a CON block and a PUB method.
+
+CON
+  STEP_MS = 100
+
+PUB helper(pin)
+  pintoggle(pin)
+  waitms(STEP_MS)

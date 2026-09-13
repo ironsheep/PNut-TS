@@ -1,0 +1,40 @@
+'' ===========================================================================
+''  pnut-ts AUGS/AUGD sign defect -- CONDITIONAL forms  (companion to
+''  pnut-ts-augs-sign.spin2, which covers only the unconditional form)
+''
+''  Before v1.55.6 an explicit `AUGS #v` / `AUGD #v` with BIT 31 of v set had
+''  the operand shifted right 9 places ARITHMETICALLY and OR'd in unmasked,
+''  forcing bits 31..23 to 1.  In the unconditional form the condition field is
+''  already %1111, so only AUGS->AUGD was visible.  In a conditional form the
+''  CONDITION FIELD is overwritten too:  `if_z augs #$80000000` emitted
+''  $FFC00000 (always AUGD) instead of $AF400000.
+''
+''  Bits [31:28] = condition, bits [27:23] = 11110 AUGS / 11111 AUGD.
+''  Values in comments are from the fixed build; the GOLDs are authoritative.
+'' ===========================================================================
+
+DAT
+                org     0
+
+'' ---- A.  AUGS, bit 31 set, each with a different condition ----------------
+
+                if_z    augs    #$80000000      ' AF400000
+                if_nz   augs    #$FFFFFFFF      ' 5F7FFFFF
+                if_c    augs    #-1             ' CF7FFFFF
+                if_nc   augs    #$FFFFF123      ' 3F7FFFF8
+
+'' ---- B.  AUGD, bit 31 set, same conditions --------------------------------
+
+                if_z    augd    #$80000000      ' AFC00000
+                if_nz   augd    #$FFFFFFFF      ' 5FFFFFFF
+                if_c    augd    #-1             ' CFFFFFFF
+                if_nc   augd    #$FFFFF123      ' 3FFFFFF8
+
+'' ---- C.  CONTROL.  Bit 31 clear -- never affected -------------------------
+
+                if_z    augs    #$7FFFFFFF      ' AF3FFFFF
+                if_z    augd    #$7FFFFFFF      ' AFBFFFFF
+
+'' ---- D.  CONTROL.  Conditional `##` auto-prefix path, bit 31 set ----------
+
+                if_z    add     0-0,##$FFFFF123

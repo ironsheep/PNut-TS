@@ -89,6 +89,20 @@ export class SourceFiles {
     }
   }
 
+  /**
+   * Record the top-level file at index 0, where getTopFile() looks for it.
+   *
+   * The top file cannot simply be added: it preprocesses inside its own
+   * constructor, and every #include registers its document then -- so by the
+   * time the top file exists, the files it includes are already in the list and
+   * a plain push would leave an included file posing as the top file.
+   */
+  public addTopFile(fileReference: SpinDocument) {
+    if (!this._srcFiles.includes(fileReference)) {
+      this._srcFiles.unshift(fileReference);
+    }
+  }
+
   public getFile(fileSpec: string): SpinDocument | undefined {
     let desiredDocument: SpinDocument | undefined = undefined;
     const filename = path.basename(fileSpec);

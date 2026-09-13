@@ -1,0 +1,11 @@
+'' #include of a file that carries a PUB, placed after this file's own PUB so
+'' main() is the first method (compile with -I inc).
+''
+'' Windows PNut has no #include, so the GOLDs come from the hand-flattened twin
+'' flattened/inc_with_pub.spin2 -- its output must match this file's byte for byte.
+
+PUB main()
+  repeat
+    helper(57)
+
+#include "shared_pub.spin2"

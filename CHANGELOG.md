@@ -21,6 +21,14 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+### Fixed
+
+- **`#include` in the top-level file** now compiles that file. The included
+  file was compiled in its place: including a file with no `PUB` failed with
+  `No PUB method or DAT block found`, and including a file with a `PUB` built,
+  silently, a binary of the included file alone. `#include` inside an `OBJ`
+  child object was unaffected.
+
 ## v1.55.6 (2026-09-13)
 
 Explicit `AUGS` and `AUGD` instructions assemble correctly whatever the operand value.

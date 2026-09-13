@@ -589,8 +589,9 @@ export class PNutInTypeScript {
         this.context.logger.errorMsg(`File [${filename}] does not exist or is not a .spin2 file!`);
         this.shouldAbort = true;
       } else {
-        // record this new file in our master list of files we compiled to buid the binary
-        this.context.sourceFiles.addFile(this.spinDocument);
+        // record this new file in our master list of files we compiled to buid the binary,
+        // ahead of any files it #included (those registered during its preprocessing)
+        this.context.sourceFiles.addTopFile(this.spinDocument);
         this.context.currentFolder = this.spinDocument.dirName;
         // listFilename was set above, before preprocessing; everything else derives
         // from it.

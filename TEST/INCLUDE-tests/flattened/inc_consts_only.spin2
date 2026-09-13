@@ -1,0 +1,11 @@
+'' Hand-flattened twin of ../inc_consts_only.spin2 for Windows PNut GOLD generation:
+'' the #include line is replaced by the contents of ../inc/shared_consts.spin2.
+
+CON
+  LED_PIN  = 56
+  BLINK_MS = 250
+
+PUB main()
+  repeat
+    pintoggle(LED_PIN)
+    waitms(BLINK_MS)
