@@ -243,6 +243,7 @@ Error codes follow the pattern `(mGGI)` where:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.55.6 | 2026-09-13 | PASM — explicit `AUGS #`/`AUGD #` with bit 31 of the operand set assembled as an unconditional `AUGD` |
 | 1.55.5 | 2026-08-30 | Object cache — a cached object could lose a nested object's DEBUG data or aim a nested `debug()` at the wrong record; cache format 9, so the first build after upgrading recompiles |
 | 1.55.4 | 2026-08-24 | Object cache — transitive dependency manifest, resolution-root keying, `--cache-verify`; `.map` instance model |
 | 1.55.3 | 2026-08-09 | Preprocessor symbol-table corrections (`#undef`, rest-of-line values, `__VERSION__`) |

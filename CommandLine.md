@@ -17,7 +17,7 @@ Our new PNut-TS compiler will show you the following when you specify `-h` or `-
 ```text
 PNut-TS: Usage: pnut-ts [options] filename
 
-Propeller Spin2 compiler - v1.55.5
+Propeller Spin2 compiler - v1.55.6
 
 Options:
   -V, --version               Output the version number
@@ -57,7 +57,7 @@ Options:
          
 
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024-2026 Iron Sheep Productions, LLC., Parallax Inc.
-pnut-ts: * Version 1.55.5, {buildDateHere}
+pnut-ts: * Version 1.55.6, {buildDateHere}
 ```
 
 These options should already make sense but here's a light-weight recap:

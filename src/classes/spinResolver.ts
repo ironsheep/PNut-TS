@@ -2255,7 +2255,7 @@ export class SpinResolver {
           this.getPound();
           const valueResult = this.getValue(eMode.BM_OperandIntOnly, this.pasmResolveMode);
           // install upper 23 bits as immediate into AUGD/AUGS
-          this.instructionImage |= Number(valueResult.value) >> 9;
+          this.instructionImage |= Number(valueResult.value) >>> 9;
         }
         break;
       case eValueType.operand_d:

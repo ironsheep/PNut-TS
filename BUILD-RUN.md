@@ -75,15 +75,15 @@ Do a test lint & build on the project.
 ```bash
 $ npm run build
 
-> p2-pnut-ts@1.55.5 prebuild
+> p2-pnut-ts@1.55.6 prebuild
 > mkdir -p dist/ext && ./scripts/prepExt
 
 
-> p2-pnut-ts@1.55.5 build
+> p2-pnut-ts@1.55.6 build
 > tsc
 
 
-> p2-pnut-ts@1.55.5 postbuild
+> p2-pnut-ts@1.55.6 postbuild
 > chmod +x dist/pnut-ts.js
 
 ```
@@ -92,7 +92,7 @@ You can see available scripts in the package.json by entering: <BR>(**NOTE**: *n
 
 ```bash
 $ npm run
-Lifecycle scripts included in p2-pnut-ts@1.55.5:
+Lifecycle scripts included in p2-pnut-ts@1.55.6:
   prepack
     npm run esbuild-base -- --minify
   pretest

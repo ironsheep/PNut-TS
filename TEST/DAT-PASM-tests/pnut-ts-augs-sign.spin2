@@ -1,0 +1,58 @@
+'' ===========================================================================
+''  pnut-ts AUGS sign-extension defect -- minimal reproducer
+''
+''  SYMPTOM: an explicit `AUGS #v` whose operand has BIT 31 SET assembles as
+''           AUGD.  Silently.  No warning, no error.
+''
+''  FULL GUIDE: defects/RECOGNISING-THE-DEFECT.md  (listing-file reading too)
+''
+''  HOW TO RECOGNISE IT, and this test does not depend on knowing what the
+''  payload SHOULD be -- only on the opcode field:
+''
+''      take each emitted 32-bit long, look at BITS [27:23]
+''          11110  = AUGS
+''          11111  = AUGD
+''      If the source says `augs` and bits [27:23] are 11111, that is the bug.
+''
+''  Equivalently, in hex: an AUGS long begins FF0..FF7, an AUGD long begins
+''  FF8..FFF.  Every long below is CCCC=1111 (always), so the top byte is FF
+''  in every case and only the next nibble separates the two.
+''
+''  MECHANISM (inferred, and it predicts every case below): the operand is
+''  right-shifted 9 places ARITHMETICALLY -- the sign propagates -- and then
+''  masked to 24 bits (0xFFFFFF) where the payload field is only 23 bits
+''  (0x7FFFFF).  The stray bit 23 is the low bit of the opcode field, so a
+''  negative operand turns 11110 into 11111.
+''      emitted == 0xFF000000 | ((signed(v) >> 9) & 0xFFFFFF)
+'' ===========================================================================
+
+DAT
+                org     0
+
+'' ---- A.  THE DEFECT.  Bit 31 of the operand is set. -----------------------
+''          pnut-ts 1.55.5 emits AUGD (bits[27:23] = 11111) for all three.
+
+                augs    #$FFFFFFFF      ' emits FFFFFFFF  <-- AUGD, should be AUGS
+                augs    #$80000000      ' emits FFC00000  <-- AUGD, should be AUGS
+                augs    #$FFFFF123      ' emits FFFFFFF8  <-- AUGD, should be AUGS
+
+'' ---- B.  CONTROL.  Bit 31 clear.  pnut-ts is correct here. ---------------
+''          All three emit AUGS (bits[27:23] = 11110).
+
+                augs    #$7FFFFFFF      ' emits FF3FFFFF      AUGS, correct
+                augs    #$40000000      ' emits FF200000      AUGS, correct
+                augs    #$00FFF123      ' emits FF007FF8      AUGS, correct
+
+'' ---- C.  CONTROL.  The `##` auto-prefix path.  Correct even with bit 31. --
+''          This is why ordinary code is unaffected: `##` does not go through
+''          the defective path.  Two longs: the AUGS prefix, then the ADD.
+
+                add     0-0,##$FFFFF123 ' emits FF7FFFF8      AUGS, correct
+                                        '  then F1040123      the ADD
+
+'' ---- D.  AUGD, same arithmetic, corruption invisible. --------------------
+''          AUGD's opcode already has bit 23 set, so the stray bit changes
+''          nothing observable.  Included so a comparison does not mistake
+''          AUGD's correctness for the absence of the defect.
+
+                augd    #$FFFFFFFF      ' emits FFFFFFFF      AUGD, correct

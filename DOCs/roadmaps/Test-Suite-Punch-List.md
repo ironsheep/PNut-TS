@@ -731,3 +731,36 @@ vsize/psize header their coordinates include — and relocated through
 `distillObjects`, which compacts the image and drops the regions it eliminates.
 Covered by three tests in `src/tests/CACHE-tests/objectCache.test.ts` and by
 `npm run cache-fuzz` (306 ordered pairs, 0 mismatches).
+
+## 18. Conditional explicit `AUGS`/`AUGD` has no GOLD-backed test (added 2026-09-13)
+
+v1.55.6 fixed explicit `AUGS #v` / `AUGD #v` with bit 31 of `v` set: the
+operand's arithmetic `>> 9` was OR'd in unmasked, forcing bits 31..23 to 1 —
+the condition field to `%1111` and AUGS's opcode bit to AUGD. The committed
+fixture `TEST/DAT-PASM-tests/pnut-ts-augs-sign.spin2` (PNut v55 GOLDs) covers
+only the **unconditional** form, where the condition field is already `%1111`,
+so half the defect is guarded by nothing: `if_z augs #$80000000` emitted
+`$FFC00000` for `$AF400000`, and conditional `AUGD` was hit too. Verified by
+hand against the fixed build only.
+
+**Fix:** add a DAT-PASM fixture with `if_xx augs`/`augd` cases whose operands
+have bit 31 set (and a `#-1`), and regenerate GOLDs with `rebuild-gold.ps1`.
+
+A survey of every other right-shift and encoded-field OR in `src/` for the same
+signed-vs-logical class found no further instances.
+
+## 19. `RELEASE-PROCESS.md` coverage gate cannot be met (added 2026-09-13)
+
+§2 of the release checklist requires Statements >= 88%, Branches >= 84%,
+Functions >= 86% — a baseline labelled v1.51.x. No 1.55.x release has met it:
+the committed report (`jest-coverage/`, last refreshed at v1.55.0) reads
+84.08 / 75.55 / 80.87, and the v1.55.6 run measured 83.76 / 76.29 / 80.66 — the
+same level. A gate every release passes by being ignored is not a gate.
+`RELEASE-PROCESS.md` therefore stays `verified: 1.55.5` in the manifest.
+
+The same run carries one failure, `ALLCODE-tests` `coverage_003_v44.spin2`
+(listing, object and binary mismatch) — the version-forced file of §6.6.
+
+**Fix:** re-baseline the table from a current run (or state the rule as "no
+worse than the last release's committed report"), and resolve §6.6 so the
+coverage run is green.

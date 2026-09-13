@@ -21,6 +21,16 @@ Work to appear in upcoming releases:
 
 ## [Unreleased]
 
+## v1.55.6 (2026-09-13)
+
+Explicit `AUGS` and `AUGD` instructions assemble correctly whatever the operand value.
+
+### Fixed
+
+- **`AUGS #value` and `AUGD #value` with bit 31 of `value` set** no longer
+  assemble as an unconditional `AUGD`, silently. Operands below `$8000_0000`,
+  and `##` immediates, were unaffected.
+
 ## v1.55.5 (2026-08-30)
 
 Cached builds with `-d` now reproduce an uncached build exactly, whichever program filled the cache first.
