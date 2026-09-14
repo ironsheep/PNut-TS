@@ -497,3 +497,44 @@ No previously accepted **input** becomes a failure. Two output-side breaks:
 Gate: full suite (`npm run build && jest --runInBand -c smm.jestconfig.js`) plus
 `npm run cache-fuzz`, `npm run map-fuzz` and `npm run p2kb-verify`, and
 `npm audit` clean after §10.
+
+---
+
+## Dispatch record
+
+- **Dispatch model:** `arbiter-serial` — same as the project default
+  (`DISPATCH_MODEL` in `.claude/skill-conventions.md`). Every task compiles
+  into or runs suites over the shared `TEST/` tree, and «#60»→«#61»→«#62»/«#63» are
+  coupled on the `ObjectLayout` shape and the map grammar. One agent at a time; the
+  arbiter runs every jest suite, `cache-fuzz`, `map-fuzz` and `p2kb-verify`.
+- **Two-phase (design returned for review before implementation):** «#59» (map
+  grammar — reviewed by Stephen too, since the format was approved in outline) and
+  «#60» (`ObjectLayout` + per-variant symbols).
+- **Atomic green-unit:** «#61» (generator rewrite) leaves `map.test.ts` and
+  `p2kb-verify` red by design; «#62» restores `map.test.ts`, «#64» restores
+  `p2kb-verify`. Both tasks carry the text.
+- **Ordering notes (rework pass):** «#56» verifies the VAR-packing rule before
+  «#58» encodes it in expectations (discovery before utilization); «#59» fixes
+  the grammar before «#61» applies it and «#62»/«#63»/«#64» parse it (standards
+  before application); «#60» precedes «#61» (foundation before building);
+  documentation «#65» follows every behavior change.
+
+## Section ↔ task cross-reference
+
+Sprint tag: `map-instance-1558`.
+
+| Plan § | Deliverable | Task | seq |
+| ------ | ----------- | ---- | --- |
+| §10 | Dev-only npm audit advisories | «#53» | 1 |
+| §7 | Synchronous `.lst` / `-i` / `--regression` writes (punch §22) | «#54» | 2 |
+| §6 | Test isolation, `npm test` in band (punch §14b) | «#55» | 3 |
+| §11 | Data-Packing-Alignment guide re-verified (feeds §4) | «#56» | 4 |
+| §11 | MISSING-EFFECTS record + Inline-PASM guide re-verified | «#57» | 5 |
+| §4 | Image ground-truth decoder + shape matrix (part 1) | «#58» | 6 |
+| §3 | Map grammar specified in `MAP-File-Format.md` [two-phase] | «#59» | 7 |
+| §1, §2 | `ObjectLayout` from the image; symbols per variant [two-phase] | «#60» | 8 |
+| §3 | `mapGenerator` rewritten to the five-section format [green-unit] | «#61» | 9 |
+| §5 | MAP harness: new grammar, exact entries, STRUCT, staging (punch §14a, §16) | «#62» | 10 |
+| §4 | Every map fact checked: matrix, GOLD corpora, `map-fuzz` (part 2) | «#63» | 11 |
+| §8 | `p2kb-verify` + P2KB `map_caveat` re-measured | «#64» | 12 |
+| §9 | Documentation current for 1.55.8 | «#65» | 13 |
