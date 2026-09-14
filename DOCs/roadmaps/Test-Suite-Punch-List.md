@@ -29,7 +29,7 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 19 | Coverage gate unmeetable | no | open |
 | 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
 | 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
-| 22 | `.lst`/`.pre` unawaited streams | no | open |
+| 22 | `.lst`/`.pre` unawaited streams | no | **in sprint: Map-Instance-Correctness** |
 
 ---
 
@@ -773,6 +773,7 @@ sprint is the natural tool for step 2.
 ## 22. `.lst` and `.pre` are written through streams nobody waits on (added 2026-09-14)
 
 > **Compiled output: no** — output-file integrity; no failure observed.
+> **Taken into the Map-Instance-Correctness sprint (Stephen, 2026-09-14).**
 
 1.55.4 made the `.bin`, `.flash` and `.map` writes synchronous after an unawaited
 stream produced a zero-byte `.flash` (archived item 12). Its CHANGELOG names the
