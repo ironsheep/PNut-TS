@@ -7,7 +7,35 @@ they accumulate further.
 
 ---
 
+## Status index (2026-09-14)
+
+**Compiled output** asks one question: does this item mean the compiler can
+produce a wrong program (`.bin` / `.obj` / `.flash`)?
+
+| # | Item | Compiled output | Status |
+|---|---|---|---|
+| 1 | QLOG/QEXP compile-time precision | **YES** | open — CORDIC port recommended |
+| 2 | Stale preprocessor GOLDs | no | open — decision (a)/(b) |
+| 4 | Dead flash/RAM download code | no | open |
+| 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
+| 6 | GOLD-regen workflow cleanup | no | open — triggers passed, outcomes unrecorded |
+| 9 | `dumpTables` + `-I` relative path | **YES** (9.1 = item 1) | open |
+| 10 | Language-spec extraction pipeline | no | open — Stephen's decision |
+| 11 | `#pragma exportdef` value | no wrong code | open — Stephen's decision |
+| 13 | Documentation residue (13a, 13d) | no | open |
+| 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
+| 15 | Preprocessor diagnostics | **15a YES in effect** | open |
+| 16 | MAP tests lack STRUCTs | no | **in sprint: Map-Instance-Correctness** |
+| 19 | Coverage gate unmeetable | no | open |
+| 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
+| 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
+| 22 | `.lst`/`.pre` unawaited streams | no | open |
+
+---
+
 ## 1. `op_qlog` / `op_qexp` saturation precision bug
+
+> **Compiled output: YES** — wrong compile-time constants, silently.
 
 **Surfaced by:** `pnut-ts-resolver.test.ts` against `dumpTables.spin2`. After
 filtering header lines, exactly **one** assertion mismatches the GOLD:
@@ -41,6 +69,8 @@ regression suite (current suite catches it almost by accident).
 ---
 
 ## 2. Stale preprocessor GOLDs
+
+> **Compiled output: no** — us-vs-us preprocessor snapshots (`TEST/PREPROC-tests/*.pre.GOLD`); decision (a)/(b) below still open.
 
 **Surfaced by:** `pnut-ts-preproc.test.ts` — three failures: `condCode`,
 `condCodeElse`, `include`. GOLDs date from January 2024.
@@ -76,35 +106,9 @@ If keeping (a): also add a `PUB main()` stub to each fixture so the spurious
 
 ---
 
-## 3. Pre-existing `audit-errors` duplicates (8)
-
-`npm run audit-errors` reports 8 duplicate-message issues that pre-date
-v1.54.3 (confirmed by stashing changes and re-running on `main`). All cluster
-around STRUCT support added in v1.54.0:
-
-- `"Expected an existing STRUCT name"` — needs 2 unique codes
-- `"Expected a structure member name"` — needs 2 unique codes
-- `"Structure does not contain this name"` — needs 3 unique codes
-- `"Indexed structures cannot exceed $FFFF bytes in size"` — inconsistent codes
-- `"Structure index must be from 0 to $FFFF"` — needs 2 unique codes
-- `"Structure exceeds hub range of $FFFFF"` — inconsistent codes
-- `"Bit number exceeds BYTE/WORD/LONG boundary"` — needs 2 unique codes
-- `"OBJ data exceeds ${this.obj_limit / 1024}k limit"` — needs 2 unique codes
-  (this one is in `compiler.ts`, not STRUCT-related)
-
-**Convention** (per `DOCs/RELEASE-PROCESS.md`): error codes are `(mGGI)`
-where `GG` is a group ID and `I` is the instance within the group. Multiple
-locations sharing one message text get one group with sequential instance
-suffixes. Suggested next step: assign group codes per the convention and
-re-run `npm run audit-errors` until clean.
-
-**Why deferred:** mechanical fix that's tangential to the cache work.
-Ideally addressed as a single dedicated commit so the changelog entry reads
-cleanly.
-
----
-
 ## 4. Dead flash/RAM download infrastructure (partial cleanup remaining)
+
+> **Compiled output: no** — dead code. Re-checked 2026-09-14: `P2InsertFlashLoader` and `LoadHardware` still present in `spin2Parser.ts`.
 
 v1.54.3 removed the user-facing `--flash` / `--ram` / `--both` / `--plug` /
 `--dvcnodes` CLI options (none ever went live), the dead branches that
@@ -130,6 +134,8 @@ CLI cleanup that motivated this release.
 ---
 
 ## 5. Object-cache hardening — items deferred from v1.54.6
+
+> **Compiled output: no observed defect.** 5a (SD-suite run) never done; 5d's uncovered case — a sidecar swapped between entries — could in principle serve a wrong binary.
 
 Recorded as a group while shipping v1.54.6 (subtree exportdef replay + the
 new comprehensive byte-equivalence regression test). The fix and the
@@ -225,6 +231,8 @@ purity anyway).
 ---
 
 ## 6. GOLD-regen workflow cleanup (deferred from v55 prep, 2026-05-11)
+
+> **Compiled output: no** — GOLD-regen workflow. Re-checked 2026-09-14: 21 legacy `*-rebuild-v*` dirs, 544 `.elem*` files, no `EXCEPT-tests/rebuild-gold.ps1`, TOF GOLDs still gitignored. The v55 regen (2026-05-13) has happened, so the 6.4–6.6 triggers have passed; their outcomes were never recorded here.
 
 **Context:** A unified GOLD-regen workflow was built in `scripts/gold/`
 (library + driver + bundle/apply scripts + 26 per-suite `rebuild-gold.ps1`
@@ -372,27 +380,9 @@ is the cause. Pick the handling option then.
 
 ---
 
-## 7. — closed 2026-08-09, archived
-
-Swept to `completed/2026-08-09-Punch-List-Archive.md` (copyright reconciled
-and shipped, Preproc-Symbols §9, v1.55.3).
-
-## 8. — closed 2026-09-13, fixed in commit `1a98da4`
-
-`#include` in a top-level file compiled the **included** file in its place. Its
-document registered in `Context.sourceFiles` while the top file was still
-preprocessing in its constructor, so it sat at index 0 where `getTopFile()`
-looks. A constants-only include failed with `No PUB method or DAT block found`;
-an include carrying a `PUB` did *not* "work" as first recorded here — it
-silently built a binary of the included file alone. `#include` inside an `OBJ`
-child was never affected.
-
-Fixed by `SourceFiles.addTopFile()`. Covered by `inc_consts_only` and
-`inc_with_pub` in `src/tests/INCLUDE-tests/pnut-ts-include.test.ts`, compared
-against Windows PNut GOLDs built from hand-flattened twins in
-`TEST/INCLUDE-tests/flattened/` (PNut has no `#include`).
-
 ## 9. `TEST/FULL` `dumpTables` failure + `-I` relative-path bug (added 2026-08-08)
+
+> **Compiled output: YES for 9.1** — the 2026-09-13 investigation found `dumpTables` fails on the same compile-time QLOG/QEXP constants as item 1, and clears with the CORDIC port. **9.2 is test-harness only.**
 
 **Surfaced by:** CLI-Robustness entry-baseline correction.
 
@@ -407,6 +397,8 @@ above. Two things are *not* covered there:
    future test in that file.
 
 ## 10. Language-specification extraction pipeline broken in place (added 2026-08-09)
+
+> **Compiled output: no** — documentation tooling. Re-checked 2026-09-14: both broken imports still present. Needs Stephen's scope decision (repair, retire, or banner).
 
 **Surfaced by:** Preproc-Symbols sprint §8 Phase A — the aged-document gate
 selected `DOCs/language-specification/README.md` (2025-09-13, ~v52 era) and
@@ -455,6 +447,8 @@ historical reference with a staleness banner.
 
 ## 11. `#pragma exportdef` exports presence, not the value (added 2026-08-09)
 
+> **Compiled output: no wrong code** — a feature gap: the value is never exported, and the documented pattern fails to compile. Needs Stephen's decision.
+
 **Surfaced by:** Preproc-Symbols sprint §6 — reproducing every `Preprocessor.md`
 claim against the built compiler before re-stamping it. The doc's flagship
 MEMDRIVER example (define a driver filename, export it, child instantiates
@@ -487,29 +481,6 @@ carried values.
 
 ---
 
-## 12. `isp_dummy_flash` intermittently compares an empty `.flash` (added 2026-08-09)
-
-**Surfaced by:** Preproc-Symbols sprint full-suite runs — failed in 2 of 6
-runs with `Flash Files Don't match!`, and on inspection the compiler-written
-`.flash` file was **0 bytes** at comparison time. Passes standalone and on
-every rerun; the file regenerates at its normal 6,436 bytes. Never observed
-before this sprint at this frequency.
-
-**Shape:** a test-harness write race, not a compiler defect — the FLASH
-runner's `waitForFiles()` sees the file exist before its content is flushed
-(or a same-process stream is still open when the comparator reads). The
-preprocessor changes this sprint do not touch flash generation, and the
-failure did not correlate with any code change (first sighting was on a
-diff that only removed logging guards).
-
-**Suggested fix:** make the flash comparator (and possibly `waitForFiles` in
-`src/tests/testUtils.ts`) wait for non-zero size / stable size across two
-polls rather than bare existence, or ensure the write path is synchronous
-before the test asserts. Check whether other binary comparisons share the
-same latent race.
-
----
-
 ## Cross-cutting note: regression tests against "us-vs-us" GOLDs
 
 Three of the items above (`#1 op_qlog`, `#2 preproc GOLDs`, the deleted
@@ -532,6 +503,8 @@ test file's header, or it doesn't belong in the suite.
 
 ## 13. Documentation residue from the 1.55.4 release sweep (added 2026-08-24)
 
+> **Compiled output: no** — documentation. 13b/c/e/f archived 2026-09-14.
+
 Found by a documentation survey run against the v1.55.4 tag. Each item below was
 **deliberately not fixed at tag time** — none blocks the release, and each is
 recorded here rather than left to be rediscovered.
@@ -549,27 +522,6 @@ at its head saying which half to trust.
 **Fix:** audit all 43 `spin2Parser.ts:NNN` citations against source, and prefer
 citing a symbol name over a line number wherever the line adds nothing — a symbol
 does not drift. Then remove the caution note and stamp `verified`.
-
-### 13b. — closed 2026-08-30
-
-`Testing.md` gained an "If you use the object cache" section: what
-`--cache-verify` does, that it is opt-in so a plain `--cache` build ships a bad
-binary silently, that a mismatch is always worth reporting and what to include,
-and that the first build after a format bump is slow on purpose.
-
-*Correction to the original entry:* it named `DOCs/internals/Testing.md`, which
-does not exist. The file is top-level `Testing.md`, linked from `README.md`.
-
-### 13c. — closed 2026-08-30
-
-All three roadmap links repaired (the documents had moved to
-`roadmaps/completed/`; the index now says so rather than linking into the void).
-The `/internals/` index went from 5 entries to the full set, grouped — compiler
-and output formats, runtime and silicon, DEBUG windows, usage guides, briefings
-— and the `/roadmaps/` list now names the punch list and both cache documents.
-Every relative link in the file was checked and resolves. The hour-estimate
-framing ("~600+ hours across all roadmaps") was dropped; it is not how this
-project plans.
 
 ### 13d. `Regression-Test-Coverage-Report.md` is marked generated but has no generator
 
@@ -593,21 +545,9 @@ body is not.
 the document as hand-maintained and own it. Leaving it `generated` with no
 generator is the one option that keeps lying.
 
-### 13e. — closed 2026-08-30
-
-`DOCs/RELEASE-PROCESS.md` is now class `governed` covering `packaging`, so a
-change to `.github/workflows/release.yml` or `package.json` can stale it. Its
-Release History table also gained the 1.55.5 row it was missing. `docs-check`
-now reports `process=13 governed=60` where it read 14/59.
-
-### 13f. — closed 2026-08-24
-
-Both faces now read `2024-2026` as a range, decided by Stephen and applied in
-commit `c813767`.
-
----
-
 ## 14. Test-harness items from the 1.55.4 closeout audit (added 2026-08-24)
+
+> **Compiled output: no** — test harness. **Taken into the Map-Instance-Correctness sprint (scope confirmed 2026-09-14).** Re-checked 2026-09-14: `package.json` `test` still lacks `--runInBand` (14b).
 
 ### 14a. `verify-map.ts` method-entry check is a coarse lower bound
 
@@ -649,6 +589,8 @@ serialising around it.
 
 ## 15. Preprocessor diagnostics (added 2026-08-09, merged here 2026-08-30)
 
+> **Compiled output: 15a YES in effect** — the build silently omits the `#ifdef SYM` branches the user meant to enable. **15b no** — misdirected diagnostic, no output produced.
+
 Both are **silent or misdirecting** failures: the compiler accepts the input,
 does something other than what the user asked, and either says nothing or points
 at the wrong line. Neither is covered by any fixture. Recorded during the
@@ -689,6 +631,8 @@ supported spelling. (`src/classes/spinDocument.ts`.)
 
 ## 16. MAP test cases do not cover structures (added 2026-08-09, merged here 2026-08-30)
 
+> **Compiled output: no** — test coverage. **Taken into the Map-Instance-Correctness sprint (scope confirmed 2026-09-14).**
+
 No MAP fixture exercises a `STRUCT`, so nothing verifies how structures and
 their fields display in map output. The 1.55.4 map redesign (instance model,
 `Entry +$rel  ($abs)`) went in without a structure case, and item 14a's proposed
@@ -709,37 +653,9 @@ exact-address assertion would land on the same uncovered surface.
 > were not carried into a dated archive because their completion is recorded in
 > `DOCs/RELEASE-PROCESS.md` and the release workflow itself.
 
-## 17. — closed 2026-08-30, fixed in v1.55.5
-
-Cached parents did not patch their descendants' brkCodes: a parent's `.bin`
-carried its descendants' relocated code, but its brkSite list covered only its
-own region, so on a cache hit `injectRecord` could return different indices and
-every descendant brkCode was left pointing at whatever now occupied its old
-one. The binary came out the **right size** with wrong content, so only byte
-comparison against an uncached build caught it.
-
-Filed and fixed the same day. Descendant brkSites are now registered as
-`compile_obj_blocks` copies each child image in — rebased past the 8-byte
-vsize/psize header their coordinates include — and relocated through
-`distillObjects`, which compacts the image and drops the regions it eliminates.
-Covered by three tests in `src/tests/CACHE-tests/objectCache.test.ts` and by
-`npm run cache-fuzz` (306 ordered pairs, 0 mismatches).
-
-## 18. — closed 2026-09-13
-
-Conditional explicit `AUGS`/`AUGD` had no GOLD-backed test. v1.55.6 fixed
-`AUGS #v` / `AUGD #v` with bit 31 of `v` set — the arithmetic `>> 9` OR'd in
-unmasked forced bits 31..23 to 1, overwriting the condition field as well as
-AUGS's opcode bit — but its fixture `pnut-ts-augs-sign.spin2` covers only the
-unconditional form, where the condition field is already `%1111`.
-
-Closed by `TEST/DAT-PASM-tests/pnut-ts-augs-cond.spin2` with PNut v55 GOLDs:
-`if_z`/`if_nz`/`if_c`/`if_nc` forms of both instructions with bit-31 operands
-(including `#-1`), bit-31-clear controls, and a conditional `##` auto-prefix.
-The fixed build matches the GOLDs. A survey of every other right-shift and
-encoded-field OR in `src/` for the same class found no further instances.
-
 ## 19. `RELEASE-PROCESS.md` coverage gate cannot be met (added 2026-09-13)
+
+> **Compiled output: no** — release-process gate. Its one failure (`coverage_003_v44`) is attributed to a GOLD built with v55 bytecode (6.6); not proven.
 
 §2 of the release checklist requires Statements >= 88%, Branches >= 84%,
 Functions >= 86% — a baseline labelled v1.51.x. No 1.55.x release has met it:
@@ -758,6 +674,8 @@ coverage run is green.
 ---
 
 ## 20. `.map` VAR bases for shared images, and OBJ arrays (added 2026-09-14)
+
+> **Compiled output: no** — the `.map` misdescribes a correct binary. **Taken into the Map-Instance-Correctness sprint (scope confirmed 2026-09-14)** as one member of a defect class.
 
 **Surfaced by:** re-measuring the P2KB `map_caveat` amendment against 1.55.7.
 Ground truth is the parent object's header table — one `(object offset, VAR
@@ -810,3 +728,78 @@ header table entries (one per element), name array elements `D[0]`, `D[1]`, …,
 and add MAP fixtures for merged copies with VAR and for an array declared before
 another OBJ, asserted against header-derived addresses. Then re-measure and trim
 the "Known wrong" block from `DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md`.
+
+---
+
+## 21. WUMMI "Group B" binaries differ from PNut's — DEFERRED; re-verify before any action (added 2026-09-14)
+
+> **Compiled output: POSSIBLY** — the bytes differ from PNut's; whether behavior
+> differs is unknown. **Deferred by Stephen 2026-09-14.** Do not diagnose or fix
+> from the figures below: they are from 1.55.2. **Re-verify the current status
+> first.**
+
+**Surfaced by:** the CLI-Robustness sprint entry baseline (2026-08-08), where it
+was agreed to defer as "Group B — dedup parity divergence", and carried
+unchanged through that sprint's closeout (3 failed / 46 passed). It was never
+filed here, so until now every sprint deferred it without deciding to. Source:
+`DOCs/roadmaps/completed/CLI-Robustness-Sprint-Plan.md` (Group B table) and
+`2026-08-08-CLI-Robustness-CLOSEOUT.md`.
+
+**As recorded at 1.55.2:** `WUMMI-tests/FG1`, `Main` and `Mustererkennung` fail
+listing, object and binary against their Windows GOLDs. A real byte divergence,
+not line endings: PNut-TS's early deduplication and distiller produce **smaller**
+objects (`OBJ bytes: 68_672` against GOLD `68_780`), print a three-line savings
+summary where PNut prints one, and the `.bin` differs accordingly (79,617 against
+79,629 bytes).
+
+**What is not known:** whether PNut-TS merges objects PNut keeps separate. Merged
+object images share one DAT region, so a wrong merge would change what the
+program does, not just its size.
+
+**Before any action:**
+
+1. Build the current compiler and run the WUMMI suite. Record which fixtures
+   fail and their byte counts. 1.55.4 replaced the `.map` instance model and
+   changed the cache, so the 1.55.2 figures cannot be assumed.
+2. Only if the divergence reproduces: compare object-header tables and
+   image-region counts per object against PNut's `.obj`, to find which objects
+   were merged differently.
+
+The header-derived ground-truth checker planned for the Map-Instance-Correctness
+sprint is the natural tool for step 2.
+
+---
+
+## 22. `.lst` and `.pre` are written through streams nobody waits on (added 2026-09-14)
+
+> **Compiled output: no** — output-file integrity; no failure observed.
+
+1.55.4 made the `.bin`, `.flash` and `.map` writes synchronous after an unawaited
+stream produced a zero-byte `.flash` (archived item 12). Its CHANGELOG names the
+hazard: a script reading an output right after a build "could see the previous
+run's contents or a partial file". Two user-visible outputs still use the old
+pattern:
+
+- the listing — `P2List` in `src/classes/spin2Parser.ts` opens
+  `fs.createWriteStream` and ends it without waiting;
+- the preprocessor report — `src/classes/spinDocument.ts`, same pattern.
+
+Also on the pattern, lower stakes: the `--regression` outputs in
+`src/classes/regression.ts`, and `dumpUniqueObjectFile` /
+`dumpUniqueChildObjectFile` in `src/utils/files.ts`, whose only callers are
+commented out.
+
+**Fix:** build the text in memory and write it with `fs.writeFileSync`, as
+`mapGenerator.ts` does; delete the two dead dump helpers.
+
+---
+
+## Closed and archived
+
+Item numbers are never reused, so references elsewhere stay valid.
+
+| Items | Archive |
+|---|---|
+| 7 | `completed/2026-08-09-Punch-List-Archive.md` |
+| 5b, 5e, 5f, and three unnumbered `.map` items (all closed in 1.55.4) | `completed/2026-08-24-Punch-List-Archive.md` |
+| 3, 8, 12, 13b, 13c, 13e, 13f, 17, 18 | `completed/2026-09-14-Punch-List-Archive.md` |

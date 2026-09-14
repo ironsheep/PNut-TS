@@ -227,6 +227,7 @@
     "DOCs/roadmaps/completed/Object-Cache-Transitive-Invalidation-Sprint-Plan.md": { "class": "historical", "note": "Archived at closeout 2026-08-24; lifecycle marker at head points to the closeout audit" },
     "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-CLOSEOUT.md": { "class": "historical" },
     "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-Retrospective.md": { "class": "historical" },
+    "DOCs/roadmaps/completed/2026-09-14-Punch-List-Archive.md": { "class": "historical", "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)" },
     "DOCs/roadmaps/completed/2026-08-24-Punch-List-Archive.md": { "class": "historical", "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)" },
     "DOCs/roadmaps/P2KB-abort-trap-amendment.md": { "class": "historical", "note": "Proposed amendment for an EXTERNAL corpus (P2KB) ABORT/trap entries; apply after hardware probe confirms" },
     "DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md": { "class": "historical", "note": "Measurement record + proposed amendment for an EXTERNAL corpus (P2KB); archives with the sprint" },
