@@ -1,0 +1,94 @@
+=== Debug Logger Session Started at 2026-09-14T14:14:29.783 ===
+PNut-Term-TS: v1.0.9
+Program: debug
+=====================================
+
+[2026-09-14T14:14:29.682] [SYSTEM] BAUD_RATE_SET 2000000 baud (preferences/default)
+
+=== Session ended - Download Started at 2026-09-14T14:14:29.809 ===
+=== Debug Logger Session Started at 2026-09-14T14:14:29.811 ===
+PNut-Term-TS: v1.0.9
+Program: debug
+=====================================
+
+[2026-09-14T14:14:29.809] [SYSTEM] [DOWNLOAD TO RAM] File: abort_trap_probe.bin | Size: 13762 bytes | Modified: 2026-09-14T20:14:05.852Z
+[2026-09-14T14:14:29.811] [SYSTEM] Download Session Started
+[2026-09-14T14:14:30.587] [SYSTEM] * P2 checksum verification: SUCCESS - '.' received after 2ms
+[2026-09-14T14:14:30.587] [SYSTEM] [DOWNLOAD SUCCESS] abort_trap_probe.bin successfully downloaded to RAM
+[2026-09-14T14:14:30.602] Cog0  INIT $0000_0000 $0000_0000 load
+[2026-09-14T14:14:30.602] Cog0  INIT $0000_0FA8 $0000_3340 jump
+[2026-09-14T14:14:30.602] Cog0  BEGIN abort_trap_probe
+[2026-09-14T14:14:30.602] Cog0  PASS H1 checker reports a mismatch (match(1,2) is false)  got=0 expect=0
+[2026-09-14T14:14:30.603] Cog0  PASS H2 checker reports a match (match(5,5) is true)  got=-1 expect=-1
+[2026-09-14T14:14:30.603] Cog0  PASS A1 ABORT -5 under value trap  got=-5 expect=-5
+[2026-09-14T14:14:30.603] Cog0  PASS A2 ABORT 12345 under value trap  got=12_345 expect=12_345
+[2026-09-14T14:14:30.603] Cog0  PASS A3 ABORT NEGX (bit 31 only) survives intact  got=-2_147_483_648 expect=-2_147_483_648
+[2026-09-14T14:14:30.603] Cog0  PASS A4 ABORT POSX survives intact  got=2_147_483_647 expect=2_147_483_647
+[2026-09-14T14:14:30.604] Cog0  PASS A5 bare ABORT under value trap gives 0  got=0 expect=0
+[2026-09-14T14:14:30.604] Cog0  PASS A6 ABORT 0 under value trap gives 0  got=0 expect=0
+[2026-09-14T14:14:30.604] Cog0  PASS A7 ABORT through two untrapped levels  got=-42 expect=-42
+[2026-09-14T14:14:30.605] Cog0  PASS A8 ABORT from child object method  got=3 expect=3
+[2026-09-14T14:14:30.605] Cog0  PASS A9 ABORT through method pointer  got=-7 expect=-7
+[2026-09-14T14:14:30.605] Cog0  PASS A10 ABORT value is an evaluated expression  got=12 expect=12
+[2026-09-14T14:14:30.606] Cog0  PASS B1 trapped returns77() gives 0  got=0 expect=0
+[2026-09-14T14:14:30.606] Cog0  PASS B1c control: untrapped returns77() gives 77  got=77 expect=77
+[2026-09-14T14:14:30.606] Cog0  PASS B2 trapped returnsTwo() gives 0  got=0 expect=0
+[2026-09-14T14:14:30.607] Cog0  PASS B2c control: untrapped returnsTwo() first result  got=1 expect=1
+[2026-09-14T14:14:30.607] Cog0  PASS B2d control: untrapped returnsTwo() second result  got=2 expect=2
+[2026-09-14T14:14:30.607] Cog0  PASS B3 trapped no-result method gives 0  got=0 expect=0
+[2026-09-14T14:14:30.608] Cog0  PASS B3c control: no-result method body ran under trap  got=1 expect=1
+[2026-09-14T14:14:30.608] Cog0  PASS B4 trapped method pointer, normal completion, gives 0  got=0 expect=0
+[2026-09-14T14:14:30.609] Cog0  PASS B4c control: untrapped method pointer gives 77  got=77 expect=77
+[2026-09-14T14:14:30.609] Cog0  PASS B5 trapped child.go(0), normal completion, gives 0  got=0 expect=0
+[2026-09-14T14:14:30.609] Cog0  PASS B5c control: untrapped child.go(0) gives 77  got=77 expect=77
+[2026-09-14T14:14:30.610] Cog0  PASS C1 statement trap leaves caller variable untouched  got=123 expect=123
+[2026-09-14T14:14:30.610] Cog0  PASS C2 execution continues after a statement trap  got=1 expect=1
+[2026-09-14T14:14:30.611] Cog0  PASS D1 code before ABORT ran  got=1 expect=1
+[2026-09-14T14:14:30.611] Cog0  PASS D1n code after ABORT did NOT run (mark1 <> 2)  got=1 must-not-be=2
+[2026-09-14T14:14:30.611] Cog0  PASS D1v value from D1  got=-3 expect=-3
+[2026-09-14T14:14:30.612] Cog0  PASS D2n code after the call in an untrapped middle frame did NOT run  got=0 expect=0
+[2026-09-14T14:14:30.612] Cog0  PASS D2v value from D2  got=-3 expect=-3
+[2026-09-14T14:14:30.612] Cog0  PASS D2c control: same middle frame without abort does run its tail  got=1 expect=1
+[2026-09-14T14:14:30.613] Cog0  PASS D3 inner statement trap stops propagation; outer sees normal completion (0)  got=0 expect=0
+[2026-09-14T14:14:30.613] Cog0  PASS D3c catcher ran its tail after the inner trap  got=1 expect=1
+[2026-09-14T14:14:30.614] Cog0  PASS D3u untrapped catcher() returns its own result 9  got=9 expect=9
+[2026-09-14T14:14:30.614] Cog0  PASS D4 re-ABORT from a handler reaches the outer trap  got=-8 expect=-8
+[2026-09-14T14:14:30.615] Cog0  PASS E1 trap inside an expression: 1000 + abort 5  got=1_005 expect=1_005
+[2026-09-14T14:14:30.615] Cog0  PASS E2 trap inside an expression: 1000 + normal completion  got=1_000 expect=1_000
+[2026-09-14T14:14:30.616] Cog0  PASS E3 caller local a intact after deep abort  got=286_331_153 expect=286_331_153
+[2026-09-14T14:14:30.616] Cog0  PASS E3 caller local b intact after deep abort  got=572_662_306 expect=572_662_306
+[2026-09-14T14:14:30.617] Cog0  PASS E3 caller local c intact after deep abort  got=858_993_459 expect=858_993_459
+[2026-09-14T14:14:30.617] Cog0  PASS E4 abort passes through frames holding expression temps  got=-3 expect=-3
+[2026-09-14T14:14:30.633] Cog0  PASS E5c control: frame address measurement is sensitive to depth  got=13_288 must-not-be=13_228
+[2026-09-14T14:14:30.690] Cog0  PASS E6 10000 aborts through REPEAT/CASE frames sum correctly  got=50_005_000 expect=50_005_000
+[2026-09-14T14:14:30.691] Cog0  FAIL E7n stack did NOT drift after 10000 trapped aborts  got=13_256 expect=13_228
+[2026-09-14T14:14:30.691] Cog0  PASS F1 bare ABORT: value alone reads 0  got=0 expect=0
+[2026-09-14T14:14:30.692] Cog0  PASS F1 bare ABORT: completion flag stayed clear  got=0 expect=0
+[2026-09-14T14:14:30.692] Cog0  PASS F2 normal completion: value also reads 0  got=0 expect=0
+[2026-09-14T14:14:30.692] Cog0  PASS F2 normal completion: completion flag was set  got=-1 expect=-1
+[2026-09-14T14:14:30.692] Cog1  INIT $0000_0FA8 $0000_293C jump
+[2026-09-14T14:14:30.692] Cog2  INIT $0000_0FA8 $0000_2B3C jump
+[2026-09-14T14:14:30.708] Cog3  INIT $0000_0FA8 $0000_2D3C jump
+[2026-09-14T14:14:30.993] Cog0  PASS G0 cogspin started the aborting cog  got=1 must-not-be=-1
+[2026-09-14T14:14:30.993] Cog0  PASS G0 cogspin started the control cog  got=2 must-not-be=-1
+[2026-09-14T14:14:30.993] Cog0  PASS G0 cogspin started the trapping cog  got=3 must-not-be=-1
+[2026-09-14T14:14:30.994] Cog0  PASS G1 cog with uncaught ABORT has stopped (COGCHK 0)  got=0 expect=0
+[2026-09-14T14:14:30.994] Cog0  PASS G2 that cog ran its code before the ABORT  got=1 expect=1
+[2026-09-14T14:14:30.994] Cog0  PASS G3n that cog did NOT run code after the ABORT  got=0 expect=0
+[2026-09-14T14:14:30.995] Cog0  PASS G4 control cog still running (COGCHK -1)  got=-1 expect=-1
+[2026-09-14T14:14:30.995] Cog0  PASS G5 control cog made progress  got=302 must-not-be=0
+[2026-09-14T14:14:30.996] Cog0  PASS G6 cog that traps its own ABORT is still running  got=-1 expect=-1
+[2026-09-14T14:14:31.012] Cog0  PASS G7 that cog received the abort value  got=-11 expect=-11
+[2026-09-14T14:14:31.047] Cog0  PASS G8 control: COGCHK reads 0 after COGSTOP  got=0 expect=0
+[2026-09-14T14:14:31.047] Cog0  PASS T0 taskspin started the aborting task  got=1 must-not-be=-1
+[2026-09-14T14:14:31.047] Cog0  PASS T0 taskspin started the control task  got=1 must-not-be=-1
+[2026-09-14T14:14:31.048] Cog0  FAIL T1 task with uncaught ABORT has stopped (TASKCHK 0)  got=1 expect=0
+[2026-09-14T14:14:31.048] Cog0  PASS T2 that task ran its code before the ABORT  got=1 expect=1
+[2026-09-14T14:14:31.048] Cog0  PASS T3n that task did NOT run code after the ABORT  got=0 expect=0
+[2026-09-14T14:14:31.049] Cog0  PASS T4 control task still running (TASKCHK 1)  got=1 expect=1
+[2026-09-14T14:14:31.049] Cog0  PASS T5 control task made progress  got=21 must-not-be=0
+[2026-09-14T14:14:31.049] Cog0  PASS T6 control: TASKCHK reads 0 after TASKSTOP  got=0 expect=0
+[2026-09-14T14:14:31.065] Cog0  SUMMARY checks=67 expected=67 pass=65 fail=2
+[2026-09-14T14:14:31.065] Cog0  END abort_trap_probe
+
+=== Debug Logger Session Ended at 2026-09-14T14:14:39.346 ===
