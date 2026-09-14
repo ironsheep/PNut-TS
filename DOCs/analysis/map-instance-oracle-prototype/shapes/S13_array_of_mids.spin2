@@ -1,0 +1,6 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  m[2] : "midv" | MID_TAG = 4
+  after : "drvv" | BUS_TAG = 8
+PUB main() | r

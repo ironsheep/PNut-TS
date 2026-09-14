@@ -1,0 +1,6 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  d[3] : "drvv" | BUS_TAG = 5
+  e : "drvv" | BUS_TAG = 6
+PUB main() | r

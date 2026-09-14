@@ -1,0 +1,5 @@
+CON LEAF_TAG = -1
+VAR long lv
+DAT ltag LONG LEAF_TAG
+PUB get() : r
+  r := ltag + lv

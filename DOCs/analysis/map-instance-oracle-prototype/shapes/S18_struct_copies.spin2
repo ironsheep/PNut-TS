@@ -1,0 +1,7 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  s : "structv"
+  t : "structv"
+  u : "drvv"
+PUB main() | r

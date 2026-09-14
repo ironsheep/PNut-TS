@@ -1,0 +1,7 @@
+{Spin2_v55}
+CON STRUCT point(long x, long y, byte z)
+VAR point p
+    long q
+DAT stag LONG 3
+PUB get() : r
+  r := p.x + q + stag

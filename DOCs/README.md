@@ -57,6 +57,7 @@ first; each artifact then has a short guide of its own:
 ### `/roadmaps/` - Future Improvement Plans
 Strategic plans for architectural improvements and optimizations:
 
+- **[Map-Instance-Correctness-Sprint-Plan.md](roadmaps/Map-Instance-Correctness-Sprint-Plan.md)** - Active sprint: make every per-instance fact in the `.map` match the compiled image, and rewrite the map to teach images and instances
 - **[Test-Suite-Punch-List.md](roadmaps/Test-Suite-Punch-List.md)** - The active punch list: everything outstanding, read at every sprint's scope call
 - **[Architectural-Extraction-Roadmap.md](roadmaps/Architectural-Extraction-Roadmap.md)** - Major class extraction opportunities
 - **[Compiler-Subsystem-Extraction-Roadmap.md](roadmaps/Compiler-Subsystem-Extraction-Roadmap.md)** - Subsystem extraction plan

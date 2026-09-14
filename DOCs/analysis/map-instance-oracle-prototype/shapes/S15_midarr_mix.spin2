@@ -1,0 +1,7 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  a : "midarr" | MID_TAG = 1
+  b : "midarr" | MID_TAG = 1
+  c : "midarr" | MID_TAG = 2
+PUB main() | r

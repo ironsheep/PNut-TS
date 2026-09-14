@@ -232,6 +232,7 @@
     "DOCs/roadmaps/P2KB-abort-trap-amendment.md": { "class": "historical", "note": "Proposed amendment for an EXTERNAL corpus (P2KB) ABORT/trap entries; apply after hardware probe confirms" },
     "DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md": { "class": "historical", "note": "Measurement record + proposed amendment for an EXTERNAL corpus (P2KB); archives with the sprint" },
     "DOCs/roadmaps/Compiler-Subsystem-Extraction-Roadmap.md": { "class": "historical" },
+    "DOCs/roadmaps/Map-Instance-Correctness-Sprint-Plan.md": { "class": "historical", "note": "Active sprint plan (archives to completed/ at closeout)" },
     "DOCs/roadmaps/completed/Coverage-100-Sprint-Plan.md": { "class": "historical" },
     "DOCs/roadmaps/Dead-Code-Elimination-Opportunities-Study.md": { "class": "historical" },
     "DOCs/roadmaps/Multi-Error-Reporting-Compiler-Roadmap.md": { "class": "historical" },

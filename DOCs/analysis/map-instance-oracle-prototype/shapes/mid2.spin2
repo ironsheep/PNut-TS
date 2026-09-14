@@ -1,0 +1,5 @@
+CON M2 = -1
+VAR byte b1
+OBJ inner[2] : "midarr" | MID_TAG = M2
+PUB get() : r
+  r := inner[0].get() + b1

@@ -1,0 +1,7 @@
+CON MID_TAG = -1
+VAR long mv, mw
+OBJ l[2] : "leafv" | LEAF_TAG = MID_TAG
+    tail : "drvv" | BUS_TAG = 77
+DAT mtag LONG MID_TAG
+PUB get() : r
+  r := mtag + l[1].get() + tail.get() + mv

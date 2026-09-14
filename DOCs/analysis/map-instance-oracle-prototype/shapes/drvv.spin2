@@ -1,0 +1,5 @@
+CON BUS_TAG = -1
+VAR long v1, v2
+DAT tag LONG BUS_TAG
+PUB get() : r
+  r := tag + v1
