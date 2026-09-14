@@ -1,0 +1,324 @@
+{Spin2_v55}
+' abort_trap_probe.spin2 - hardware probe: ABORT and the \ trap operator
+'
+' Build:  pnut-ts -d abort_trap_probe.spin2     (DEBUG must be enabled)
+' Run:    download to a P2 and capture the whole DEBUG log.
+'
+' Every check prints PASS or FAIL together with the value it saw and the value
+' it expected, so a surprising result can be analysed from the log alone.
+'
+' Two arms per claim:
+'   positive - the behaviour we predict does happen
+'   negative - the thing that must NOT happen does not, and a control shows
+'              the measurement is capable of seeing it (so a PASS is not an
+'              artefact of a broken method or a check that cannot fail)
+'
+' The run is trustworthy only when the log shows:
+'   - H1/H2 harness self-test PASS  (the checker can report a mismatch)
+'   - SUMMARY checks = CHECKS_EXPECTED  (nothing was skipped)
+'   - the final END line  (the log is not truncated)
+'
+' Run history:
+'   run 1 (2026-09-14, logs/debug_260914-141429.log): 65/67 PASS. Both FAILs were
+'   probe defects, fixed in this revision:
+'     E7n measured the frame address inside check()'s argument list, 7 longs
+'         (check's 6-long call anchor + its first argument) deeper than the
+'         statement-level baseline - exactly the 28-byte difference logged.
+'         Now measured at statement level; E7c asserts the 28-byte offset.
+'     T1  checked TASKCHK(t1) after the control task had reused t1's freed slot
+'         (T0 logged t1 = t2 = 1). Now checked before the second TASKSPIN; T4
+'         asserts the slot reuse.
+'   run 2 (2026-09-14, logs/debug_260914-141755.log): 69/69 PASS, SUMMARY + END
+'   present. Every claim in the Error-Handling usage guide confirmed on hardware.
+
+CON
+  _clkfreq        = 200_000_000         ' adjust for your board's crystal
+  CHECKS_EXPECTED = 69
+
+  TRUE_VAL        = -1
+
+OBJ
+  child : "abort_trap_child"
+
+VAR
+  long checks, passes, fails
+  long pAbort, p77                      ' method pointers
+  long mark1, mark2, mark3, mark4, done
+  long cogBefore, cogAfter, cogLoopCount, cogTrapped
+  long taskBefore, taskAfter, taskLoopCount
+  long cogStk1[128], cogStk2[128], cogStk3[128]
+  long taskStk1[128], taskStk2[128]
+
+PUB main() | x, y, a, b, c, i, sum, base, after, nested, c1, c2, c3, t1, t2
+  debug("BEGIN abort_trap_probe")
+
+  ' ---- H: harness self-test ------------------------------------------------
+  check(@"H1 checker reports a mismatch (match(1,2) is false)", match(1, 2), 0)
+  check(@"H2 checker reports a match (match(5,5) is true)", match(5, 5), TRUE_VAL)
+
+  ' ---- A: the abort value reaches the trapping caller -----------------------
+  check(@"A1 ABORT -5 under value trap", \abortsWith(-5), -5)
+  check(@"A2 ABORT 12345 under value trap", \abortsWith(12345), 12345)
+  check(@"A3 ABORT NEGX (bit 31 only) survives intact", \abortsWith(negx), negx)
+  check(@"A4 ABORT POSX survives intact", \abortsWith(posx), posx)
+  check(@"A5 bare ABORT under value trap gives 0", \abortsBare(), 0)
+  check(@"A6 ABORT 0 under value trap gives 0", \abortsWith(0), 0)
+  check(@"A7 ABORT through two untrapped levels", \deep(), -42)
+  check(@"A8 ABORT from child object method", \child.go(3), 3)
+  pAbort := @abortsWith
+  check(@"A9 ABORT through method pointer", \pAbort(-7):1, -7)
+  check(@"A10 ABORT value is an evaluated expression", \abortsTimes3(4), 12)
+
+  ' ---- B: normal completion under a value trap -----------------------------
+  '      B-positive: trapped normal completion gives 0
+  '      B-control : the same method untrapped really returns its result,
+  '                  so a trapped 0 is not a broken method
+  check(@"B1 trapped returns77() gives 0", \returns77(), 0)
+  check(@"B1c control: untrapped returns77() gives 77", returns77(), 77)
+  x := \returnsTwo()
+  check(@"B2 trapped returnsTwo() gives 0", x, 0)
+  x, y := returnsTwo()
+  check(@"B2c control: untrapped returnsTwo() first result", x, 1)
+  check(@"B2d control: untrapped returnsTwo() second result", y, 2)
+  mark4 := 0
+  x := \noResult()
+  check(@"B3 trapped no-result method gives 0", x, 0)
+  check(@"B3c control: no-result method body ran under trap", mark4, 1)
+  p77 := @returns77
+  check(@"B4 trapped method pointer, normal completion, gives 0", \p77():1, 0)
+  check(@"B4c control: untrapped method pointer gives 77", p77():1, 77)
+  check(@"B5 trapped child.go(0), normal completion, gives 0", \child.go(0), 0)
+  check(@"B5c control: untrapped child.go(0) gives 77", child.go(0), 77)
+
+  ' ---- C: statement trap discards --------------------------------------------
+  x := 123
+  \abortsWith(-9)
+  check(@"C1 statement trap leaves caller variable untouched", x, 123)
+  mark3 := 0
+  \abortsWith(-9)
+  mark3 := 1
+  check(@"C2 execution continues after a statement trap", mark3, 1)
+
+  ' ---- D: control flow -------------------------------------------------------
+  mark1 := 0
+  x := \abortThenMark()
+  check(@"D1 code before ABORT ran", mark1, 1)
+  checkNot(@"D1n code after ABORT did NOT run (mark1 <> 2)", mark1, 2)
+  check(@"D1v value from D1", x, -3)
+  mark2 := 0
+  x := \midMark()
+  check(@"D2n code after the call in an untrapped middle frame did NOT run", mark2, 0)
+  check(@"D2v value from D2", x, -3)
+  mark2 := 0
+  x := midMarkNoAbort()
+  check(@"D2c control: same middle frame without abort does run its tail", mark2, 1)
+  mark3 := 0
+  x := \catcher()
+  check(@"D3 inner statement trap stops propagation; outer sees normal completion (0)", x, 0)
+  check(@"D3c catcher ran its tail after the inner trap", mark3, 1)
+  check(@"D3u untrapped catcher() returns its own result 9", catcher(), 9)
+  check(@"D4 re-ABORT from a handler reaches the outer trap", \rethrow(), -8)
+
+  ' ---- E: stack integrity ----------------------------------------------------
+  x := 1000 + \abortsWith(5)
+  check(@"E1 trap inside an expression: 1000 + abort 5", x, 1005)
+  x := 1000 + \returns77()
+  check(@"E2 trap inside an expression: 1000 + normal completion", x, 1000)
+  a := $1111_1111
+  b := $2222_2222
+  c := $3333_3333
+  x := \deep()
+  check(@"E3 caller local a intact after deep abort", a, $1111_1111)
+  check(@"E3 caller local b intact after deep abort", b, $2222_2222)
+  check(@"E3 caller local c intact after deep abort", c, $3333_3333)
+  check(@"E4 abort passes through frames holding expression temps", \exprMiddle(), -3)
+  base := frameAddr()                   ' every frame-address reading is taken at statement level
+  nested := nestedFrameAddr()
+  checkNot(@"E5c control: frame address measurement is sensitive to depth", nested, base)
+  sum := 0
+  repeat i from 1 to 10_000
+    sum += \loopOuter(i)
+  check(@"E6 10000 aborts through REPEAT/CASE frames sum correctly", sum, 50_005_000)
+  after := frameAddr()
+  check(@"E7n stack did NOT drift after 10000 trapped aborts", after, base)
+  check(@"E7c control: inside an argument list the frame sits 28 bytes deeper", frameAddr() - base, 28)
+
+  ' ---- F: telling an abort from success --------------------------------------
+  done := 0
+  x := \flagged(TRUE_VAL)
+  check(@"F1 bare ABORT: value alone reads 0", x, 0)
+  check(@"F1 bare ABORT: completion flag stayed clear", done, 0)
+  done := 0
+  x := \flagged(0)
+  check(@"F2 normal completion: value also reads 0", x, 0)
+  check(@"F2 normal completion: completion flag was set", done, TRUE_VAL)
+
+  ' ---- G: uncaught ABORT in a cog stops only that cog ------------------------
+  c1 := cogspin(NEWCOG, cogAborts(), @cogStk1)
+  c2 := cogspin(NEWCOG, cogLoops(), @cogStk2)
+  c3 := cogspin(NEWCOG, cogTrapsThenLoops(), @cogStk3)
+  waitms(300)
+  checkNot(@"G0 cogspin started the aborting cog", c1, -1)
+  checkNot(@"G0 cogspin started the control cog", c2, -1)
+  checkNot(@"G0 cogspin started the trapping cog", c3, -1)
+  check(@"G1 cog with uncaught ABORT has stopped (COGCHK 0)", cogchk(c1), 0)
+  check(@"G2 that cog ran its code before the ABORT", cogBefore, 1)
+  check(@"G3n that cog did NOT run code after the ABORT", cogAfter, 0)
+  check(@"G4 control cog still running (COGCHK -1)", cogchk(c2), TRUE_VAL)
+  checkNot(@"G5 control cog made progress", cogLoopCount, 0)
+  check(@"G6 cog that traps its own ABORT is still running", cogchk(c3), TRUE_VAL)
+  check(@"G7 that cog received the abort value", cogTrapped, -11)
+  cogstop(c2)
+  cogstop(c3)
+  waitms(50)
+  check(@"G8 control: COGCHK reads 0 after COGSTOP", cogchk(c2), 0)
+
+  ' ---- T: uncaught ABORT in a task stops only that task ----------------------
+  t1 := taskspin(NEWTASK, taskAborts(), @taskStk1)
+  repeat 5
+    tasknext()
+  checkNot(@"T0 taskspin started the aborting task", t1, -1)
+  check(@"T1 task with uncaught ABORT has stopped (TASKCHK 0)", taskchk(t1), 0)
+  check(@"T2 that task ran its code before the ABORT", taskBefore, 1)
+  check(@"T3n that task did NOT run code after the ABORT", taskAfter, 0)
+  t2 := taskspin(NEWTASK, taskLoops(), @taskStk2)
+  repeat 20
+    tasknext()
+  checkNot(@"T0 taskspin started the control task", t2, -1)
+  check(@"T4 control task reused the slot the aborted task freed", t2, t1)
+  check(@"T5 control task still running (TASKCHK 1)", taskchk(t2), 1)
+  checkNot(@"T6 control task made progress", taskLoopCount, 0)
+  taskstop(t2)
+  check(@"T7 control: TASKCHK reads 0 after TASKSTOP", taskchk(t2), 0)
+
+  ' ---- summary ---------------------------------------------------------------
+  debug("SUMMARY checks=", udec_(checks), " expected=", udec_(CHECKS_EXPECTED), " pass=", udec_(passes), " fail=", udec_(fails))
+  if checks <> CHECKS_EXPECTED
+    debug("SUMMARY WARNING: check count differs from CHECKS_EXPECTED - some checks were skipped or added")
+  debug("END abort_trap_probe")
+  repeat
+
+' ============================================================================
+'  harness
+' ============================================================================
+
+PRI match(got, expect) : isMatch
+  isMatch := got == expect
+
+PRI check(pName, got, expect)
+  checks++
+  if match(got, expect)
+    passes++
+    debug("PASS ", zstr_(pName), "  got=", sdec_(got), " expect=", sdec_(expect))
+  else
+    fails++
+    debug("FAIL ", zstr_(pName), "  got=", sdec_(got), " expect=", sdec_(expect))
+
+PRI checkNot(pName, got, notExpect)
+  checks++
+  if not match(got, notExpect)
+    passes++
+    debug("PASS ", zstr_(pName), "  got=", sdec_(got), " must-not-be=", sdec_(notExpect))
+  else
+    fails++
+    debug("FAIL ", zstr_(pName), "  got=", sdec_(got), " must-not-be=", sdec_(notExpect))
+
+' ============================================================================
+'  subjects
+' ============================================================================
+
+PRI abortsWith(v) : r
+  abort v
+
+PRI abortsBare() : r
+  r := 55
+  abort
+
+PRI abortsTimes3(v) : r
+  abort v * 3
+
+PRI returns77() : r
+  r := 77
+
+PRI returnsTwo() : first, second
+  first := 1
+  second := 2
+
+PRI noResult()
+  mark4 := 1
+
+PRI deep() : r
+  r := middle() + 1
+
+PRI middle() : r
+  r := abortsWith(-42) + 1
+
+PRI abortThenMark() : r
+  mark1 := 1
+  abort -3
+  mark1 := 2
+
+PRI midMark() : r
+  r := abortThenMark()
+  mark2 := 1
+
+PRI midMarkNoAbort() : r
+  r := returns77()
+  mark2 := 1
+
+PRI catcher() : r
+  \abortsWith(-8)
+  mark3 := 1
+  r := 9
+
+PRI rethrow() : r | e
+  e := \abortsWith(-4)
+  abort e * 2
+
+PRI exprMiddle() : r
+  r := 5 + abortsWith(-3) * 2
+
+PRI frameAddr() : r | marker
+  r := @marker
+
+PRI nestedFrameAddr() : r
+  r := frameAddr()
+
+PRI loopOuter(i) : r
+  r := 5 + loopInner(i) * 3
+
+PRI loopInner(i) : r | k
+  repeat k from 1 to 3
+    case k
+      2: r := 100 + abortsWith(i)
+
+PRI flagged(doAbort) : r
+  r := 55
+  if doAbort
+    abort
+  done := TRUE_VAL
+
+PRI cogAborts()
+  cogBefore := 1
+  abortsWith(-1)
+  cogAfter := 1
+
+PRI cogLoops()
+  repeat
+    cogLoopCount++
+    waitms(1)
+
+PRI cogTrapsThenLoops()
+  cogTrapped := \abortsWith(-11)
+  repeat
+    waitms(10)
+
+PRI taskAborts()
+  taskBefore := 1
+  abortsWith(-1)
+  taskAfter := 1
+
+PRI taskLoops()
+  repeat
+    taskLoopCount++
+    tasknext()

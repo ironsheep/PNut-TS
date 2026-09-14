@@ -1,0 +1,8 @@
+' abort_trap_child.spin2 - child object for abort_trap_probe.spin2
+'   go(0)  completes normally with result 77
+'   go(v)  ABORTs with v when v is non-zero
+
+PUB go(v) : r
+  if v
+    abort v
+  r := 77

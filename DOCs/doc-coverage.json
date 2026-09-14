@@ -156,7 +156,7 @@
     "DOCs/internals/usage-guides-new/Preprocessor-Usage-Guide.md": { "class": "governed", "covers": ["preprocessor", "diagnostics"], "verified": "1.55.3" },
     "DOCs/internals/usage-guides-new/Clock-Configuration-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides-new/Control-Flow-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Error-Handling-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core", "diagnostics"], "verified": "1.55.7", "note": "ABORT/trap semantics rewritten 2026-09-14 against v55 interpreter source + compiled examples; hardware confirmation pending (TEST/HW-probes/abort-trap)" },
+    "DOCs/internals/usage-guides-new/Error-Handling-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core", "diagnostics"], "verified": "1.55.7", "note": "ABORT/trap semantics rewritten 2026-09-14 against v55 interpreter source + compiled examples; hardware-confirmed 69/69 on P2 (TEST/HW-probes/abort-trap/logs)" },
     "DOCs/internals/usage-guides-new/Floating-Point-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides-new/Lookup-Table-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides-new/Multi-Cog-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },

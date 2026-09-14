@@ -1,10 +1,11 @@
 # P2KB `ABORT` / trap entries — proposed amendment
 
-**Status:** drafted 2026-09-14, **not applied**. P2KB is an external corpus,
-edited by Stephen. Grounded in the Spin2 v55 interpreter source
-(`src/ext/Spin2_interpreter.spin2`) and PNut-TS 1.55.7 compiler output;
-**hardware confirmation pending** — `TEST/HW-probes/abort-trap/` is the probe.
-Apply after its log comes back clean, or amend this draft if it does not.
+**Status:** drafted 2026-09-14, **hardware-confirmed, ready to apply — not yet
+applied**. P2KB is an external corpus, edited by Stephen. Grounded in the Spin2
+v55 interpreter source (`src/ext/Spin2_interpreter.spin2`) and PNut-TS 1.55.7
+compiler output, and confirmed on a P2: `TEST/HW-probes/abort-trap/` run 2
+(`logs/debug_260914-141755.log`) passed 69 of 69 checks, each claim with a
+positive arm and a negative arm or control.
 
 Entries affected: `p2kbSpin2Abort` and `p2kbSpin2KwABORT`.
 

@@ -24,8 +24,10 @@ Three facts govern everything else in this guide:
 > returns the method's normal result when no `ABORT` occurs, and that an
 > untrapped `ABORT` terminates the program. Both were wrong, and several
 > patterns built on the first claim did not work. This revision is checked
-> against the Spin2 v55 interpreter source and this compiler's output. It has
-> not yet been confirmed by a run on P2 hardware.
+> against the Spin2 v55 interpreter source and this compiler's output, and every
+> behavior it describes was confirmed on P2 hardware: trap values, normal
+> completion under a trap, propagation, stack integrity across 10,000 aborts, and
+> an untrapped `ABORT` stopping only its own cog or task.
 
 ## Basic Usage
 
