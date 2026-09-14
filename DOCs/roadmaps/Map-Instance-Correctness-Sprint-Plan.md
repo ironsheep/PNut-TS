@@ -1,7 +1,29 @@
 # Map-Instance-Correctness Sprint Plan
 
-**Status:** research complete; questions pass empty (2026-09-14). Ready for
-`sprint-start` (build number and entry checks) and task generation.
+**Status:** STARTED 2026-09-14. **Outgoing build: `1.55.8`** (agreed with Stephen
+at sprint start).
+
+## Sprint start record (2026-09-14)
+
+- **Build number:** `1.55.8` — PNut v55 unchanged; patch bump. Ships two
+  output-side breaks (§ Compatibility impact), led in the CHANGELOG.
+- **Working tree:** clean at `74cbbe1`; nothing uncommitted or untracked in the
+  blast radius (`src/`, `TEST/`, `scripts/`, `DOCs/`, `package*.json`).
+- **Tracking readiness: READY.** Board empty (task #52 archived). Context pruned
+  of three stale keys — `task_#51_progress` and `task_#52_progress` (both tasks
+  complete) and the superseded `resume_pnut_ts_2026-09-13`. `MEMORY.md` 101 lines.
+  Recurring observation (stranded breadcrumbs after `todo_complete`, second
+  audit) recorded in `feedback_skill_evolution_candidates.md`.
+- **Entry baseline (canonical — the dev container is the verdict environment):**
+  build clean, 0 warnings (`npm run build`, full log grepped); `npm run lint`
+  clean; `npm run build && jest --runInBand -c smm.jestconfig.js` → **26/26 suites,
+  432/432 tests passed, 0 failed, 0 skipped** (143 s). No failure groups, so no
+  fix-when decisions. **Not exercised by that runner** (outside its `roots`, run by
+  their own category scripts): `ALLCODE-tests`, `CACHE-SWEEP-tests`, `COV-tests`,
+  `FULL`, `LANG-FEAT-tests`, `PERF`, `SHORT`, `WUMMI-tests`. Known standing state
+  there, not re-measured: `test-full` carries punch §9 failures; `WUMMI-tests`
+  carries §21 (deferred). §4's GOLD corpora read fixtures in `COV-tests` and
+  `WUMMI-tests` — those checks run inside the new MAP suite, not these runners.
 
 **Scope, confirmed by Stephen 2026-09-14:** punch list §20 treated as a
 **defect class** (every per-instance fact the `.map` prints, checked against the
