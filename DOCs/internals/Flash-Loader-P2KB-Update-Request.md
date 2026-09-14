@@ -1,5 +1,7 @@
 # P2KB Update Request — Flash Loader & Boot ROM Coverage
 
+> **Status (verified against live P2KB 2026-09-14): content APPLIED, search acceptance PARTIAL.** The maintainer restructured it — the boot entry is `p2kbArchSpiFlashBoot`, and the idioms page became separate `p2kbPasm2*` idiom entries (e.g. `p2kbPasm2HaltAndFaultResponse`). Every §5 content item is present. Still failing §6: `p2kb_find` for `boot rom`, `prop checksum` and `chunking` return 0 hits, and the natural-language queries for SPI-flash boot and software halt return suggestion lists rather than a direct match.
+
 > **For:** the P2KB maintainer agent.
 > **From:** PNut-TS internals study, 2026-05-23.
 > **Source artifact:** `src/ext/flash_loader.spin2` in the PNut-TS repo,

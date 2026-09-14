@@ -1,5 +1,7 @@
 # P2KB Gap Report — SETQ vs SETQ2 as the XBYTE mode control
 
+> **Status (verified against live P2KB 2026-09-14): APPLIED.** `p2kbArchXbyteEngine` carries `mode_persistence` and the corrected LUT-entry layout (`[9:0]` base address, `[31:10]` SKIPF pattern); `p2kbPasm2Setq` / `p2kbPasm2Setq2` carry the matching XBYTE-role notes.
+
 > **For:** the P2 Knowledge Base maintainer / P2KB agent
 > **From:** Spin2 interpreter v55 Theory-of-Operations review
 > **Authority:** the corrected behavior below was stated directly by **Chip

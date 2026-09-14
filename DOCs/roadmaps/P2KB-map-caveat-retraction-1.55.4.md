@@ -1,8 +1,35 @@
-# P2KB `map_caveat` — re-measurement and proposed amendment (1.55.4)
+# P2KB `map_caveat` — re-measurement and proposed amendment (1.55.4, re-verified 1.55.7)
 
-**Status:** measurement complete, amendment proposed and **still required**.
-Not yet applied — P2KB is an external corpus, edited by Stephen, not from this
-repo. **Measured:** 2026-08-22 against pnut-ts **1.55.4**.
+**Status:** amendment **still required, not applied** — the live entry
+(`p2kbSpin2ObjectImageDedup`, fetched 2026-09-14 after a full cache flush) still
+carries the original caveat verbatim. P2KB is an external corpus, edited by
+Stephen. **Re-measured 2026-09-14 against pnut-ts 1.55.7**, and the replacement
+text below was rewritten: the 1.55.4 draft said every section names every
+instance correctly, which is false for two shapes (see *Re-checked against
+1.55.7* below, and punch list §20).
+
+> **Re-checked 2026-09-14 against 1.55.7 — the earlier draft over-claimed.**
+> Six programs were compiled with `-m -l` and every instance's map entries were
+> compared with the parent object's header table (the ground truth: one object
+> offset and VAR offset per OBJ entry, one entry per array element).
+>
+> - **Correct:** objects declared once, and copies forked by differing
+>   overrides — hierarchy, `MEMORY LAYOUT`, `OBJECT DETAILS` (including
+>   `VAR Base`) and both index sections, with dotted instance paths.
+> - **Correct but summarized:** copies sharing one image print one
+>   `MEMORY LAYOUT`/index row labelled with one instance plus a count (`A+2`);
+>   the shared code and DAT addresses are right for all of them. The draft's
+>   "the row names them" overstated this.
+> - **Wrong:** `VAR Base` and `VAR` index rows of the second and later copies of
+>   a shared image; OBJ arrays (one instance for the whole array); and any OBJ
+>   declared after an array (wrong address, `Object_2` placeholder, missing
+>   index rows).
+> - **The draft's advice for 1.55.3 and earlier was also wrong:** it said to
+>   rely on DAT symbol addresses, but the 1.55.4 release fixed DAT symbols listed
+>   at inconsistent addresses — sometimes in VAR space. Only `Objects:` holds for
+>   those versions.
+> - `npm run p2kb-verify` still passes 7/7 at 1.55.7: it exercises only forked
+>   copies, which is why it did not see either defect.
 
 > **Re-checked 2026-08-22, after the entry was revised.** The entry has since
 > been substantially rewritten — it gained a `singleton_rule` block,
@@ -147,23 +174,37 @@ Replace `map_caveat:` with:
 
 ```yaml
   map_caveat: |
-    Fixed in pnut-ts 1.55.4. Through 1.55.3 the multi-instance .map could show
-    instance-name / source-name columns that were internally inconsistent —
-    instances missing, names attached to the wrong source file, or placeholder
-    names like object_12 — and those labels were not to be trusted. SYMBOL
-    INDEX and ADDRESS INDEX also reported one row per SOURCE FILE, so when an
-    override forked a file into several images only the first image's addresses
-    appeared.
+    Measured against pnut-ts 1.55.7; re-measure on a newer compiler.
 
-    As of 1.55.4 the hierarchy, memory layout and both index sections name
-    every instance and its source correctly, including an object declared more
-    than once, and both index sections report per INSTANCE rather than per
-    source file. Instances are named by path (A.LEAF, B.LEAF) and the MEMORY
-    LAYOUT Overrides column shows the override that forked each image. Where
-    several instances genuinely share one region the row names them (A+1).
+    Through 1.55.3 the multi-instance .map is unreliable: instances can be
+    missing, names attached to the wrong source file, placeholder names like
+    object_12 printed, DAT symbol addresses inconsistent between sections, and
+    the index sections list each symbol only at its first copy. On those
+    versions trust only the Objects: count.
 
-    On 1.55.3 and earlier, prefer the Objects: count and the DAT symbol
-    addresses. The Objects: count is reliable in every version.
+    From 1.55.4, objects declared once, and copies forked by differing
+    overrides, are reported correctly in every section: each instance is named
+    by access path (A, A.LEAF, B.LEAF) with its source object, the MEMORY
+    LAYOUT Overrides column shows the overrides it was declared with, and both
+    index sections give its own code, method, DAT and VAR addresses.
+
+    Copies that share one image (identical effective overrides) print as ONE
+    MEMORY LAYOUT row and one row per index entry, labelled with one instance
+    and a count of the others: A+2 means A and two more. OBJECT HIERARCHY and
+    OBJECT DETAILS list every copy. The shared code and DAT addresses are
+    correct for all of them.
+
+    Known wrong through at least 1.55.7 - do not trust:
+      - VAR Base in OBJECT DETAILS, and VAR rows in SYMBOL INDEX, for the
+        second and later copies of a shared image. The value can be another
+        copy's, or neither, and the real address is not listed.
+      - OBJ arrays (d[3] : "drv"): shown as one instance with element 0's VAR
+        base; the other elements appear nowhere.
+      - Any OBJ declared AFTER an array in the same parent: wrong location,
+        wrong or placeholder label (Object_2), code and DAT rows missing from
+        the index sections. Declaring arrays last avoids this.
+
+    The Objects: count is reliable in every version.
 ```
 
 > **Corrected 2026-08-24 — do not use an earlier draft of this block.** The

@@ -1,5 +1,7 @@
 # P2KB Update Request — Flash Loader's RCFAST Architectural Contract
 
+> **Status (verified against live P2KB 2026-09-14): APPLIED.** All §5 items present. Minor residue: `p2kbArchClockSystem` does not link back to the SPI-flash boot entry (§4), and `find rcfast` returns 2 hits against §6's hoped-for 3.
+
 > **For:** the P2KB maintainer agent.
 > **From:** PNut-TS internals review, 2026-05-25.
 > **Source artifacts:**

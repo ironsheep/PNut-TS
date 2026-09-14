@@ -754,3 +754,59 @@ The same run carries one failure, `ALLCODE-tests` `coverage_003_v44.spin2`
 **Fix:** re-baseline the table from a current run (or state the rule as "no
 worse than the last release's committed report"), and resolve §6.6 so the
 coverage run is green.
+
+---
+
+## 20. `.map` VAR bases for shared images, and OBJ arrays (added 2026-09-14)
+
+**Surfaced by:** re-measuring the P2KB `map_caveat` amendment against 1.55.7.
+Ground truth is the parent object's header table — one `(object offset, VAR
+offset)` pair per OBJ entry, one entry per array element — read from the `-l`
+image dump. The 1.55.4 instance model gets two shapes wrong. Neither affects the
+compiled binary; `Objects:` is right in every case.
+
+**(a) VAR bases of copies that share one image.** Identical effective overrides
+merge copies into one image; each copy still has its own VAR. `OBJECT DETAILS`
+`VAR Base`, and the `VAR` rows of `SYMBOL INDEX`, are wrong for copies after the
+first — erratically:
+
+| Program (driver has `VAR long v1, v2`) | Header VAR bases | Map `VAR Base` |
+|---|---|---|
+| `a`,`b` identical | A `$44`, B `$50` | A `$44`, **B `$44`** |
+| `a`,`b`,`c` identical | `$54`, `$60`, `$6C` | `$54`, `$60`, **C `$54`** |
+| `a`..`d` identical | `$60`, `$6C`, `$78`, `$84` | `$60`, `$6C`, **C `$70`, D `$60`** |
+| `a`,`b`,`c` all different | `$84`, `$90`, `$9C` | all correct |
+
+`SYMBOL INDEX` then collapses the wrong rows (`V1  A+1  $58`) and the real VAR
+addresses of the mis-based copies appear nowhere. `MAP-File-Format.md` §5 states
+"Two instances of one object share a code region but have **different** VAR
+bases" — the doc is right, the output is not.
+
+**(b) OBJ arrays.** `OBJ d[3] : "drv"` produces three header entries; the map
+has one instance, `D`, carrying element 0's VAR base — elements 1..n-1 appear in
+no section. Worse, an OBJ declared **after** an array in the same parent is
+mis-mapped. With `d[3] | BUS_TAG = 5` then `e | BUS_TAG = 6` (header: `d` at
+`$3C` ×3, `e` at `$54` VAR `+$2C`):
+
+```
+  $0003C  $00050     21  drvv             D+1              BUS_TAG=5   <- e does not share this
+  $00054  $00068     21  Object_2         (entry)                      <- this is e
+--- E : drvv ---   Location: $0003C-$00050   VAR Base: $00080          <- should be $00054 / $00098
+```
+
+E's code and DAT rows are missing from both index sections; the `VAR` rows
+labelled `E` are `d[1]`'s. With the array declared last (`e` then `d[2]`) the
+layout is correct apart from the missing elements. Likely cause: the instance
+store numbers children by OBJ declaration, the header by array element.
+
+**Why no test caught it:** no `TEST/MAP-tests` fixture declares an OBJ array,
+and nothing asserts VAR bases of merged copies. `npm run p2kb-verify` asserts
+only forked (distinct-image) instances. The 1.55.4 CHANGELOG entry ".map names
+objects and instances correctly when one is used more than once" over-claims for
+both shapes — left as the historical record; the fix release says what changed.
+
+**Fix:** derive each instance's VAR base and array membership from the parent's
+header table entries (one per element), name array elements `D[0]`, `D[1]`, …,
+and add MAP fixtures for merged copies with VAR and for an array declared before
+another OBJ, asserted against header-derived addresses. Then re-measure and trim
+the "Known wrong" block from `DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md`.

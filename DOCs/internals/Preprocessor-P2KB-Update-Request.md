@@ -1,5 +1,7 @@
 # P2KB Update Request — Preprocessor Directive Corrections
 
+> **Status (verified against live P2KB 2026-09-14): APPLIED**, including the §9 addendum, across `p2kbSpin2PreprocessorOverview` and the per-directive entries.
+
 > **For:** the P2KB maintainer agent.
 > **From:** PNut-TS, 2026-08-08, following the CLI-Robustness sprint (v1.55.2).
 > **Target entry:** `p2kbSpin2PreprocessorOverview` (category
