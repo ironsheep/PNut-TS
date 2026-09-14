@@ -230,7 +230,7 @@
     "DOCs/roadmaps/completed/2026-08-24-Punch-List-Archive.md": { "class": "historical", "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)" },
     "DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md": { "class": "historical", "note": "Measurement record + proposed amendment for an EXTERNAL corpus (P2KB); archives with the sprint" },
     "DOCs/roadmaps/Compiler-Subsystem-Extraction-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/Coverage-100-Sprint-Plan.md": { "class": "historical" },
+    "DOCs/roadmaps/completed/Coverage-100-Sprint-Plan.md": { "class": "historical" },
     "DOCs/roadmaps/Dead-Code-Elimination-Opportunities-Study.md": { "class": "historical" },
     "DOCs/roadmaps/Multi-Error-Reporting-Compiler-Roadmap.md": { "class": "historical" },
     "DOCs/roadmaps/Object-Cache-Correctness-Analysis.md": { "class": "governed", "covers": ["object-cache", "compiler-core"], "verified": "1.55.4", "note": "Living cache-correctness analysis; amended by each cache sprint. Reclassified from historical 2026-08-21 after row A8 was disproven." },
@@ -253,10 +253,10 @@
     "DOCs/roadmaps/completed/v53-IMPLEMENTATION/V53_IMPLEMENTATION_GUIDE.md": { "class": "historical" },
     "DOCs/roadmaps/completed/v53-IMPLEMENTATION/V53_LANGUAGE_REFERENCE_ADDITIONS.md": { "class": "historical" },
     "DOCs/roadmaps/completed/v53-IMPLEMENTATION/v53_CHANGES.md": { "class": "historical" },
-    "DOCs/roadmaps/v54-IMPLEMENTATION/V54_IMPLEMENTATION_GUIDE.md": { "class": "historical" },
-    "DOCs/roadmaps/v54-IMPLEMENTATION/V54_LANGUAGE_REFERENCE_ADDITIONS.md": { "class": "historical" },
-    "DOCs/roadmaps/v54-IMPLEMENTATION/V54_SPRINT_PLAN.md": { "class": "historical" },
-    "DOCs/roadmaps/v54-IMPLEMENTATION/v54_CHANGES.md": { "class": "historical" },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_IMPLEMENTATION_GUIDE.md": { "class": "historical" },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_LANGUAGE_REFERENCE_ADDITIONS.md": { "class": "historical" },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_SPRINT_PLAN.md": { "class": "historical" },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/v54_CHANGES.md": { "class": "historical" },
     "REF/chat-240124-0139.md": { "class": "historical" }
   }
 }

@@ -1,6 +1,23 @@
 # Coverage 100% Sprint Plan
 
 **Goal:** Achieve 100% test coverage in 5 target areas
+
+> **Status (closed 2026-09-14):** test files were added for all five areas, mostly
+> in commit `d10cd2b` (2025-12-25). **Whether any area reached 100% was never
+> measured** — no per-area coverage run followed. Coverage is to be picked up as a
+> separate, upcoming effort; see also `Test-Suite-Punch-List.md` §19.
+>
+> Where the shipped files differ from the plan below:
+>
+> | Planned | Shipped as |
+> |---|---|
+> | `pasm_instr_stack` + `pasm_instr_lock` | `pasm_instr_stack_lock.spin2` |
+> | `pasm_instr_signed` + `pasm_instr_mux` | `pasm_instr_signed_mux.spin2` |
+> | `pasm_instr_rotate` | `pasm_instr_rotate_test.spin2` |
+> | `pasm_instr_test` | no dedicated file; `TESTBN`/`CMPR`/`CMPM`/`CMPSUB`/`TESTN` appear in `pasm_encoding_wc`/`wz`/`wcz`/`immediate` and `pasm_instr_rotate_test` |
+> | `pasm_encoding_ptr_combo` | no dedicated file; `++PTRx[n]`/`--PTRx[n]` appear in `pasm_encoding_ptr_pre.spin2` |
+> | `spin_op_unsigned_cmp` + `spin_op_unsigned_math` + `spin_op_threeway` | `spin_op_unsigned.spin2` (includes `<=>`) |
+> | `spin_op_swap` + `spin_op_logical_sym` | `spin_op_swap_logical.spin2` |
 **Generated:** December 2025
 **Estimated Total Effort:** 78-105 hours
 

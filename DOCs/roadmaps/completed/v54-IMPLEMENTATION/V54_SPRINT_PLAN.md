@@ -1,5 +1,7 @@
 # PNut-TS v54 Implementation Sprint Plan
 
+**Status:** COMPLETE — shipped as `1.54.0` (tag `v1.54.0`, 2026-04-23). Regression coverage: `TEST/V52A-tests/v54_test_struct_bitfields.spin2`.
+
 **Start date:** 2026-04-23
 **Target version:** `1.54.0`
 **Primary references (in this folder):**
@@ -128,4 +130,4 @@ Stephen is producing the `.spin2` sources and GOLDs on Windows (PNut v54); I'll:
 ## Open questions
 
 - ~~Where do the error strings live?~~ **Resolved:** PNut-TS uses inline `throw new Error(msg)` at the throw site. No dedicated error-constants module. The 3 new v54 errors will be added inline in Phase 2 at the point each is detected.
-- Does `iStructureReturn` need a new field for the resolved bitfield, or can it piggyback on an existing channel? (Resolve during Phase 3.)
+- ~~Does `iStructureReturn` need a new field for the resolved bitfield, or can it piggyback on an existing channel?~~ **Resolved:** a new field, `compiledBitfield` (`src/classes/spinResolver.ts`, `iStructureReturn`).

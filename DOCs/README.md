@@ -63,7 +63,7 @@ Strategic plans for architectural improvements and optimizations:
 - **[Multi-Error-Reporting-Compiler-Roadmap.md](roadmaps/Multi-Error-Reporting-Compiler-Roadmap.md)** - Reporting more than one error per compile
 - **[Object-Cache-Correctness-Analysis.md](roadmaps/Object-Cache-Correctness-Analysis.md)** - The living analysis behind the cache's correctness work
 - **[Object-Cache-Future-Enhancements.md](roadmaps/Object-Cache-Future-Enhancements.md)** - Cache work considered and not yet scheduled
-- **[Test-Coverage-Improvement-Roadmap.md](roadmaps/Test-Coverage-Improvement-Roadmap.md)** and **[Coverage-100-Sprint-Plan.md](roadmaps/Coverage-100-Sprint-Plan.md)** - Coverage plans
+- **[Test-Coverage-Improvement-Roadmap.md](roadmaps/Test-Coverage-Improvement-Roadmap.md)** - Coverage plan (figures date from v1.51.7; the per-area follow-on, Coverage-100, is in `completed/`)
 - **[Dead-Code-Elimination-Opportunities-Study.md](roadmaps/Dead-Code-Elimination-Opportunities-Study.md)** - Study, not a commitment to ship
 - **[P2KB-map-caveat-retraction-1.55.4.md](roadmaps/P2KB-map-caveat-retraction-1.55.4.md)** - Replacement text for an external knowledge-base entry our `.map` fix obsoleted
 
