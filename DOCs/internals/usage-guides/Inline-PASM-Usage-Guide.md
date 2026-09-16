@@ -4,23 +4,45 @@ This document describes how to use inline PASM (Propeller Assembly) code within 
 
 ## Overview
 
-Inline PASM allows you to embed assembly code directly within Spin2 methods. This provides:
+Inline PASM lets you embed PASM2 instructions directly inside a PUB or PRI method's
+body, bracketed by `ORG`/`ORGH` and `END`. It provides:
 
-- **Maximum Speed**: PASM code executes much faster than Spin2 bytecode
-- **Hardware Access**: Direct register and pin manipulation
-- **Precise Timing**: Cycle-accurate control when needed
-- **Local Integration**: Seamless access to method's local variables
+- **Speed**: PASM2 instructions execute directly on the P2 core, without going
+  through the Spin2 bytecode interpreter.
+- **Hardware access**: direct register and pin manipulation.
+- **Cycle-level control**: precise instruction sequencing when timing matters.
+- **Local integration**: an inline block can read and write the enclosing
+  method's LONG local variables and parameters without extra plumbing.
 
 | Block Type | Start | End | Execution Location |
 |------------|-------|-----|--------------------|
-| COG Inline | `ORG` | `END` | COG RAM (fastest) |
-| Hub Inline | `ORGH` | `END` | Hub RAM (fast) |
+| COG Inline | `ORG` | `END` | COG RAM |
+| Hub Inline | `ORGH` | `END` | Hub RAM |
 
 ---
 
-## Basic Syntax
+## Basic Usage
 
-### COG Mode Inline (ORG...END)
+```spin2
+PUB blinkOnce(pin)
+
+  ORG
+                drvnot    pin              ' Toggle pin
+                waitx     ##1_000_000      ' Delay roughly a fifth of a second at 5 MHz sysclk
+                drvnot    pin              ' Toggle pin back
+  END
+```
+
+`ORG` opens a COG-mode inline block; `END` closes it. The compiler inserts an
+implicit `RET` at `END`, so execution returns to the surrounding Spin2 code
+automatically — you do not write your own `RET` unless you want an early exit
+from partway through the block.
+
+---
+
+## Syntax / Forms
+
+### COG mode (`ORG` ... `END`)
 
 ```spin2
 PUB Method() | local1, local2
@@ -29,12 +51,12 @@ PUB Method() | local1, local2
   ORG                           ' Begin inline PASM (COG execution)
                 instruction1
                 instruction2
-  END                           ' End inline PASM
+  END                           ' End inline PASM (implicit RET inserted here)
 
   ' Spin2 code after inline
 ```
 
-### Hub Mode Inline (ORGH...END)
+### Hub mode (`ORGH` ... `END`)
 
 ```spin2
 PUB Method()
@@ -48,23 +70,11 @@ PUB Method()
   ' Spin2 code after inline
 ```
 
----
-
-## ORG vs ORGH for Inline
-
-| Aspect | ORG (COG Mode) | ORGH (Hub Mode) |
-|--------|----------------|-----------------|
-| Execution location | COG RAM | Hub RAM |
-| Speed | Fastest | Fast |
-| Address space limit | $120 (288 longs) | $1F8 (504 longs) |
-| Code size | Limited | Larger |
-| Use case | Timing-critical | Larger routines |
-
-### ORG with Optional Parameters
+### ORG with optional start address and limit
 
 ```spin2
 PUB Method()
-  ORG                           ' Start at address 0, default limit $120
+  ORG                           ' Start at address 0, default limit
   ' ... code ...
   END
 
@@ -73,23 +83,37 @@ PUB Method()
   END
 ```
 
----
+### ORG vs ORGH
 
-## Local Variable Access
+| Aspect | ORG (COG Mode) | ORGH (Hub Mode) |
+|--------|----------------|------------------|
+| Execution location | COG RAM | Hub RAM |
+| Default block-size limit | $120 longs (288 longs, including the implicit `RET`) | $FFFF longs (65,535 longs, including the implicit `RET`) |
+| `RES` directive | Allowed | Not allowed (`RES is not allowed in ORGH mode`) |
+| Use case | Timing-critical, tight loops | Larger routines that do not fit in COG RAM |
 
-Inline PASM can access local variables from the enclosing method, but with restrictions:
+The $120 figure is a COG-address ceiling, checked after every instruction and
+data item is emitted; the $FFFF figure is a total-block-length ceiling, checked
+once at `END`. Both counts include the `RET` the compiler adds automatically —
+a block of exactly 287 user instructions plus the implicit `RET` fits the COG
+limit exactly; 288 user instructions does not (`Cog address exceeds limit`).
 
-### Requirements for Local Variable Access
+### Local variable access
 
-1. **Must be LONG type** - BYTE and WORD locals cannot be accessed directly
-2. **Within first 16 longs** - Only the first 16 LONG variables are accessible
-3. **Automatic mapping** - Variables are mapped to COG addresses starting at $1E0
+Inline PASM can read and write the enclosing method's local LONG variables and
+parameters, with two restrictions:
+
+1. **Must be LONG type** — BYTE and WORD locals cannot be accessed from inline code.
+2. **Within the first 16 longs** — only the first 16 LONG locals/parameters
+   (counting from the method's parameter list, then its locals, in declaration
+   order) are reachable from inline code.
 
 ```spin2
-PUB Write(i2cbyte) : ackbit | scl, sda, tix, bits
-  ' All locals are LONGs and within first 16 - accessible from inline!
+PUB write(i2cbyte) : ackbit | scl, sda, tix, bits
 
-  longmove(@scl, @sclpin, 3)    ' Initialize locals before inline
+  scl := 18
+  sda := 19
+  tix := 40
 
   ORG
                 shl       i2cbyte, #24          ' Access method parameter
@@ -103,40 +127,34 @@ PUB Write(i2cbyte) : ackbit | scl, sda, tix, bits
   ' ackbit return value is available after END
 ```
 
-### Local Variable Mapping
+Referencing a local outside the first 16, or a BYTE/WORD local, fails with
+`Local variable must be LONG and within first 16 longs`:
 
-Local LONG variables are mapped to COG registers:
+```spin2
+PUB badExample() | byte myByte, word myWord, longVar
+
+  ORG
+                mov     longVar, #0           ' OK - LONG local, within first 16
+                mov     myByte, #0            ' ERROR: Local variable must be LONG and within first 16 longs
+  END
+```
+
+Local LONG variables map to fixed COG addresses, first-declared to
+sixteenth-declared:
 
 | Local Position | COG Address |
 |----------------|-------------|
 | 1st LONG | $1E0 |
 | 2nd LONG | $1E1 |
-| 3rd LONG | $1E2 |
 | ... | ... |
 | 16th LONG | $1EF |
 
-### Invalid Local Variable Access
+### Labels
+
+Local labels, prefixed with `.`, are the normal choice inside an inline block:
 
 ```spin2
-PUB BadExample() | byte myByte, word myWord, longVar
-
-  ORG
-                mov     longVar, #0           ' OK - LONG variable
-                mov     myByte, #0            ' ERROR: Local variable must be LONG
-                mov     myWord, #0            ' ERROR: Local variable must be LONG
-  END
-```
-
----
-
-## Labels in Inline PASM
-
-### Local Labels (Supported)
-
-Local labels starting with `.` are fully supported and commonly used:
-
-```spin2
-PUB I2CWrite(i2cbyte) : ackbit | scl, sda, tix, bits
+PUB i2cWrite(i2cbyte) : ackbit | scl, sda, tix, bits
 
   ORG
                 shl       i2cbyte, #24
@@ -163,13 +181,15 @@ PUB I2CWrite(i2cbyte) : ackbit | scl, sda, tix, bits
   END
 ```
 
-### Global Labels (Not Recommended)
+Global labels (without the `.` prefix) are also accepted inside an inline
+block, but they live in a symbol table that is cleared at the end of each
+`ORG`/`ORGH` block — a global label can be reused, unchanged, in a later inline
+block in the same method, but it cannot be referenced from a different inline
+block than the one that defines it (that reference fails with `Undefined
+symbol`). Prefer local labels for anything that does not need to be visible
+elsewhere.
 
-Global labels (without `.` prefix) in inline code are added to a separate inline symbol table and reset after the inline block ends. While syntactically allowed, local labels are preferred for clarity.
-
-### Label References
-
-Use `#` prefix to reference labels as immediate values:
+Use `#` to reference a label as an immediate branch target:
 
 ```spin2
   ORG
@@ -180,16 +200,96 @@ Use `#` prefix to reference labels as immediate values:
   END
 ```
 
----
+### Conditional execution
 
-## Allowed Features
-
-### All PASM Instructions
-
-All standard PASM2 instructions work in inline mode:
+Every PASM2 condition code works inside inline blocks, with one caveat: `NOP`
+cannot carry a condition (`NOP cannot have a condition or _RET_` — this is a
+P2 instruction-set rule, not specific to inline code). Use a real instruction,
+such as a harmless `mov`, when you need a placeholder under a condition:
 
 ```spin2
-PUB Example() | pin, value, count
+PUB checkPin(pin, value) | result
+
+  ORG
+                testp     pin               wc  ' Set C flag
+    if_c        jmp       #.high                ' Jump if pin high
+    if_nc       jmp       #.low                 ' Jump if pin low
+
+                cmp       value, #10        wz  ' Set Z flag
+    if_z        mov       result, #1            ' If equal
+    if_nz       mov       result, #0            ' If not equal
+
+    if_c_and_z  mov       result, #2            ' If C and Z
+    if_c_or_z   mov       result, #3            ' If C or Z
+.high
+.low
+  END
+```
+
+### REP
+
+```spin2
+PUB repDemo() | sda, scl, tix
+  ORG
+                rep       #8, #9                ' Repeat next 8 instructions, 9 times
+                 testp    sda               wc
+    if_c         jmp      #.done
+                 drvl     scl
+                 waitx    tix
+                 waitx    tix
+                 drvh     scl
+                 waitx    tix
+                 waitx    tix
+.done
+  END
+```
+
+### Current address (`$`)
+
+```spin2
+PUB dollarDemo(pin)
+  ORG
+                jmp       #$                    ' Infinite loop (jump to self)
+                testp     pin               wc
+    if_nc       jmp       #$-2                  ' Jump back 2 instructions
+  END
+```
+
+### Flag effects (WC, WZ, WCZ)
+
+Flag modifiers follow the same rules as top-level PASM2 — see the
+[WC/WZ/WCZ Effects Guide](WC-WZ-WCZ-Effects-Guide.md) for which instructions
+accept which effects:
+
+```spin2
+PUB effectsDemo(pin) | value
+  ORG
+                testp     pin               wc  ' Set C to pin state
+                add       value, #1         wz  ' Set Z if result is zero
+                shl       value, #1        wcz  ' Set both C and Z
+  END
+```
+
+### Data declarations
+
+```spin2
+PUB Example()
+  ORG 0, 3
+                byte      1, 2, 3, 4            ' Inline data
+  END
+```
+
+---
+
+## Patterns
+
+### All standard PASM2 instructions
+
+```spin2
+DAT
+hubAddr long 0
+
+PUB example() | pin, value, count
 
   ORG
                 ' I/O instructions
@@ -207,158 +307,27 @@ PUB Example() | pin, value, count
                 shr       value, #8
 
                 ' Control flow
-                djnz      count, #.loop         ' Decrement and jump if not zero
+.loop           djnz      count, #.loop         ' Decrement and jump if not zero
                 jmp       #.done                ' Unconditional jump
-                ret                             ' Return (implicit at END)
 
                 ' Timing
-                waitx     #100                  ' Wait for clock cycles
+                waitx     #100                  ' Wait for clock cycles (9-bit immediate: 0-511)
 
                 ' Memory access
                 rdlong    value, ##hubAddr      ' Read from hub
                 wrlong    value, ##hubAddr      ' Write to hub
-  END
-```
-
-### Conditional Execution
-
-All condition codes work:
-
-```spin2
-  ORG
-                testp     pin               wc  ' Set C flag
-    if_c        jmp       #.high                ' Jump if pin high
-    if_nc       jmp       #.low                 ' Jump if pin low
-
-                cmp       value, #10        wz  ' Set Z flag
-    if_z        mov       result, #1            ' If equal
-    if_nz       mov       result, #0            ' If not equal
-
-    if_c_and_z  nop                             ' If C and Z
-    if_c_or_z   nop                             ' If C or Z
-  END
-```
-
-### REP Instruction
-
-The REP (repeat) instruction works in inline:
-
-```spin2
-  ORG
-                rep       #8, #9                ' Repeat next 8 instructions, 9 times
-                 testp    sda               wc
-    if_c         jmp      #.done
-                 drvl     scl
-                 waitx    tix
-                 waitx    tix
-                 drvh     scl
-                 waitx    tix
-                 waitx    tix
 .done
   END
 ```
 
-### Current Address ($)
-
-The `$` symbol represents the current COG address:
+### I2C start sequence
 
 ```spin2
-  ORG
-                jmp       #$                    ' Infinite loop (jump to self)
-                testp     pin               wc
-    if_nc       jmp       #$-2                  ' Jump back 2 instructions
-  END
-```
+DAT
+sclpin  long 18
+sdapin  long 19
+tixval  long 40
 
-### Flag Effects (WC, WZ, WCZ)
-
-All flag modifiers work:
-
-```spin2
-  ORG
-                testp     pin               wc  ' Set C to pin state
-                add       value, #1         wz  ' Set Z if result is zero
-                shl       value, #1        wcz  ' Set both C and Z
-  END
-```
-
-### Data Declarations
-
-BYTE, WORD, LONG data can be included:
-
-```spin2
-PUB Example()
-  ORG 0, 3
-                byte      1, 2, 3, 4            ' Inline data
-  END
-```
-
----
-
-## Restrictions
-
-### Directives NOT Allowed Inside Inline
-
-| Directive | Error Message |
-|-----------|---------------|
-| `ORG` | `ORG not allowed within inline assembly code` |
-| `ORGH` | `ORGH not allowed within inline assembly code` |
-| `ALIGNW` | `ALIGNW/ALIGNL not allowed within inline assembly code` |
-| `ALIGNL` | `ALIGNW/ALIGNL not allowed within inline assembly code` |
-
-```spin2
-PUB BadExample()
-  ORG
-                nop
-                ORG     $100              ' ERROR: ORG not allowed
-                ALIGNL                    ' ERROR: ALIGNW/ALIGNL not allowed
-  END
-```
-
-### Address Limits
-
-| Mode | Maximum Address |
-|------|-----------------|
-| ORG (COG) | $120 (288 longs) |
-| ORGH (Hub) | $1F8 (504 longs) |
-
-Exceeding these limits produces:
-- `Inline cog address exceeds $120 limit`
-- `ORGH inline block exceeds $FFFF longs`
-
-### Empty Blocks Not Allowed
-
-```spin2
-PUB BadExample()
-  ORG
-  END                                     ' ERROR: ORG/ORGH inline block is empty
-```
-
-### Local Variable Constraints
-
-- Only LONG variables accessible
-- Maximum 16 LONGs
-- Error: `Local variable must be LONG and within first 16 longs`
-
----
-
-## How Inline PASM Works
-
-When the Spin2 interpreter encounters inline PASM:
-
-1. **Load Locals**: First 16 local LONG variables are loaded from hub into COG buffer at $1E0
-2. **Execute Code**: PASM code executes from COG or Hub RAM
-3. **Implicit RET**: The `END` directive inserts an implicit `RET` instruction
-4. **Restore Locals**: Local variables are written back to hub memory
-5. **Resume Spin2**: Execution continues with Spin2 bytecode after END
-
----
-
-## Complete Examples
-
-### I2C Start Sequence
-
-```spin2
 PUB start() | scl, sda, tix
 
   longmove(@scl, @sclpin, 3)              ' Copy pins & timing to locals
@@ -375,19 +344,19 @@ PUB start() | scl, sda, tix
   END
 ```
 
-### Pin Toggle with Count
+### Pin toggle with count
 
 ```spin2
 PUB togglePin(pin, count)
 
   ORG
 .loop           drvnot    pin              ' Toggle pin
-                waitx     #1000            ' Small delay
+                waitx     ##1000           ' Delay (##  since 1000 exceeds the 9-bit #imm range)
                 djnz      count, #.loop    ' Repeat count times
   END
 ```
 
-### Reading from Hub Memory
+### Reading from hub memory
 
 ```spin2
 PUB readBlock(p_buffer, count) | value
@@ -400,10 +369,19 @@ PUB readBlock(p_buffer, count) | value
   END
 ```
 
-### SPI Byte Transfer
+### SPI byte transfer
+
+A `PRI` helper using inline PASM, called from a `PUB` method in the same object:
 
 ```spin2
-PRI flash_send(p_buffer, count) | tx_byte, bits
+CON
+  SF_MOSI = 0
+  SF_SCLK = 1
+
+PUB main()
+  flashSend(0, 0)
+
+PRI flashSend(p_buffer, count) | tx_byte, bits
 
   ORG
 .byte           rdbyte    tx_byte, p_buffer
@@ -423,7 +401,7 @@ PRI flash_send(p_buffer, count) | tx_byte, bits
   END
 ```
 
-### Clock Stretch Handling
+### Clock-stretch handling
 
 ```spin2
 PUB write(i2cbyte) : ackbit | scl, sda, tix, bits
@@ -460,89 +438,111 @@ PUB write(i2cbyte) : ackbit | scl, sda, tix, bits
 
 ---
 
-## Summary
+## Anti-patterns
 
-### Quick Reference
+### Nesting ORG, ORGH, ALIGNW, or ALIGNL inside inline code
+
+None of these directives can appear between an `ORG`/`ORGH` and its matching
+`END` — an inline block is a single flat instruction stream:
 
 ```spin2
-PUB Method() | local1, local2, local3
-
-  ' Copy data to locals before inline if needed
-  longmove(@local1, @sourceData, 3)
-
-  ORG                           ' Begin COG-mode inline
-                mov     local1, #100    ' Access local variable
-.loop           drvnot  #pin            ' Toggle pin
-                djnz    local1, #.loop  ' Branch to local label
-  END                           ' End inline (implicit RET)
-
-  ' Or use ORGH for larger code:
-  ORGH
-                ' Hub-mode inline code
+PUB badExample()
+  ORG
+                nop
+                ORG     $100              ' ERROR: ORG not allowed within inline assembly code
+                ORGH                      ' ERROR: ORGH not allowed within inline assembly code
+                ALIGNL                    ' ERROR: ALIGNW/ALIGNL not allowed within inline assembly code
   END
 ```
 
-### Feature Summary
+If you need a second inline region, close the current block with `END` and
+open a new `ORG`/`ORGH` afterward — that is legal and common (see "ORG with
+optional start address and limit" above).
 
-| Feature | Supported | Notes |
-|---------|-----------|-------|
-| Local labels (`.name`) | Yes | Recommended |
-| Global labels | Yes | Reset after block |
-| LONG local variables | Yes | First 16 only |
-| BYTE/WORD locals | No | Error |
-| All PASM instructions | Yes | |
-| Conditional execution | Yes | All conditions |
-| REP instruction | Yes | |
-| Data declarations | Yes | BYTE/WORD/LONG |
-| `$` current address | Yes | |
-| ORG inside inline | No | Error |
-| ORGH inside inline | No | Error |
-| ALIGNW/ALIGNL | No | Error |
+### Accessing a BYTE, WORD, or 17th-and-later local
+
+```spin2
+PUB badExample() | byte myByte, word myWord, longVar
+
+  ORG
+                mov     myByte, #0            ' ERROR: Local variable must be LONG and within first 16 longs
+  END
+```
+
+Copy the value into one of the first 16 LONG locals before the inline block
+(with `longmove`, a plain assignment, or a method parameter) if you need it
+inside PASM.
+
+### Giving `NOP` a condition
+
+```spin2
+PUB badExample()
+  ORG
+    if_c        nop                           ' ERROR: NOP cannot have a condition or _RET_
+  END
+```
+
+`NOP` is a fixed all-zero instruction word on the P2 and cannot carry a
+condition field. Use a genuinely conditional instruction — even a harmless one
+like `mov result, result` — where a placeholder is needed under a condition.
+
+### Immediate values wider than an instruction's `#` field
+
+```spin2
+PUB badExample()
+  ORG
+                waitx     #1000                ' ERROR: Constant must be from 0 to 511
+  END
+```
+
+Most instructions' `D,S/#` and `S/#` forms take a 9-bit immediate (0-511) via
+the single `#`. Use `##` for a full 32-bit immediate (as in the "Pin Toggle
+with Count" pattern above), or load the value into a register first.
+
+### Exceeding the block-size limit
+
+```spin2
+PUB badExample() | count
+  ORG
+    ' more than 287 instructions here, plus the implicit RET, exceeds $120
+  END
+```
+
+Exceeding the limit produces `Cog address exceeds limit` for `ORG` (COG mode,
+$120-long ceiling including the implicit `RET`), or `ORGH inline block
+exceeds $FFFF longs (including the added RET instruction)` for `ORGH` (hub
+mode, 65,535-long ceiling). For routines too large for an inline block, place
+the code in a `DAT` block and launch it with `COGINIT` instead.
 
 ---
 
-## Best Practices
+## Summary Table
 
-1. **Keep inline blocks short** - For complex PASM, use DAT blocks and COGINIT
-   ```spin2
-   ' Good: Simple, focused inline
-   ORG
-           drvnot  pin
-   END
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Local labels (`.name`) | Yes | Preferred |
+| Global labels | Yes | Cleared at the end of each inline block |
+| LONG local variables/parameters | Yes | First 16 only |
+| BYTE/WORD locals | No | `Local variable must be LONG and within first 16 longs` |
+| All PASM2 instructions | Yes | Subject to the instruction's own operand/effect rules |
+| Conditional execution | Yes | All condition codes, except `NOP` cannot carry one |
+| REP instruction | Yes | |
+| Data declarations (BYTE/WORD/LONG) | Yes | |
+| `$` current address | Yes | |
+| `ORG`/`ORGH`/`ALIGNW`/`ALIGNL` nested inside inline | No | Each errors by name |
+| Empty `ORG`/`END` (no instructions between them) | Yes | The implicit `RET` fills the block; it compiles |
+| ORG (COG) block-size limit | $120 longs (288, including implicit `RET`) | |
+| ORGH (Hub) block-size limit | $FFFF longs (65,535, including implicit `RET`) | |
 
-   ' Better for complex code: Use DAT block
-   COGINIT(NEWCOG, @complex_routine, 0)
-   ```
+---
 
-2. **Copy data to locals first** - Use `longmove()` to prepare local variables
-   ```spin2
-   longmove(@scl, @sclpin, 3)  ' Copy instance vars to locals
-   ORG
-           waitx   tix         ' Now accessible in inline
-   END
-   ```
+## Related Documentation
 
-3. **Use local labels** - Prefix with `.` for clarity
-   ```spin2
-   ORG
-   .loop   nop
-           djnz    count, #.loop
-   END
-   ```
-
-4. **Declare enough LONGs** - Ensure locals are LONG and within limit
-   ```spin2
-   PUB Method() | a, b, c, d    ' All are LONGs, all accessible
-   ```
-
-5. **Document timing** - Comment cycle-critical code
-   ```spin2
-   ORG
-           waitx   tix         ' 1/4 bit period
-           drvh    scl         ' Clock high
-           waitx   tix         ' Hold time
-   END
-   ```
+- [ORG Directives Usage Guide](ORG-Directives-Usage-Guide.md) — `ORG`/`ORGH` outside inline code, in top-level `DAT` blocks
+- [WC/WZ/WCZ Effects Guide](WC-WZ-WCZ-Effects-Guide.md) — which instructions accept which flag effects
+- [REP Instruction Usage Guide](REP-Instruction-Usage-Guide.md) — `REP` in full, including its non-inline forms
+- [RES/FIT/END Usage Guide](RES-FIT-END-Usage-Guide.md) — `RES`, `FIT`, and block termination in top-level `DAT` code
+- [PASM2 Authoring Guide](PASM2-Authoring-Guide.md) — writing PASM2 outside of inline blocks
 
 ---
 

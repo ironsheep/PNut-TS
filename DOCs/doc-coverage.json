@@ -151,7 +151,7 @@
     "DOCs/internals/PLL-Clock-Mode-Selection.md":        { "class": "governed", "covers": ["flash-loader"], "verified": null },
     "DOCs/language-specification/README.md":             { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4", "note": "SPEC_DOC in .claude/skill-conventions.md" },
     "DOCs/language-specification/ide-integration/README.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4" },
-    "DOCs/language-specification/REQUESTS/PNUT-TS-MISSING-EFFECTS.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
+    "DOCs/language-specification/REQUESTS/PNUT-TS-MISSING-EFFECTS.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.8" },
 
     "DOCs/internals/usage-guides-new/Preprocessor-Usage-Guide.md": { "class": "governed", "covers": ["preprocessor", "diagnostics"], "verified": "1.55.3" },
     "DOCs/internals/usage-guides-new/Clock-Configuration-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
@@ -177,7 +177,7 @@
     "DOCs/internals/usage-guides/Debug-Strategy-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/usage-guides/FIELD-Operator-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides/FILE-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/Inline-PASM-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
+    "DOCs/internals/usage-guides/Inline-PASM-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.8" },
     "DOCs/internals/usage-guides/Method-Pointer-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides/ORG-Directives-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides/PASM2-Authoring-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
