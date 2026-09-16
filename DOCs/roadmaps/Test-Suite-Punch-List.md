@@ -795,6 +795,26 @@ commented out.
 
 ---
 
+## 23. `npm run bld-dist` packs local-only folders and warns (added 2026-09-16)
+
+> **Compiled output: no** — build tooling; the compiler and its binaries are
+> unaffected. Seen while verifying «#53».
+
+- **The `.tgz` carries whatever sits in the working tree.** `.npmignore` exists,
+  so `npm pack` ignores `.gitignore`, and gitignored local folders go into the
+  package: on 2026-09-16 the 532 MB `p2-pnut-ts-1.55.7.tgz` held `REF-CACHE-BUG/`
+  (213 entries), `REF-V52A/`, `REF-INSTALL/`, `scripts-pkg-macos/`,
+  `TEST-NEW-OBJ/`, `BUG-NO-COMMIT/`, `BUG-STRUCT/`. `release.yml` does not use the
+  `.tgz`, but `DOCs/RELEASE-PROCESS.md` "Release Build" lists it as a product.
+  **Decide first:** is the `.tgz` distributed anywhere? If yes, add a `files`
+  allow-list to `package.json`; if no, drop `npm pack` from `bld-dist` and from
+  RELEASE-PROCESS.md.
+- **`scripts/insertBuildDate.js` warns on every esbuild:** it calls
+  `console.timeLog()` with no matching `console.time()`, so Node prints
+  `Warning: No such label 'Updated: ../out/pnut-ts.js'`. Fix: `console.log`.
+
+---
+
 ## Closed and archived
 
 Item numbers are never reused, so references elsewhere stay valid.
