@@ -8,7 +8,7 @@ import path from 'path';
 
 // Alternatively, if you want to use the synchronous version, you can do:
 import { sync as globSync } from 'glob';
-import { appendDiagnosticString, compareListingFiles, compareObjOrBinFilesExact, removeExistingFile, topLevel } from '../testUtils';
+import { appendDiagnosticString, compareListingFiles, compareObjOrBinFiles, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
 const testDirPath = path.resolve(__dirname, '../../../TEST/COV-tests');
@@ -85,15 +85,13 @@ function compileAndCompare(file: string, isDebugGroup: boolean) {
     whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
   }
 
-  // Compare object and binary files byte-for-byte. The listing comparison
-  // tolerates +/-1 in any 4-byte window, which hid wrong compile-time QEXP
-  // constants; these exact checks do not.
+  // Compare object and binary files byte-for-byte.
   const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
-  if (!compareObjOrBinFilesExact(objectFSpec, goldenObjFSpec)) {
+  if (!compareObjOrBinFiles(objectFSpec, goldenObjFSpec)) {
     whatFailed = appendDiagnosticString(whatFailed, 'Object Files', ', ');
   }
   const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
-  if (!compareObjOrBinFilesExact(binaryFSpec, goldenBinFSpec)) {
+  if (!compareObjOrBinFiles(binaryFSpec, goldenBinFSpec)) {
     whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
   }
 

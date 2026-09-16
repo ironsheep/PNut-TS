@@ -3,7 +3,8 @@
 
 // src/classes/spinElementizer.ts
 
-import { stringToFloat32, float32ToHexString, float32ToString } from '../utils/float32';
+import { float32ToHexString, float32ToString } from '../utils/float32';
+import { get_float } from '../utils/pnutFloat';
 import { Context } from '../utils/context';
 import { SpinDocument } from './spinDocument';
 import { eElementType } from './types';
@@ -48,9 +49,6 @@ export class SpinElementizer {
   private static readonly RE_QUATERNARY = /^%%([[0-3]+[0-3_]*)/;
   private static readonly RE_BINARY = /^%([[0-1]+[0-1_]*)/;
   private static readonly RE_HEX = /^\$([0-9A-Fa-f]+[0-9_A-Fa-f]*)/;
-  private static readonly RE_FLOAT1 = /^\d+[\d_]*\.\d+[\d_]*[eE](\+\d|-\d|\d)[\d_]*/;
-  private static readonly RE_FLOAT2 = /^\d+[\d_]*[eE](\+\d|-\d|\d)[\d_]*/;
-  private static readonly RE_FLOAT3 = /^\d+[\d_]*\.\d+[\d_]*/;
   private static readonly RE_DECIMAL = /^(\d+[\d_]*)/;
   private static readonly RE_WHITESPACE = /^(\s*)/;
 
@@ -934,43 +932,29 @@ export class SpinElementizer {
   }
 
   private decimalFloatConversion(line: string): [boolean, number, bigint] {
-    // we are parsing these
-    //    = 1.4e5
-    //    = 1e-5
-    //    = 1.7exponent
-    // Float regex patterns: RE_FLOAT1 = decimal+E, RE_FLOAT2 = E only, RE_FLOAT3 = decimal only
+    // PNut's scanner (@@con / @@con4): after the decimal digits (and underscores) of a
+    //  constant, a '.' followed by a digit, or an 'E'/'e', makes it a float and get_float
+    //  scans it from the first digit. Anything else leaves an integer ('1.' is 1 then '.').
+    //    = 1.4e5, 1e-5, 1_000.0, 2.5
     let interpValue: bigint = 0n;
     let charsUsed: number = 0;
     let didMatch: boolean = false;
-    const float1NumberMatch = line.match(SpinElementizer.RE_FLOAT1);
-    if (float1NumberMatch) {
-      interpValue = stringToFloat32(float1NumberMatch[0].replace(/_/g, ''));
-      charsUsed = float1NumberMatch[0].length;
-      didMatch = true;
-    } else {
-      const float2NumberMatch = line.match(SpinElementizer.RE_FLOAT2);
-      if (float2NumberMatch) {
-        interpValue = stringToFloat32(float2NumberMatch[0].replace(/_/g, ''));
-        charsUsed = float2NumberMatch[0].length;
-        didMatch = true;
-      } else {
-        const float3NumberMatch = line.match(SpinElementizer.RE_FLOAT3);
-        if (float3NumberMatch) {
-          interpValue = stringToFloat32(float3NumberMatch[0].replace(/_/g, ''));
-          charsUsed = float3NumberMatch[0].length;
-          didMatch = true;
+    const digitsMatch = line.match(SpinElementizer.RE_DECIMAL);
+    if (digitsMatch) {
+      const nextChr: string = line.charAt(digitsMatch[0].length);
+      const isFloat: boolean = (nextChr === '.' && this.isDigit(line.charAt(digitsMatch[0].length + 1))) || nextChr === 'E' || nextChr === 'e';
+      if (isFloat) {
+        // PNut's get_float (bit-exact, see src/utils/pnutFloat.ts)
+        const floatResult = get_float(line);
+        if (floatResult.carry) {
+          // [error_fpcmbw]
+          throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
         }
+        interpValue = BigInt(floatResult.value);
+        charsUsed = floatResult.length;
+        didMatch = true;
+        if (this.isLogging) this.logMessage(`  -- decimalFloatConversion(${line}) = interpValue=(${float32ToHexString(interpValue)})`);
       }
-    }
-    if (didMatch) {
-      // Validate it's a legal floating point number
-      // FIXME: TODO: validate that float32ToHexString() is working correctly (or better way to do this?)
-      if (interpValue == BigInt(0x7f800000)) {
-        // [error_fpcmbw]
-        throw new Error(`Floating-point constant must be within +/- 3.4e+38`);
-      }
-      const floatValueStr: string = `0x${float32ToHexString(interpValue)}`;
-      if (this.isLogging) this.logMessage(`  -- decimalFloatConversion(${line}) = interpValue=(${floatValueStr})`);
     }
     return [didMatch, charsUsed, interpValue];
   }

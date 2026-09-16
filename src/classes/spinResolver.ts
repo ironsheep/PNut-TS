@@ -11,7 +11,7 @@ import { Context } from '../utils/context';
 import { SpinElement } from './spinElement';
 import { NumberStack } from './numberStack';
 import { eBlockType, eByteCode, eElementType, eFlexcode, eOperationType, eValueType } from './types';
-import { bigIntFloat32ToNumber, float32ToHexString, hexString, numberToBigIntFloat32 } from '../utils/float32';
+import { float32ToHexString, hexString } from '../utils/float32';
 import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { ObjectImage } from './objectImage';
@@ -28,6 +28,28 @@ import { eMemberType, ObjectStructures } from './objectStructures';
 import { ObjectStructureRecord } from './objectStructureRecord';
 import { dumpBytes } from '../utils/dumpUtils';
 import { cordic_qexp, cordic_qlog } from '../utils/cordicQ';
+import {
+  fp_add,
+  fp_cmp,
+  fp_div,
+  fp_exp,
+  fp_exp10,
+  fp_exp2,
+  fp_fge,
+  fp_fle,
+  fp_float,
+  fp_log,
+  fp_log10,
+  fp_log2,
+  fp_mul,
+  fp_pow,
+  fp_round,
+  fp_sqrt,
+  fp_sub,
+  fp_trunc,
+  iFpCompare,
+  iFpResult
+} from '../utils/pnutFloat';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -8783,15 +8805,11 @@ export class SpinResolver {
           if (this.isLogging) this.logMessage(`* mathMode = Float`);
           this.getRightParen();
           const intValue = this.numberStack.pop(); // get result
-          // convert uint32 to float
-          // FIXME: TODO: this needs to make "1" into a 1.0
-          const floatValue: number = Number(intValue) / 1.0;
-          // return the converted result
-          resultStatus.value = numberToBigIntFloat32(floatValue);
+          // convert integer to float: PNut fp_float (bit-exact, see src/utils/pnutFloat.ts)
+          resultStatus.value = BigInt(fp_float(Number(intValue & BigInt(0xffffffff))));
         } else if (this.currElement.type == eElementType.type_trunc || this.currElement.type == eElementType.type_round) {
           // have TRUNC() or ROUND()
           const origElementType: eElementType = this.currElement.type;
-          // TODO: determine if we care about overflow checking... because we don't do any here
           //if (this.isLogging) this.logMessage(` - getCON()  type=[${eElementType[this.currElement.type]}]`);
           this.checkIntMode();
           this.getLeftParen();
@@ -8802,21 +8820,14 @@ export class SpinResolver {
           if (this.isLogging) this.logMessage(`* mathMode = Int`);
           this.getRightParen();
           const float32Value = this.numberStack.pop(); // get result
-          // convert uint32 to float
-          const float64Value = Number(bigIntFloat32ToNumber(BigInt(float32Value)));
-          //if (this.isLogging) this.logMessage(` - getCON()  round/trunc float64Value=[0x${float64Value.toString(16).toUpperCase().padStart(8, '0')}]`);
-          if (origElementType == eElementType.type_trunc) {
-            // truncate our float value
-            const truncatedUInt32 = Math.trunc(float64Value) & 0xffffffff;
-            // return the converted result
-            resultStatus.value = BigInt(truncatedUInt32);
-          } else if (origElementType == eElementType.type_round) {
-            // truncate our float value
-            const roundedUInt32 = Math.round(float64Value) & 0xffffffff;
-            //if (this.isLogging) this.logMessage(` - getCON()  round/trunc roundedUInt32=[0x${roundedUInt32.toString(16).toUpperCase().padStart(8, '0')}]`);
-            // return the converted result
-            resultStatus.value = BigInt(roundedUInt32);
+          // convert float to truncated/rounded integer: PNut fp_trunc / fp_round (bit-exact, see src/utils/pnutFloat.ts)
+          const float32Bits: number = Number(float32Value & BigInt(0xffffffff));
+          const converted = origElementType == eElementType.type_trunc ? fp_trunc(float32Bits) : fp_round(float32Bits);
+          if (converted.carry) {
+            // [error_fpo]
+            throw new Error('Floating-point overflow (m344)');
           }
+          resultStatus.value = BigInt(converted.value);
         } else if (this.currElement.type == eElementType.type_sizeof) {
           if (this.isLogging) this.logMessage(`* getCon() have type_sizeof`);
           if (this.inConBlock || this.inObjBlock) {
@@ -11408,18 +11419,8 @@ private checkDec(): boolean {
         break;
 
       case eOperationType.op_fsqrt: //  FSQRT
-        {
-          if (a > msb32Bit) {
-            // [error_fpcmbp]
-            throw new Error(`Floating-point constant must be positive (m330)`);
-          }
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get square root
-          const internalSqRoot64: number = Math.sqrt(internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalSqRoot64);
-        }
+        // PNut fp_sqrt (bit-exact, see src/utils/pnutFloat.ts); throws error_fpcmbp / error_fpo
+        a = BigInt(fp_sqrt(Number(a)));
         break;
 
       case eOperationType.op_qlog: //  QLOG
@@ -11433,81 +11434,33 @@ private checkDec(): boolean {
         break;
 
       case eOperationType.op_log2: //  LOG2
-        {
-          if (a > msb32Bit) {
-            // [error_fpcmbp]
-            throw new Error(`Floating-point constant must be positive (m331)`);
-          }
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get log base 2
-          const internalLogBase2_64: number = Math.log2(internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalLogBase2_64);
-        }
+        // PNut fp_log2 (bit-exact, see src/utils/pnutFloat.ts); throws error_fpcmbp
+        a = BigInt(fp_log2(Number(a)));
         break;
 
       case eOperationType.op_log10: //  LOG10
-        {
-          if (a > msb32Bit) {
-            // [error_fpcmbp]
-            throw new Error(`Floating-point constant must be positive (m332)`);
-          }
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get log base 10
-          const internalLogBase10_64: number = Math.log10(internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalLogBase10_64);
-        }
+        // PNut fp_log10 (bit-exact, see src/utils/pnutFloat.ts); throws error_fpcmbp
+        a = BigInt(fp_log10(Number(a)));
         break;
 
       case eOperationType.op_log: //  LOG
-        {
-          if (a > msb32Bit) {
-            // [error_fpcmbp]
-            throw new Error(`Floating-point constant must be positive (m333)`);
-          }
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get log natural
-          const internalLogNatural64: number = Math.log(internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalLogNatural64);
-        }
+        // PNut fp_log (bit-exact, see src/utils/pnutFloat.ts); throws error_fpcmbp
+        a = BigInt(fp_log(Number(a)));
         break;
 
       case eOperationType.op_exp2: //  EXP2
-        {
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get 2 to the x power
-          const internalExp2_64: number = Math.pow(2, internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalExp2_64);
-        }
+        // PNut fp_exp2 (bit-exact, see src/utils/pnutFloat.ts); throws error_fpo
+        a = BigInt(fp_exp2(Number(a)));
         break;
 
       case eOperationType.op_exp10: //  EXP10
-        {
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get 10 to the x power
-          const internalExp10_64: number = Math.pow(10, internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalExp10_64);
-        }
+        // PNut fp_exp10 (bit-exact, see src/utils/pnutFloat.ts); throws error_fpo
+        a = BigInt(fp_exp10(Number(a)));
         break;
 
       case eOperationType.op_exp: //  EXP
-        {
-          // convert to internal from float32
-          const internalFloat64: number = bigIntFloat32ToNumber(a);
-          // get e to the x power
-          const internalExp64: number = Math.exp(internalFloat64);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalExp64);
-        }
+        // PNut fp_exp (bit-exact, see src/utils/pnutFloat.ts); throws error_fpo
+        a = BigInt(fp_exp(Number(a)));
         break;
 
       case eOperationType.op_shr: //  >>
@@ -11579,75 +11532,35 @@ private checkDec(): boolean {
         break;
 
       case eOperationType.op_mul: //  *
-        // multiply a by b
-        {
-          if (isFloatInConBlock) {
-            // convert to internal from float32
-            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-            aInternalFloat64 *= bInternalFloat64;
-            // convert back to float32
-            a = numberToBigIntFloat32(aInternalFloat64);
-            this.checkOverflow(a);
-          } else {
-            a = (a * b) & mask32Bit;
-          }
+        if (isFloatInConBlock) {
+          // PNut fp_mul (bit-exact, see src/utils/pnutFloat.ts)
+          a = this.floatResult(fp_mul(Number(a), Number(b)));
+        } else {
+          a = (a * b) & mask32Bit;
         }
         break;
 
       case eOperationType.op_fmul: //  *.
-        {
-          // convert to internal from float32
-          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          aInternalFloat64 *= bInternalFloat64;
-          // convert back to float32
-          a = numberToBigIntFloat32(aInternalFloat64);
-          this.checkOverflow(a);
-        }
+        // PNut fp_mul (bit-exact, see src/utils/pnutFloat.ts)
+        a = this.floatResult(fp_mul(Number(a), Number(b)));
         break;
 
       case eOperationType.op_div: //  /
-        // divide a by b
-        {
-          if (isFloatInConBlock) {
-            // convert to internal from float32
-            if ((b & mask31Bit) == 0n) {
-              // [error_fpo]
-              // (technically this is divide-by-zero attempted)
-              throw new Error(`Floating-point overflow (m340)`);
-            }
-            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-            aInternalFloat64 /= bInternalFloat64;
-            // convert back to float32
-            a = numberToBigIntFloat32(aInternalFloat64);
-            this.checkOverflow(a);
-          } else {
-            if (b == 0n) {
-              // [error_dbz]
-              throw new Error(`Divide by zero (m145)`);
-            }
-            a = (this.signExtendFrom32Bit(a) / this.signExtendFrom32Bit(b)) & mask32Bit;
+        if (isFloatInConBlock) {
+          // PNut fp_div (bit-exact, see src/utils/pnutFloat.ts)
+          a = this.floatResult(fp_div(Number(a), Number(b)));
+        } else {
+          if (b == 0n) {
+            // [error_dbz]
+            throw new Error(`Divide by zero (m145)`);
           }
+          a = (this.signExtendFrom32Bit(a) / this.signExtendFrom32Bit(b)) & mask32Bit;
         }
         break;
 
       case eOperationType.op_fdiv: //  /.
-        {
-          // convert to internal from float32
-          if ((b & mask31Bit) == 0n) {
-            // [error_fpo]
-            // (technically this is divide-by-zero attempted)
-            throw new Error(`Floating-point overflow (m341)`);
-          }
-          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          aInternalFloat64 /= bInternalFloat64;
-          // convert back to float32
-          a = numberToBigIntFloat32(aInternalFloat64);
-          this.checkOverflow(a);
-        }
+        // PNut fp_div (bit-exact, see src/utils/pnutFloat.ts)
+        a = this.floatResult(fp_div(Number(a), Number(b)));
         break;
 
       case eOperationType.op_divu: //  +/
@@ -11700,101 +11613,53 @@ private checkDec(): boolean {
         break;
 
       case eOperationType.op_add: //  +
-        {
-          // add b to a returning a
-          if (isFloatInConBlock) {
-            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-            aInternalFloat64 += bInternalFloat64;
-            // convert back to float32
-            a = numberToBigIntFloat32(aInternalFloat64);
-            this.checkOverflow(a);
-          } else {
-            a = (a + b) & mask32Bit;
-          }
+        if (isFloatInConBlock) {
+          // PNut fp_add (bit-exact, see src/utils/pnutFloat.ts)
+          a = this.floatResult(fp_add(Number(a), Number(b)));
+        } else {
+          a = (a + b) & mask32Bit;
         }
         break;
 
       case eOperationType.op_fadd: //  +.
-        {
-          // add b to a returning a
-          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          aInternalFloat64 += bInternalFloat64;
-          // convert back to float32
-          a = numberToBigIntFloat32(aInternalFloat64);
-          this.checkOverflow(a);
-        }
+        // PNut fp_add (bit-exact, see src/utils/pnutFloat.ts)
+        a = this.floatResult(fp_add(Number(a), Number(b)));
         break;
 
       case eOperationType.op_sub: //  -
-        {
-          // subtract b from a returning a
-          if (isFloatInConBlock) {
-            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-            aInternalFloat64 -= bInternalFloat64;
-            // convert back to float32
-            a = numberToBigIntFloat32(aInternalFloat64);
-            this.checkOverflow(a);
-          } else {
-            a = (a - b) & mask32Bit;
-          }
+        if (isFloatInConBlock) {
+          // PNut fp_sub (bit-exact, see src/utils/pnutFloat.ts)
+          a = this.floatResult(fp_sub(Number(a), Number(b)));
+        } else {
+          a = (a - b) & mask32Bit;
         }
         break;
 
       case eOperationType.op_fsub: //  -.
-        {
-          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          aInternalFloat64 -= bInternalFloat64;
-          // convert back to float32
-          a = numberToBigIntFloat32(aInternalFloat64);
-          this.checkOverflow(a);
-        }
+        // PNut fp_sub (bit-exact, see src/utils/pnutFloat.ts)
+        a = this.floatResult(fp_sub(Number(a), Number(b)));
         break;
 
       case eOperationType.op_pow: //  POW
-        {
-          // Floating-point power (fp A to-the-power-of fp B --> fp A)
-          // convert a,b to internal from float32
-          let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          // a to power of b
-          const internalPow_64: number = Math.pow(aInternalFloat64, bInternalFloat64);
-          if (this.isLogging) this.logMessage(` *** op_pow a(${aInternalFloat64}), b(${bInternalFloat64}) = (${internalPow_64})`);
-          // convert back to float32
-          a = numberToBigIntFloat32(internalPow_64);
-        }
+        // PNut fp_pow (bit-exact, see src/utils/pnutFloat.ts); throws error_fpcmbp / error_fpo
+        a = BigInt(fp_pow(Number(a), Number(b)));
         break;
 
       case eOperationType.op_fge: //  #>
-        {
-          // force a to be greater than or equal to b
-          if (isFloatInConBlock) {
-            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-            aInternalFloat64 = aInternalFloat64 < bInternalFloat64 ? bInternalFloat64 : aInternalFloat64;
-            // convert back to float32
-            a = numberToBigIntFloat32(aInternalFloat64);
-          } else {
-            a = this.signExtendFrom32Bit(a) < this.signExtendFrom32Bit(b) ? b : a;
-          }
+        if (isFloatInConBlock) {
+          // PNut fp_fge (bit-exact, see src/utils/pnutFloat.ts)
+          a = this.floatResult(fp_fge(Number(a), Number(b)));
+        } else {
+          a = this.signExtendFrom32Bit(a) < this.signExtendFrom32Bit(b) ? b : a;
         }
         break;
 
       case eOperationType.op_fle: //  <#
-        {
-          // force a to be less than or equal to b
-          if (isFloatInConBlock) {
-            let aInternalFloat64: number = bigIntFloat32ToNumber(a);
-            const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-            aInternalFloat64 = aInternalFloat64 > bInternalFloat64 ? bInternalFloat64 : aInternalFloat64;
-            // convert back to float32
-            a = numberToBigIntFloat32(aInternalFloat64);
-          } else {
-            a = this.signExtendFrom32Bit(a) > this.signExtendFrom32Bit(b) ? b : a;
-          }
+        if (isFloatInConBlock) {
+          // PNut fp_fle (bit-exact, see src/utils/pnutFloat.ts)
+          a = this.floatResult(fp_fle(Number(a), Number(b)));
+        } else {
+          a = this.signExtendFrom32Bit(a) > this.signExtendFrom32Bit(b) ? b : a;
         }
         break;
 
@@ -11811,26 +11676,16 @@ private checkDec(): boolean {
         break;
 
       case eOperationType.op_lt: //  <
-        // force a to be less than b
-        // NOTE: in CON blocks return 1 or 0,
-        //       runtime it returns all 1 bits or all 0 bits
-
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 < bInternalFloat64 ? float1p0 : 0n;
+          a = this.floatCompare(a, b) < 0 ? float1p0 : 0n;
         } else {
           a = this.signExtendFrom32Bit(a) < this.signExtendFrom32Bit(b) ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_flt: //  <.
-        {
-          // this version returns True/False!!
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 < bInternalFloat64 ? true32Bit : false32Bit;
-        }
+        // this version returns True/False!!
+        a = this.floatCompare(a, b) < 0 ? true32Bit : false32Bit;
         break;
 
       case eOperationType.op_ltu: //  +<
@@ -11840,21 +11695,15 @@ private checkDec(): boolean {
 
       case eOperationType.op_lte: //  <=
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 <= bInternalFloat64 ? float1p0 : 0n;
+          a = this.floatCompare(a, b) <= 0 ? float1p0 : 0n;
         } else {
           a = this.signExtendFrom32Bit(a) <= this.signExtendFrom32Bit(b) ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_flte: //  <=.
-        {
-          // this version returns True/False!!
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 <= bInternalFloat64 ? true32Bit : false32Bit;
-        }
+        // this version returns True/False!!
+        a = this.floatCompare(a, b) <= 0 ? true32Bit : false32Bit;
         break;
 
       case eOperationType.op_lteu: //  +<=
@@ -11863,59 +11712,42 @@ private checkDec(): boolean {
 
       case eOperationType.op_e: //  ==
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 == bInternalFloat64 ? float1p0 : 0n;
+          a = this.floatCompare(a, b) == 0 ? float1p0 : 0n;
         } else {
           a = a == b ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_fe: //  ==.
-        {
-          // this version returns True/False!!
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 == bInternalFloat64 ? true32Bit : false32Bit;
-        }
+        // this version returns True/False!!
+        a = this.floatCompare(a, b) == 0 ? true32Bit : false32Bit;
         break;
 
       case eOperationType.op_ne: //  <>
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 != bInternalFloat64 ? float1p0 : 0n;
+          a = this.floatCompare(a, b) != 0 ? float1p0 : 0n;
         } else {
           a = a != b ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_fne: //  <>.
-        {
-          // this version returns True/False!!
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 != bInternalFloat64 ? true32Bit : false32Bit;
-        }
+        // this version returns True/False!!
+        a = this.floatCompare(a, b) != 0 ? true32Bit : false32Bit;
         break;
 
       case eOperationType.op_gte: //  >=
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 >= bInternalFloat64 ? float1p0 : 0n;
+          a = this.floatCompare(a, b) >= 0 ? float1p0 : 0n;
         } else {
-          a = a >= b ? true32Bit : false32Bit;
+          // PNut @@cmp1: cmp eax,ecx ; jl / jg (signed)
+          a = this.signExtendFrom32Bit(a) >= this.signExtendFrom32Bit(b) ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_fgte: //  >=.
-        {
-          // this version returns True/False!!
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 >= bInternalFloat64 ? true32Bit : false32Bit;
-        }
+        // this version returns True/False!!
+        a = this.floatCompare(a, b) >= 0 ? true32Bit : false32Bit;
         break;
 
       case eOperationType.op_gteu: //  +>=
@@ -11924,21 +11756,16 @@ private checkDec(): boolean {
 
       case eOperationType.op_gt: //  >
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 > bInternalFloat64 ? float1p0 : 0n;
+          a = this.floatCompare(a, b) > 0 ? float1p0 : 0n;
         } else {
-          a = a > b ? true32Bit : false32Bit;
+          // PNut @@cmp1: cmp eax,ecx ; jl / jg (signed)
+          a = this.signExtendFrom32Bit(a) > this.signExtendFrom32Bit(b) ? true32Bit : false32Bit;
         }
         break;
 
       case eOperationType.op_fgt: //  >.
-        {
-          // this version returns True/False!!
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          a = aInternalFloat64 > bInternalFloat64 ? true32Bit : false32Bit;
-        }
+        // this version returns True/False!!
+        a = this.floatCompare(a, b) > 0 ? true32Bit : false32Bit;
         break;
 
       case eOperationType.op_gtu: //  +>
@@ -11947,11 +11774,8 @@ private checkDec(): boolean {
 
       case eOperationType.op_ltegt: //  <=>
         if (isFloatInConBlock) {
-          const aInternalFloat64: number = bigIntFloat32ToNumber(a);
-          const bInternalFloat64: number = bigIntFloat32ToNumber(b);
-          const testStatus: boolean = aInternalFloat64 < bInternalFloat64;
-          if (this.isLogging) this.logMessage(` *** op_ltegt a(${aInternalFloat64}) < b(${bInternalFloat64}) = (${testStatus})`);
-          a = aInternalFloat64 == bInternalFloat64 ? 0n : aInternalFloat64 < bInternalFloat64 ? float1p0 | msb32Bit : float1p0;
+          const difference: number = this.floatCompare(a, b);
+          a = difference == 0 ? 0n : difference < 0 ? float1p0 | msb32Bit : float1p0;
         } else {
           const extendedA = this.signExtendFrom32Bit(a);
           const extendedB = this.signExtendFrom32Bit(b);
@@ -11984,11 +11808,23 @@ private checkDec(): boolean {
     return a;
   }
 
-  private checkOverflow(value: bigint) {
-    if ((value & BigInt(0x7fffffff)) == BigInt(0x7f800000)) {
+  private floatResult(result: iFpResult): bigint {
+    // PNut: call fp_xxx ; jc error_fpo
+    if (result.carry) {
       // [error_fpo]
       throw new Error('Floating-point overflow (m342)');
     }
+    return BigInt(result.value);
+  }
+
+  private floatCompare(a: bigint, b: bigint): number {
+    // PNut @@fcmp: call fp_cmp ; jc error_fpo ; then jl / jg on the signed difference
+    const compare: iFpCompare = fp_cmp(Number(a), Number(b));
+    if (compare.carry) {
+      // [error_fpo]
+      throw new Error('Floating-point overflow (m343)');
+    }
+    return compare.difference;
   }
 
   private signExtendFrom32Bit(value: bigint): bigint {

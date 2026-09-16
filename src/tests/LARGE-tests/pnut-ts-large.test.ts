@@ -67,10 +67,11 @@ describe('PNut_ts detects .spin2 exceptions w/debug() & without correctly', () =
     console.error('ERROR: glob issue:', error);
   }
   if (files.length > 1) {
-    // BLDC-Motor-drv: these are known to fail but are good (constant bytes diff but legal)
-    let filteredFiles = files.filter((file) => !file.includes('BLDC-Motor-drv'));
-    // iOTgw: these are known to fail but are good (runs too long)
-    filteredFiles = filteredFiles.filter((file) => !file.includes('iOTgw'));
+    // BLDC-Motor-drv: these three GOLDs predate the v55 GOLD regeneration (their
+    // bytecode numbering is pre-v55), pending a Windows regen via
+    // TEST/LARGE-tests/BLDC-Motor-drv/rebuild-gold.ps1. Every other BLDC fixture runs.
+    const staleBldcGolds: string[] = ['demo_dual_motor_rc_hdmi.spin2', 'isp_hdmi_debug.spin2', 'p2textdrv.spin2'];
+    let filteredFiles = files.filter((file) => !(file.includes('BLDC-Motor-drv/') && staleBldcGolds.includes(path.basename(file))));
     // MultSrvo: these are known to fail but are good (runs too long)
     // filteredFiles = filteredFiles.filter((file) => !file.includes('MultSrvo'));
     // TOF: five of its .obj.GOLD files predate the v55 GOLD regeneration, so their

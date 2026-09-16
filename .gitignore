@@ -195,11 +195,9 @@ HOLD/
 TEST/preprocessTESTs/condCode.pre
 TEST/preprocessTESTs/include.pre
 *.pre
-TEST/SHORT/tablesTESTs/goldenFiltered.txt
-TEST/SHORT/tablesTESTs/reportFiltered.txt
 *.resolv
-TEST/SHORT/tablesTESTs/dumpTables.resolv.GOLD.txt
-TEST/SHORT/tablesTESTs/dumpTables.resolv.txt
+TEST/SHORT/resolverTESTs/dumpTables.resolv.GOLD.txt
+TEST/SHORT/resolverTESTs/dumpTables.resolv.txt
 REF/asmodeConversion.js
 REF/struct-examples.spin2
 scripts/doitNoConsole
@@ -220,8 +218,6 @@ TEST/emptySpinFile.binf
 /jest-config/coverage
 *.elemold
 /out-jest
-TEST/SHORT/tablesTESTs/dumpTables.tabl.txt
-TEST/SHORT/tablesTESTs/dumpTables.tabl.GOLD.txt
 *.HOLD
 /TEST/ALLCODE-tests
 src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.ORIG
@@ -288,7 +284,6 @@ scripts-pkg/
 REF-V52A/
 DOCs/roadmaps/v52a-IMPLEMENTATION/
 TEST/LANG-VER-tests/Spin2_v50_step.elemOLD
-TEST/SHORT/tablesTESTs/p2com.LST
 REF/p2com.LST
 
 # Devcontainer local overrides (user-specific mounts) + per-machine shell scaffolding
