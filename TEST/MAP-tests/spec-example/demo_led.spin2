@@ -1,0 +1,10 @@
+' demo_led: every element of an OBJ array shares this image
+CON PIN = 56
+
+VAR byte state
+
+PUB toggle()
+  state := !state
+  org
+flip    drvnot  #PIN
+  end

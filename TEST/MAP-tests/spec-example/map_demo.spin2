@@ -1,0 +1,26 @@
+{Spin2_v55}
+' map_demo: an OBJ array, two identical copies, and a DAT-layout fork
+
+VAR long ticks
+
+OBJ
+  led[3] : "demo_led"
+  left   : "demo_motor"
+  right  : "demo_motor"
+  trace  : "demo_buf" | SIZE = 32
+
+PUB main() | i
+  coginit(NEWCOG, @blink, 0)
+  repeat
+    repeat i from 0 to 2
+      led[i].toggle()
+    left.go(1)
+    right.go(-1)
+    trace.put(ticks++)
+
+DAT
+version BYTE    1, 0
+        org     0
+blink   drvnot  #56
+        waitx   ##10_000_000
+        jmp     #blink

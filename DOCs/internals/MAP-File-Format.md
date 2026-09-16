@@ -1,747 +1,1142 @@
 # PNut-TS `.map` File Format
 
+**Status:** specification of the `.map` format written by PNut-TS 1.55.8. The
+format changed in 1.55.8; maps from earlier releases use different sections and
+columns.
+
 ## Overview
 
-A `.map` file is the memory map PNut-TS writes alongside a compiled binary. It
-describes where every object image landed in hub memory, which declaration in
-the source put it there, and where every method, DAT datum, VAR and PASM label
-within it resolved to.
+A `.map` file describes how the compiler laid out a program in memory. It is
+written to teach two ideas, and every section is organized around them:
 
-This document is a format specification. It describes what the generator emits,
-section by section, in enough detail to write a third-party parser against. The
-authority throughout is `src/classes/mapGenerator.ts` and, for the instance
-model, `src/classes/objInstanceInfo.ts` and
-`Compiler.buildObjInstanceInfo()` (`src/classes/compiler.ts:961-1041`).
+- An **image** is compiled code plus DAT. When several instances compile to the
+  same bytes, the compiler keeps one image and every one of those instances runs
+  it — so they also share its DAT.
+- An **instance** is the top object, or one `OBJ` declaration or array element
+  beneath it. **Each instance has its own VAR**, even when it shares its image
+  with other instances.
 
-Described here as of v1.55.4.
+This document is the format specification: concepts, the exact section and
+column grammar, and a complete worked example. It is detailed enough to write a
+parser against, and a map produced for the worked example's source must match
+the example text byte for byte, apart from the `Generated:` line.
+
+**Authority.** The layout facts come from the compiled image itself: the
+compiler walks the object header tables of the final image and builds one
+layout model, `ObjectLayout` (`src/classes/objectLayout.ts`); the map is
+written from that model by `src/classes/mapGenerator.ts`. The header walk
+follows the Spin2 interpreter's object-call rule (`callh` in
+`src/ext/Spin2_interpreter.spin2`): a child's code base is its parent's code
+base plus the slot's code offset, and its VAR base is its parent's VAR base plus
+the slot's VAR offset, at every depth.
 
 ## Requesting a map, and what it is called
 
-`-m` / `--map` — "Generate memory map file (.map) from compilation"
-(`src/pnut-ts.ts:167`), which sets `compileOptions.writeMapFile`
-(`src/pnut-ts.ts:306-308`). Without it, `MapGenerator.generate()` returns
-immediately (`src/classes/mapGenerator.ts:43-46`).
+`-m` / `--map` writes the map. Without it no `.map` is written.
 
-The name is derived, in two steps, from the source filename:
+The name is the source filename with its extension replaced by `.map`, in the
+source's directory: `map_demo.spin2` produces `map_demo.map`. `-o` does not
+rename it; the output override applies only to the binary and the flash-loader
+binary.
 
-1. the listing filespec is the source with `.spin2` replaced by `.lst`
-   (`src/pnut-ts.ts:570`);
-2. the map filespec is that with `.lst` replaced by `.map`
-   (`src/utils/outputFilespecs.ts:51`), assigned to `compileOptions.mapFilename`
-   (`src/pnut-ts.ts:599`).
+The file is assembled in memory and written with one synchronous write, so a
+tool that reads it after the compiler reports `Wrote <name>.map` sees the
+complete file.
 
-So `sgl_app_top.spin2` produces `sgl_app_top.map`, in the source's directory.
-`-o` does **not** rename it: the output override applies only to the binary and
-the flash-loader binary (`src/utils/outputFilespecs.ts:48-56`).
+---
 
-The file is assembled entirely in memory and written with a single
-`fs.writeFileSync` (`src/classes/mapGenerator.ts:58-69`). A reader that opens
-the file after the compile reports `Wrote <name>.map` sees a complete file, not
-a partially flushed stream.
+## Concepts
+
+### Images
+
+Every distinct compiled object occupies one region of the image. Regions are
+laid end to end from address `$00000`; each is padded with 0 to 3 bytes to a
+long boundary before the next one starts. An image's **size** is its own bytes —
+header, DAT and method code — without that padding and without its children,
+which are separate images.
+
+Images are numbered `#1`, `#2`, … in ascending address order. `#1` is always the
+top object, at `$00000`.
+
+Two instances use the same image exactly when they compiled to the same bytes.
+That is decided by the bytes, not by the declaration:
+
+| Situation | Result |
+|---|---|
+| The same object declared twice with no overrides, or with identical overrides | one image, two instances |
+| Elements of one `OBJ` array | one image, one instance per element |
+| An override that changes any byte — a DAT layout, a constant pushed by code, a method's size | a **fork**: separate images, each with its own method entries and DAT offsets |
+| An override that changes only the VAR size, when no byte of code depends on it | one image; the instances' VAR blocks differ in size |
+| Two differently named source files that compile to the same bytes | one image; its `Source` cell lists both files (the compiler also warns `Duplicate source`) |
+
+Because a shared image holds its DAT once, every instance of that image reads
+and writes the same DAT bytes. That is the **shared DAT** the legend names.
+
+### Instances
+
+The top object is an instance. Below it, each `OBJ` declaration contributes one
+instance per parent instance, and an array declaration `d[3]` contributes one
+instance per element. A declaration inside an object that is itself used twice
+therefore produces two instances.
+
+Every instance of a Spin program has its own VAR block — its **own VAR**. The
+first long of each block is reserved for the interpreter, so the block is at
+least 4 bytes and the first VAR symbol sits at offset `+$00004`. VAR symbols
+follow in declaration order with no padding between them, and the block is then
+padded to a multiple of 4. VAR blocks are laid end to end, starting at the first
+long after the last image, in depth-first order: an instance's own block, then
+each of its children's blocks in slot order.
+
+### Instance paths
+
+An instance is named by its access path, in upper case, as the compiler holds
+the declared names:
+
+| Path | Instance |
+|---|---|
+| `(top)` | the top object |
+| `A` | declaration `a` in the top object |
+| `A.LEAF` | declaration `leaf` inside instance `A` |
+| `D[1]` | element 1 of array declaration `d[n]` in the top object |
+| `A.D[1].LEAF` | declaration `leaf` inside element 1 of array `d` inside `A` |
+
+A path never contains whitespace or a comma. `(top)` is a reserved literal and
+never appears as a prefix of another path.
+
+### Addresses
+
+Every address in the map is an **offset from the first byte of the top object's
+image** — the same numbering as the hex dump in the `.lst` listing and the image
+bytes of the `.obj` file.
+
+The `.bin` written by the same compile holds other bytes before the image, so
+the image starts part-way into it. `SUMMARY` states where, as the **hub base**:
+the image's offset in the `.bin`, which is also its hub address once the `.bin`
+is loaded at hub `$00000`. For any address in the map:
+
+```
+hub address = map address + hub base
+```
+
+The hub base depends on how the program was built:
+
+| Build | What precedes the image |
+|---|---|
+| Spin program | the Spin2 interpreter |
+| Spin program with `-d` | the interpreter, the debugger and the program's debug data |
+| PASM-only program, no clock setting | nothing: the hub base is `$00000` |
+| PASM-only program with a clock setting (such as `_clkfreq`) | the clock-setting code |
+| PASM-only program with `-d` | the debugger |
+
+A `-d` build and a plain build of the same source therefore print different hub
+bases, and a `-d` hub base need not be a multiple of 4. The rest of the map is
+the same for both unless the source contains `DEBUG` statements, which only a
+`-d` build compiles into the image.
+
+### Where each fact lives
+
+Each fact is stated once, in the section that owns it:
+
+| Fact | Owning section |
+|---|---|
+| counts, byte totals and hub base | `SUMMARY` |
+| an instance's image, source file and overrides | `OBJECT TREE` |
+| an image's address range and size; which instances use it | `MEMORY LAYOUT`, Images |
+| an instance's VAR block range and size | `MEMORY LAYOUT`, VAR blocks |
+| methods, DAT, PASM labels, inline PASM, child slots | `OBJECT DETAILS`, in the image's block |
+| an instance's VAR symbols | `OBJECT DETAILS`, in its image's block |
+
+The source file name is printed beside an image number in `MEMORY LAYOUT` and
+in each `OBJECT DETAILS` heading as a readable label for that number; it is
+derived from the instances that use the image, not an independent fact. The two
+index sections restate `OBJECT DETAILS` facts sorted for lookup and add nothing
+new.
+
+The two join keys between sections are the image number `#n` and the instance
+path.
+
+---
 
 ## Lexical conventions
 
-- Every emitted line is terminated with a single `\n`
-  (`writeLine`, `src/classes/mapGenerator.ts:984-986`). No `\r`.
-- Sections after the header begin with a line of the form `=== SECTION NAME ===`
-  followed by a blank line.
-- Blank lines separate blocks; they are not significant beyond that.
-- Addresses print as `$` followed by **five** uppercase hex digits, zero-padded
-  (`hexAddr`, `:980-982`). Values wider than five digits are not truncated —
-  the padding is a minimum.
-- Rows are built with `padEnd`, so **trailing whitespace is normal**. A parser
-  must not treat it as significant, and must not assume a row ends at its last
-  visible character.
-- Column widths are **auto-sized**, never fixed. Each table measures its own
-  values and takes the widest, with a per-column minimum
-  (`columnWidth`, `:738-740`). A parser must read the widths from the dashed
-  rule line beneath the header, or split on runs of two-or-more spaces — never
-  from hard-coded offsets.
-- Symbol names are cleaned before printing: the name is split on `_$_`, the
-  first part kept, and one trailing `_` removed (`cleanSymbolName`, `:896-903`).
+### Lines
 
-## Section order
+- Every line ends with a single `\n`. No `\r`.
+- **No line ends in whitespace.**
+- A section begins with a line `=== NAME ===`, followed by one blank line.
+- Every section ends with one blank line, so the file ends with `\n\n`.
 
-Seven emitters, in this fixed order (`src/classes/mapGenerator.ts:62-68`):
+### Tables
 
-1. Header
-2. `=== PROGRAM SUMMARY ===`
-3. `=== OBJECT HIERARCHY ===`
-4. `=== MEMORY LAYOUT ===`
-5. `=== OBJECT DETAILS ===`
-6. `=== ADDRESS INDEX ===`
-7. `=== SYMBOL INDEX ===`
+Most content is in tables of this shape:
+
+```
+  <title>                  (only inside MEMORY LAYOUT and OBJECT DETAILS)
+  Header1  Header2  Header3
+  -------  -------  -------
+  cell     cell     cell
+```
+
+- Every table line begins with two spaces.
+- Cells are separated by exactly two spaces.
+- A column's width is the longest of its header and every cell in it. The header
+  length is the minimum; there is no other minimum and no maximum.
+- The rule line under the header holds, for each column, as many `-` as the
+  column is wide.
+- Cells are left-aligned and padded with spaces to the column width, except
+  `Size` columns, which are right-aligned (header included).
+- The last cell of a line is never padded.
+- **No cell contains whitespace**, and every row of a table has the same number
+  of cells. A parser may split each row on runs of whitespace.
+- A cell with nothing to say holds `-`.
+- A table with no rows is not printed. Where a whole section would be empty,
+  the section holds the single line `  (none)`.
+
+### Tokens
+
+| Token | Form | Example |
+|---|---|---|
+| address | `$` and 5 uppercase hex digits | `$0007C` |
+| range | two addresses joined by `-`, both inclusive | `$00074-$00092` |
+| offset | `+$` and 5 uppercase hex digits, relative to an image base or a VAR block base | `+$00008` |
+| cog address | `$` and 3 uppercase hex digits | `$000` |
+| size | decimal, no separators | `114` |
+| image number | `#` and decimal | `#2` |
+| path | see Instance paths | `LEFT.LOG` |
+| list | items joined by `,` with no spaces | `LEFT,RIGHT` |
+| array run | `NAME[first..last]` | `LED[0..2]` |
+| empty | `-` | `-` |
+
+An address wider than 5 hex digits is printed in full; P2 hub memory does not
+require it.
+
+### Lists and array runs
+
+In a list cell, consecutive items that are elements of **one** array —
+identical text up to the final `[index]`, with indices ascending by one — are
+written as a run when there are three or more of them: `D[0],D[1],D[2],D[3]`
+becomes `D[0..3]`. Two elements stay as `D[0],D[1]`. Runs are never formed
+across different parents: `A[0].L[0],A[0].L[1],A[1].L[0],A[1].L[1]` has no run
+of three and is printed as written. Array runs appear only in list cells; every
+other path cell names exactly one instance.
+
+### Source file names
+
+A source file name is printed with its extension, as found on disk:
+`demo_led.spin2`. Inside a table cell, each byte that is a control character,
+a space, `%`, `,` or DEL (`$00`–`$20`, `$25`, `$2C`, `$7F`) is written as `%`
+followed by two uppercase hex digits, so `my drv.spin2` prints as
+`my%20drv.spin2`. The header line prints the top file name unescaped.
+
+### Overrides
+
+An instance's constant overrides are printed as `NAME=VALUE` items in the order
+they were written in the declaration, joined by `,` with no spaces:
+`SIZE=32`, `RATE=2.5,OFFSET=-1`.
+
+- An integer value is printed in signed decimal: `OFFSET = $FFFF_FFFF` prints as
+  `OFFSET=-1`.
+- A float value is printed as the shortest decimal (1 to 9 significant digits)
+  that converts back to the same single-precision value, always with a decimal
+  point: `RATE = 2.5` prints as `RATE=2.5`, `RATE = 3.0` as `RATE=3.0`.
+
+### Ordering
+
+Every row order is fixed:
+
+- **Tree order** of instances: depth-first pre-order from `(top)`, children in
+  slot order. This is also ascending VAR block address.
+- Images: ascending image number, which is ascending address.
+- Names compare by byte value (ordinal), never by locale.
+
+Each table below states its sort keys.
 
 ---
 
-## The instance model
-
-This is the part most likely to trip a parser author, so it comes before the
-sections that depend on it.
-
-**An object may be instantiated more than once.** A `.spin2` file declared twice
-in one `OBJ` block, or declared by two different parents, is two — or five —
-instances of one object.
-
-**Instance identity is `(parent, position)`, not the object.** Each instance
-gets its own id from `ObjInstanceStore.allocateInstanceId()`, and the store is
-keyed by that id (`src/classes/objInstanceInfo.ts:156-168`). An
-`ObjInstanceInfo` carries its declaring parent's instance id and its own
-position in that parent's `OBJ` block
-(`src/classes/objInstanceInfo.ts:27-51`). Keying by object instead would make
-the second declaration silently overwrite the first.
-
-The tree is recorded **during** compilation, at the moment the compiler descends
-into a child — the only moment at which the declaring parent, the child's
-position and the child's source file are all known
-(`src/classes/compiler.ts:519-532`) — and turned into instances afterwards
-(`buildObjInstanceInfo`, `src/classes/compiler.ts:961-1041`).
-
-**Instance names are dotted access paths.** `instancePath()`
-(`src/classes/mapGenerator.ts:706-720`) walks from the instance up to the top
-object, unshifting each `instanceName`, and joins with `.`. So a child `leaf`
-declared under a child `a` prints as `A.LEAF`. The top-level object's path is
-the literal `(entry)`. The walk is bounded at 64 levels so a malformed parent
-link cannot hang map generation.
-
-The names themselves are the declared `OBJ` names, resolved from the parent's
-`type_obj` symbol whose declaration position matches the child's
-(`src/classes/compiler.ts:1007-1019`); when no such symbol is found the name
-falls back to `child_<position>`. They print in the case the symbol table
-holds, which is upper case.
-
-That path is the name the reader already holds: it is what they wrote in their
-own source (`a.leaf.val()`), so no translation is needed to connect a map row
-back to the code.
-
-### Row counts scale with instantiation, then collapse by region
-
-`OBJECT DETAILS` emits **one block per instance**
-(`src/classes/mapGenerator.ts:282`). An object used four times gets four blocks,
-under four distinct headings.
-
-`ADDRESS INDEX` and `SYMBOL INDEX` are also **built per instance** — the loops
-iterate instances and read each one's symbols through its own source-file index
-(`:472-502`, `:591-637`) — which is what makes every image's real entry points
-reachable. But they then **collapse identical rows**:
-
-- Address index groups on `(address, type, object, name)` (`:508-518`);
-- Symbol index groups on `(name, object, type, location)` (`:642-652`).
-
-When several instances share one compiled image — image dedup by content, the
-diamond and DAT-singleton cases — they share every address in it, so those rows
-would otherwise repeat one address several times and suggest several distinct
-things.
-
-So: row counts scale with the number of instantiations that produce **distinct
-images**, not with the number of source files, and not with the raw instance
-count.
-
-### How a shared region is presented
-
-A collapsed group is named by `summarizeInstances()`
-(`src/classes/mapGenerator.ts:754-759`):
-
-```ts
-if (paths.length === 1) return paths[0];
-const canonical = [...paths].sort((a, b) => a.length - b.length || a.localeCompare(b))[0];
-return `${canonical}+${paths.length - 1}`;
-```
-
-The canonical name is the **shortest** path — the one nearest the top object,
-and the one a reader is most likely to recognise — with ties broken
-alphabetically. The suffix is the number of *other* instances sharing it. So
-`SHARED+3` means "the instance reachable as `SHARED`, plus three more
-instances at this same address".
-
-There is deliberately **no space before the `+`**, so every column value remains
-a single whitespace-delimited token and a script can still split a row on
-whitespace.
-
-`MEMORY LAYOUT` uses the same summary, computed over every instance pointing at
-the region's distiller record (`instancePathsForRecord`, `:761-767`), and falls
-back to `(entry)` when the summary is empty.
-
----
-
-## Section 1: Header
-
-`emitHeader`, `src/classes/mapGenerator.ts:81-93`.
+## File skeleton
 
 ```
-================================================================================
-PNut-TS Memory Map: <top-level source filename>
-Spin2_v<language version>
-Generated: <ISO 8601 timestamp>
-================================================================================
-<blank>
-```
-
-The rules are 80 `=` characters. The language version is the top file's
-`versionNumber`. The timestamp is `new Date().toISOString()`.
-
-`Generated:` is the one line two otherwise identical compiles differ on, which
-is why `--cache-verify` filters it out before comparing maps
-(`src/utils/cacheVerify.ts:38-45`). A tool diffing two maps should do the same.
-
-## Section 2: `=== PROGRAM SUMMARY ===`
-
-`emitProgramSummary`, `:99-123`.
-
-```
-=== PROGRAM SUMMARY ===
-<blank>
-  Total Size:    <total> bytes (<exec> code/data + <var> var bytes)
-  Objects:       <count>
-  Methods:       <count>
-<blank>
-```
-
-- `<exec>` is the resolver's executable size, `<var>` its variable size, and
-  `<total>` their sum.
-- **`Objects:` counts distinct compiled images, not instances.** It is the
-  distiller's record count (`:108`). An object instantiated four times
-  contributes one.
-- `Methods:` is the sum of `methodCount` over those same records
-  (`:111-117`) — again per image, not per instance.
-
-## Section 3: `=== OBJECT HIERARCHY ===`
-
-`emitObjectHierarchy` / `emitHierarchyNode`, `:129-181`.
-
-One line **per instance**, as an ASCII tree rooted at the top-level object.
-
-```
-=== OBJECT HIERARCHY ===
-<blank>
-  <top source base name>  (<info>)
-      +-- <NAME> : <source base name>  (<info>)
-      |   \-- <NAME> : <source base name>  (<info>)
-      \-- <NAME> : <source base name>  (<info>)
-<blank>
-```
-
-- The root line carries only the source base name (the file name with `.spin2`
-  removed); every other line is `<instanceName> : <sourceBaseName>`
-  (`:151-152`).
-- Branch prefixes are `+-- ` for a non-final child and `\-- ` for the last
-  (`:150`). The root has no prefix.
-- The root is emitted at indent `"  "` (two spaces); its children at six; each
-  further level adds four characters — `"    "` under a last child, `"|   "`
-  otherwise (`:175`).
-- `<info>` is a parenthesised, comma-separated list: the method count as
-  `N methods`, followed by the instance's overrides when it has any
-  (`:155-169`). It is omitted entirely, parentheses and all, when neither is
-  available.
-- The method count is **not** pluralised — a single-method object prints
-  `(1 methods)`.
-- Note the **two** spaces before the opening parenthesis.
-
-## Section 4: `=== MEMORY LAYOUT ===`
-
-`emitMemoryLayout`, `:187-269`.
-
-One row **per memory region** — that is, per distiller record — in record
-order, which is ascending address.
-
-```
+<header>
+=== SUMMARY ===
+=== OBJECT TREE ===
 === MEMORY LAYOUT ===
-<blank>
-  Start   End      Size  Object<pad>  Instance<pad>  Overrides
-  ------  ------  -----  <dashes>  <dashes>  ---------
-  $XXXXX  $XXXXX  <size>  <object><pad>  <instance><pad>  <overrides>
-  ...
-<blank>
-    CODE/DATA TOTAL:  <exec> bytes
-<blank>
-  $XXXXX  $XXXXX  <size>  VAR SPACE<pad>  (runtime)<pad>
-<blank>
-    PROGRAM TOTAL:    <total> bytes
-<blank>
+=== OBJECT DETAILS ===
+=== ADDRESS INDEX ===
+=== SYMBOL INDEX ===
 ```
 
-Columns:
+The sections always appear, in this order.
 
-| Column | Meaning |
+## Header
+
+```
+================================================================================
+PNut-TS Memory Map: <top source file name>
+Spin2_v<language version>
+Generated: <ISO 8601 UTC timestamp>
+================================================================================
+
+```
+
+The rules are 80 `=`. The language version is the top file's `{Spin2_vNN}`
+version. `Generated:` is the only line two compiles of the same source differ
+on; **tools comparing maps, and the conformance test for the worked example,
+skip it** (`--cache-verify` does the same).
+
+## `=== SUMMARY ===`
+
+```
+=== SUMMARY ===
+
+  <sentence>
+
+  Code/DAT bytes  <n>
+  VAR bytes       <n>
+  Total bytes     <n>
+  Hub base        <address>
+
+  <legend: 7 fixed lines>
+
+```
+
+### The sentence
+
+With `D` = number of `OBJ` declarations, `N` = instances, `I` = images and `S` =
+images used by more than one instance. `D` counts declarations as written in
+source: each name declared in an `OBJ` block, in each distinct source file of
+the program, counts once, however many instances it produces.
+
+For a Spin program with at least one `OBJ` declaration:
+
+```
+  The top object and <D> OBJ declaration[s] became <N> instance[s], built from <I> image[s]; <shared>.
+```
+
+For a Spin program with none:
+
+```
+  The top object became 1 instance, built from 1 image; no image is shared.
+```
+
+`[s]` is present when the preceding number is not 1. `<shared>` is:
+
+| `S` | Text |
 |---|---|
-| `Start` | Hub address of the region's first byte — the record's object offset |
-| `End` | Hub address of its last byte — start + size − 1 |
-| `Size` | Region size in bytes, decimal, right-aligned in 5 |
-| `Object` | Source base name of an instance occupying the region, or `Object_<recordIndex>` when no instance claims it |
-| `Instance` | Every instance occupying the region, summarized (see above); `(entry)` when empty |
-| `Overrides` | Constant overrides carried by that instance; empty for most rows |
+| 0 | `no image is shared` |
+| 1 | `1 image is shared by more than one instance` |
+| 2 or more | `<S> images are shared by more than one instance` |
 
-Widths: `Object` and `Instance` are auto-sized with a minimum of 15
-(`:207-216`). The measurement includes the literal `VAR SPACE` and `(runtime)`
-of the VAR row, so those never overflow. `Start` and `End` are always six
-characters (`$` + five hex digits); `Size` is `padStart(5)`.
-
-The fallback object name is deliberately `Object_<n>` and not a guessed source
-file: a record no instance claims genuinely has no known source file, and
-saying so is better than looking one up in a different index space
-(`getObjectNameByIndex`, `:860-862`).
-
-Instances sharing a region always carry the same overrides — a difference in
-overrides produces different bytes, which is precisely what stops two images
-being merged into one region (`:230-234`).
-
-The two total lines are indented four spaces and their numbers are
-`padStart(6)`. The `VAR SPACE` row runs from the end of the executable image
-for `varSize` bytes, and — unlike every other row — has **no Overrides field at
-all**; the line ends after the padded `(runtime)` (`:262`). The whole VAR block,
-including `PROGRAM TOTAL`, is omitted when the program has no VAR space
-(`:256`).
-
-## Section 5: `=== OBJECT DETAILS ===`
-
-`emitObjectDetails`, `:275-432`.
-
-One block **per instance**, in instance-id order — which is declaration order,
-depth-first. An instance whose distiller record cannot be found is skipped
-(`:283-284`).
+For a PASM-only program (see PASM-only programs):
 
 ```
---- <display name> ---
-    Location: $XXXXX-$XXXXX (<N> bytes)
-    VAR Base: $XXXXX
-    Source:   <source file name>
-    Overrides: <overrides>            (only when the instance has any)
-
-    Methods:
-      <NAME>                Entry +$XXXXX  ($XXXXX)
-
-    DAT:
-      <TYPE>    <NAME>                +$XXXXX  ($XXXXX)
-
-    PASM Labels:
-      <NAME>                COG $XXX  HUB $XXXXX
-
-    VAR:
-      <TYPE>    <NAME>                +$XXXX  ($XXXXX)
-
-    Inline PASM:
-      <NAME>                +$XXX  ($XXXXX)
-
-    Child Objects:
-      <NAME> : <source base name> (<N> bytes) | <overrides>
-<blank>
+  This PASM-only program is 1 image with no objects, so it has no instances and no VAR.
 ```
 
-The display name is the source base name for the top-level object, and
-`<instance path> : <source base name>` for everything else (`:289-290`). This is
-what makes two children both named `leaf` distinguishable here — before access
-paths, they produced two blocks under one identical heading.
+### Totals
 
-`Location` is the region the instance occupies, from its distiller record.
-`VAR Base` is that instance's own VAR base — direct children of the top read it
-from the top object's header, deeper instances are computed by accumulating
-preceding VAR sizes (`getVarBaseForInstance`, `:769-836`). Two instances of one
-object share a code region but have **different** VAR bases.
+`Code/DAT bytes` is the image length: every image plus its padding. `VAR bytes`
+is the sum of every instance's VAR block — `0` for a PASM-only program.
+`Total bytes` is their sum. `Hub base` is the image's offset in the `.bin`
+written by the same compile (see Addresses), as an address token. Labels are
+padded to 16 characters; the three byte counts are right-aligned to the width of
+the `Total bytes` number, and the hub base address starts in the same column as
+the widest count.
 
-`Source` is the full source file name, with extension — the only place in the
-map that prints it.
+### Legend
 
-Each of the six sub-blocks is preceded by a blank line and is emitted only when
-it has at least one entry. They always appear in the order listed above.
-
-### Method entries
+These seven lines are fixed text, printed exactly:
 
 ```
-      MAIN                  Entry +$00028  ($00028)
+  image       compiled code and DAT, shared by every instance that uses it
+  instance    the top object, or one OBJ declaration or array element below it
+  shared DAT  an image holds its DAT once; all of its instances use the same bytes
+  own VAR     each instance has its own VAR block; the first long of it is reserved
+  #n          image number: #1 is the top object, the rest ascend in address order
+  path        instance name: (top) A A.LEAF D[1] A.D[1].LEAF; D[0..4] means D[0] to D[4]
+  address     offset from the first byte of the top object image; hub address = address + hub base
 ```
 
-The name is `padEnd(20)`, followed by two spaces, `Entry `, the offset within
-the object, two spaces, and the absolute hub address in parentheses
-(`:318-329`).
+## `=== OBJECT TREE ===`
 
-**Both numbers are real bytecode addresses, not header slot indices.** A
-`PUB`/`PRI` symbol does not carry an address at all: its low bits hold the
-method's **slot index** in the object's header table, and a child object
-occupies two slots there while a method occupies one — which is why a top
-object with three children numbers its first method 6, not 3. `methodAddress()`
-(`:966-978`) reads the slot itself:
-
-```ts
-const slotAddr = objectBase + IMAGE_HEADER_BYTES + slotIndex * 4;
-const entry = this.resolver.objectImage.readLong(slotAddr);
-if ((entry & 0x80000000) === 0) return undefined;
-return objectBase + (entry & 0xfffff);
-```
-
-`IMAGE_HEADER_BYTES` is 8 (`:28`). Bit 31 set is what marks a slot as a method
-entry; a child-object entry and the end marker both leave it clear. When it is
-clear, no address is printed and the line reads:
+One row per instance, array elements included, in tree order.
 
 ```
-      <NAME>                Entry (unresolved)
+  Instance       Image  Source            Overrides
+  -------------  -----  ----------------  ---------
+  (top)          #1     map_demo.spin2    -
+    LED[0]       #2     demo_led.spin2    -
+      LEFT.LOG   #4     demo_buf.spin2    SIZE=4
 ```
 
-The offset shown after `+$` is the absolute address minus the object's start,
-so it is genuinely an offset within this object image and is identical across
-every instance of that object.
-
-### DAT, PASM, VAR and Inline PASM entries
-
-DAT symbols are those of a DAT type whose value has `0xFFF` in bits 31:20 — hub
-mode (`:334-339`). The same types with any other high bits are cog-mode PASM
-labels (`:357-362`), split further by `isInline`.
-
-| Sub-block | Line shape |
+| Column | Content |
 |---|---|
-| `DAT:` | `<type padEnd(8)>  <name padEnd(20)>  +$XXXXX  ($XXXXX)` — offset within the object (value bits 19:0), then absolute hub address |
-| `PASM Labels:` | `<name padEnd(20)>  COG $XXX  HUB $XXXXX` — cog register address (3 hex digits) and its hub address, `objectStart + cogAddr * 4` |
-| `VAR:` | `<type padEnd(8)>  <name padEnd(20)>  +$XXXX  ($XXXXX)` — note **four** hex digits for the offset; the absolute address is `varBase + offset` |
-| `Inline PASM:` | `<name padEnd(20)>  +$XXX  ($XXXXX)` — cog address, then hub address |
+| `Instance` | two spaces per nesting depth (`(top)` is depth 0), then the full path |
+| `Image` | the image this instance runs |
+| `Source` | the instance's source file |
+| `Overrides` | the declaration's overrides, or `-` |
 
-DAT type strings are `BYTE`, `WORD`, `LONG`, `STRUCT`, `LONG_RES`, `UNKNOWN`
-(`:879-894`). VAR type strings are `BYTE`, `WORD`, `LONG`, `STRUCT`,
-`BYTE_PTR`, `WORD_PTR`, `LONG_PTR`, `STRUCT_PTR`, `UNKNOWN` (`:923-944`).
+The indentation is inside the `Instance` cell and counts toward its width; a
+whitespace split still yields the path as one token.
 
-### Child objects
+For a PASM-only program the section holds `  (none)`.
+
+## `=== MEMORY LAYOUT ===`
+
+One walk through memory in ascending address: the images, then the VAR blocks
+that follow them. Two titled tables.
 
 ```
-      SHARED : sgl_shared_state (85 bytes)
-      CHILD2 : param_child (25 bytes) | DEFAULT_VALUE=20
+  Images
+  Range          Size  Image  Source            Instances
+  -------------  ----  -----  ----------------  ------------------
+  $00074-$00092    31  #2     demo_led.spin2    LED[0..2]
+
+  VAR blocks
+  Range          Size  Image  Instance
+  -------------  ----  -----  ---------
+  $00124-$0012B     8  #2     LED[0]
+
 ```
 
-One line per child instance of this instance, in declaration order: the child's
-declared name, its source base name, its size in bytes from its own distiller
-record, and — only when it has overrides — ` | ` followed by them (`:422-427`).
-The size is omitted when the child's record cannot be found.
+### Images
 
-## Overrides: source form and printed form
+One row per image, ascending address.
 
-An `OBJ` declaration can override the child's constants:
+| Column | Content |
+|---|---|
+| `Range` | first and last byte of the image, padding excluded |
+| `Size` | image size in bytes |
+| `Image` | image number |
+| `Source` | source file of the instances using it; when more than one file compiled to these bytes, the distinct names as a list in ordinal order |
+| `Instances` | every instance using the image, as a list in tree order with array runs; `-` for a PASM-only program |
+
+The gap between one image's last byte and the next image's first byte is its
+long-alignment padding, 0 to 3 bytes. The images and their padding cover
+`$00000` up to `Code/DAT bytes` exactly.
+
+### VAR blocks
+
+One row per instance, in tree order (which is ascending address).
+
+| Column | Content |
+|---|---|
+| `Range` | first and last byte of the instance's own VAR block, reserved long included |
+| `Size` | block size in bytes, a multiple of 4, at least 4 |
+| `Image` | the image this instance runs |
+| `Instance` | the instance path |
+
+The blocks are contiguous: the first starts at `Code/DAT bytes`, and together
+they cover exactly `VAR bytes`. The table is omitted for a PASM-only program.
+
+## `=== OBJECT DETAILS ===`
+
+One block per image, ascending image number:
+
+```
+--- #<n> <source> ---
+
+  <sub-table>
+
+  <sub-table>
+
+```
+
+The heading's `<source>` is the same cell as the image's `Source` in `MEMORY
+LAYOUT`. The heading is followed by a blank line; each sub-table is followed by
+a blank line; the last one's blank line is also the section's closing blank line.
+Sub-tables appear in this order, each only when it has rows:
+`Methods`, `DAT`, `PASM labels`, `Inline PASM`, `Child slots`, `VAR`.
+
+Everything but `VAR` belongs to the image and is printed once, whatever the
+number of instances using it. `VAR` holds one group of rows per instance.
+
+Instances sharing an image can know its bytes by different names (see Shared
+images with different symbols). `Methods`, `DAT`, `PASM labels` and `Inline
+PASM` therefore list every **distinct** row gathered from all instances using
+the image: two rows are the same row only when they have the same kind, name and
+offset.
+
+### Methods
+
+```
+  Methods
+  Name    Offset   Address
+  ------  -------  -------
+  TOGGLE  +$00008  $0007C
+```
+
+| Column | Content |
+|---|---|
+| `Name` | method name (`PUB` and `PRI`) |
+| `Offset` | entry point relative to the image base, read from the image's method table |
+| `Address` | image base + offset |
+
+Sorted by address, then name. Every Spin image has at least one method, so this
+table is always present for a Spin program.
+
+### DAT
+
+```
+  DAT
+  Type  Name    Offset   Address
+  ----  ------  -------  -------
+  BYTE  BUFFER  +$00008  $000BC
+```
+
+DAT labels assembled in hub mode — every DAT label not under an `ORG`.
+
+| Column | Content |
+|---|---|
+| `Type` | the label's data type: `BYTE`, `WORD`, `LONG` or `STRUCT` |
+| `Name` | label name |
+| `Offset` | position of the labelled bytes relative to the image base |
+| `Address` | image base + offset |
+
+Sorted by offset, then name. The offsets are this image's own: forks whose DAT
+layouts differ show different offsets in their own blocks.
+
+### PASM labels
+
+```
+  PASM labels
+  Name   Cog   Offset   Address
+  -----  ----  -------  -------
+  BLINK  $000  +$0003A  $0003A
+```
+
+Cog-mode DAT labels (after `ORG`).
+
+| Column | Content |
+|---|---|
+| `Name` | label name |
+| `Cog` | the cog address the label was assembled at |
+| `Offset` | where the labelled bytes sit in the image, relative to the image base |
+| `Address` | image base + offset |
+
+Sorted by offset, then name.
+
+### Inline PASM
+
+```
+  Inline PASM
+  Name  Cog   Offset   Address
+  ----  ----  -------  -------
+  FLIP  $000  +$00016  $0008A
+```
+
+Labels inside `ORG` … `END` blocks within methods. Columns and sort as `PASM
+labels`; `Offset` locates the labelled instruction inside the method's bytes in
+the image. The same name may appear on more than one row when different methods
+use it; the offsets tell them apart.
+
+### Child slots
+
+```
+  Child slots
+  Slot  Name    Image  VAR
+  ----  ------  -----  -------
+  0     LED[0]  #2     +$00008
+```
+
+The image's object table: one row per slot, in slot order. An array declaration
+takes one slot per element.
+
+| Column | Content |
+|---|---|
+| `Slot` | slot index, decimal from 0 |
+| `Name` | the declared name, with `[index]` for an array element; when instances using this image were compiled from differently named declarations, the distinct names as a list in ordinal order |
+| `Image` | the image the slot's child runs |
+| `VAR` | the child's VAR block offset from this instance's VAR base |
+
+These values are bytes of the image, so every instance using the image has the
+same slot table. For each instance `P` using this image, the child in slot `k`
+has its VAR block at `P`'s VAR base plus slot `k`'s `VAR` offset.
+
+### VAR
+
+```
+  VAR
+  Instance  Type  Name   Size  Offset   Address
+  --------  ----  -----  ----  -------  -------
+  LEFT      LONG  SPEED     4  +$00004  $00140
+  LEFT      WORD  LIMIT     2  +$00008  $00144
+```
+
+One row per VAR symbol of each instance using this image.
+
+| Column | Content |
+|---|---|
+| `Instance` | the instance that owns this copy |
+| `Type` | `BYTE`, `WORD`, `LONG`, `STRUCT`, `^BYTE`, `^WORD`, `^LONG` or `^STRUCT` |
+| `Name` | symbol name |
+| `Size` | bytes the symbol occupies: element size × element count |
+| `Offset` | relative to that instance's VAR base; the first symbol is at `+$00004` |
+| `Address` | the instance's VAR base + offset |
+
+Sorted by instance in tree order, then offset, then name. Instances using one
+image can have different VAR layouts when an override changes only VAR sizes,
+so each instance's rows are that instance's own. Instances with no VAR symbols
+contribute no rows; their VAR blocks still appear in `MEMORY LAYOUT`.
+
+## `=== ADDRESS INDEX ===`
+
+Reverse lookup: holding an address, find the row with the greatest address not
+above it.
+
+```
+  Address  Type    Owner      Name
+  -------  ------  ---------  -------
+  $00074   IMAGE   #2         (start)
+  $0007C   METHOD  #2         TOGGLE
+  $00124   VAR     LED[0]     (start)
+  $00128   VAR     LED[0]     STATE
+```
+
+| Column | Content |
+|---|---|
+| `Address` | absolute address |
+| `Type` | `IMAGE`, `METHOD`, `DAT`, `PASM`, `INLINE` or `VAR` |
+| `Owner` | image number for `IMAGE`, `METHOD`, `DAT`, `PASM` and `INLINE` rows; instance path for `VAR` rows |
+| `Name` | symbol name, or `(start)` for the first byte of an image or a VAR block |
+
+Rows: one `IMAGE (start)` row per image, one row per `Methods`, `DAT`, `PASM
+labels` and `Inline PASM` row in `OBJECT DETAILS`, one `VAR (start)` row per VAR
+block, and one row per `VAR` row in `OBJECT DETAILS`.
+
+Sorted by address; then type in the order `IMAGE`, `METHOD`, `DAT`, `PASM`,
+`INLINE`, `VAR`; then `(start)` before any name, names ordinal; then owner
+(image number ascending, paths in tree order).
+
+## `=== SYMBOL INDEX ===`
+
+Forward lookup: holding a name, find every address it has.
+
+```
+  Symbol   Type    Owner      Address
+  -------  ------  ---------  -------
+  PUT      METHOD  #4         $000C4
+  PUT      METHOD  #5         $00104
+```
+
+One row per `Methods`, `DAT`, `PASM labels`, `Inline PASM` and `VAR` row in
+`OBJECT DETAILS`; columns as in `ADDRESS INDEX` (types `METHOD`, `DAT`, `PASM`,
+`INLINE`, `VAR`). Sorted by symbol (ordinal), then address, then owner. A name
+held by several images or instances lands on adjacent rows, in address order.
+
+---
+
+## Arrays
+
+An array declaration `d[n]` is `n` slots in its parent's object table and `n`
+instances, `D[0]` to `D[n-1]`. All elements share one source file and one set
+of overrides, so they always run one image. Each element has its own VAR block,
+and elements are laid out in index order.
+
+What prints:
+
+- `OBJECT TREE`: one row per element.
+- `MEMORY LAYOUT`: the image's `Instances` cell holds the run, `D[0..n-1]`; the
+  VAR blocks table has one row per element.
+- `OBJECT DETAILS`: one `Child slots` row per element; one group of `VAR` rows
+  per element.
+- A declaration inside an array element's object produces one instance per
+  element: `M[0].LEAF`, `M[1].LEAF`.
+
+A 255-element array therefore prints 255 tree rows and 255 VAR block rows. Every
+element's VAR address is a distinct fact, and the map states each one.
+
+## Shared images and forks
+
+- **Identical copies.** `left : "demo_motor"` and `right : "demo_motor"` produce
+  one image used by `LEFT,RIGHT`: one `Methods` table, one method address,
+  two VAR blocks, two groups of VAR rows.
+- **Forks.** An override that changes the image's bytes produces separate
+  images from one source file. Each image's block holds its own method offsets,
+  DAT offsets and labels: in the worked example `#4` and `#5` are both
+  `demo_buf.spin2`, and `TAIL` is at `+$0000C` in one and `+$00028` in the other.
+- **VAR-only differences.** When an override changes only VAR sizes and no
+  code depends on the difference, the instances share one image but their VAR
+  blocks differ in size, and each instance's `VAR` rows show its own sizes.
+- **Nested instances of a shared image.** Children of instances that share an
+  image are separate instances too (`LEFT.LOG`, `RIGHT.LOG`), with separate VAR
+  blocks, and usually share their own image.
+
+### Shared images with different symbols
+
+The compiler merges objects by their bytes, not by their names. Labels, method
+names and VAR names are not stored in the image, so instances whose symbols
+differ still share one image when the bytes match. The image's details then
+list every distinct name and offset its instances use.
+
+`lab.spin2` places `l2` after `K` bytes; `other.spin2` has the same bytes under
+other names:
 
 ```spin2
-  child2 : "param_child" | DEFAULT_VALUE = 20
-  child3 : "param_child" | DEFAULT_VALUE = 30, MULTIPLIER = 5
+' lab.spin2
+CON K = 1
+DAT
+l1  BYTE  0[K]
+l2  BYTE  0[4-K]
+PUB get() : r
+  r := l1
 ```
 
-`formatOverrides()` (`src/classes/objInstanceInfo.ts:135-145`) renders each as
-`NAME=VALUE` — **no spaces around the `=`**, regardless of how the source was
-spaced — and joins several with `, `. So the declarations above print as
-`DEFAULT_VALUE=20` and `DEFAULT_VALUE=30, MULTIPLIER=5`.
-
-They appear in four places, each with its own framing:
-
-| Section | Framing |
-|---|---|
-| `OBJECT HIERARCHY` | inside the info parenthesis, after the method count: `  (2 methods, DEFAULT_VALUE=20)` |
-| `MEMORY LAYOUT` | bare, in the `Overrides` column |
-| `OBJECT DETAILS`, on the instance itself | `    Overrides: DEFAULT_VALUE=20` |
-| `OBJECT DETAILS`, in the parent's `Child Objects` list | appended as ` \| DEFAULT_VALUE=20` |
-
-The last of these is the one that echoes the source syntax most closely, and it
-is the only place a `|` appears in the format.
-
-Values are printed as recorded. Float-typed overrides are flagged internally
-(`isFloat`) but that flag does not change how the value prints.
-
-## Section 6: `=== ADDRESS INDEX ===`
-
-`emitAddressIndex`, `:456-552`.
-
-Reverse lookup: the reader arrives holding a hub address — from a crash, a
-debugger, a disassembly — and asks what is there.
-
-```
-=== ADDRESS INDEX ===
-<blank>
-  Address  Type      Instance<pad>  Object<pad>  Name
-  -------  --------  <dashes>  <dashes>  ---------------
-   $XXXXX  <TYPE>    <instance><pad>  <object><pad>  <name>
-  ...
-<blank>
-  Entries: <N>
-<blank>
+```spin2
+' other.spin2
+DAT
+first   BYTE  0[1]
+rest    BYTE  0[3]
+PUB get() : r
+  r := first
 ```
 
-| Column | Meaning |
-|---|---|
-| `Address` | Absolute hub address, `('$' + 5 hex).padStart(7)` |
-| `Type` | `CODE` or `METHOD`, `padEnd(8)` |
-| `Instance` | Instance access path, or a summarized group |
-| `Object` | Source base name of the object |
-| `Name` | `(entry)` for the top object's CODE row, `(object)` for any other CODE row, otherwise the method name |
-
-**Every number in this section is an absolute hub address.** Method rows carry
-the resolved bytecode address from `methodAddress()`, never the entry index; a
-method whose slot does not resolve contributes no row at all (`:490-499`).
-
-Rows are generated per instance — one `CODE` row at the instance's region base,
-then one `METHOD` row per method symbol — then collapsed on
-`(address, type, object, name)` with the surviving row's `Instance` summarized.
-
-Sort order is address ascending, ties broken by type, then instance, then name
-(`:528-530`), so two runs over the same source produce the same file.
-
-`Instance` and `Object` widths are auto-sized with a minimum of 15
-(`:532-539`). The `Entries:` count is the number of rows **after** collapsing.
-
-When there is nothing to list, the whole table is replaced by the single line
-`  No addressable symbols.` (`:520-524`).
-
-## Section 7: `=== SYMBOL INDEX ===`
-
-`emitSymbolIndex`, `:573-689`.
-
-Forward lookup: the reader holds a name and asks where it is.
+Declared as `a : "lab" | K = 1`, `b : "lab" | K = 3` and `c : "other"`, all three
+compile to the same 18 bytes:
 
 ```
-=== SYMBOL INDEX ===
-<blank>
-  Symbol<pad>  Object<pad>  Instance<pad>  Type      Location
-  <dashes>  <dashes>  <dashes>  --------  ----------
-  <name><pad>  <object><pad>  <instance><pad>  <TYPE>    <location>
-  ...
-<blank>
-  Symbols: <N>
-<blank>
+  Images
+  Range          Size  Image  Source                 Instances
+  -------------  ----  -----  ---------------------  ---------
+  $00030-$00041    18  #2     lab.spin2,other.spin2  A,B,C
 ```
 
-| Column | Meaning |
-|---|---|
-| `Symbol` | Cleaned symbol name; width auto-sized, minimum 20 |
-| `Object` | Source base name; minimum 15 |
-| `Instance` | Instance access path or summarized group; minimum 15 |
-| `Type` | One of `METHOD`, `VAR`, `DAT`, `PASM`, `INLINE`, `padEnd(8)` |
-| `Location` | Type-dependent, see below |
+```
+  DAT
+  Type  Name   Offset   Address
+  ----  -----  -------  -------
+  BYTE  FIRST  +$00008  $00038
+  BYTE  L1     +$00008  $00038
+  BYTE  L2     +$00009  $00039
+  BYTE  REST   +$00009  $00039
+  BYTE  L2     +$0000B  $0003B
+```
 
-Location forms (`:604-630`):
+`L2` appears twice because `A` and `B` put it at different offsets; `FIRST` and
+`L1` name the same byte. `GET` is one `Methods` row: every instance has it at the
+same offset. Both indexes carry the same distinct rows.
 
-| Type | Location |
-|---|---|
-| `METHOD` | `$XXXXX`, the resolved bytecode address; `(unresolved)` when the slot is not a method entry |
-| `VAR` | `$XXXXX`, `varBase + offset` |
-| `DAT` | `$XXXXX`, `codeBase + offset` |
-| `PASM` | `COG $XXX  HUB $XXXXX` — two spaces between the halves |
-| `INLINE` | `+$XXX  ($XXXXX)` |
+## PASM-only programs
 
-Symbols of no recognised type contribute no row (`:633`).
+A top file with no `PUB` compiles in PASM mode: the image is its DAT bytes with
+no object header, no methods, no child objects and no VAR.
 
-Like the address index, entries are built per instance and then collapsed — here
-on `(name, object, type, location)`. Where one object is used more than once and
-the images did **not** merge, a name legitimately has several addresses, and each
-survives as its own row labelled with its own instance.
+- `SUMMARY` prints the PASM-only sentence, `VAR bytes 0`, and the hub base —
+  `$00000` unless a clock setting or `-d` puts code before the image.
+- `OBJECT TREE` holds `  (none)`.
+- `MEMORY LAYOUT` has one Images row for `#1`, with `Instances` `-`, and no VAR
+  blocks table.
+- `OBJECT DETAILS` has the `#1` block with `DAT` and `PASM labels` as present.
+- The indexes hold the `IMAGE (start)` row and the label rows.
 
-Sort order is name, then address, then instance (`:662`). A name that exists at
-several addresses therefore lands on adjacent rows, in memory order. Because
-the primary key is the name and not the address, two different symbols with the
-same name — one per object — appear next to each other, distinguished by their
-`Object` and `Instance` columns.
+## Cache parity
 
-The `Symbols:` count is the number of rows after collapsing. An empty index is
-replaced by `  No symbols.` (`:654-658`).
+A build with the object cache (`-C`), cold or warm, writes the same map as a
+build without it, byte for byte apart from `Generated:`. The layout is read from
+the final image, which is identical either way. `--cache-verify` compiles both
+ways and fails when the maps differ.
 
 ---
 
 ## Worked example
 
-Compiled from the cache fixture family, copied into a scratch directory:
+Four source files in one directory; the same files are kept in the repository
+under `TEST/MAP-tests/spec-example/`, where a test compiles them and compares the
+map with the text below. The program has an `OBJ` array of three
+elements, two identical copies of an object that declares a child of its own,
+and a fork whose override changes a DAT layout; it has hub DAT, a cog-mode PASM
+label and an inline PASM label.
 
-```
-node /workspaces/PNut-TS/dist/pnut-ts.js -m sgl_app_top.spin2
-```
+`map_demo.spin2`:
 
-`sgl_app_top.spin2` declares four children — `shared`, `log`, `log2`, `cfg` —
-where `log` and `log2` are two instances of the same object, and where
-`sgl_shared_state` is reached four ways: directly from the top, and again
-beneath each of `log`, `log2` and `cfg`. Six source files; thirteen instances.
+```spin2
+{Spin2_v55}
+' map_demo: an OBJ array, two identical copies, and a DAT-layout fork
 
-### Summary and hierarchy
+VAR long ticks
 
-```
-=== PROGRAM SUMMARY ===
+OBJ
+  led[3] : "demo_led"
+  left   : "demo_motor"
+  right  : "demo_motor"
+  trace  : "demo_buf" | SIZE = 32
 
-  Total Size:    412 bytes (356 code/data + 56 var bytes)
-  Objects:       6
-  Methods:       13
+PUB main() | i
+  coginit(NEWCOG, @blink, 0)
+  repeat
+    repeat i from 0 to 2
+      led[i].toggle()
+    left.go(1)
+    right.go(-1)
+    trace.put(ticks++)
 
-=== OBJECT HIERARCHY ===
-
-  sgl_app_top  (1 methods)
-      +-- SHARED : sgl_shared_state  (3 methods)
-      |   \-- TICK : sgl_tick_leaf  (1 methods)
-      +-- LOG : sgl_svc_logger  (3 methods)
-      |   +-- SHARED : sgl_shared_state  (3 methods)
-      |   |   \-- TICK : sgl_tick_leaf  (1 methods)
-      |   \-- FMT : sgl_fmt_util  (2 methods)
-      +-- LOG2 : sgl_svc_logger  (3 methods)
-      |   +-- SHARED : sgl_shared_state  (3 methods)
-      |   |   \-- TICK : sgl_tick_leaf  (1 methods)
-      |   \-- FMT : sgl_fmt_util  (2 methods)
-      \-- CFG : sgl_svc_config  (3 methods)
-          \-- SHARED : sgl_shared_state  (3 methods)
-              \-- TICK : sgl_tick_leaf  (1 methods)
-```
-
-Thirteen lines, one per instance. `Objects: 6` counts images, not those lines.
-
-### Memory layout
-
-```
-  Start   End      Size  Object            Instance         Overrides
-  ------  ------  -----  ----------------  ---------------  ---------
-  $00000  $0005C     93  sgl_app_top       (entry)          
-  $00060  $00098     57  sgl_svc_logger    LOG+1            
-  $0009C  $000BF     36  sgl_fmt_util      LOG.FMT+1        
-  $000C0  $000FB     60  sgl_svc_config    CFG              
-  $000FC  $00150     85  sgl_shared_state  SHARED+3         
-  $00154  $00161     14  sgl_tick_leaf     SHARED.TICK+3    
+DAT
+version BYTE    1, 0
+        org     0
+blink   drvnot  #56
+        waitx   ##10_000_000
+        jmp     #blink
 ```
 
-Six regions for thirteen instances. `LOG+1` is the region shared by `LOG` and
-one other (`LOG2`); `SHARED+3` is shared by `SHARED` and three others
-(`LOG.SHARED`, `LOG2.SHARED`, `CFG.SHARED`). The `Object` column is 16 wide
-here — `sgl_shared_state` is longer than the 15-character minimum — which is
-exactly why widths must be read rather than assumed.
+`demo_led.spin2`:
 
-### Object details
+```spin2
+' demo_led: every element of an OBJ array shares this image
+CON PIN = 56
 
-Three of the thirteen blocks, showing repeated instantiation and dotted paths:
+VAR byte state
 
-```
---- SHARED : sgl_shared_state ---
-    Location: $000FC-$00150 (85 bytes)
-    VAR Base: $00168
-    Source:   sgl_shared_state.spin2
-
-    Methods:
-      INIT                  Entry +$00020  ($0011C)
-      BUMP                  Entry +$00033  ($0012F)
-      COUNT                 Entry +$0004F  ($0014B)
-
-    DAT:
-      LONG      STATE_LOCK            +$00018  ($00114)
-      LONG      STATE_COUNTER         +$0001C  ($00118)
-
-    Child Objects:
-      TICK : sgl_tick_leaf (14 bytes)
+PUB toggle()
+  state := !state
+  org
+flip    drvnot  #PIN
+  end
 ```
 
-```
---- LOG2 : sgl_svc_logger ---
-    Location: $00060-$00098 (57 bytes)
-    VAR Base: $00180
-    Source:   sgl_svc_logger.spin2
+`demo_motor.spin2`:
 
-    Methods:
-      START                 Entry +$00020  ($00080)
-      LOG_TICK              Entry +$00027  ($00087)
-      TRACE                 Entry +$00032  ($00092)
+```spin2
+' demo_motor: declared twice with no overrides, so both copies share one image
+CON GAIN = 1
 
-    Child Objects:
-      SHARED : sgl_shared_state (85 bytes)
-      FMT : sgl_fmt_util (36 bytes)
-```
+VAR long speed
+    word limit
 
-```
---- LOG2.SHARED.TICK : sgl_tick_leaf ---
-    Location: $00154-$00161 (14 bytes)
-    VAR Base: $00188
-    Source:   sgl_tick_leaf.spin2
+OBJ log : "demo_buf" | SIZE = 4
 
-    Methods:
-      ADVANCE               Entry +$00008  ($0015C)
+PUB go(delta)
+  speed += delta * GAIN
+  log.put(speed)
 ```
 
-`LOG` and `LOG2` share one code region — both report
-`Location: $00060-$00098` — while holding different VAR bases, `$00170` and
-`$00180`. The three-level path `LOG2.SHARED.TICK` names the leaf reached
-through `LOG2`, distinct from `SHARED.TICK` and `CFG.SHARED.TICK` even though
-all three are the same fourteen bytes.
+`demo_buf.spin2`:
 
-### Address index
+```spin2
+' demo_buf: SIZE sets the DAT layout, so a different SIZE forks the image
+CON SIZE = 8
 
-```
-  Address  Type      Instance         Object            Name
-  -------  --------  ---------------  ----------------  ---------------
-   $00000  CODE      (entry)          sgl_app_top       (entry)
-   $00028  METHOD    (entry)          sgl_app_top       MAIN
-   $00060  CODE      LOG+1            sgl_svc_logger    (object)
-   $00080  METHOD    LOG+1            sgl_svc_logger    START
-   $00087  METHOD    LOG+1            sgl_svc_logger    LOG_TICK
-   $00092  METHOD    LOG+1            sgl_svc_logger    TRACE
-   $0009C  CODE      LOG.FMT+1        sgl_fmt_util      (object)
-   $000A8  METHOD    LOG.FMT+1        sgl_fmt_util      WIDTH
-   $000B8  METHOD    LOG.FMT+1        sgl_fmt_util      TRACE_TAG
-   $000C0  CODE      CFG              sgl_svc_config    (object)
-   ...
-   $00154  CODE      SHARED.TICK+3    sgl_tick_leaf     (object)
-   $0015C  METHOD    SHARED.TICK+3    sgl_tick_leaf     ADVANCE
+VAR long count
 
-  Entries: 19
+DAT
+buffer  BYTE    0[SIZE]
+tail    LONG    0
+
+PUB put(value)
+  tail := value
+  buffer[count] := value
+  count := (count + 1) // SIZE
 ```
 
-Nineteen rows for thirteen instances: the per-instance rows collapsed wherever
-instances share an image.
-
-### Symbol index
+Compiled with:
 
 ```
-  Symbol                Object            Instance         Type      Location
-  --------------------  ----------------  ---------------  --------  ----------
-  ADVANCE               sgl_tick_leaf     SHARED.TICK+3    METHOD    $0015C
-  BUMP                  sgl_shared_state  SHARED+3         METHOD    $0012F
-  CFGBLOB               sgl_svc_config    CFG              DAT       $000D8
-  COUNT                 sgl_shared_state  SHARED+3         METHOD    $0014B
-  ...
-  START                 sgl_svc_logger    LOG+1            METHOD    $00080
-  START                 sgl_svc_config    CFG              METHOD    $000E8
-  STATE_COUNTER         sgl_shared_state  SHARED+3         DAT       $00118
-  STATE_LOCK            sgl_shared_state  SHARED+3         DAT       $00114
-
-  Symbols: 16
+pnut-ts -m map_demo.spin2
 ```
 
-`START` appears twice — two different objects, two different addresses,
-adjacent because the primary sort key is the name. `STATE_LOCK` and
-`STATE_COUNTER` each appear **once** despite four instances declaring the
-object: the four instances share one image, so the DAT singleton is one datum
-at one address, and the `+3` suffix on the instance says so.
-
-### A layout row with overrides
-
-From a separate fixture whose top level declares one object three times with
-different constants (`TEST/MAP-tests/test4-override/override_top.spin2`),
-compiled the same way:
+`map_demo.map` (the `Generated:` value varies; the hub base is that of a build
+without `-d`):
 
 ```
-  Start   End      Size  Object           Instance         Overrides
-  ------  ------  -----  ---------------  ---------------  ---------
-  $00000  $0003A     59  override_top     (entry)          
-  $0003C  $00054     25  param_child      CHILD1           
-  $00058  $00070     25  param_child      CHILD2           DEFAULT_VALUE=20
-  $00074  $0008C     25  param_child      CHILD3           DEFAULT_VALUE=30, MULTIPLIER=5
+================================================================================
+PNut-TS Memory Map: map_demo.spin2
+Spin2_v55
+Generated: 2026-09-16T20:00:00.000Z
+================================================================================
+
+=== SUMMARY ===
+
+  The top object and 5 OBJ declarations became 9 instances, built from 5 images; 3 images are shared by more than one instance.
+
+  Code/DAT bytes  284
+  VAR bytes        80
+  Total bytes     364
+  Hub base        $01888
+
+  image       compiled code and DAT, shared by every instance that uses it
+  instance    the top object, or one OBJ declaration or array element below it
+  shared DAT  an image holds its DAT once; all of its instances use the same bytes
+  own VAR     each instance has its own VAR block; the first long of it is reserved
+  #n          image number: #1 is the top object, the rest ascend in address order
+  path        instance name: (top) A A.LEAF D[1] A.D[1].LEAF; D[0..4] means D[0] to D[4]
+  address     offset from the first byte of the top object image; hub address = address + hub base
+
+=== OBJECT TREE ===
+
+  Instance       Image  Source            Overrides
+  -------------  -----  ----------------  ---------
+  (top)          #1     map_demo.spin2    -
+    LED[0]       #2     demo_led.spin2    -
+    LED[1]       #2     demo_led.spin2    -
+    LED[2]       #2     demo_led.spin2    -
+    LEFT         #3     demo_motor.spin2  -
+      LEFT.LOG   #4     demo_buf.spin2    SIZE=4
+    RIGHT        #3     demo_motor.spin2  -
+      RIGHT.LOG  #4     demo_buf.spin2    SIZE=4
+    TRACE        #5     demo_buf.spin2    SIZE=32
+
+=== MEMORY LAYOUT ===
+
+  Images
+  Range          Size  Image  Source            Instances
+  -------------  ----  -----  ----------------  ------------------
+  $00000-$00071   114  #1     map_demo.spin2    (top)
+  $00074-$00092    31  #2     demo_led.spin2    LED[0..2]
+  $00094-$000B0    29  #3     demo_motor.spin2  LEFT,RIGHT
+  $000B4-$000D7    36  #4     demo_buf.spin2    LEFT.LOG,RIGHT.LOG
+  $000D8-$00118    65  #5     demo_buf.spin2    TRACE
+
+  VAR blocks
+  Range          Size  Image  Instance
+  -------------  ----  -----  ---------
+  $0011C-$00123     8  #1     (top)
+  $00124-$0012B     8  #2     LED[0]
+  $0012C-$00133     8  #2     LED[1]
+  $00134-$0013B     8  #2     LED[2]
+  $0013C-$00147    12  #3     LEFT
+  $00148-$0014F     8  #4     LEFT.LOG
+  $00150-$0015B    12  #3     RIGHT
+  $0015C-$00163     8  #4     RIGHT.LOG
+  $00164-$0016B     8  #5     TRACE
+
+=== OBJECT DETAILS ===
+
+--- #1 map_demo.spin2 ---
+
+  Methods
+  Name  Offset   Address
+  ----  -------  -------
+  MAIN  +$0004A  $0004A
+
+  DAT
+  Type  Name     Offset   Address
+  ----  -------  -------  -------
+  BYTE  VERSION  +$00038  $00038
+
+  PASM labels
+  Name   Cog   Offset   Address
+  -----  ----  -------  -------
+  BLINK  $000  +$0003A  $0003A
+
+  Child slots
+  Slot  Name    Image  VAR
+  ----  ------  -----  -------
+  0     LED[0]  #2     +$00008
+  1     LED[1]  #2     +$00010
+  2     LED[2]  #2     +$00018
+  3     LEFT    #3     +$00020
+  4     RIGHT   #3     +$00034
+  5     TRACE   #5     +$00048
+
+  VAR
+  Instance  Type  Name   Size  Offset   Address
+  --------  ----  -----  ----  -------  -------
+  (top)     LONG  TICKS     4  +$00004  $00120
+
+--- #2 demo_led.spin2 ---
+
+  Methods
+  Name    Offset   Address
+  ------  -------  -------
+  TOGGLE  +$00008  $0007C
+
+  Inline PASM
+  Name  Cog   Offset   Address
+  ----  ----  -------  -------
+  FLIP  $000  +$00016  $0008A
+
+  VAR
+  Instance  Type  Name   Size  Offset   Address
+  --------  ----  -----  ----  -------  -------
+  LED[0]    BYTE  STATE     1  +$00004  $00128
+  LED[1]    BYTE  STATE     1  +$00004  $00130
+  LED[2]    BYTE  STATE     1  +$00004  $00138
+
+--- #3 demo_motor.spin2 ---
+
+  Methods
+  Name  Offset   Address
+  ----  -------  -------
+  GO    +$00010  $000A4
+
+  Child slots
+  Slot  Name  Image  VAR
+  ----  ----  -----  -------
+  0     LOG   #4     +$0000C
+
+  VAR
+  Instance  Type  Name   Size  Offset   Address
+  --------  ----  -----  ----  -------  -------
+  LEFT      LONG  SPEED     4  +$00004  $00140
+  LEFT      WORD  LIMIT     2  +$00008  $00144
+  RIGHT     LONG  SPEED     4  +$00004  $00154
+  RIGHT     WORD  LIMIT     2  +$00008  $00158
+
+--- #4 demo_buf.spin2 ---
+
+  Methods
+  Name  Offset   Address
+  ----  -------  -------
+  PUT   +$00010  $000C4
+
+  DAT
+  Type  Name    Offset   Address
+  ----  ------  -------  -------
+  BYTE  BUFFER  +$00008  $000BC
+  LONG  TAIL    +$0000C  $000C0
+
+  VAR
+  Instance   Type  Name   Size  Offset   Address
+  ---------  ----  -----  ----  -------  -------
+  LEFT.LOG   LONG  COUNT     4  +$00004  $0014C
+  RIGHT.LOG  LONG  COUNT     4  +$00004  $00160
+
+--- #5 demo_buf.spin2 ---
+
+  Methods
+  Name  Offset   Address
+  ----  -------  -------
+  PUT   +$0002C  $00104
+
+  DAT
+  Type  Name    Offset   Address
+  ----  ------  -------  -------
+  BYTE  BUFFER  +$00008  $000E0
+  LONG  TAIL    +$00028  $00100
+
+  VAR
+  Instance  Type  Name   Size  Offset   Address
+  --------  ----  -----  ----  -------  -------
+  TRACE     LONG  COUNT     4  +$00004  $00168
+
+=== ADDRESS INDEX ===
+
+  Address  Type    Owner      Name
+  -------  ------  ---------  -------
+  $00000   IMAGE   #1         (start)
+  $00038   DAT     #1         VERSION
+  $0003A   PASM    #1         BLINK
+  $0004A   METHOD  #1         MAIN
+  $00074   IMAGE   #2         (start)
+  $0007C   METHOD  #2         TOGGLE
+  $0008A   INLINE  #2         FLIP
+  $00094   IMAGE   #3         (start)
+  $000A4   METHOD  #3         GO
+  $000B4   IMAGE   #4         (start)
+  $000BC   DAT     #4         BUFFER
+  $000C0   DAT     #4         TAIL
+  $000C4   METHOD  #4         PUT
+  $000D8   IMAGE   #5         (start)
+  $000E0   DAT     #5         BUFFER
+  $00100   DAT     #5         TAIL
+  $00104   METHOD  #5         PUT
+  $0011C   VAR     (top)      (start)
+  $00120   VAR     (top)      TICKS
+  $00124   VAR     LED[0]     (start)
+  $00128   VAR     LED[0]     STATE
+  $0012C   VAR     LED[1]     (start)
+  $00130   VAR     LED[1]     STATE
+  $00134   VAR     LED[2]     (start)
+  $00138   VAR     LED[2]     STATE
+  $0013C   VAR     LEFT       (start)
+  $00140   VAR     LEFT       SPEED
+  $00144   VAR     LEFT       LIMIT
+  $00148   VAR     LEFT.LOG   (start)
+  $0014C   VAR     LEFT.LOG   COUNT
+  $00150   VAR     RIGHT      (start)
+  $00154   VAR     RIGHT      SPEED
+  $00158   VAR     RIGHT      LIMIT
+  $0015C   VAR     RIGHT.LOG  (start)
+  $00160   VAR     RIGHT.LOG  COUNT
+  $00164   VAR     TRACE      (start)
+  $00168   VAR     TRACE      COUNT
+
+=== SYMBOL INDEX ===
+
+  Symbol   Type    Owner      Address
+  -------  ------  ---------  -------
+  BLINK    PASM    #1         $0003A
+  BUFFER   DAT     #4         $000BC
+  BUFFER   DAT     #5         $000E0
+  COUNT    VAR     LEFT.LOG   $0014C
+  COUNT    VAR     RIGHT.LOG  $00160
+  COUNT    VAR     TRACE      $00168
+  FLIP     INLINE  #2         $0008A
+  GO       METHOD  #3         $000A4
+  LIMIT    VAR     LEFT       $00144
+  LIMIT    VAR     RIGHT      $00158
+  MAIN     METHOD  #1         $0004A
+  PUT      METHOD  #4         $000C4
+  PUT      METHOD  #5         $00104
+  SPEED    VAR     LEFT       $00140
+  SPEED    VAR     RIGHT      $00154
+  STATE    VAR     LED[0]     $00128
+  STATE    VAR     LED[1]     $00130
+  STATE    VAR     LED[2]     $00138
+  TAIL     DAT     #4         $000C0
+  TAIL     DAT     #5         $00100
+  TICKS    VAR     (top)      $00120
+  TOGGLE   METHOD  #2         $0007C
+  VERSION  DAT     #1         $00038
+
 ```
 
-Three regions for three instances of one object: the overrides produce different
-bytes, so the images do not merge and nothing collapses. The corresponding
-`Child Objects` lines in the top object's detail block carry the same values
-after a pipe:
+### Reading the example
 
-```
-    Child Objects:
-      CHILD1 : param_child (25 bytes)
-      CHILD2 : param_child (25 bytes) | DEFAULT_VALUE=20
-      CHILD3 : param_child (25 bytes) | DEFAULT_VALUE=30, MULTIPLIER=5
-```
+- **Declarations to instances.** `map_demo.spin2` declares four objects and
+  `demo_motor.spin2` one: 5 declarations. `led[3]` gives three instances, and
+  `log` gives one under each of `LEFT` and `RIGHT`; with the top, 9 instances.
+- **The array.** `LED[0..2]` run image `#2`, 31 bytes at `$00074`. Each element
+  has its own 8-byte VAR block — the reserved long, then `STATE` at `+$00004` —
+  at `$00124`, `$0012C` and `$00134`.
+- **Identical copies.** `LEFT` and `RIGHT` share `#3`: `GO` has one address,
+  `$000A4`. Their VAR blocks are 12 bytes: `SPEED` at `+$00004`, `LIMIT` at
+  `+$00008`, 10 bytes padded to 12.
+- **Nested VAR.** `#3`'s slot 0 holds `LOG` with VAR offset `+$0000C`, so
+  `LEFT.LOG` starts at `$0013C` + `$C` = `$00148` and `RIGHT.LOG` at `$00150` +
+  `$C` = `$0015C`. Both run `#4`.
+- **The fork.** `TRACE` declares `SIZE = 32`; `LOG` declares `SIZE = 4`. The
+  32-byte buffer moves `TAIL` and the method entry, so `demo_buf.spin2` is two
+  images: `#4` (36 bytes, `TAIL` at `+$0000C`) and `#5` (65 bytes, `TAIL` at
+  `+$00028`).
+- **Shared DAT.** `BUFFER` and `TAIL` of `#4` exist once, at `$000BC` and
+  `$000C0`: `LEFT.LOG` and `RIGHT.LOG` write the same buffer. `TRACE` has its
+  own, in `#5`.
+- **Labels.** `BLINK` was assembled at cog address `$000` and its bytes sit at
+  `$0003A`, after the two `VERSION` bytes. `FLIP` is at cog `$000` in its inline
+  block, and its instruction sits at `$0008A`, inside `TOGGLE`'s code.
+- **Padding.** Image `#2` ends at `$00092` and `#3` starts at `$00094`: one
+  byte of padding. The images and padding end at `$0011B`, so the first VAR
+  block starts at `$0011C` — `Code/DAT bytes` 284.
+- **Hub base.** The image starts `$01888` bytes into `map_demo.bin`, after the
+  interpreter, so `MAIN` runs at hub `$0004A` + `$01888` = `$018D2`. A `-d`
+  build of the same source prints a different hub base.
 
 ---
 
 ## Notes for parser authors
 
-- Split rows on runs of two or more spaces, or derive fixed offsets from the
-  dashed rule line. Do not hard-code column positions.
-- Strip trailing whitespace from every field and from the row.
-- Treat `(entry)`, `(object)`, `(runtime)`, `(unresolved)` and `Object_<n>` as
-  reserved literals, not as names.
-- An instance label ending in `+<digits>` is a collapsed group, not an instance
-  named with a `+`. Instance names come from `OBJ` declarations and cannot
-  contain `+`.
-- `Objects:` in the summary will not match the number of hierarchy lines, the
-  number of `--- ... ---` blocks, or the number of memory-layout rows whenever
-  any object is instantiated more than once. All four counts are correct; they
-  count different things.
-- Ignore the `Generated:` line when comparing two maps.
+- Split table rows on runs of whitespace. Every row of a table has the same
+  number of cells.
+- Recognize a table by the section header or title line above it, not by
+  column position.
+- Skip the `Generated:` line when comparing maps.
+- Add `Hub base` to a map address to get a hub address. Two maps of the same
+  source built with and without `-d` differ in that line, and elsewhere too when
+  the source contains `DEBUG` statements.
+- Within one image's `OBJECT DETAILS`, a name can have several offsets and an
+  offset several names; treat (kind, name, offset) as the row's identity.
+- `(top)`, `(start)`, `(none)` and `-` are reserved literals. Instance names
+  come from `OBJ` declarations and cannot collide with them.
+- Expand `NAME[a..b]` in list cells to `NAME[a]` … `NAME[b]`. A run never
+  appears outside a list cell.
+- Decode `%XX` in `Source` cells and `OBJECT DETAILS` headings.
+- `OBJECT TREE` and the VAR blocks table list the same instances in the same
+  order.
+- Checks a parser can make on any map:
+  - every `Offset` plus its base equals its `Address` (image base for image
+    rows, the instance's VAR block start for `VAR` rows);
+  - images cover `$00000` to `Code/DAT bytes` with 0 to 3 bytes of padding
+    after each;
+  - VAR blocks are contiguous from `Code/DAT bytes` and total `VAR bytes`;
+  - for every instance `P` and child slot `k`, the child's VAR block starts at
+    `P`'s VAR block start plus slot `k`'s `VAR` offset;
+  - an image's `Instances` list is exactly the tree rows naming that image.

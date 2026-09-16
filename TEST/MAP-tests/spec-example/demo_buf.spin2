@@ -1,0 +1,13 @@
+' demo_buf: SIZE sets the DAT layout, so a different SIZE forks the image
+CON SIZE = 8
+
+VAR long count
+
+DAT
+buffer  BYTE    0[SIZE]
+tail    LONG    0
+
+PUB put(value)
+  tail := value
+  buffer[count] := value
+  count := (count + 1) // SIZE

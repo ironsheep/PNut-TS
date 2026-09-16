@@ -1,0 +1,11 @@
+' demo_motor: declared twice with no overrides, so both copies share one image
+CON GAIN = 1
+
+VAR long speed
+    word limit
+
+OBJ log : "demo_buf" | SIZE = 4
+
+PUB go(delta)
+  speed += delta * GAIN
+  log.put(speed)
