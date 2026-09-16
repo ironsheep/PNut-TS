@@ -1,0 +1,138 @@
+{
+  "shape": "S07_obj_array_obj",
+  "top": "S07_obj_array_obj.spin2",
+  "files": [
+    "S07_obj_array_obj.spin2",
+    "drvv.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "",
+  "tree": {
+    "source": "S07_obj_array_obj.spin2",
+    "overrides": {},
+    "image": "S07_obj_array_obj#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 56,
+    "dat": [],
+    "objs": [
+      {
+        "name": "E",
+        "count": 1,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032902
+          },
+          "image": "drvv#1",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500006"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "D",
+        "count": 2,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032901
+          },
+          "image": "drvv#2",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500005"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "F",
+        "count": 1,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032903
+          },
+          "image": "drvv#3",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500007"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

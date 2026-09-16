@@ -1,0 +1,216 @@
+{
+  "shape": "S17_three_levels",
+  "top": "S17_three_levels.spin2",
+  "files": [
+    "S17_three_levels.spin2",
+    "drv0.spin2",
+    "drvv.spin2",
+    "leafv.spin2",
+    "mid2.spin2",
+    "midarr.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "",
+  "tree": {
+    "source": "S17_three_levels.spin2",
+    "overrides": {},
+    "image": "S17_three_levels#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 116,
+    "dat": [],
+    "objs": [
+      {
+        "name": "TOP2",
+        "count": 1,
+        "node": {
+          "source": "mid2.spin2",
+          "overrides": {
+            "M2": 2714763267
+          },
+          "image": "mid2#1",
+          "var": [
+            {
+              "name": "B1",
+              "type": "BYTE",
+              "count": 1,
+              "offset": 4,
+              "size": 1
+            }
+          ],
+          "varOwnSize": 8,
+          "varTotal": 88,
+          "dat": [],
+          "objs": [
+            {
+              "name": "INNER",
+              "count": 2,
+              "node": {
+                "source": "midarr.spin2",
+                "overrides": {
+                  "MID_TAG": 2714763267
+                },
+                "image": "midarr#1",
+                "var": [
+                  {
+                    "name": "MV",
+                    "type": "LONG",
+                    "count": 1,
+                    "offset": 4,
+                    "size": 4
+                  },
+                  {
+                    "name": "MW",
+                    "type": "LONG",
+                    "count": 1,
+                    "offset": 8,
+                    "size": 4
+                  }
+                ],
+                "varOwnSize": 12,
+                "varTotal": 40,
+                "dat": [
+                  {
+                    "name": "MTAG",
+                    "value": "0xA1D00003"
+                  }
+                ],
+                "objs": [
+                  {
+                    "name": "L",
+                    "count": 2,
+                    "node": {
+                      "source": "leafv.spin2",
+                      "overrides": {
+                        "LEAF_TAG": 2748317699
+                      },
+                      "image": "leafv#1",
+                      "var": [
+                        {
+                          "name": "LV",
+                          "type": "LONG",
+                          "count": 1,
+                          "offset": 4,
+                          "size": 4
+                        }
+                      ],
+                      "varOwnSize": 8,
+                      "varTotal": 8,
+                      "dat": [
+                        {
+                          "name": "LTAG",
+                          "value": "0xA3D00003"
+                        }
+                      ],
+                      "objs": []
+                    }
+                  },
+                  {
+                    "name": "TAIL",
+                    "count": 1,
+                    "node": {
+                      "source": "drvv.spin2",
+                      "overrides": {
+                        "BUS_TAG": 2958033015
+                      },
+                      "image": "drvv#1",
+                      "var": [
+                        {
+                          "name": "V1",
+                          "type": "LONG",
+                          "count": 1,
+                          "offset": 4,
+                          "size": 4
+                        },
+                        {
+                          "name": "V2",
+                          "type": "LONG",
+                          "count": 1,
+                          "offset": 8,
+                          "size": 4
+                        }
+                      ],
+                      "varOwnSize": 12,
+                      "varTotal": 12,
+                      "dat": [
+                        {
+                          "name": "TAG",
+                          "value": "0xB0500077"
+                        }
+                      ],
+                      "objs": []
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "SIDE",
+        "count": 2,
+        "node": {
+          "source": "drv0.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032900
+          },
+          "image": "drv0#1",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500004"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "LAST",
+        "count": 1,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {},
+          "image": "drvv#2",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500000"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

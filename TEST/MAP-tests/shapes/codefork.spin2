@@ -1,0 +1,5 @@
+' shape child: K changes only the pushed constant's encoding length, so K forks the code size
+CON K = 1
+DAT tag LONG $C0DE_0000
+PUB get() : r
+  r := tag + K

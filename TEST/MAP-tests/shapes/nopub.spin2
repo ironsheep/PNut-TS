@@ -1,0 +1,3 @@
+' shape child: VAR + DAT but no PUB -- a Spin object must have a PUB
+VAR long x
+DAT d LONG $DA70_0002

@@ -337,6 +337,21 @@ checking at that point whether the exclusion still makes sense.
 six files are produced and the diff is clean, consider whether to commit
 them and drop the gitignore entries.
 
+**Measured 2026-09-16 — five TOF GOLDs missed the v55 regeneration.**
+`demo_180degrFOV`, `isp_180degrFOV_TOFsensor`, `isp_vl53l5cx` and `p2textdrv`
+(committed 2025-04-25/29) and the untracked `isp_hdmi_debug` still hold pre-v55
+PNut output: TOF fixtures that were regenerated on 2026-05-13 (e.g. `isp_i2c`)
+match PNut-TS byte for byte, while these differ by consistent single-byte
+substitutions (`1d`→`81`, `1b`→`7f`), which is renumbered bytecode values, not a
+calculation difference. `demo_180degrFOV` also differs in length (118346 vs
+118894). Decoded object trees match in all five. The LARGE suite's TOF exclusion
+comment ("math calculation differences") was wrong and now points here; the new
+map-oracle GOLD test lists the five as `knownByteDivergence`.
+**Action:** regenerate the TOF GOLDs with `TEST/LARGE-tests/TOF` `rebuild-gold.ps1`
+on Windows, then remove the five from `knownByteDivergence` in
+`src/tests/MAP-tests/mapOracleGold.test.ts` and drop the TOF exclusion in
+`pnut-ts-large.test.ts`.
+
 ### 6.5 V52A-tests rule drift — verify after first regen
 
 The legacy `V52A-rebuild-v52/rebuild-gold.ps1` compiled every V52A file

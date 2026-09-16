@@ -1,0 +1,72 @@
+{
+  "shape": "S19_dat_layout_fork",
+  "top": "S19_dat_layout_fork.spin2",
+  "files": [
+    "S19_dat_layout_fork.spin2",
+    "datfork.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "SIZE changes the DAT layout (and the TAG value), so a and b are distinct images.",
+  "tree": {
+    "source": "S19_dat_layout_fork.spin2",
+    "overrides": {},
+    "image": "S19_dat_layout_fork#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 16,
+    "dat": [],
+    "objs": [
+      {
+        "name": "A",
+        "count": 1,
+        "node": {
+          "source": "datfork.spin2",
+          "overrides": {
+            "SIZE": 4
+          },
+          "image": "datfork#1",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xDA7F0004"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "B",
+        "count": 1,
+        "node": {
+          "source": "datfork.spin2",
+          "overrides": {
+            "SIZE": 100
+          },
+          "image": "datfork#2",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xDA7F0064"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

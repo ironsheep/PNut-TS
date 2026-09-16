@@ -1,0 +1,72 @@
+{
+  "shape": "S22_code_size_fork",
+  "top": "S22_code_size_fork.spin2",
+  "files": [
+    "S22_code_size_fork.spin2",
+    "codefork.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "K changes only the pushed constant encoding, so the code size forks; TAG is the same value in both images by design.",
+  "tree": {
+    "source": "S22_code_size_fork.spin2",
+    "overrides": {},
+    "image": "S22_code_size_fork#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 16,
+    "dat": [],
+    "objs": [
+      {
+        "name": "A",
+        "count": 1,
+        "node": {
+          "source": "codefork.spin2",
+          "overrides": {
+            "K": 1
+          },
+          "image": "codefork#1",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xC0DE0000"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "B",
+        "count": 1,
+        "node": {
+          "source": "codefork.spin2",
+          "overrides": {
+            "K": 100000
+          },
+          "image": "codefork#2",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xC0DE0000"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

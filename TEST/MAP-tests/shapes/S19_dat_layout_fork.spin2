@@ -1,0 +1,6 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  a : "datfork" | SIZE = 4
+  b : "datfork" | SIZE = 100
+PUB main() | r

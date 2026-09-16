@@ -1,0 +1,7 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  top2 : "mid2" | M2 = $A1D0_0003
+  side[2] : "drv0" | BUS_TAG = $B050_0004
+  last : "drvv"
+PUB main() | r

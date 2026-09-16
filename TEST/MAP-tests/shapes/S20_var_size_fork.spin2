@@ -1,0 +1,6 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  a : "varfork" | N = 2
+  b : "varfork" | N = 10
+PUB main() | r

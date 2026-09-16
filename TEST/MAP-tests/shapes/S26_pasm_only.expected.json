@@ -1,0 +1,24 @@
+{
+  "shape": "S26_pasm_only",
+  "top": "S26_pasm_only.spin2",
+  "files": [
+    "S26_pasm_only.spin2"
+  ],
+  "kind": "pasm",
+  "compileError": null,
+  "note": "PASM mode: no header tables; the image is the DAT bytes, with no implicit padding before MARK2.",
+  "imageLength": 9,
+  "dat": [
+    {
+      "name": "MARK1",
+      "value": "0x9A5A0001",
+      "offset": 0
+    },
+    {
+      "name": "MARK2",
+      "value": "0x9A5A0002",
+      "offset": 5
+    }
+  ],
+  "tree": null
+}

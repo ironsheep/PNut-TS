@@ -1,0 +1,86 @@
+{
+  "shape": "S25_array_255",
+  "top": "S25_array_255.spin2",
+  "files": [
+    "S25_array_255.spin2",
+    "drv0.spin2",
+    "drvv.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "255 is the largest legal OBJ array count (256 is \"Object count must be from 1 to 255\").",
+  "tree": {
+    "source": "S25_array_255.spin2",
+    "overrides": {},
+    "image": "S25_array_255#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 3072,
+    "dat": [],
+    "objs": [
+      {
+        "name": "D",
+        "count": 255,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {
+            "BUS_TAG": 2958033151
+          },
+          "image": "drvv#1",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB05000FF"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "Z",
+        "count": 1,
+        "node": {
+          "source": "drv0.spin2",
+          "overrides": {},
+          "image": "drv0#1",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500000"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

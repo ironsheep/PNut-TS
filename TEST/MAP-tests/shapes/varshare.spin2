@@ -1,0 +1,6 @@
+' shape child: VAR array size N changes only the VAR size; code reads arr[0], so the image is shared
+CON N = 1
+VAR long arr[N]
+DAT tag LONG $7A5E_0000
+PUB get() : r
+  r := tag + arr[0]

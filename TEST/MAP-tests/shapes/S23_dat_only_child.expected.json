@@ -1,0 +1,12 @@
+{
+  "shape": "S23_dat_only_child",
+  "top": "S23_dat_only_child.spin2",
+  "files": [
+    "S23_dat_only_child.spin2",
+    "datonly.spin2"
+  ],
+  "kind": "spin",
+  "compileError": "datonly.spin2 is a PASM file and cannot be used as a Spin2 object",
+  "note": "DAT-only / PUB-less children cannot compile, so every object in a Spin image has at least one method long and the header walk is unambiguous.",
+  "tree": null
+}

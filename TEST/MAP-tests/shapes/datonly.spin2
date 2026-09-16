@@ -1,0 +1,3 @@
+' shape child: DAT only (PASM mode) -- cannot be a child object
+CON X = 1
+DAT d LONG $DA70_0001

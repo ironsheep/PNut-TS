@@ -1,0 +1,5 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  m : "midid"
+PUB main() | r

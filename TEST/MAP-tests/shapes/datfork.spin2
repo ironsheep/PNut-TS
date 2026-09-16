@@ -1,0 +1,6 @@
+' shape child: DAT layout depends on SIZE, so SIZE forks the image
+CON SIZE = 1
+DAT buf BYTE 0[SIZE]
+    tag LONG $DA7F_0000 + SIZE
+PUB get() : r
+  r := tag

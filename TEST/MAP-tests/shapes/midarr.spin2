@@ -1,0 +1,8 @@
+' shape mid: OBJ array of leaves plus a fixed-override tail
+CON MID_TAG = $A1D0_0000
+VAR long mv, mw
+OBJ l[2] : "leafv" | LEAF_TAG = MID_TAG + $0200_0000
+    tail : "drvv" | BUS_TAG = $B050_0077
+DAT mtag LONG MID_TAG
+PUB get() : r
+  r := mtag + l[1].get() + tail.get() + mv

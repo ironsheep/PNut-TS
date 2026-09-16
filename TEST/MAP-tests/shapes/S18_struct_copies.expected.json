@@ -1,0 +1,133 @@
+{
+  "shape": "S18_struct_copies",
+  "top": "S18_struct_copies.spin2",
+  "files": [
+    "S18_struct_copies.spin2",
+    "drvv.spin2",
+    "structv.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "STRUCT point is 9 bytes and is not aligned: P@4, Q@13, own VAR padded 17 -> 20.",
+  "tree": {
+    "source": "S18_struct_copies.spin2",
+    "overrides": {},
+    "image": "S18_struct_copies#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 60,
+    "dat": [],
+    "objs": [
+      {
+        "name": "S",
+        "count": 1,
+        "node": {
+          "source": "structv.spin2",
+          "overrides": {},
+          "image": "structv#1",
+          "var": [
+            {
+              "name": "P",
+              "type": "STRUCT point",
+              "count": 1,
+              "offset": 4,
+              "size": 9
+            },
+            {
+              "name": "Q",
+              "type": "LONG",
+              "count": 1,
+              "offset": 13,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 20,
+          "varTotal": 20,
+          "dat": [
+            {
+              "name": "STAG",
+              "value": "0x57A60000"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "T",
+        "count": 1,
+        "node": {
+          "source": "structv.spin2",
+          "overrides": {},
+          "image": "structv#1",
+          "var": [
+            {
+              "name": "P",
+              "type": "STRUCT point",
+              "count": 1,
+              "offset": 4,
+              "size": 9
+            },
+            {
+              "name": "Q",
+              "type": "LONG",
+              "count": 1,
+              "offset": 13,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 20,
+          "varTotal": 20,
+          "dat": [
+            {
+              "name": "STAG",
+              "value": "0x57A60000"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "U",
+        "count": 1,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {},
+          "image": "drvv#1",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500000"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

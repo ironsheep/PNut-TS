@@ -1,0 +1,5 @@
+' shape child: DAT marker, no VAR
+CON BUS_TAG = $B050_0000
+DAT tag LONG BUS_TAG
+PUB get() : r
+  r := tag

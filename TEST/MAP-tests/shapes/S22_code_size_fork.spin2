@@ -1,0 +1,6 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  a : "codefork" | K = 1
+  b : "codefork" | K = 100_000
+PUB main() | r

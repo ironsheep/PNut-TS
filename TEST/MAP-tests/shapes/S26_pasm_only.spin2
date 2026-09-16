@@ -1,0 +1,6 @@
+{Spin2_v55}
+' PASM-only top: no PUB, so no header tables; DAT markers sit at fixed offsets
+DAT
+mark1   LONG    $9A5A_0001
+        BYTE    1
+mark2   LONG    $9A5A_0002

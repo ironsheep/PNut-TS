@@ -1,0 +1,177 @@
+{
+  "shape": "S10_forked_mids",
+  "top": "S10_forked_mids.spin2",
+  "files": [
+    "S10_forked_mids.spin2",
+    "leafv.spin2",
+    "midv.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "",
+  "tree": {
+    "source": "S10_forked_mids.spin2",
+    "overrides": {},
+    "image": "S10_forked_mids#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 56,
+    "dat": [],
+    "objs": [
+      {
+        "name": "A",
+        "count": 1,
+        "node": {
+          "source": "midv.spin2",
+          "overrides": {
+            "MID_TAG": 2714763265
+          },
+          "image": "midv#1",
+          "var": [
+            {
+              "name": "MV",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "MW",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            },
+            {
+              "name": "MX",
+              "type": "LONG",
+              "count": 1,
+              "offset": 12,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 16,
+          "varTotal": 24,
+          "dat": [
+            {
+              "name": "MTAG",
+              "value": "0xA1D00001"
+            }
+          ],
+          "objs": [
+            {
+              "name": "LEAF",
+              "count": 1,
+              "node": {
+                "source": "leafv.spin2",
+                "overrides": {
+                  "LEAF_TAG": 2731540481
+                },
+                "image": "leafv#1",
+                "var": [
+                  {
+                    "name": "LV",
+                    "type": "LONG",
+                    "count": 1,
+                    "offset": 4,
+                    "size": 4
+                  }
+                ],
+                "varOwnSize": 8,
+                "varTotal": 8,
+                "dat": [
+                  {
+                    "name": "LTAG",
+                    "value": "0xA2D00001"
+                  }
+                ],
+                "objs": []
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "B",
+        "count": 1,
+        "node": {
+          "source": "midv.spin2",
+          "overrides": {
+            "MID_TAG": 2714763266
+          },
+          "image": "midv#2",
+          "var": [
+            {
+              "name": "MV",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "MW",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            },
+            {
+              "name": "MX",
+              "type": "LONG",
+              "count": 1,
+              "offset": 12,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 16,
+          "varTotal": 24,
+          "dat": [
+            {
+              "name": "MTAG",
+              "value": "0xA1D00002"
+            }
+          ],
+          "objs": [
+            {
+              "name": "LEAF",
+              "count": 1,
+              "node": {
+                "source": "leafv.spin2",
+                "overrides": {
+                  "LEAF_TAG": 2731540482
+                },
+                "image": "leafv#2",
+                "var": [
+                  {
+                    "name": "LV",
+                    "type": "LONG",
+                    "count": 1,
+                    "offset": 4,
+                    "size": 4
+                  }
+                ],
+                "varOwnSize": 8,
+                "varTotal": 8,
+                "dat": [
+                  {
+                    "name": "LTAG",
+                    "value": "0xA2D00002"
+                  }
+                ],
+                "objs": []
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

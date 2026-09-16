@@ -1,0 +1,141 @@
+{
+  "shape": "S13_array_of_mids",
+  "top": "S13_array_of_mids.spin2",
+  "files": [
+    "S13_array_of_mids.spin2",
+    "drvv.spin2",
+    "leafv.spin2",
+    "midv.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "",
+  "tree": {
+    "source": "S13_array_of_mids.spin2",
+    "overrides": {},
+    "image": "S13_array_of_mids#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 68,
+    "dat": [],
+    "objs": [
+      {
+        "name": "M",
+        "count": 2,
+        "node": {
+          "source": "midv.spin2",
+          "overrides": {
+            "MID_TAG": 2714763268
+          },
+          "image": "midv#1",
+          "var": [
+            {
+              "name": "MV",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "MW",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            },
+            {
+              "name": "MX",
+              "type": "LONG",
+              "count": 1,
+              "offset": 12,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 16,
+          "varTotal": 24,
+          "dat": [
+            {
+              "name": "MTAG",
+              "value": "0xA1D00004"
+            }
+          ],
+          "objs": [
+            {
+              "name": "LEAF",
+              "count": 1,
+              "node": {
+                "source": "leafv.spin2",
+                "overrides": {
+                  "LEAF_TAG": 2731540484
+                },
+                "image": "leafv#1",
+                "var": [
+                  {
+                    "name": "LV",
+                    "type": "LONG",
+                    "count": 1,
+                    "offset": 4,
+                    "size": 4
+                  }
+                ],
+                "varOwnSize": 8,
+                "varTotal": 8,
+                "dat": [
+                  {
+                    "name": "LTAG",
+                    "value": "0xA2D00004"
+                  }
+                ],
+                "objs": []
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "AFTER",
+        "count": 1,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032904
+          },
+          "image": "drvv#1",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500008"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

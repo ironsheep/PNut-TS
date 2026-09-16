@@ -1,0 +1,7 @@
+' shape mid: one leaf whose marker derives from MID_TAG
+CON MID_TAG = $A1D0_0000
+VAR long mv, mw, mx
+OBJ leaf : "leafv" | LEAF_TAG = MID_TAG + $0100_0000
+DAT mtag LONG MID_TAG
+PUB get() : r
+  r := mtag + leaf.get() + mv

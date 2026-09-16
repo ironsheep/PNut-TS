@@ -1,0 +1,8 @@
+' shape mid: two identical leaves
+CON MID_TAG = $A1D0_0000
+VAR long mv
+OBJ la : "leafv" | LEAF_TAG = $1EAF_0009
+    lb : "leafv" | LEAF_TAG = $1EAF_0009
+DAT mtag LONG MID_TAG
+PUB get() : r
+  r := mtag + la.get() + lb.get() + mv

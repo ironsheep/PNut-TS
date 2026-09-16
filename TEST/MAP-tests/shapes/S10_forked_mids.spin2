@@ -1,0 +1,6 @@
+{Spin2_v55}
+VAR long topv
+OBJ
+  a : "midv" | MID_TAG = $A1D0_0001
+  b : "midv" | MID_TAG = $A1D0_0002
+PUB main() | r

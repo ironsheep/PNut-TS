@@ -1,0 +1,88 @@
+{
+  "shape": "S21_var_size_shared",
+  "top": "S21_var_size_shared.spin2",
+  "files": [
+    "S21_var_size_shared.spin2",
+    "varshare.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "N changes only the VAR size; the image is shared while the VAR extents differ (12 vs 44).",
+  "tree": {
+    "source": "S21_var_size_shared.spin2",
+    "overrides": {},
+    "image": "S21_var_size_shared#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 64,
+    "dat": [],
+    "objs": [
+      {
+        "name": "A",
+        "count": 1,
+        "node": {
+          "source": "varshare.spin2",
+          "overrides": {
+            "N": 2
+          },
+          "image": "varshare#1",
+          "var": [
+            {
+              "name": "ARR",
+              "type": "LONG",
+              "count": 2,
+              "offset": 4,
+              "size": 8
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0x7A5E0000"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "B",
+        "count": 1,
+        "node": {
+          "source": "varshare.spin2",
+          "overrides": {
+            "N": 10
+          },
+          "image": "varshare#1",
+          "var": [
+            {
+              "name": "ARR",
+              "type": "LONG",
+              "count": 10,
+              "offset": 4,
+              "size": 40
+            }
+          ],
+          "varOwnSize": 44,
+          "varTotal": 44,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0x7A5E0000"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

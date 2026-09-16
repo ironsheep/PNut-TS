@@ -1,0 +1,12 @@
+{
+  "shape": "S24_no_pub_child",
+  "top": "S24_no_pub_child.spin2",
+  "files": [
+    "S24_no_pub_child.spin2",
+    "nopub.spin2"
+  ],
+  "kind": "spin",
+  "compileError": "No PUB method or DAT block found",
+  "note": "DAT-only / PUB-less children cannot compile, so every object in a Spin image has at least one method long and the header walk is unambiguous.",
+  "tree": null
+}

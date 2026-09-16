@@ -1,0 +1,102 @@
+{
+  "shape": "S20_var_size_fork",
+  "top": "S20_var_size_fork.spin2",
+  "files": [
+    "S20_var_size_fork.spin2",
+    "varfork.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "N moves TAIL and the code reads TAIL, so the images differ; TAG is the same value in both images by design.",
+  "tree": {
+    "source": "S20_var_size_fork.spin2",
+    "overrides": {},
+    "image": "S20_var_size_fork#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 72,
+    "dat": [],
+    "objs": [
+      {
+        "name": "A",
+        "count": 1,
+        "node": {
+          "source": "varfork.spin2",
+          "overrides": {
+            "N": 2
+          },
+          "image": "varfork#1",
+          "var": [
+            {
+              "name": "ARR",
+              "type": "LONG",
+              "count": 2,
+              "offset": 4,
+              "size": 8
+            },
+            {
+              "name": "TAIL",
+              "type": "LONG",
+              "count": 1,
+              "offset": 12,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 16,
+          "varTotal": 16,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0x7A200000"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "B",
+        "count": 1,
+        "node": {
+          "source": "varfork.spin2",
+          "overrides": {
+            "N": 10
+          },
+          "image": "varfork#2",
+          "var": [
+            {
+              "name": "ARR",
+              "type": "LONG",
+              "count": 10,
+              "offset": 4,
+              "size": 40
+            },
+            {
+              "name": "TAIL",
+              "type": "LONG",
+              "count": 1,
+              "offset": 44,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 48,
+          "varTotal": 48,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0x7A200000"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+' shape child: VAR array size N moves tail, and code reads tail, so N forks the image
+CON N = 1
+VAR long arr[N]
+    long tail
+DAT tag LONG $7A20_0000
+PUB get() : r
+  r := tag + tail

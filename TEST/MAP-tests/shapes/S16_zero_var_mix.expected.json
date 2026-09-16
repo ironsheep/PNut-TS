@@ -1,0 +1,109 @@
+{
+  "shape": "S16_zero_var_mix",
+  "top": "S16_zero_var_mix.spin2",
+  "files": [
+    "S16_zero_var_mix.spin2",
+    "drv0.spin2",
+    "drvv.spin2"
+  ],
+  "kind": "spin",
+  "compileError": null,
+  "note": "",
+  "tree": {
+    "source": "S16_zero_var_mix.spin2",
+    "overrides": {},
+    "image": "S16_zero_var_mix#1",
+    "var": [
+      {
+        "name": "TOPV",
+        "type": "LONG",
+        "count": 1,
+        "offset": 4,
+        "size": 4
+      }
+    ],
+    "varOwnSize": 8,
+    "varTotal": 28,
+    "dat": [],
+    "objs": [
+      {
+        "name": "X",
+        "count": 1,
+        "node": {
+          "source": "drv0.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032897
+          },
+          "image": "drv0#1",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500001"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "Y",
+        "count": 1,
+        "node": {
+          "source": "drvv.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032897
+          },
+          "image": "drvv#1",
+          "var": [
+            {
+              "name": "V1",
+              "type": "LONG",
+              "count": 1,
+              "offset": 4,
+              "size": 4
+            },
+            {
+              "name": "V2",
+              "type": "LONG",
+              "count": 1,
+              "offset": 8,
+              "size": 4
+            }
+          ],
+          "varOwnSize": 12,
+          "varTotal": 12,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500001"
+            }
+          ],
+          "objs": []
+        }
+      },
+      {
+        "name": "Z",
+        "count": 1,
+        "node": {
+          "source": "drv0.spin2",
+          "overrides": {
+            "BUS_TAG": 2958032897
+          },
+          "image": "drv0#1",
+          "var": [],
+          "varOwnSize": 4,
+          "varTotal": 4,
+          "dat": [
+            {
+              "name": "TAG",
+              "value": "0xB0500001"
+            }
+          ],
+          "objs": []
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{Spin2_v55}
+' shape child: STRUCT-typed VAR (9 bytes, not aligned) then a long
+CON STRUCT point(long x, long y, byte z)
+    STRUCT_TAG = $57A6_0000
+VAR point p
+    long q
+DAT stag LONG STRUCT_TAG
+PUB get() : r
+  r := p.x + q + stag

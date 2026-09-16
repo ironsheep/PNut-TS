@@ -1,0 +1,6 @@
+' shape leaf: DAT marker + one VAR long
+CON LEAF_TAG = $1EAF_0000
+VAR long lv
+DAT ltag LONG LEAF_TAG
+PUB get() : r
+  r := ltag + lv
