@@ -30,6 +30,7 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
 | 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
 | 22 | `.lst`/`.pre` unawaited streams | no | **in sprint: Map-Instance-Correctness** |
+| 23 | `RELEASE-PROCESS.md` wrong release-build step | no | open |
 
 ---
 
@@ -795,23 +796,19 @@ commented out.
 
 ---
 
-## 23. `npm run bld-dist` packs local-only folders and warns (added 2026-09-16)
+## 23. `RELEASE-PROCESS.md` names the wrong release build (added 2026-09-16)
 
-> **Compiled output: no** — build tooling; the compiler and its binaries are
-> unaffected. Seen while verifying «#53».
+> **Compiled output: no** — release documentation. Seen while verifying «#53».
 
-- **The `.tgz` carries whatever sits in the working tree.** `.npmignore` exists,
-  so `npm pack` ignores `.gitignore`, and gitignored local folders go into the
-  package: on 2026-09-16 the 532 MB `p2-pnut-ts-1.55.7.tgz` held `REF-CACHE-BUG/`
-  (213 entries), `REF-V52A/`, `REF-INSTALL/`, `scripts-pkg-macos/`,
-  `TEST-NEW-OBJ/`, `BUG-NO-COMMIT/`, `BUG-STRUCT/`. `release.yml` does not use the
-  `.tgz`, but `DOCs/RELEASE-PROCESS.md` "Release Build" lists it as a product.
-  **Decide first:** is the `.tgz` distributed anywhere? If yes, add a `files`
-  allow-list to `package.json`; if no, drop `npm pack` from `bld-dist` and from
-  RELEASE-PROCESS.md.
-- **`scripts/insertBuildDate.js` warns on every esbuild:** it calls
-  `console.timeLog()` with no matching `console.time()`, so Node prints
-  `Warning: No such label 'Updated: ../out/pnut-ts.js'`. Fix: `console.log`.
+`DOCs/RELEASE-PROCESS.md` "Release Build" says to run `npm run bld-dist` after
+the checklist and that it "produces" the npm package and the platform binaries.
+Release packaging is done only by `.github/workflows/release.yml` on tag push
+(Stephen, 2026-09-16); in the container `bld-dist` is used only to build the Linux
+binary for local testing. Rewrite the section to say so. `PACKAGING.md` and
+`scripts/release-tools/cs_pack.sh` describe a local six-binary packaging and
+macOS-signing flow from `pkgs/` — establish whether that flow is still used before
+rewriting either. (The local `.tgz` sweeps in gitignored folders because
+`.npmignore` exists — harmless, since that `.tgz` is never distributed.)
 
 ---
 

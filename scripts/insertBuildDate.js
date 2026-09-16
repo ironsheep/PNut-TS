@@ -20,7 +20,7 @@ fs.readFile(filePath, 'utf8', (err, data) => {
         console.error(`Error writing file: ${err}`);
       }
     });
-    console.timeLog(`Updated: ${outfileName}`);
+    console.log(`Updated: ${outfileName}`);
 
   }
 });
