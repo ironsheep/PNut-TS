@@ -17,7 +17,6 @@ import { compareObjOrBinFiles } from '../testUtils';
 // these so neither drifts from the other.
 import {
   StagedTree,
-  cleanupCacheDir,
   cleanupDir,
   cleanupOutputFiles,
   compileCold,
@@ -570,360 +569,403 @@ describe('ObjectCache Integration Tests', () => {
   // Use MAP-tests/test4-override which has override parameters
   const overrideTestDir = path.resolve(__dirname, '../../../TEST/MAP-tests/test4-override');
 
-  afterAll(() => {
-    // Clean up any cache directories left by tests
-    cleanupCacheDir(objTestDir);
-    cleanupCacheDir(overrideTestDir);
-  });
+  // Fixture lists for the tests below that stage into a private temp tree
+  // rather than compiling objTestDir/overrideTestDir in place. Absolute
+  // paths so stageTree() copies straight from these fixture directories
+  // instead of its default CACHE-tests fixturesDir.
+  const OBJ_TEST14_FILES = ['spin_test14.spin2', 'spin_test14_child1.spin2', 'spin_test14_child2.spin2'].map((f) => path.join(objTestDir, f));
+  const OBJ_TEST23_FILES = ['spin_test23.spin2', 'spin_test23_shared.spin2', 'spin_test23_unique1.spin2', 'spin_test23_unique2.spin2'].map((f) =>
+    path.join(objTestDir, f)
+  );
+  const OBJ_TEST22_FILES = ['spin_test22.spin2', 'spin_test22_level1.spin2', 'spin_test22_level2.spin2', 'spin_test22_level3.spin2'].map((f) =>
+    path.join(objTestDir, f)
+  );
+  const OVERRIDE_FILES = ['override_top.spin2', 'param_child.spin2'].map((f) => path.join(overrideTestDir, f));
+
+  // Fixture lists resolved against cacheFixtures.ts's default fixturesDir
+  // (TEST/CACHE-fixtures) — plain relative names, same as every other
+  // stageTree() caller in this file.
+  const SPIN_DBG_CACHE_FILES = ['spin_dbg_cache_parent.spin2', 'spin_dbg_cache_child.spin2'];
+  const DBG_CACHE_AB_FILES = [
+    'dbg_cache_parentA.spin2',
+    'dbg_cache_parentB.spin2',
+    'dbg_cache_extraA.spin2',
+    'dbg_cache_extraB.spin2',
+    'dbg_cache_shared.spin2'
+  ];
+  const EXPDEF_FILES = ['expdef_parentX.spin2', 'expdef_parentY.spin2', 'expdef_shared_child.spin2', 'expdef_grandchild.spin2'];
+  const EXPDEF_SUBTREE_FILES = [
+    'expdef_subtree_parent.spin2',
+    'expdef_subtree_sd_child.spin2',
+    'expdef_subtree_utils_child.spin2',
+    'expdef_subtree_grandchild.spin2'
+  ];
+  const OPTBLOCK_REWIND_FILES = ['optblock_rewind_parent.spin2', 'optblock_rewind_child.spin2'];
 
   // --- Cache Miss/Hit Path ---
 
+  // Stages into a private temp tree (own copy of the sources, own cache
+  // directory) instead of compiling objTestDir in place with the default
+  // `.pnut-cache` — map.test.ts's test4-override suite writes into
+  // overrideTestDir too, and two suites sharing one on-disk cache directory
+  // is exactly the collision --runInBand alone does not remove for the
+  // fixtures compiled in place further below.
   test('first compilation stores to cache, second uses cache', () => {
-    cleanupCacheDir(objTestDir);
-    const cachePath = path.join(objTestDir, '.pnut-cache');
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-hit');
+    try {
+      // First run: cache miss — should create cache entries
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      expect(fs.existsSync(tree.cacheDir)).toBe(true);
+      const cacheFiles = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(cacheFiles.length).toBeGreaterThan(0);
 
-    // First run: cache miss — should create cache entries
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O --cache --cache-clear');
-    expect(fs.existsSync(cachePath)).toBe(true);
-    const cacheFiles = fs.readdirSync(cachePath).filter((f) => f.endsWith('.bin'));
-    expect(cacheFiles.length).toBeGreaterThan(0);
+      // Save first-run outputs (.obj and .bin are the critical outputs)
+      const objContent1 = fs.readFileSync(path.join(tree.dir, 'spin_test14.obj'));
+      const binContent1 = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
 
-    // Save first-run outputs (.obj and .bin are the critical outputs)
-    const objContent1 = fs.readFileSync(path.join(objTestDir, 'spin_test14.obj'));
-    const binContent1 = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
+      // Second run: should use cache (cache hit)
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      const objContent2 = fs.readFileSync(path.join(tree.dir, 'spin_test14.obj'));
+      const binContent2 = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
 
-    // Second run: should use cache (cache hit)
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O --cache');
-    const objContent2 = fs.readFileSync(path.join(objTestDir, 'spin_test14.obj'));
-    const binContent2 = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
-
-    // Object and binary outputs must be identical
-    expect(Buffer.from(objContent2).equals(Buffer.from(objContent1))).toBe(true);
-    expect(Buffer.from(binContent2).equals(Buffer.from(binContent1))).toBe(true);
-
-    // Cleanup
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupCacheDir(objTestDir);
+      // Object and binary outputs must be identical
+      expect(Buffer.from(objContent2).equals(Buffer.from(objContent1))).toBe(true);
+      expect(Buffer.from(binContent2).equals(Buffer.from(binContent1))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // --- Binary Equivalence: cached vs uncached ---
 
   describe('binary equivalence: cached output matches uncached output', () => {
     const testFiles = [
-      { dir: objTestDir, file: 'spin_test14.spin2', name: 'spin_test14' },
-      { dir: objTestDir, file: 'spin_test23.spin2', name: 'spin_test23' }
+      { goldDir: objTestDir, files: OBJ_TEST14_FILES, file: 'spin_test14.spin2', name: 'spin_test14', label: 'obj14-equiv' },
+      { goldDir: objTestDir, files: OBJ_TEST23_FILES, file: 'spin_test23.spin2', name: 'spin_test23', label: 'obj23-equiv' }
     ];
 
-    test.each(testFiles)('$name produces identical .obj with and without cache', ({ dir, file, name }) => {
-      // Compile WITHOUT cache
-      cleanupCacheDir(dir);
-      compileSpin2(dir, file, '-l -O');
-      const objUncached = fs.readFileSync(path.join(dir, `${name}.obj`));
-      const binUncached = fs.readFileSync(path.join(dir, `${name}.bin`));
+    test.each(testFiles)('$name produces identical .obj with and without cache', ({ goldDir, files, file, name, label }) => {
+      const tree = stageTree(files, label);
+      try {
+        // Compile WITHOUT cache
+        compileSpin2(tree.dir, file, '-l -O');
+        const objUncached = fs.readFileSync(path.join(tree.dir, `${name}.obj`));
+        const binUncached = fs.readFileSync(path.join(tree.dir, `${name}.bin`));
 
-      // Compile WITH cache (cold cache — first run)
-      compileSpin2(dir, file, '-l -O --cache --cache-clear');
-      const objCached = fs.readFileSync(path.join(dir, `${name}.obj`));
-      const binCached = fs.readFileSync(path.join(dir, `${name}.bin`));
+        // Compile WITH cache (cold cache — first run)
+        compileSpin2(tree.dir, file, `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+        const objCached = fs.readFileSync(path.join(tree.dir, `${name}.obj`));
+        const binCached = fs.readFileSync(path.join(tree.dir, `${name}.bin`));
 
-      // Must be byte-identical
-      expect(Buffer.from(objCached).equals(Buffer.from(objUncached))).toBe(true);
-      expect(Buffer.from(binCached).equals(Buffer.from(binUncached))).toBe(true);
+        // Must be byte-identical
+        expect(Buffer.from(objCached).equals(Buffer.from(objUncached))).toBe(true);
+        expect(Buffer.from(binCached).equals(Buffer.from(binUncached))).toBe(true);
 
-      // Compile WITH cache (warm cache — second run, cache hits)
-      compileSpin2(dir, file, '-l -O --cache');
-      const objWarmCached = fs.readFileSync(path.join(dir, `${name}.obj`));
-      const binWarmCached = fs.readFileSync(path.join(dir, `${name}.bin`));
+        // Compile WITH cache (warm cache — second run, cache hits)
+        compileSpin2(tree.dir, file, `-l -O --cache --cache-dir ${tree.cacheDir}`);
+        const objWarmCached = fs.readFileSync(path.join(tree.dir, `${name}.obj`));
+        const binWarmCached = fs.readFileSync(path.join(tree.dir, `${name}.bin`));
 
-      // Must STILL be byte-identical
-      expect(Buffer.from(objWarmCached).equals(Buffer.from(objUncached))).toBe(true);
-      expect(Buffer.from(binWarmCached).equals(Buffer.from(binUncached))).toBe(true);
+        // Must STILL be byte-identical
+        expect(Buffer.from(objWarmCached).equals(Buffer.from(objUncached))).toBe(true);
+        expect(Buffer.from(binWarmCached).equals(Buffer.from(binUncached))).toBe(true);
 
-      // Also verify against GOLD files
-      const goldenObjPath = path.join(dir, `${name}.obj.GOLD`);
-      if (fs.existsSync(goldenObjPath)) {
-        expect(compareObjOrBinFiles(path.join(dir, `${name}.obj`), goldenObjPath)).toBe(true);
+        // Also verify against GOLD files — read from the original (sacred,
+        // never staged/copied) fixture location, never written to.
+        const goldenObjPath = path.join(goldDir, `${name}.obj.GOLD`);
+        if (fs.existsSync(goldenObjPath)) {
+          expect(compareObjOrBinFiles(path.join(tree.dir, `${name}.obj`), goldenObjPath)).toBe(true);
+        }
+      } finally {
+        tree.cleanup();
       }
-
-      // Cleanup
-      cleanupOutputFiles(dir, name);
-      cleanupCacheDir(dir);
     });
   });
 
   // --- Deduplication with cache ---
 
   test('cache works correctly with shared (duplicate) child objects', () => {
-    cleanupCacheDir(objTestDir);
+    const tree = stageTree(OBJ_TEST23_FILES, 'obj23-dup');
+    try {
+      // spin_test23 has shared1 and shared2 referencing the same child file
+      compileSpin2(tree.dir, 'spin_test23.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const objContent1 = fs.readFileSync(path.join(tree.dir, 'spin_test23.obj'));
 
-    // spin_test23 has shared1 and shared2 referencing the same child file
-    compileSpin2(objTestDir, 'spin_test23.spin2', '-l -O --cache --cache-clear');
-    const objContent1 = fs.readFileSync(path.join(objTestDir, 'spin_test23.obj'));
+      // Second compilation should use cached children
+      compileSpin2(tree.dir, 'spin_test23.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      const objContent2 = fs.readFileSync(path.join(tree.dir, 'spin_test23.obj'));
 
-    // Second compilation should use cached children
-    compileSpin2(objTestDir, 'spin_test23.spin2', '-l -O --cache');
-    const objContent2 = fs.readFileSync(path.join(objTestDir, 'spin_test23.obj'));
+      expect(Buffer.from(objContent2).equals(Buffer.from(objContent1))).toBe(true);
 
-    expect(Buffer.from(objContent2).equals(Buffer.from(objContent1))).toBe(true);
-
-    // Verify against GOLD
-    const goldenObjPath = path.join(objTestDir, 'spin_test23.obj.GOLD');
-    if (fs.existsSync(goldenObjPath)) {
-      expect(compareObjOrBinFiles(path.join(objTestDir, 'spin_test23.obj'), goldenObjPath)).toBe(true);
+      // Verify against GOLD (original location, read-only)
+      const goldenObjPath = path.join(objTestDir, 'spin_test23.obj.GOLD');
+      if (fs.existsSync(goldenObjPath)) {
+        expect(compareObjOrBinFiles(path.join(tree.dir, 'spin_test23.obj'), goldenObjPath)).toBe(true);
+      }
+    } finally {
+      tree.cleanup();
     }
-
-    cleanupOutputFiles(objTestDir, 'spin_test23');
-    cleanupCacheDir(objTestDir);
   });
 
   // --- Override Parameter Variants ---
 
   test('cache stores separate entries for different override parameters', () => {
-    cleanupCacheDir(overrideTestDir);
-    const cachePath = path.join(overrideTestDir, '.pnut-cache');
+    const tree = stageTree(OVERRIDE_FILES, 'override-vary');
+    try {
+      // override_top.spin2 has 3 instances of param_child with different overrides
+      compileSpin2(tree.dir, 'override_top.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      expect(fs.existsSync(tree.cacheDir)).toBe(true);
 
-    // override_top.spin2 has 3 instances of param_child with different overrides
-    compileSpin2(overrideTestDir, 'override_top.spin2', '-l -O --cache --cache-clear');
-    expect(fs.existsSync(cachePath)).toBe(true);
+      // Should have at least 3 cache entries (one per unique override combination)
+      const cacheFiles = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(cacheFiles.length).toBeGreaterThanOrEqual(3);
 
-    // Should have at least 3 cache entries (one per unique override combination)
-    const cacheFiles = fs.readdirSync(cachePath).filter((f) => f.endsWith('.bin'));
-    expect(cacheFiles.length).toBeGreaterThanOrEqual(3);
+      // Save first-run output
+      const objContent1 = fs.readFileSync(path.join(tree.dir, 'override_top.obj'));
 
-    // Save first-run output
-    const objContent1 = fs.readFileSync(path.join(overrideTestDir, 'override_top.obj'));
+      // Second run with warm cache
+      compileSpin2(tree.dir, 'override_top.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      const objContent2 = fs.readFileSync(path.join(tree.dir, 'override_top.obj'));
 
-    // Second run with warm cache
-    compileSpin2(overrideTestDir, 'override_top.spin2', '-l -O --cache');
-    const objContent2 = fs.readFileSync(path.join(overrideTestDir, 'override_top.obj'));
-
-    // Must be byte-identical
-    expect(Buffer.from(objContent2).equals(Buffer.from(objContent1))).toBe(true);
-
-    cleanupOutputFiles(overrideTestDir, 'override_top');
-    cleanupCacheDir(overrideTestDir);
+      // Must be byte-identical
+      expect(Buffer.from(objContent2).equals(Buffer.from(objContent1))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // --- Cache Clear ---
 
   test('--cache-clear removes all entries and recompiles fresh', () => {
-    cleanupCacheDir(objTestDir);
-    const cachePath = path.join(objTestDir, '.pnut-cache');
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-clear');
+    try {
+      // Build cache
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const filesBefore = fs.readdirSync(tree.cacheDir);
+      expect(filesBefore.length).toBeGreaterThan(0);
 
-    // Build cache
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O --cache --cache-clear');
-    const filesBefore = fs.readdirSync(cachePath);
-    expect(filesBefore.length).toBeGreaterThan(0);
+      // Clear and rebuild
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const filesAfter = fs.readdirSync(tree.cacheDir);
+      // Same number of files (rebuilt from scratch)
+      expect(filesAfter.length).toBe(filesBefore.length);
 
-    // Clear and rebuild
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O --cache --cache-clear');
-    const filesAfter = fs.readdirSync(cachePath);
-    // Same number of files (rebuilt from scratch)
-    expect(filesAfter.length).toBe(filesBefore.length);
-
-    // Verify output is still correct
-    const goldenObjPath = path.join(objTestDir, 'spin_test14.obj.GOLD');
-    if (fs.existsSync(goldenObjPath)) {
-      expect(compareObjOrBinFiles(path.join(objTestDir, 'spin_test14.obj'), goldenObjPath)).toBe(true);
+      // Verify output is still correct (GOLD read from original location)
+      const goldenObjPath = path.join(objTestDir, 'spin_test14.obj.GOLD');
+      if (fs.existsSync(goldenObjPath)) {
+        expect(compareObjOrBinFiles(path.join(tree.dir, 'spin_test14.obj'), goldenObjPath)).toBe(true);
+      }
+    } finally {
+      tree.cleanup();
     }
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupCacheDir(objTestDir);
   });
 
   // --- Deep Object Hierarchy ---
 
   test('cache works with deep object nesting (3+ levels)', () => {
     // spin_test22 has 3 levels of nesting: top -> level1 -> level2 -> level3
-    cleanupCacheDir(objTestDir);
+    const tree = stageTree(OBJ_TEST22_FILES, 'obj22-deep');
+    try {
+      // Without cache
+      compileSpin2(tree.dir, 'spin_test22.spin2', '-l -O');
+      const objUncached = fs.readFileSync(path.join(tree.dir, 'spin_test22.obj'));
 
-    // Without cache
-    compileSpin2(objTestDir, 'spin_test22.spin2', '-l -O');
-    const objUncached = fs.readFileSync(path.join(objTestDir, 'spin_test22.obj'));
+      // With cache (cold)
+      compileSpin2(tree.dir, 'spin_test22.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const objColdCached = fs.readFileSync(path.join(tree.dir, 'spin_test22.obj'));
+      expect(Buffer.from(objColdCached).equals(Buffer.from(objUncached))).toBe(true);
 
-    // With cache (cold)
-    compileSpin2(objTestDir, 'spin_test22.spin2', '-l -O --cache --cache-clear');
-    const objColdCached = fs.readFileSync(path.join(objTestDir, 'spin_test22.obj'));
-    expect(Buffer.from(objColdCached).equals(Buffer.from(objUncached))).toBe(true);
+      // With cache (warm — all children should hit cache)
+      compileSpin2(tree.dir, 'spin_test22.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      const objWarmCached = fs.readFileSync(path.join(tree.dir, 'spin_test22.obj'));
+      expect(Buffer.from(objWarmCached).equals(Buffer.from(objUncached))).toBe(true);
 
-    // With cache (warm — all children should hit cache)
-    compileSpin2(objTestDir, 'spin_test22.spin2', '-l -O --cache');
-    const objWarmCached = fs.readFileSync(path.join(objTestDir, 'spin_test22.obj'));
-    expect(Buffer.from(objWarmCached).equals(Buffer.from(objUncached))).toBe(true);
-
-    // Verify against GOLD
-    const goldenObjPath = path.join(objTestDir, 'spin_test22.obj.GOLD');
-    if (fs.existsSync(goldenObjPath)) {
-      expect(compareObjOrBinFiles(path.join(objTestDir, 'spin_test22.obj'), goldenObjPath)).toBe(true);
+      // Verify against GOLD (original location, read-only)
+      const goldenObjPath = path.join(objTestDir, 'spin_test22.obj.GOLD');
+      if (fs.existsSync(goldenObjPath)) {
+        expect(compareObjOrBinFiles(path.join(tree.dir, 'spin_test22.obj'), goldenObjPath)).toBe(true);
+      }
+    } finally {
+      tree.cleanup();
     }
-
-    cleanupOutputFiles(objTestDir, 'spin_test22');
-    cleanupCacheDir(objTestDir);
   });
 
   // --- Custom Cache Directory (--cache-dir) ---
 
   test('--cache-dir places cache in the specified directory', () => {
-    const customCacheDir = path.join(objTestDir, '.custom-cache-test');
-    cleanupDir(customCacheDir);
-    cleanupCacheDir(objTestDir);
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-customdir');
+    try {
+      // Compile with --cache-dir pointing to a custom (private) location
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
 
-    // Compile with --cache-dir pointing to a custom location
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${customCacheDir}`);
+      // Cache should exist at the custom location
+      expect(fs.existsSync(tree.cacheDir)).toBe(true);
+      const cacheFiles = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(cacheFiles.length).toBeGreaterThan(0);
 
-    // Cache should exist at the custom location
-    expect(fs.existsSync(customCacheDir)).toBe(true);
-    const cacheFiles = fs.readdirSync(customCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(cacheFiles.length).toBeGreaterThan(0);
-
-    // Default cache location should NOT exist
-    const defaultCachePath = path.join(objTestDir, '.pnut-cache');
-    expect(fs.existsSync(defaultCachePath)).toBe(false);
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupDir(customCacheDir);
+      // Default cache location should NOT exist
+      const defaultCachePath = path.join(tree.dir, '.pnut-cache');
+      expect(fs.existsSync(defaultCachePath)).toBe(false);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   test('--cache-dir produces identical output to default cache location', () => {
-    const customCacheDir = path.join(objTestDir, '.custom-cache-equiv');
-    cleanupDir(customCacheDir);
-    cleanupCacheDir(objTestDir);
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-direquiv');
+    try {
+      // Compile without cache for reference
+      compileSpin2(tree.dir, 'spin_test14.spin2', '-l -O');
+      const objUncached = fs.readFileSync(path.join(tree.dir, 'spin_test14.obj'));
+      const binUncached = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
 
-    // Compile without cache for reference
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O');
-    const objUncached = fs.readFileSync(path.join(objTestDir, 'spin_test14.obj'));
-    const binUncached = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
+      // Compile with custom cache dir (cold)
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      const objColdCached = fs.readFileSync(path.join(tree.dir, 'spin_test14.obj'));
+      const binColdCached = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
+      expect(Buffer.from(objColdCached).equals(Buffer.from(objUncached))).toBe(true);
+      expect(Buffer.from(binColdCached).equals(Buffer.from(binUncached))).toBe(true);
 
-    // Compile with custom cache dir (cold)
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${customCacheDir}`);
-    const objColdCached = fs.readFileSync(path.join(objTestDir, 'spin_test14.obj'));
-    const binColdCached = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
-    expect(Buffer.from(objColdCached).equals(Buffer.from(objUncached))).toBe(true);
-    expect(Buffer.from(binColdCached).equals(Buffer.from(binUncached))).toBe(true);
-
-    // Compile with custom cache dir (warm — should hit cache)
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${customCacheDir}`);
-    const objWarmCached = fs.readFileSync(path.join(objTestDir, 'spin_test14.obj'));
-    const binWarmCached = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
-    expect(Buffer.from(objWarmCached).equals(Buffer.from(objUncached))).toBe(true);
-    expect(Buffer.from(binWarmCached).equals(Buffer.from(binUncached))).toBe(true);
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupDir(customCacheDir);
+      // Compile with custom cache dir (warm — should hit cache)
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      const objWarmCached = fs.readFileSync(path.join(tree.dir, 'spin_test14.obj'));
+      const binWarmCached = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
+      expect(Buffer.from(objWarmCached).equals(Buffer.from(objUncached))).toBe(true);
+      expect(Buffer.from(binWarmCached).equals(Buffer.from(binUncached))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
-  test('--cache-dir allows sharing cache across different source directories', () => {
-    const sharedCacheDir = path.join(objTestDir, '.shared-cache-test');
-    cleanupDir(sharedCacheDir);
+  // Two DIFFERENT staged trees (own directories, own sources) sharing ONE
+  // private cache directory that belongs to neither tree — the actual claim
+  // this test's name makes. Before this fix both compiles ran against the
+  // very same in-place objTestDir, so the "different source directories"
+  // half of the claim was never exercised.
+  test('--cache-dir shared by two source directories keeps each root separate and reuses both', () => {
+    // The top-level file's directory is part of the cache key (resolution root:
+    // OBJ and DAT FILE names resolve from it), so identical sources in two
+    // directories must NOT share entries -- but one cache dir serves both.
+    // See DOCs/internals/Object-Cache-Theory-of-Operations.md.
+    const treeA = stageTree(OBJ_TEST14_FILES, 'obj14-shareA');
+    const treeB = stageTree(OBJ_TEST14_FILES, 'obj14-shareB');
+    const sharedCacheDir = makeTempCacheDir();
+    const cacheBins = () => fs.readdirSync(sharedCacheDir).filter((f) => f.endsWith('.bin')).length;
+    const objOf = (dir: string) => fs.readFileSync(path.join(dir, 'spin_test14.obj'));
+    try {
+      compileSpin2(treeA.dir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${sharedCacheDir}`);
+      const entriesPerRoot = cacheBins();
+      expect(entriesPerRoot).toBeGreaterThan(0);
+      const objColdA = objOf(treeA.dir);
 
-    // Compile from objTestDir — populates the shared cache
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${sharedCacheDir}`);
-    const cacheFilesAfterFirst = fs.readdirSync(sharedCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(cacheFilesAfterFirst.length).toBeGreaterThan(0);
+      // Second root: its own entries, none reused from the first.
+      compileSpin2(treeB.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${sharedCacheDir}`);
+      expect(cacheBins()).toBe(2 * entriesPerRoot);
+      const objColdB = objOf(treeB.dir);
 
-    // Compile again — should get cache hits (same entries, no new files)
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${sharedCacheDir}`);
-    const cacheFilesAfterSecond = fs.readdirSync(sharedCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(cacheFilesAfterSecond.length).toBe(cacheFilesAfterFirst.length);
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupDir(sharedCacheDir);
+      // Warm rebuilds from both roots add nothing and reproduce their outputs.
+      compileSpin2(treeA.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${sharedCacheDir}`);
+      compileSpin2(treeB.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${sharedCacheDir}`);
+      expect(cacheBins()).toBe(2 * entriesPerRoot);
+      expect(Buffer.compare(objOf(treeA.dir), objColdA)).toBe(0);
+      expect(Buffer.compare(objOf(treeB.dir), objColdB)).toBe(0);
+    } finally {
+      treeA.cleanup();
+      treeB.cleanup();
+      cleanupDir(sharedCacheDir);
+    }
   });
 
   test('--cache-clear with --cache-dir clears the custom directory', () => {
-    const customCacheDir = path.join(objTestDir, '.custom-cache-clear');
-    cleanupDir(customCacheDir);
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-clearcustom');
+    try {
+      // Build cache
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${tree.cacheDir}`);
+      expect(fs.existsSync(tree.cacheDir)).toBe(true);
+      const filesBefore = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(filesBefore.length).toBeGreaterThan(0);
 
-    // Build cache
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-dir ${customCacheDir}`);
-    expect(fs.existsSync(customCacheDir)).toBe(true);
-    const filesBefore = fs.readdirSync(customCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(filesBefore.length).toBeGreaterThan(0);
+      // Clear and rebuild
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const filesAfter = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(filesAfter.length).toBe(filesBefore.length);
 
-    // Clear and rebuild
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${customCacheDir}`);
-    const filesAfter = fs.readdirSync(customCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(filesAfter.length).toBe(filesBefore.length);
-
-    // Verify output is still correct against GOLD
-    const goldenObjPath = path.join(objTestDir, 'spin_test14.obj.GOLD');
-    if (fs.existsSync(goldenObjPath)) {
-      expect(compareObjOrBinFiles(path.join(objTestDir, 'spin_test14.obj'), goldenObjPath)).toBe(true);
+      // Verify output is still correct against GOLD (original location, read-only)
+      const goldenObjPath = path.join(objTestDir, 'spin_test14.obj.GOLD');
+      if (fs.existsSync(goldenObjPath)) {
+        expect(compareObjOrBinFiles(path.join(tree.dir, 'spin_test14.obj'), goldenObjPath)).toBe(true);
+      }
+    } finally {
+      tree.cleanup();
     }
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupDir(customCacheDir);
   });
 
   // --- Debug flag must invalidate cache across runs ---
 
   test('--debug toggle does not return stale non-debug binary from cache', () => {
-    const debugCacheDir = path.join(objTestDir, '.debug-toggle-cache');
-    cleanupDir(debugCacheDir);
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-debugtoggle');
+    try {
+      // Step 1: warm the cache with NO debug
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const cacheFilesAfterNoDebug = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(cacheFilesAfterNoDebug.length).toBeGreaterThan(0);
 
-    // Step 1: warm the cache with NO debug
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --cache --cache-clear --cache-dir ${debugCacheDir}`);
-    const cacheFilesAfterNoDebug = fs.readdirSync(debugCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(cacheFilesAfterNoDebug.length).toBeGreaterThan(0);
+      // Step 2: reference build WITH debug, no cache, captured first
+      cleanupOutputFiles(tree.dir, 'spin_test14');
+      compileSpin2(tree.dir, 'spin_test14.spin2', '-l -O --debug');
+      const binDebugUncached = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
 
-    // Step 2: reference build WITH debug, no cache, captured first
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O --debug');
-    const binDebugUncached = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
+      // Step 3: now compile WITH debug using the cache that was warmed without debug.
+      // The cache must NOT return the no-debug binary; the new compile must produce
+      // a binary that matches the uncached --debug reference.
+      cleanupOutputFiles(tree.dir, 'spin_test14');
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O --debug --cache --cache-dir ${tree.cacheDir}`);
+      const binDebugCached = fs.readFileSync(path.join(tree.dir, 'spin_test14.bin'));
 
-    // Step 3: now compile WITH debug using the cache that was warmed without debug.
-    // The cache must NOT return the no-debug binary; the new compile must produce
-    // a binary that matches the uncached --debug reference.
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O --debug --cache --cache-dir ${debugCacheDir}`);
-    const binDebugCached = fs.readFileSync(path.join(objTestDir, 'spin_test14.bin'));
+      expect(Buffer.from(binDebugCached).equals(Buffer.from(binDebugUncached))).toBe(true);
 
-    expect(Buffer.from(binDebugCached).equals(Buffer.from(binDebugUncached))).toBe(true);
-
-    // After the --debug build there should be more cache entries than before
-    // (the debug variants compute different keys and were written fresh).
-    const cacheFilesAfterDebug = fs.readdirSync(debugCacheDir).filter((f) => f.endsWith('.bin'));
-    expect(cacheFilesAfterDebug.length).toBeGreaterThan(cacheFilesAfterNoDebug.length);
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupDir(debugCacheDir);
+      // After the --debug build there should be more cache entries than before
+      // (the debug variants compute different keys and were written fresh).
+      const cacheFilesAfterDebug = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.bin'));
+      expect(cacheFilesAfterDebug.length).toBeGreaterThan(cacheFilesAfterNoDebug.length);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // --- Map file fidelity with cached children ---
 
   test('warm cache produces identical .map output to uncached --map build', () => {
-    const mapCacheDir = path.join(objTestDir, '.map-cache');
-    cleanupDir(mapCacheDir);
+    const tree = stageTree(OBJ_TEST14_FILES, 'obj14-mapfidelity');
+    try {
+      // The map header embeds a wall-clock timestamp ("Generated: ..."). Strip it
+      // before comparing so we're testing map content, not generation time.
+      const stripTimestamp = (s: string): string => s.replace(/^Generated:.*$/m, 'Generated: <stripped>');
 
-    // The map header embeds a wall-clock timestamp ("Generated: ..."). Strip it
-    // before comparing so we're testing map content, not generation time.
-    const stripTimestamp = (s: string): string => s.replace(/^Generated:.*$/m, 'Generated: <stripped>');
+      // Reference: uncached --map run
+      compileSpin2(tree.dir, 'spin_test14.spin2', '-l -O -m');
+      const mapPathUncached = path.join(tree.dir, 'spin_test14.map');
+      expect(fs.existsSync(mapPathUncached)).toBe(true);
+      const mapUncached = stripTimestamp(fs.readFileSync(mapPathUncached, 'utf8'));
 
-    // Reference: uncached --map run
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    compileSpin2(objTestDir, 'spin_test14.spin2', '-l -O -m');
-    const mapPathUncached = path.join(objTestDir, 'spin_test14.map');
-    expect(fs.existsSync(mapPathUncached)).toBe(true);
-    const mapUncached = stripTimestamp(fs.readFileSync(mapPathUncached, 'utf8'));
+      // Cold cache --map run — fills the cache with binary + symbol sidecars
+      cleanupOutputFiles(tree.dir, 'spin_test14');
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O -m --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const mapColdCached = stripTimestamp(fs.readFileSync(path.join(tree.dir, 'spin_test14.map'), 'utf8'));
+      expect(mapColdCached).toBe(mapUncached);
 
-    // Cold cache --map run — fills the cache with binary + symbol sidecars
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O -m --cache --cache-clear --cache-dir ${mapCacheDir}`);
-    const mapColdCached = stripTimestamp(fs.readFileSync(path.join(objTestDir, 'spin_test14.map'), 'utf8'));
-    expect(mapColdCached).toBe(mapUncached);
+      // Confirm .sym sidecars were written for the cached children
+      const symFiles = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.sym'));
+      expect(symFiles.length).toBeGreaterThan(0);
 
-    // Confirm .sym sidecars were written for the cached children
-    const symFiles = fs.readdirSync(mapCacheDir).filter((f) => f.endsWith('.sym'));
-    expect(symFiles.length).toBeGreaterThan(0);
-
-    // Warm cache --map run — children hit cache; symbols restored from .sym
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    compileSpin2(objTestDir, 'spin_test14.spin2', `-l -O -m --cache --cache-dir ${mapCacheDir}`);
-    const mapWarmCached = stripTimestamp(fs.readFileSync(path.join(objTestDir, 'spin_test14.map'), 'utf8'));
-    expect(mapWarmCached).toBe(mapUncached);
-
-    cleanupOutputFiles(objTestDir, 'spin_test14');
-    cleanupDir(mapCacheDir);
+      // Warm cache --map run — children hit cache; symbols restored from .sym
+      cleanupOutputFiles(tree.dir, 'spin_test14');
+      compileSpin2(tree.dir, 'spin_test14.spin2', `-l -O -m --cache --cache-dir ${tree.cacheDir}`);
+      const mapWarmCached = stripTimestamp(fs.readFileSync(path.join(tree.dir, 'spin_test14.map'), 'utf8'));
+      expect(mapWarmCached).toBe(mapUncached);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // --- Debug-record fidelity on cache hit ---
@@ -936,59 +978,53 @@ describe('ObjectCache Integration Tests', () => {
   // a warm-cache --debug build must produce a final .bin byte-identical to
   // an uncached --debug build, debug data table and all.
   test('warm cache with --debug produces .bin identical to uncached --debug build', () => {
-    const dbgFixtureDir = path.resolve(__dirname, '../../../TEST/CACHE-fixtures');
-    const debugRecordsCacheDir = path.join(dbgFixtureDir, '.dbg-records-cache');
-    cleanupDir(debugRecordsCacheDir);
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
+    const tree = stageTree(SPIN_DBG_CACHE_FILES, 'dbg-fidelity');
+    try {
+      // Reference: uncached --debug build
+      compileSpin2(tree.dir, 'spin_dbg_cache_parent.spin2', '-d');
+      const binUncached = fs.readFileSync(path.join(tree.dir, 'spin_dbg_cache_parent.bin'));
 
-    // Reference: uncached --debug build
-    compileSpin2(dbgFixtureDir, 'spin_dbg_cache_parent.spin2', '-d');
-    const binUncached = fs.readFileSync(path.join(dbgFixtureDir, 'spin_dbg_cache_parent.bin'));
+      // Cold cache --debug build — fills the private cache dir with binary + sym + dbg sidecars
+      cleanupOutputFiles(tree.dir, 'spin_dbg_cache_parent');
+      compileSpin2(tree.dir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const binColdCached = fs.readFileSync(path.join(tree.dir, 'spin_dbg_cache_parent.bin'));
+      expect(Buffer.from(binColdCached).equals(Buffer.from(binUncached))).toBe(true);
 
-    // Cold cache --debug build — fills .pnut-cache with binary + sym + dbg sidecars
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
-    compileSpin2(dbgFixtureDir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-clear --cache-dir ${debugRecordsCacheDir}`);
-    const binColdCached = fs.readFileSync(path.join(dbgFixtureDir, 'spin_dbg_cache_parent.bin'));
-    expect(Buffer.from(binColdCached).equals(Buffer.from(binUncached))).toBe(true);
+      // Confirm .dbg sidecars exist for the cached children
+      const dbgFiles = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.dbg'));
+      expect(dbgFiles.length).toBeGreaterThan(0);
 
-    // Confirm .dbg sidecars exist for the cached children
-    const dbgFiles = fs.readdirSync(debugRecordsCacheDir).filter((f) => f.endsWith('.dbg'));
-    expect(dbgFiles.length).toBeGreaterThan(0);
-
-    // Warm cache --debug build — child loads from cache; debug records replayed.
-    // This is the path that produced garbled output before the .dbg sidecar fix.
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
-    compileSpin2(dbgFixtureDir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-dir ${debugRecordsCacheDir}`);
-    const binWarmCached = fs.readFileSync(path.join(dbgFixtureDir, 'spin_dbg_cache_parent.bin'));
-    expect(Buffer.from(binWarmCached).equals(Buffer.from(binUncached))).toBe(true);
-
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
-    cleanupDir(debugRecordsCacheDir);
+      // Warm cache --debug build — child loads from cache; debug records replayed.
+      // This is the path that produced garbled output before the .dbg sidecar fix.
+      cleanupOutputFiles(tree.dir, 'spin_dbg_cache_parent');
+      compileSpin2(tree.dir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-dir ${tree.cacheDir}`);
+      const binWarmCached = fs.readFileSync(path.join(tree.dir, 'spin_dbg_cache_parent.bin'));
+      expect(Buffer.from(binWarmCached).equals(Buffer.from(binUncached))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   test('debug+cache hit with missing .dbg sidecar surfaces a clear error', () => {
-    const dbgFixtureDir = path.resolve(__dirname, '../../../TEST/CACHE-fixtures');
-    const corruptCacheDir = path.join(dbgFixtureDir, '.dbg-corrupt-cache');
-    cleanupDir(corruptCacheDir);
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
+    const tree = stageTree(SPIN_DBG_CACHE_FILES, 'dbg-corrupt');
+    try {
+      // Warm cache normally
+      compileSpin2(tree.dir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const dbgFiles = fs.readdirSync(tree.cacheDir).filter((f) => f.endsWith('.dbg'));
+      expect(dbgFiles.length).toBeGreaterThan(0);
 
-    // Warm cache normally
-    compileSpin2(dbgFixtureDir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-clear --cache-dir ${corruptCacheDir}`);
-    const dbgFiles = fs.readdirSync(corruptCacheDir).filter((f) => f.endsWith('.dbg'));
-    expect(dbgFiles.length).toBeGreaterThan(0);
+      // Delete every .dbg sidecar in the PRIVATE cache — simulates a
+      // partial-write scenario where .bin survived but .dbg didn't. Compiler
+      // must refuse the hit instead of silently producing a broken binary.
+      for (const f of dbgFiles) fs.rmSync(path.join(tree.cacheDir, f));
 
-    // Delete every .dbg sidecar — simulates a partial-write scenario where
-    // .bin survived but .dbg didn't. Compiler must refuse the hit instead of
-    // silently producing a broken binary.
-    for (const f of dbgFiles) fs.rmSync(path.join(corruptCacheDir, f));
-
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
-    expect(() => {
-      compileSpin2(dbgFixtureDir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-dir ${corruptCacheDir}`);
-    }).toThrow(/missing or invalid \.dbg sidecar/);
-
-    cleanupOutputFiles(dbgFixtureDir, 'spin_dbg_cache_parent');
-    cleanupDir(corruptCacheDir);
+      cleanupOutputFiles(tree.dir, 'spin_dbg_cache_parent');
+      expect(() => {
+        compileSpin2(tree.dir, 'spin_dbg_cache_parent.spin2', `-d --cache --cache-dir ${tree.cacheDir}`);
+      }).toThrow(/missing or invalid \.dbg sidecar/);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // Regression for the v1.54.4 #pragma exportdef cache-key bug.
@@ -1010,33 +1046,29 @@ describe('ObjectCache Integration Tests', () => {
   // ends up with the wrong embedded constant. v1.54.5 folds defSymbols
   // into the key so the two contexts get separate cache entries.
   test('warm cache distinguishes parents with different propagated #pragma exportdef symbols', () => {
-    const fixtureDir = path.resolve(__dirname, '../../../TEST/CACHE-fixtures');
-    const expdefCacheDir = path.join(fixtureDir, '.expdef-cache');
-    cleanupDir(expdefCacheDir);
-    cleanupOutputFiles(fixtureDir, 'expdef_parentX');
-    cleanupOutputFiles(fixtureDir, 'expdef_parentY');
+    const tree = stageTree(EXPDEF_FILES, 'expdef-isolation');
+    try {
+      // Reference 1: parentY built fresh — captures the SYM_Y-shape ground truth.
+      compileSpin2(tree.dir, 'expdef_parentY.spin2');
+      const binY_uncached = fs.readFileSync(path.join(tree.dir, 'expdef_parentY.bin'));
+      cleanupOutputFiles(tree.dir, 'expdef_parentY');
 
-    // Reference 1: parentY built fresh — captures the SYM_Y-shape ground truth.
-    compileSpin2(fixtureDir, 'expdef_parentY.spin2');
-    const binY_uncached = fs.readFileSync(path.join(fixtureDir, 'expdef_parentY.bin'));
-    cleanupOutputFiles(fixtureDir, 'expdef_parentY');
+      // Cold-build parentX with cache enabled — populates the cache with the
+      // shared child's SYM_X-branch binary (and the SYM_X grandchild).
+      compileSpin2(tree.dir, 'expdef_parentX.spin2', `--cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      cleanupOutputFiles(tree.dir, 'expdef_parentX');
 
-    // Cold-build parentX with cache enabled — populates the cache with the
-    // shared child's SYM_X-branch binary (and the SYM_X grandchild).
-    compileSpin2(fixtureDir, 'expdef_parentX.spin2', `--cache --cache-clear --cache-dir ${expdefCacheDir}`);
-    cleanupOutputFiles(fixtureDir, 'expdef_parentX');
-
-    // Warm-build parentY against the same cache. Pre-fix, the shared-child
-    // entry collides on key (no defSymbols in key), and parentY's binary
-    // ends up with parentX's embedded grandchild (kind=1). Post-fix, the
-    // defSymbols difference forces a key miss → fresh compile → correct
-    // SYM_Y branch (kind=2).
-    compileSpin2(fixtureDir, 'expdef_parentY.spin2', `--cache --cache-dir ${expdefCacheDir}`);
-    const binY_warm = fs.readFileSync(path.join(fixtureDir, 'expdef_parentY.bin'));
-    expect(Buffer.from(binY_warm).equals(Buffer.from(binY_uncached))).toBe(true);
-
-    cleanupOutputFiles(fixtureDir, 'expdef_parentY');
-    cleanupDir(expdefCacheDir);
+      // Warm-build parentY against the same cache. Pre-fix, the shared-child
+      // entry collides on key (no defSymbols in key), and parentY's binary
+      // ends up with parentX's embedded grandchild (kind=1). Post-fix, the
+      // defSymbols difference forces a key miss → fresh compile → correct
+      // SYM_Y branch (kind=2).
+      compileSpin2(tree.dir, 'expdef_parentY.spin2', `--cache --cache-dir ${tree.cacheDir}`);
+      const binY_warm = fs.readFileSync(path.join(tree.dir, 'expdef_parentY.bin'));
+      expect(Buffer.from(binY_warm).equals(Buffer.from(binY_uncached))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // Regression for the v1.54.3 "partial fix" bug. v1.54.3 only ever tested
@@ -1050,38 +1082,34 @@ describe('ObjectCache Integration Tests', () => {
   // remap+patch fixes this by rewriting each brkCode field in the cached
   // binary to the new index injectRecord assigns on hit.
   test('warm cache with --debug stays correct across heterogeneous parents sharing a child', () => {
-    const dbgFixtureDir = path.resolve(__dirname, '../../../TEST/CACHE-fixtures');
-    const sharedCacheDir = path.join(dbgFixtureDir, '.dbg-shared-cache');
-    cleanupDir(sharedCacheDir);
-    cleanupOutputFiles(dbgFixtureDir, 'dbg_cache_parentA');
-    cleanupOutputFiles(dbgFixtureDir, 'dbg_cache_parentB');
+    const tree = stageTree(DBG_CACHE_AB_FILES, 'dbg-heterogeneous');
+    try {
+      // Reference 1: parentA built fresh (no cache).
+      compileSpin2(tree.dir, 'dbg_cache_parentA.spin2', '-d');
+      const binA_uncached = fs.readFileSync(path.join(tree.dir, 'dbg_cache_parentA.bin'));
+      cleanupOutputFiles(tree.dir, 'dbg_cache_parentA');
 
-    // Reference 1: parentA built fresh (no cache).
-    compileSpin2(dbgFixtureDir, 'dbg_cache_parentA.spin2', '-d');
-    const binA_uncached = fs.readFileSync(path.join(dbgFixtureDir, 'dbg_cache_parentA.bin'));
-    cleanupOutputFiles(dbgFixtureDir, 'dbg_cache_parentA');
+      // Reference 2: parentB built fresh (no cache).
+      compileSpin2(tree.dir, 'dbg_cache_parentB.spin2', '-d');
+      const binB_uncached = fs.readFileSync(path.join(tree.dir, 'dbg_cache_parentB.bin'));
+      cleanupOutputFiles(tree.dir, 'dbg_cache_parentB');
 
-    // Reference 2: parentB built fresh (no cache).
-    compileSpin2(dbgFixtureDir, 'dbg_cache_parentB.spin2', '-d');
-    const binB_uncached = fs.readFileSync(path.join(dbgFixtureDir, 'dbg_cache_parentB.bin'));
-    cleanupOutputFiles(dbgFixtureDir, 'dbg_cache_parentB');
+      // Cold cache build of parentA — populates the private cache with extraA + shared.
+      compileSpin2(tree.dir, 'dbg_cache_parentA.spin2', `-d --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const binA_cold = fs.readFileSync(path.join(tree.dir, 'dbg_cache_parentA.bin'));
+      expect(Buffer.from(binA_cold).equals(Buffer.from(binA_uncached))).toBe(true);
+      cleanupOutputFiles(tree.dir, 'dbg_cache_parentA');
 
-    // Cold cache build of parentA — populates .pnut-cache with extraA + shared.
-    compileSpin2(dbgFixtureDir, 'dbg_cache_parentA.spin2', `-d --cache --cache-clear --cache-dir ${sharedCacheDir}`);
-    const binA_cold = fs.readFileSync(path.join(dbgFixtureDir, 'dbg_cache_parentA.bin'));
-    expect(Buffer.from(binA_cold).equals(Buffer.from(binA_uncached))).toBe(true);
-    cleanupOutputFiles(dbgFixtureDir, 'dbg_cache_parentA');
-
-    // Warm cache build of parentB — extraB is a cache miss (different source);
-    // shared HITS the entry stored during parentA's compile. extraB contributes
-    // 3 records, pushing shared's records past parentA's prefix length, so the
-    // remap+patch path is exercised on every brkCode in shared's binary.
-    compileSpin2(dbgFixtureDir, 'dbg_cache_parentB.spin2', `-d --cache --cache-dir ${sharedCacheDir}`);
-    const binB_warm = fs.readFileSync(path.join(dbgFixtureDir, 'dbg_cache_parentB.bin'));
-    expect(Buffer.from(binB_warm).equals(Buffer.from(binB_uncached))).toBe(true);
-
-    cleanupOutputFiles(dbgFixtureDir, 'dbg_cache_parentB');
-    cleanupDir(sharedCacheDir);
+      // Warm cache build of parentB — extraB is a cache miss (different source);
+      // shared HITS the entry stored during parentA's compile. extraB contributes
+      // 3 records, pushing shared's records past parentA's prefix length, so the
+      // remap+patch path is exercised on every brkCode in shared's binary.
+      compileSpin2(tree.dir, 'dbg_cache_parentB.spin2', `-d --cache --cache-dir ${tree.cacheDir}`);
+      const binB_warm = fs.readFileSync(path.join(tree.dir, 'dbg_cache_parentB.bin'));
+      expect(Buffer.from(binB_warm).equals(Buffer.from(binB_uncached))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // Regression for the v1.54.5 → v1.54.6 bug.
@@ -1099,32 +1127,29 @@ describe('ObjectCache Integration Tests', () => {
   // defSymbols added during that child's subtree compile). On hit, replay
   // those onto context.defSymbols so subsequent siblings see them.
   test('warm cache replays subtree exportdef contributions for skipped grandchildren', () => {
-    const fixtureDir = path.resolve(__dirname, '../../../TEST/CACHE-fixtures');
-    const subtreeCacheDir = path.join(fixtureDir, '.subtree-exp-cache');
-    cleanupDir(subtreeCacheDir);
-    cleanupOutputFiles(fixtureDir, 'expdef_subtree_parent');
+    const tree = stageTree(EXPDEF_SUBTREE_FILES, 'expdef-subtree');
+    try {
+      // Reference: fresh build with no cache.
+      compileSpin2(tree.dir, 'expdef_subtree_parent.spin2');
+      const refBinary = fs.readFileSync(path.join(tree.dir, 'expdef_subtree_parent.bin'));
+      cleanupOutputFiles(tree.dir, 'expdef_subtree_parent');
 
-    // Reference: fresh build with no cache.
-    compileSpin2(fixtureDir, 'expdef_subtree_parent.spin2');
-    const refBinary = fs.readFileSync(path.join(fixtureDir, 'expdef_subtree_parent.bin'));
-    cleanupOutputFiles(fixtureDir, 'expdef_subtree_parent');
+      // Cold cache build — populates the cache with sd_child + grandchild + utils_child.
+      compileSpin2(tree.dir, 'expdef_subtree_parent.spin2', `--cache --cache-clear --cache-dir ${tree.cacheDir}`);
+      const coldBinary = fs.readFileSync(path.join(tree.dir, 'expdef_subtree_parent.bin'));
+      expect(Buffer.from(coldBinary).equals(Buffer.from(refBinary))).toBe(true);
+      cleanupOutputFiles(tree.dir, 'expdef_subtree_parent');
 
-    // Cold cache build — populates the cache with sd_child + grandchild + utils_child.
-    compileSpin2(fixtureDir, 'expdef_subtree_parent.spin2', `--cache --cache-clear --cache-dir ${subtreeCacheDir}`);
-    const coldBinary = fs.readFileSync(path.join(fixtureDir, 'expdef_subtree_parent.bin'));
-    expect(Buffer.from(coldBinary).equals(Buffer.from(refBinary))).toBe(true);
-    cleanupOutputFiles(fixtureDir, 'expdef_subtree_parent');
-
-    // Warm cache build — sd_child cache-hits, its grandchild's preprocess is
-    // skipped, but the .dbg sidecar's subtreeExports replay GC_FEATURE before
-    // utils_child's preprocess runs. utils_child's preprocessedLines matches
-    // the cold compile, its cache key matches, it hits cache cleanly.
-    compileSpin2(fixtureDir, 'expdef_subtree_parent.spin2', `--cache --cache-dir ${subtreeCacheDir}`);
-    const warmBinary = fs.readFileSync(path.join(fixtureDir, 'expdef_subtree_parent.bin'));
-    expect(Buffer.from(warmBinary).equals(Buffer.from(refBinary))).toBe(true);
-
-    cleanupOutputFiles(fixtureDir, 'expdef_subtree_parent');
-    cleanupDir(subtreeCacheDir);
+      // Warm cache build — sd_child cache-hits, its grandchild's preprocess is
+      // skipped, but the .dbg sidecar's subtreeExports replay GC_FEATURE before
+      // utils_child's preprocess runs. utils_child's preprocessedLines matches
+      // the cold compile, its cache key matches, it hits cache cleanly.
+      compileSpin2(tree.dir, 'expdef_subtree_parent.spin2', `--cache --cache-dir ${tree.cacheDir}`);
+      const warmBinary = fs.readFileSync(path.join(tree.dir, 'expdef_subtree_parent.bin'));
+      expect(Buffer.from(warmBinary).equals(Buffer.from(refBinary))).toBe(true);
+    } finally {
+      tree.cleanup();
+    }
   });
 
   // ============================================================
@@ -1150,13 +1175,10 @@ describe('ObjectCache Integration Tests', () => {
   // fixture here that exercises it, OR documenting why it doesn't need
   // separate coverage.
   describe('byte-equivalence regression: warm cache must match uncached, every fixture', () => {
-    const objDir = path.resolve(__dirname, '../../../TEST/OBJ-tests');
-    const cacheFixDir = path.resolve(__dirname, '../../../TEST/CACHE-fixtures');
-    const overrideDir = path.resolve(__dirname, '../../../TEST/MAP-tests/test4-override');
-
     interface Fixture {
       label: string;
-      dir: string;
+      files: string[];
+      stageLabel: string;
       file: string;
       basename: string;
       flags: string; // extra flags, applied to all three compiles
@@ -1166,7 +1188,8 @@ describe('ObjectCache Integration Tests', () => {
     const fixtures: Fixture[] = [
       {
         label: 'simple parent + 1 child',
-        dir: objDir,
+        files: OBJ_TEST14_FILES,
+        stageLabel: 'byteeq-simple',
         file: 'spin_test14.spin2',
         basename: 'spin_test14',
         flags: '-O',
@@ -1174,7 +1197,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'multi-sibling children sharing one child source',
-        dir: objDir,
+        files: OBJ_TEST23_FILES,
+        stageLabel: 'byteeq-multisib',
         file: 'spin_test23.spin2',
         basename: 'spin_test23',
         flags: '-O',
@@ -1182,7 +1206,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'override parameters',
-        dir: overrideDir,
+        files: OVERRIDE_FILES,
+        stageLabel: 'byteeq-override',
         file: 'override_top.spin2',
         basename: 'override_top',
         flags: '',
@@ -1190,7 +1215,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'debug + cache (DebugData replay)',
-        dir: cacheFixDir,
+        files: SPIN_DBG_CACHE_FILES,
+        stageLabel: 'byteeq-dbgreplay',
         file: 'spin_dbg_cache_parent.spin2',
         basename: 'spin_dbg_cache_parent',
         flags: '-d',
@@ -1198,7 +1224,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'heterogeneous parents — parentA shape',
-        dir: cacheFixDir,
+        files: DBG_CACHE_AB_FILES,
+        stageLabel: 'byteeq-heteroA',
         file: 'dbg_cache_parentA.spin2',
         basename: 'dbg_cache_parentA',
         flags: '-d',
@@ -1206,7 +1233,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'heterogeneous parents — parentB shape',
-        dir: cacheFixDir,
+        files: DBG_CACHE_AB_FILES,
+        stageLabel: 'byteeq-heteroB',
         file: 'dbg_cache_parentB.spin2',
         basename: 'dbg_cache_parentB',
         flags: '-d',
@@ -1214,7 +1242,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'exportdef key-isolation (parentX)',
-        dir: cacheFixDir,
+        files: EXPDEF_FILES,
+        stageLabel: 'byteeq-expdefX',
         file: 'expdef_parentX.spin2',
         basename: 'expdef_parentX',
         flags: '',
@@ -1222,7 +1251,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'exportdef key-isolation (parentY)',
-        dir: cacheFixDir,
+        files: EXPDEF_FILES,
+        stageLabel: 'byteeq-expdefY',
         file: 'expdef_parentY.spin2',
         basename: 'expdef_parentY',
         flags: '',
@@ -1230,7 +1260,8 @@ describe('ObjectCache Integration Tests', () => {
       },
       {
         label: 'subtree exportdef replay (v1.54.6 regression)',
-        dir: cacheFixDir,
+        files: EXPDEF_SUBTREE_FILES,
+        stageLabel: 'byteeq-subtree',
         file: 'expdef_subtree_parent.spin2',
         basename: 'expdef_subtree_parent',
         flags: '',
@@ -1247,7 +1278,8 @@ describe('ObjectCache Integration Tests', () => {
         // Fix in v1.54.7: ObjectImage.setOffsetTo drops brkSites at offsets
         // >= newOffset on backward seeks.
         label: 'optimizer-rewind brkSite tracking (v1.54.7 regression)',
-        dir: cacheFixDir,
+        files: OPTBLOCK_REWIND_FILES,
+        stageLabel: 'byteeq-optrewind',
         file: 'optblock_rewind_parent.spin2',
         basename: 'optblock_rewind_parent',
         flags: '-d',
@@ -1255,50 +1287,49 @@ describe('ObjectCache Integration Tests', () => {
       }
     ];
 
-    // Each fixture gets its own cache directory so they don't pollute one
-    // another. Every fixture runs three times: uncached (reference), cold
-    // cache (must match ref), warm cache (must match ref).
+    // Each fixture stages into its own private temp tree (own sources, own
+    // cache dir) so they don't pollute one another or TEST/. Every fixture
+    // runs three times: uncached (reference), cold cache (must match ref),
+    // warm cache (must match ref).
     test.each(fixtures)(
       'warm cache produces byte-identical output to uncached: $label ($pattern)',
-      ({ dir, file, basename, flags }) => {
-        const cacheDirForFixture = path.join(dir, `.cache-regression-${basename}`);
-        cleanupDir(cacheDirForFixture);
-        cleanupOutputFiles(dir, basename);
+      ({ files, stageLabel, file, basename, flags }) => {
+        const tree = stageTree(files, stageLabel);
+        try {
+          // `-m` on all three compiles so the MAP is compared alongside the
+          // binary. The binary is still the first net — it is the artifact that
+          // can carry staleness — but the map is derived from distiller and
+          // symbol state on a different path, so the two can disagree, and until
+          // 1.55.4 the map's own labels were too unreliable to assert on. They
+          // are not any more, which makes a warm map that differs from an
+          // uncached one a real signal rather than noise.
+          const mapFlags = `${flags} -m`.trim();
+          const binPath = path.join(tree.dir, `${basename}.bin`);
+          const mapPath = path.join(tree.dir, `${basename}.map`);
 
-        // `-m` on all three compiles so the MAP is compared alongside the
-        // binary. The binary is still the first net — it is the artifact that
-        // can carry staleness — but the map is derived from distiller and
-        // symbol state on a different path, so the two can disagree, and until
-        // 1.55.4 the map's own labels were too unreliable to assert on. They
-        // are not any more, which makes a warm map that differs from an
-        // uncached one a real signal rather than noise.
-        const mapFlags = `${flags} -m`.trim();
-        const binPath = path.join(dir, `${basename}.bin`);
-        const mapPath = path.join(dir, `${basename}.map`);
+          // Reference: fresh, no cache
+          compileSpin2(tree.dir, file, mapFlags);
+          expect(fs.existsSync(binPath)).toBe(true);
+          expect(fs.existsSync(mapPath)).toBe(true);
+          const refBinary = fs.readFileSync(binPath);
+          const refMap = readMapForComparison(mapPath);
+          cleanupOutputFiles(tree.dir, basename);
 
-        // Reference: fresh, no cache
-        compileSpin2(dir, file, mapFlags);
-        expect(fs.existsSync(binPath)).toBe(true);
-        expect(fs.existsSync(mapPath)).toBe(true);
-        const refBinary = fs.readFileSync(binPath);
-        const refMap = readMapForComparison(mapPath);
-        cleanupOutputFiles(dir, basename);
+          // Cold cache: cache empty, compile populates it
+          compileSpin2(tree.dir, file, `${mapFlags} --cache --cache-clear --cache-dir ${tree.cacheDir}`);
+          const coldBinary = fs.readFileSync(binPath);
+          expect(Buffer.from(coldBinary).equals(Buffer.from(refBinary))).toBe(true);
+          expect(readMapForComparison(mapPath)).toBe(refMap);
+          cleanupOutputFiles(tree.dir, basename);
 
-        // Cold cache: cache empty, compile populates it
-        compileSpin2(dir, file, `${mapFlags} --cache --cache-clear --cache-dir ${cacheDirForFixture}`);
-        const coldBinary = fs.readFileSync(binPath);
-        expect(Buffer.from(coldBinary).equals(Buffer.from(refBinary))).toBe(true);
-        expect(readMapForComparison(mapPath)).toBe(refMap);
-        cleanupOutputFiles(dir, basename);
-
-        // Warm cache: every child should hit
-        compileSpin2(dir, file, `${mapFlags} --cache --cache-dir ${cacheDirForFixture}`);
-        const warmBinary = fs.readFileSync(binPath);
-        expect(Buffer.from(warmBinary).equals(Buffer.from(refBinary))).toBe(true);
-        expect(readMapForComparison(mapPath)).toBe(refMap);
-
-        cleanupOutputFiles(dir, basename);
-        cleanupDir(cacheDirForFixture);
+          // Warm cache: every child should hit
+          compileSpin2(tree.dir, file, `${mapFlags} --cache --cache-dir ${tree.cacheDir}`);
+          const warmBinary = fs.readFileSync(binPath);
+          expect(Buffer.from(warmBinary).equals(Buffer.from(refBinary))).toBe(true);
+          expect(readMapForComparison(mapPath)).toBe(refMap);
+        } finally {
+          tree.cleanup();
+        }
       },
       // 30 second per-fixture timeout — even the slowest fixture (-d -O) is
       // well under this in practice. Generous to absorb CI noise.
