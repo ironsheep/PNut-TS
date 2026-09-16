@@ -23,7 +23,6 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 11 | `#pragma exportdef` value | no wrong code | open — Stephen's decision |
 | 13 | Documentation residue (13a, 13d) | no | open |
 | 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
-| 15 | Preprocessor diagnostics (15b only — 15a fixed) | no | open |
 | 16 | MAP tests lack STRUCTs | no | **in sprint: Map-Instance-Correctness** |
 | 19 | Coverage gate unmeetable | no | open |
 | 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
@@ -561,34 +560,6 @@ recorded intent; or convert `objectCache.test.ts` onto the `stageTree` scaffoldi
 the rest of the directory already uses, and correct the conventions file instead.
 The second is the better end state — it removes the hazard rather than
 serialising around it.
-
-## 15. Preprocessor diagnostics (added 2026-08-09, merged here 2026-08-30)
-
-> **Compiled output: no** — 15a (build silently omitted `#ifdef SYM` branches) fixed 2026-09-16, task «#68». **15b remains: no** — misdirected diagnostic, no output produced.
-
-15b is a **misdirecting** failure: the compiler accepts the input, points at the
-wrong line, and describes the wrong problem. Not covered by any fixture.
-Recorded during the Preproc-Symbols sprint (commit `f628b91`).
-
-> **This ranks higher than it reads, because of who consumes the diagnostic.**
-> Re-ranked 2026-08-30 after Stephen confirmed an `agent-consumer` deliverable
-> head. An agent's entire interaction with this compiler is the compile → read
-> error → fix loop, and our error format (`path:line:error:text`, non-zero exit,
-> gcc-adjacent) makes that loop mechanically drivable. **15b names the wrong
-> line**, so the agent edits the `#endif` — a divergent fix, not a slow one. It
-> also sits where a C-trained prior is wrong (`#if`/`#elseif` do not exist), so
-> it is hit by exactly the reader least able to recover. This is not diagnostic
-> polish.
-
-### 15b. `#if` / `#elseif` surface as a stray-`#endif` error
-
-Only `#ifdef` / `#ifndef` / `#elseifdef` / `#elseifndef` are recognized. A
-C-style `#if` falls through as an unrecognized line, so the first error the user
-sees is the now-unbalanced `#endif` — pointing at the wrong line and describing
-the wrong problem.
-
-**Fix:** diagnose at the `#if` / `#elseif` line itself, ideally naming the
-supported spelling. (`src/classes/spinDocument.ts`.)
 
 ## 16. MAP test cases do not cover structures (added 2026-08-09, merged here 2026-08-30)
 

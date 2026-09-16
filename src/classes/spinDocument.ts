@@ -73,6 +73,29 @@ export class PreprocessorError extends Error {
 const ERROR_DIRECTIVE = /^\s*#error\s+(.*)$/i;
 const WARN_DIRECTIVE = /^\s*#warn\s+(.*)$/i;
 
+// PNut's preprocessor directive table (REF-V52A/p2com.asm:20092-20099) has no
+// #IF or #ELSEIF entry -- IF/ELSEIF/ELSEIFNOT are Spin2 high-level flow-control
+// keywords (type_if/type_elseif, p2com.asm:20160-20162), not preprocessor
+// commands (type_pre_command). PNut's preprocessor scanner only special-cases
+// an element of type_pre_command found right after '#' (@@checkline/@@command,
+// p2com.asm:3465-3473); anything else is left untouched on the line and simply
+// scanned past (@@checkeol) -- PNut is SILENT about a stray '#if'/'#elseif',
+// not permissive: the line falls through to the ordinary Spin2 parser, which
+// then fails on 'IF'/'ELSEIF' out of context, far from the real mistake.
+//
+// PNut-TS diagnoses it here instead, at the line the author actually wrote,
+// because this is the single most likely directive a C/FlexSpin habit
+// produces, and the alternative first symptom was a spurious "unbalanced
+// #endif" error pointing at the wrong line (or, for '#elseif', being silently
+// matched by the '#else' pattern below and taking the else branch outright,
+// discarding the condition with no diagnostic at all). This is strictly a
+// better diagnostic, not a new acceptance: '#if'/'#elseif' still do not open
+// or extend a conditional -- only #ifdef/#ifndef/#elseifdef/#elseifndef do.
+const IF_DIRECTIVE = /^\s*#if(\s|$)/i;
+const ELSEIF_DIRECTIVE = /^\s*#elseif(\s|$)/i;
+const MSG_UNSUPPORTED_IF: string = '#if is not a supported preprocessor directive — use #ifdef or #ifndef';
+const MSG_UNSUPPORTED_ELSEIF: string = '#elseif is not a supported preprocessor directive — use #elseifdef or #elseifndef';
+
 // PNut's exact wording for a conditional directive found with no #IFDEF/#IFNDEF
 // open -- REF-V52A/p2com.asm:3635. The misspelling of "preceded" is PNut's, and it
 // is matched VERBATIM rather than silently corrected: parity here means someone
@@ -728,7 +751,17 @@ export class SpinDocument {
               this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
             }
           }
-        } else if (/^\s*#else\s*/i.test(currLine)) {
+        } else if (IF_DIRECTIVE.test(currLine) || ELSEIF_DIRECTIVE.test(currLine)) {
+          // '#if' / '#elseif' -- unsupported C-style spellings; see IF_DIRECTIVE
+          // comment above for why PNut itself is silent here and PNut-TS is not.
+          // Placed ahead of the '#else' pattern below on purpose: '#else' is
+          // written unanchored ('#else\s*' with no word-boundary or '$'), so it
+          // otherwise matches the '#else' PREFIX of '#elseif' too and would
+          // silently treat '#elseif X' as a bare '#else', discarding X.
+          const isElseForm: boolean = ELSEIF_DIRECTIVE.test(currLine);
+          replaceCurrent = this.commentOut(currLine);
+          this.reportError(isElseForm ? MSG_UNSUPPORTED_ELSEIF : MSG_UNSUPPORTED_IF, lineIdx, eDiagnosticSeverity.DS_FATAL);
+        } else if (/^\s*#else(?![A-Za-z0-9_])/i.test(currLine)) {
           // parse #else
           const ifState = this.currIfDef();
           if (ifState === undefined) {
@@ -739,7 +772,7 @@ export class SpinDocument {
             replaceCurrent = this.commentOut(currLine);
             ifState.setInElse();
           }
-        } else if (/^\s*#endif\s*/i.test(currLine)) {
+        } else if (/^\s*#endif(?![A-Za-z0-9_])/i.test(currLine)) {
           // parse #endif
           if (!this.inIfDef()) {
             // ERROR missing preceeding #if*...
@@ -1008,9 +1041,11 @@ export class SpinDocument {
       foundDirectiveStatus = true;
     } else if (/^\s*#include\s+/i.test(line)) {
       foundDirectiveStatus = true;
-    } else if (/^\s*#else/i.test(line)) {
+    } else if (IF_DIRECTIVE.test(line) || ELSEIF_DIRECTIVE.test(line)) {
       foundDirectiveStatus = true;
-    } else if (/^\s*#endif/i.test(line)) {
+    } else if (/^\s*#else(?![A-Za-z0-9_])/i.test(line)) {
+      foundDirectiveStatus = true;
+    } else if (/^\s*#endif(?![A-Za-z0-9_])/i.test(line)) {
       foundDirectiveStatus = true;
     } else if (/^\s*#pragma\s+/i.test(line)) {
       foundDirectiveStatus = true;

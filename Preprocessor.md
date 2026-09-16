@@ -40,6 +40,8 @@ Here's more detail on each of the supported directives
 
 If you see the similarity to the FlexSpin directive set, you are correct! This capability was patterned after the directives supported by FlexSpin so that there will be fewer compatibility issues when utilizing spin2 code with either compiler.
 
+**Note:** C-style `#if` and `#elseif` are **not** supported — this preprocessor has no expression evaluator, so there is nothing for them to test. Use `#ifdef` / `#ifndef` and `#elseifdef` / `#elseifndef` instead. Writing `#if` or `#elseif` is reported as an error naming the supported spelling.
+
 ### Directives
 
 #### \#define {symbol} {value}
@@ -262,6 +264,7 @@ An error stops the compile and **the output files are deleted**, so a failed bui
 | `#else`, `#endif`, `#elseifdef` or `#elseifndef` with no open conditional | error `Must be preceeded by #IFDEF or #IFNDEF` |
 | A directive that needs a symbol, written without one | error `Expected a preprocessor symbol` |
 | A directive that is not recognized | error naming the directive |
+| `#if` or `#elseif` (C-style, unsupported here) | error naming the supported spelling (`#ifdef`/`#ifndef`, `#elseifdef`/`#elseifndef`) |
 | `{Spin2_vNN}` naming a version this compiler does not support | error, citing the line the directive is on |
 | `#include` with an unsupported filetype, or a filename whose quotes are missing | error describing the actual problem |
 | `#undef` of a symbol that was never defined | **warning**; build continues |
