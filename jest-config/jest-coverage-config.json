@@ -22,7 +22,8 @@
     "<rootDir>/dist/tests/EXCEPT-tests/",
     "<rootDir>/dist/tests/PREPROC-tests/",
     "<rootDir>/dist/tests/CLEANUP-tests/",
-    "<rootDir>/dist/tests/CACHE-tests/"
+    "<rootDir>/dist/tests/CACHE-tests/",
+    "<rootDir>/dist/tests/CLI-tests/"
   ],
   "testMatch": ["**/*.test.js"],
   "verbose": true

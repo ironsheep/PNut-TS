@@ -16,8 +16,8 @@ A couple of command line options affect the preprocessing:
 
 | Option | Effect |
 | --- | --- |
-| <PRE>-D \<symbolName></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements. Equivalent to `#define SYMBOL` but affects all files in the compilation effort. |
-| <PRE>-U \<symbolName></PRE>  | Prevents a `#pragma exportdef` of the named symbol from taking effect: the symbol stays private to the file that defined it instead of being exported to the rest of the compile. <Br>**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.*
+| <PRE>-D \<symbolName></PRE> | Defines a symbol that can be tested with the `#ifdef`, `#ifndef`,  `#elseifdef` or `#elseifndef` statements. Equivalent to `#define SYMBOL` but affects all files in the compilation effort. **`-D` is presence-only** — there is no command-line form of `#define SYMBOL value`; `-D SYMBOL=value` is rejected with an error rather than silently defining a symbol literally named `SYMBOL=VALUE`. |
+| <PRE>-U \<symbolName></PRE>  | Prevents a `#pragma exportdef` of the named symbol from taking effect: the symbol stays private to the file that defined it instead of being exported to the rest of the compile. <Br>**NOTE:** *The -U option does not remove a symbol defined with -D or #define — it only blocks the export.* **`-U` is presence-only** as well, and rejects `-U SYMBOL=value` the same way.
 | <PRE>-I \<directory></PRE>  | Specify the folder to search within for files specified using `#include "filename(.spin2)"` statements, or as `files mentioned in the OBJ or DAT sections of your code`
 | -- **Diagnostic Use** -- |
 | <PRE>-i, --intermediate | Generate `*__pre.spin2` file after preprocessing - so you can review what preprocessed source was fed to the compiler
@@ -267,6 +267,8 @@ An error stops the compile and **the output files are deleted**, so a failed bui
 | `#undef` of a symbol that was never defined | **warning**; build continues |
 | `#undef` of a predefined `__*__` symbol *(v1.55.3)* | **warning** `cannot undefine built-in symbol [...]`; the symbol stays defined and the build continues |
 | Function-like `#define NAME(args)` *(v1.55.3)* | error `#define does not support arguments — only simple symbol definitions` |
+| `-D SYMBOL=value` or `-U SYMBOL=value` on the command line | error naming the option and the unsupported form, non-zero exit — `-D`/`-U` take a presence-only symbol name |
+| `-D`/`-U` given a name that is not a legal symbol name (leading digit, a character other than letter/digit/underscore, or empty) | error `... is not a valid preprocessor symbol name`, non-zero exit |
 
 Bare directives — `#define`, `#ifdef`, `#include` and friends written with no argument — used to be swallowed silently, because a CON enumeration start also begins with `#`. They are now caught. Valid CON enumeration starts are unaffected.
 

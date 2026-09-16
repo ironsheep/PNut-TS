@@ -139,6 +139,36 @@ export class PNutInTypeScript {
     }
   }
 
+  /**
+   * Validate a -D/-U command-line symbol argument and return it uppercased, or
+   * undefined if it was rejected (an error has already been logged in that case).
+   *
+   * -D and -U both take a presence-only symbol name -- there is no command-line
+   * equivalent of '#define SYM value'. Before this check, '-D SYM=1' silently
+   * uppercased and registered the whole argument as a symbol literally named
+   * 'SYM=1'; '#ifdef SYM' then never matched and the intended branch vanished
+   * with no diagnostic. The same silent-acceptance class applies to any argument
+   * that could never match a preprocessor symbol name: names starting with a
+   * digit, names containing characters other than letters/digits/underscore, and
+   * the empty string.
+   */
+  private validatedPreprocessorSymbolName(rawSymbol: string, option: '-D' | '-U'): string | undefined {
+    const PREPROC_SYMBOL_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    if (rawSymbol.includes('=')) {
+      const bareName = rawSymbol.split('=')[0];
+      this.context.logger.errorMsg(
+        `${option} ${rawSymbol} is not supported; ${option} takes a presence-only symbol name (use ${option} ${bareName})`
+      );
+      return undefined;
+    }
+    if (!PREPROC_SYMBOL_NAME_PATTERN.test(rawSymbol)) {
+      const shownSymbol = rawSymbol.length > 0 ? rawSymbol : '""';
+      this.context.logger.errorMsg(`${option} ${shownSymbol} is not a valid preprocessor symbol name`);
+      return undefined;
+    }
+    return rawSymbol.toUpperCase();
+  }
+
   private async runCompile(): Promise<number> {
     // ensure we know early if we are running in developer mode
     if (process.env.PNUT_DEVELOP_MODE) {
@@ -529,7 +559,16 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`* Def [${this.options.Define}]`);
       // internally all Preprocessor symbols are UPPER CASE
       for (const newSymbol of this.options.Define) {
-        this.context.preProcessorOptions.defSymbols.push(newSymbol.toUpperCase());
+        // -D takes several values, so a filename written right after it
+        // (`pnut-ts -D SYM file.spin2`) lands in this list too. The filename
+        // is resolved separately above; it is not a symbol.
+        if (newSymbol === this.options.filename) continue;
+        const validatedSymbol = this.validatedPreprocessorSymbolName(newSymbol, '-D');
+        if (validatedSymbol === undefined) {
+          this.shouldAbort = true;
+        } else {
+          this.context.preProcessorOptions.defSymbols.push(validatedSymbol);
+        }
       }
     }
 
@@ -538,7 +577,16 @@ export class PNutInTypeScript {
       this.context.logger.verboseMsg(`* Undef [${this.options.Undefine}]`);
       // internally all Preprocessor symbols are UPPER CASE
       for (const newSymbol of this.options.Undefine) {
-        this.context.preProcessorOptions.undefSymbols.push(newSymbol.toUpperCase());
+        // -U takes several values, so a filename written right after it
+        // (`pnut-ts -U SYM file.spin2`) lands in this list too. The filename
+        // is resolved separately above; it is not a symbol.
+        if (newSymbol === this.options.filename) continue;
+        const validatedSymbol = this.validatedPreprocessorSymbolName(newSymbol, '-U');
+        if (validatedSymbol === undefined) {
+          this.shouldAbort = true;
+        } else {
+          this.context.preProcessorOptions.undefSymbols.push(validatedSymbol);
+        }
       }
     }
 
