@@ -172,7 +172,7 @@
     "DOCs/internals/usage-guides/BYTEFIT-WORDFIT-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
     "DOCs/internals/usage-guides/DEBUG-MASK-Usage-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/usage-guides/DITTO-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/Data-Packing-Alignment-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
+    "DOCs/internals/usage-guides/Data-Packing-Alignment-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.8" },
     "DOCs/internals/usage-guides/Debug-Pin-Piggybacking-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/usage-guides/Debug-Strategy-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/usage-guides/FIELD-Operator-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },

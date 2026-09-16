@@ -1,305 +1,209 @@
 # Data Packing and Alignment Guide for Spin2/PASM2
 
-This document describes how data is packed and aligned in memory when declaring variables in VAR blocks, DAT blocks, and local variables in PUB/PRI methods for the Parallax Propeller 2 (P2) microcontroller as implemented in the PNut-TS compiler.
+This document describes how PNut-TS packs data declared in `VAR` blocks, `DAT`
+blocks, and PUB/PRI local variables for the Parallax Propeller 2 (P2)
+microcontroller, and how to control alignment with `ALIGNW`/`ALIGNL` where the
+default packing is not what you want.
 
 ## Overview
 
-**Key Finding: There is NO automatic alignment based on data size in Spin2/PASM2.**
+Spin2/PASM2 packs `BYTE`, `WORD`, and `LONG` data **sequentially, with no
+automatic alignment to natural boundaries**. Unlike C, C++, or Rust, a `WORD`
+or `LONG` declaration does not cause the compiler to insert padding before it
+— it lands at whatever offset immediately follows the previous item.
 
-Unlike many other languages (C, C++, Rust, etc.) where variables are automatically aligned to their natural boundaries, Spin2/PASM2 packs data **sequentially without gaps** unless you explicitly request alignment using the `ALIGNW` or `ALIGNL` directives.
+There are exactly two exceptions, both automatic and neither optional:
 
-| Declaration Context | Auto-Alignment | Manual Alignment Available |
-|---------------------|----------------|---------------------------|
-| VAR block | **No** | Yes (ALIGNW, ALIGNL) |
-| DAT block (data) | **No** | Yes (ALIGNW, ALIGNL) |
-| DAT block (instructions) | **Yes** (COG mode only) | Yes (ALIGNW, ALIGNL) |
-| Local variables | **No** | Yes (ALIGNW, ALIGNL) |
+- **VAR block end padding.** After all `VAR` blocks in an object have been
+  compiled, the compiler advances to the next long boundary. This is what
+  guarantees every object instance's data starts on a long boundary.
+- **PASM2 instructions in cog/LUT (`ORG`) code.** Every assembled instruction
+  is preceded by padding to the next long boundary — but only outside `ORGH`
+  (hub) code, where instructions pack exactly like data, with no alignment at
+  all.
 
----
+Everywhere else — `BYTE`/`WORD`/`LONG` data in `VAR`, data in `DAT` (including
+`ORGH` data and instructions), and PUB/PRI local variables — packing is purely
+sequential. Use `ALIGNW` (align to the next even offset) or `ALIGNL` (align to
+the next multiple of 4) wherever you need control.
 
-## Sequential Packing Behavior
+| Declaration context | Auto-alignment | ALIGNW/ALIGNL available |
+|---|---|---|
+| `VAR` block (per item) | No | Yes |
+| `VAR` block (end of last block) | Yes — to long | N/A |
+| `DAT` block data (BYTE/WORD/LONG) | No | Yes |
+| `DAT` block instructions, `ORG` (cog/LUT) | Yes — to long, before each instruction | Yes |
+| `DAT` block instructions, `ORGH` (hub) | No | Yes |
+| PUB/PRI local variables | No | Yes |
 
-### VAR Block Packing
-
-Variables in VAR blocks are packed sequentially at byte boundaries:
-
-```spin2
-VAR
-  BYTE  v1        ' Offset 0x04 (starts at 4, after object pointer)
-  BYTE  v2        ' Offset 0x05 (immediately after v1)
-  WORD  w1        ' Offset 0x06 (NOT aligned to word boundary!)
-  LONG  l1        ' Offset 0x08 (NOT aligned to long boundary!)
-```
-
-**Memory Layout:**
-```
-Offset: 0x00  0x01  0x02  0x03  0x04  0x05  0x06  0x07  0x08  0x09  0x0A  0x0B
-        [--- object pointer ---]  v1    v2   [--w1--] [------l1------]
-```
-
-Notice that `w1` is at offset 0x06 (not word-aligned) and `l1` is at offset 0x08 (happens to be long-aligned only by coincidence).
-
-### DAT Block Packing
-
-Data in DAT blocks is also packed sequentially:
-
-```spin2
-DAT
-myByte    BYTE    $AA           ' Offset 0x00
-myWord    WORD    $BBCC         ' Offset 0x01 (NOT word-aligned!)
-myLong    LONG    $DDEEFF00     ' Offset 0x03 (NOT long-aligned!)
-```
-
-**Memory Layout:**
-```
-Offset: 0x00  0x01  0x02  0x03  0x04  0x05  0x06
-        $AA   $CC   $BB   $00   $FF   $EE   $DD
-              [--myWord--] [------myLong------]
-```
-
-### Local Variable Packing
-
-Local variables in PUB/PRI methods follow the same sequential packing:
-
-```spin2
-PUB Example() | BYTE b1, BYTE b2, WORD w1, LONG l1
-  ' b1 at stack offset 0
-  ' b2 at stack offset 1
-  ' w1 at stack offset 2 (NOT word-aligned!)
-  ' l1 at stack offset 4 (happens to be long-aligned by coincidence)
-```
-
----
-
-## The ALIGNW and ALIGNL Directives
-
-To force alignment, use `ALIGNW` (word alignment) or `ALIGNL` (long alignment).
-
-### Syntax
+## Basic Usage
 
 ```spin2
 VAR
-  ALIGNW              ' Align next variable to word (2-byte) boundary
-  ALIGNL              ' Align next variable to long (4-byte) boundary
+  BYTE  v1        ' offset $04 (VAR space starts at 4, after the object pointer)
+  BYTE  v2        ' offset $05 - immediately after v1
+  WORD  w1        ' offset $06 - NOT word-aligned; it just follows v2
+  LONG  l1        ' offset $08 - long-aligned here only by coincidence
 
-DAT
-  ALIGNW              ' Align next data to word boundary
-  ALIGNL              ' Align next data to long boundary
-
-PUB Method() | ALIGNW WORD x, ALIGNL LONG y
-  ' ALIGNW before x ensures word alignment
-  ' ALIGNL before y ensures long alignment
+PUB main()
+  v1 := 0
 ```
 
-### How Alignment Works
+Compiling this and checking the VAR offsets (`-m`, "VAR:" section, or the
+`.lst` symbol table) shows exactly those four offsets. Nothing shifts `w1` or
+`l1` to a rounder address — they sit wherever the previous item's size put
+them. A minimal case makes this concrete: a single `BYTE` followed by a
+`LONG` places the `LONG` at offset 1, not 4.
 
-The compiler pads with zero bytes until the current offset satisfies the alignment requirement:
+## Syntax / Forms
 
-- **ALIGNW**: Pads until offset is even (offset & 0x01 == 0)
-- **ALIGNL**: Pads until offset is divisible by 4 (offset & 0x03 == 0)
+### VAR block packing
 
 ```spin2
 VAR
-  BYTE  v1        ' Offset 0x04
-  ALIGNW          ' Pads 1 byte (0x05 -> 0x06)
-  BYTE  v2        ' Offset 0x06 (now word-aligned)
-  ALIGNL          ' Pads 1 byte (0x07 -> 0x08)
-  BYTE  v3        ' Offset 0x08 (now long-aligned)
+  BYTE  status
+  WORD  sensorValue
+  LONG  timestamp
+  BYTE  flags
 ```
 
-**Memory Layout with Alignment:**
-```
-Offset: 0x04  0x05  0x06  0x07  0x08
-        v1    [pad] v2    [pad] v3
-```
+`status` is at $04, `sensorValue` at $05, `timestamp` at $07, `flags` at $0B —
+each item lands immediately after the previous one's declared size, with no
+gap. `VAR` space itself always starts at offset $04: the first long ($00-$03)
+is reserved for the object's own pointer.
 
----
+STRUCT-typed members pack the same way: the struct's fields are laid out
+according to the struct's own declaration, but the struct as a whole starts
+wherever the previous `VAR` item left off — it is not itself pushed to a
+boundary. A `BYTE` immediately followed by a two-field struct places the
+struct at offset 1, not on a 4- or 8-byte boundary.
 
-## VAR Block Details
+Multiple `VAR` blocks in one file behave as if concatenated: the second
+block's first item continues immediately after the first block's last item,
+with no boundary between them.
 
-### Starting Offset
+### VAR block end padding
 
-VAR blocks start at offset **0x04** (4 bytes), reserving the first long for the object pointer.
-
-### End Alignment
-
-After all variables are declared, the compiler automatically aligns to the next long boundary. This ensures that each object instance starts on a long boundary.
+After the *last* `VAR` block in the file has been compiled, the compiler pads
+to the next long boundary:
 
 ```spin2
 VAR
-  BYTE  b1        ' Offset 0x04
-  BYTE  b2        ' Offset 0x05
-  ' Compiler pads 2 bytes to reach 0x08
-  ' Total VAR size: 8 bytes (padded from 2)
+  BYTE  b1        ' offset $04
+  BYTE  b2        ' offset $05
+  ' compiler pads 2 bytes so the next object instance starts long-aligned
+  ' total VAR size: 8 bytes ($04..$05 declared, $06-$07 padding, plus the
+  ' leading $00-$03 object-pointer slot)
 ```
 
-### Examples
+This end padding is the *only* implicit alignment inside a `VAR` block, and it
+only ever applies once, after every declared item in every `VAR` block.
 
-**Without Explicit Alignment:**
-```spin2
-VAR
-  BYTE  status          ' 0x04
-  WORD  sensorValue     ' 0x05 (misaligned!)
-  LONG  timestamp       ' 0x07 (misaligned!)
-  BYTE  flags           ' 0x0B
-  ' Total: 8 bytes + 4 bytes end-padding = 12 bytes
-```
-
-**With Explicit Alignment:**
-```spin2
-VAR
-  BYTE  status          ' 0x04
-  ALIGNW
-  WORD  sensorValue     ' 0x06 (properly word-aligned)
-  ALIGNL
-  LONG  timestamp       ' 0x08 (properly long-aligned)
-  BYTE  flags           ' 0x0C
-  ' Total: 9 bytes + 3 bytes end-padding = 12 bytes
-```
-
----
-
-## DAT Block Details
-
-### Data Declarations (BYTE, WORD, LONG)
-
-Data declarations are packed sequentially without automatic alignment:
+### DAT block data packing
 
 ```spin2
 DAT
-header      BYTE    $AA, $BB, $CC       ' 3 bytes at offset 0
-value       WORD    $1234               ' Misaligned at offset 3!
-result      LONG    $DEADBEEF           ' Misaligned at offset 5!
+myByte    BYTE    $AA           ' offset 0
+myWord    WORD    $BBCC         ' offset 1 - not word-aligned
+myLong    LONG    $DDEEFF00     ' offset 3 - not long-aligned
 ```
 
-### PASM Instructions (Special Case)
+`DAT` block data packs exactly like `VAR` block data: sequential, no automatic
+alignment, in both `ORG` and `ORGH` sections.
 
-**Important Exception:** In COG/LUT mode, PASM instructions ARE automatically aligned to 4-byte (long) boundaries.
+### PASM2 instructions: `ORG` (cog/LUT) auto-aligns, `ORGH` does not
 
 ```spin2
 DAT
-            ORG     0                   ' COG mode
-dataByte    BYTE    $FF                 ' Offset 0x00 (1 byte)
-            ' Compiler auto-pads 3 bytes for instruction alignment
-entry       MOV     PA, #1              ' Offset 0x04 (long-aligned)
+            ORG     0                   ' cog (or LUT) code
+dataByte    BYTE    $FF                 ' offset 0
+            ' compiler pads 3 bytes here, unasked
+entry       MOV     PA, #1              ' offset 4 - long-aligned
 ```
 
-This automatic alignment occurs via the `advanceToNextCogLong()` function before each instruction.
+Every instruction assembled in `ORG` code is preceded by padding to the next
+long boundary, whether or not you asked for it. Compiling this and inspecting
+the raw bytes shows `$FF` at offset 0, three zero-padding bytes at offsets
+1-3, and the assembled `MOV` instruction starting at offset 4.
 
-### ORGH Mode (Hub Memory)
-
-In ORGH mode (hub memory), there is NO automatic instruction alignment:
+The same source using `ORGH` instead of `ORG` shows no padding at all — the
+instruction starts at offset 1, immediately after the single data byte:
 
 ```spin2
 DAT
-            ORGH                        ' Hub mode
-dataByte    BYTE    $FF                 ' Offset 0x00
-            ' NO automatic padding
-moreData    LONG    $12345678           ' Offset 0x01 (misaligned!)
+            ORGH                        ' hub code
+dataByte    BYTE    $FF                 ' offset 0
+entry       MOV     PA, #1              ' offset 1 - NOT aligned; ORGH never auto-pads
 ```
 
-### Using ALIGNW and ALIGNL in DAT
+If a hub-executed routine needs its entry point (or any instruction) on a
+long boundary, add `ALIGNL` explicitly before it.
 
-```spin2
-DAT
-header      BYTE    $AA, $BB, $CC       ' 3 bytes
-            ALIGNW                      ' Pad to word boundary
-wordData    WORD    $1234               ' Now word-aligned
-            ALIGNL                      ' Pad to long boundary
-longData    LONG    $DEADBEEF           ' Now long-aligned
-```
+### Local variable packing
 
----
-
-## Local Variable Details
-
-### Declaration Syntax
-
-Local variables support ALIGNW and ALIGNL inline:
-
-```spin2
-PUB Method() | BYTE b1, ALIGNW WORD w1, ALIGNL LONG l1
-  ' b1 at offset 0
-  ' padding added, w1 at next even offset
-  ' padding added, l1 at next 4-byte aligned offset
-```
-
-### Stack Allocation
-
-Local variables are allocated on the stack in declaration order:
+Local variables in PUB/PRI methods pack the same way as `VAR`/`DAT` data —
+sequentially, with no automatic alignment and no end-of-frame padding:
 
 ```spin2
 PUB Example() | BYTE a, BYTE b, WORD c, LONG d
-  ' Stack layout (no alignment):
-  '   a at offset 0
-  '   b at offset 1
-  '   c at offset 2 (misaligned word)
-  '   d at offset 4 (happens to be aligned)
-
-PUB ExampleAligned() | BYTE a, ALIGNW BYTE b, ALIGNL WORD c, LONG d
-  ' Stack layout (with alignment):
-  '   a at offset 0
-  '   [pad 1 byte]
-  '   b at offset 2 (word-aligned)
-  '   [pad 2 bytes]
-  '   c at offset 4 (long-aligned word)
-  '   d at offset 6 (misaligned! ALIGNL only affected c)
+  ' a at offset 0
+  ' b at offset 1
+  ' c at offset 2 - NOT word-aligned
+  ' d at offset 4 - long-aligned only because 2+2 happens to be a multiple of 4
 ```
 
-### Multiple Alignment Directives
+### ALIGNW and ALIGNL
 
-```spin2
-PRI ProcessData() | BYTE status, ALIGNW WORD values[10], ALIGNL LONG result
-  ' status at offset 0
-  ' [1 byte padding]
-  ' values at offset 2 (word-aligned)
-  ' values uses 20 bytes (10 words)
-  ' [2 bytes padding to long-align]
-  ' result at offset 24 (long-aligned)
-```
-
----
-
-## Why Alignment Matters
-
-### Performance
-
-On the P2, misaligned memory accesses may require additional clock cycles:
-
-- **RDLONG/WRLONG** at non-long-aligned addresses: Additional cycles
-- **RDWORD/WRWORD** at non-word-aligned addresses: Additional cycles
-- **RDBYTE/WRBYTE**: Always efficient (no alignment needed)
-
-### Correctness with Hardware
-
-Some hardware interfaces require aligned data:
-
-```spin2
-DAT
-            ALIGNL
-dmaBuffer   LONG    0[64]               ' DMA requires long-aligned buffer
-```
-
-### Atomic Operations
-
-Spin2's atomic operations (LOCKTRY, LOCKREL) work on long values. Using them on misaligned data produces undefined behavior.
-
----
-
-## Common Patterns
-
-### 1. Structure-like VAR Layout
+`ALIGNW` pads with zero bytes until the current offset is even
+(`offset & 1 == 0`); `ALIGNL` pads until the offset is a multiple of 4
+(`offset & 3 == 0`). Both are available in `VAR` blocks, `DAT` blocks (either
+`ORG` or `ORGH`), and PUB/PRI local-variable lists:
 
 ```spin2
 VAR
-  ' Header fields - tightly packed bytes
+  ALIGNW              ' pad to the next even offset
+  ALIGNL              ' pad to the next multiple-of-4 offset
+
+DAT
+  ALIGNW
+  ALIGNL
+
+PUB Method() | ALIGNW WORD x, ALIGNL LONG y
+  ' ALIGNW pads before x; ALIGNL pads before y
+```
+
+Worked example, showing the padding at each step:
+
+```spin2
+VAR
+  BYTE  v1        ' offset $04
+  ALIGNW          ' $05 is odd -> pads 1 byte
+  BYTE  v2        ' offset $06
+  ALIGNL          ' $07 is not a multiple of 4 -> pads 1 byte
+  BYTE  v3        ' offset $08
+```
+
+`ALIGNW`/`ALIGNL` is not allowed inside inline PASM (`ORG`/`END` within a
+PUB/PRI method); the compiler rejects it with `ALIGNW/ALIGNL not allowed
+within inline assembly code`.
+
+## Patterns
+
+### Structure-like VAR layout
+
+Group same-sized fields together, and align explicitly where a boundary
+matters to you:
+
+```spin2
+VAR
+  ' header fields - tightly packed bytes
   BYTE  type
   BYTE  flags
   BYTE  reserved1
   BYTE  reserved2
-  ' Now at offset 0x08, naturally long-aligned
+  ' now at offset $08 - long-aligned here only because four bytes were used
 
-  ' Main data - explicitly aligned
+  ' main data - explicitly aligned
   ALIGNL
   LONG  timestamp
   LONG  sequence
@@ -308,120 +212,155 @@ VAR
   LONG  checksum
 ```
 
-### 2. Performance-Critical DAT Tables
+### Aligning the start of DAT tables
 
 ```spin2
 DAT
             ALIGNL
-sinTable    LONG    0[256]              ' Long-aligned for fast RDLONG
+sinTable    LONG    0[256]              ' long-aligned table start
 
             ALIGNW
-pixelData   WORD    0[320]              ' Word-aligned for RDWORD
+pixelData   WORD    0[320]              ' word-aligned table start
 ```
 
-### 3. Mixed Local Variables
+### Word-align a dispatch table, then long-align what follows
 
-```spin2
-PUB FastProcess() | ALIGNL LONG buffer[16], BYTE status, WORD count
-  ' buffer long-aligned for performance
-  ' status and count packed after buffer
-```
+A common idiom for a table of `WORD` pointers embedded in PASM code: word-align
+before the table (so every entry lands on an even offset), then long-align
+after it before resuming ordinary code:
 
-### 4. Interpreter Data Tables
-
-From the Spin2 interpreter source:
 ```spin2
 DAT
-        ORG
-        ...byte tables...
-
-        ALIGNW                          ' Word-align for vectors
-vectors WORD    vector0, vector1, ...
-
-        ALIGNL                          ' Long-align for interpreter
-interp  ...instructions...
+            ORG
+            ' ...preceding code...
+            ALIGNW
+vectors     WORD    target0, target1, target2
+            ALIGNL
+resume      ' ...code continues here, long-aligned...
 ```
 
----
+### Mixing alignment and unaligned locals
 
-## Calculating Offsets
+`ALIGNW`/`ALIGNL` only affects the one declaration it precedes — later
+declarations on the same list are not re-aligned:
 
-### VAR Block Formula
-
+```spin2
+PUB ExampleAligned() | BYTE a, ALIGNW BYTE b, ALIGNL WORD c, LONG d
+  ' a at offset 0
+  ' [1 byte padding - ALIGNW]
+  ' b at offset 2 (word-aligned)
+  ' [1 byte padding - ALIGNL]
+  ' c at offset 4 (long-aligned)
+  ' d at offset 6 - misaligned; ALIGNL only affected c
 ```
-Offset(N) = 4 + sum of all previous variable sizes + alignment padding
+
+```spin2
+PRI ProcessData() | BYTE status, ALIGNW WORD values[10], ALIGNL LONG result
+  ' status at offset 0
+  ' [1 byte padding - ALIGNW]
+  ' values at offset 2 (word-aligned), occupies 20 bytes (10 words)
+  ' [2 bytes padding - ALIGNL, from offset 22 to 24]
+  ' result at offset 24 (long-aligned)
 ```
 
-Where:
-- `4` = initial offset for object pointer
-- Alignment padding is added by ALIGNW/ALIGNL directives
+## Anti-patterns
 
-### Example Calculation
+### Assuming ORGH auto-aligns instructions like ORG does
+
+```spin2
+DAT
+            ORGH
+dataByte    BYTE    $FF
+entry       MOV     PA, #1              ' WRONG assumption: this is NOT long-aligned
+```
+
+`ORGH` never inserts padding before an instruction — `entry` lands at offset 1,
+immediately after `dataByte`. If your hub-exec routine (or anything jumping to
+`entry` by a long-aligned assumption) needs it aligned, say so explicitly:
+
+```spin2
+DAT
+            ORGH
+dataByte    BYTE    $FF
+            ALIGNL
+entry       MOV     PA, #1              ' now genuinely long-aligned, at offset 4
+```
+
+### Assuming ALIGNL fixes damage that already happened
 
 ```spin2
 VAR
-  BYTE  a           ' Size: 1, Offset: 4
-  BYTE  b           ' Size: 1, Offset: 5
-  ALIGNW            ' Padding: 1 byte
-  WORD  c           ' Size: 2, Offset: 6
-  ALIGNL            ' Padding: 0 bytes (already at 8)
-  LONG  d           ' Size: 4, Offset: 8
-  BYTE  e           ' Size: 1, Offset: 12
-  ' End padding: 3 bytes to reach offset 16
+  LONG  a
+  BYTE  b
+  ALIGNL       ' pads to the next multiple of 4 - but b itself is already placed
+  LONG  c      ' c is long-aligned; b was NEVER re-aligned, and can't be
 ```
 
----
+`ALIGNL`/`ALIGNW` only pad the offset *before* the next declaration — they
+cannot move something already declared. If `b` itself needed to start on a
+particular boundary, the `ALIGNL` had to come before `b`, not after it.
 
-## Comparison with C/C++
+### Mis-adding declared size and end padding to predict total VAR size
 
-| Aspect | Spin2/PASM2 | C/C++ |
-|--------|-------------|-------|
-| Default alignment | None (packed) | Natural alignment |
-| Struct padding | None | Automatic |
-| Array alignment | None | Element-aligned |
-| End padding | VAR: to long boundary | Struct: to largest member |
-| Manual control | ALIGNW, ALIGNL | `__attribute__((aligned))` |
+It is tempting to compute a `VAR` block's total size as "sum of declared
+sizes, plus a guessed end-padding amount." That guess is easy to get wrong,
+because the actual end padding depends on where the last declared item
+happened to land — and the total also includes the leading 4-byte
+object-pointer slot that every `VAR` block reserves before its first
+declaration:
 
-### C Equivalent of Spin2 Behavior
-
-To achieve Spin2-like packing in C:
-```c
-#pragma pack(push, 1)
-struct packed_data {
-    uint8_t  byte1;
-    uint16_t word1;   // Misaligned at offset 1
-    uint32_t long1;   // Misaligned at offset 3
-};
-#pragma pack(pop)
+```spin2
+VAR
+  BYTE  status          ' $04
+  WORD  sensorValue      ' $05
+  LONG  timestamp        ' $07
+  BYTE  flags            ' $0B
 ```
 
----
+Declared sizes total 8 bytes (1+2+4+1). The last item ends at offset $0C,
+which is *already* long-aligned, so end padding is 0 — total VAR size is 12
+bytes ($04 leading + 8 declared + 0 padding), not "8 declared + a fixed 4-byte
+pad." Insert `ALIGNW`/`ALIGNL` and the arithmetic changes again:
 
-## Summary
+```spin2
+VAR
+  BYTE  status          ' $04
+  ALIGNW
+  WORD  sensorValue      ' $06 - 1 byte of ALIGNW padding
+  ALIGNL
+  LONG  timestamp        ' $08 - 0 bytes of ALIGNL padding (already aligned)
+  BYTE  flags            ' $0C
+```
 
-### Key Points
+Here the last item ends at offset $0D, which needs 3 bytes to reach the next
+long boundary — total VAR size is 16 bytes (4 leading + 8 declared + 1 ALIGNW
+padding + 0 ALIGNL padding + 3 end padding). There is no shortcut formula;
+work the offsets forward one declaration at a time, the same way the compiler
+does.
 
-1. **No automatic alignment** - BYTE, WORD, LONG data is packed sequentially
-2. **Use ALIGNW/ALIGNL** - For explicit word/long alignment when needed
-3. **VAR blocks end-aligned** - Compiler pads to long boundary at end
-4. **PASM instructions auto-aligned** - Only in COG/LUT mode, not ORGH
-5. **Performance impact** - Misaligned accesses may be slower
-6. **Available everywhere** - ALIGNW/ALIGNL work in VAR, DAT, and local variables
+## Summary Table
 
-### Quick Reference
+| Directive | Effect | Pads until |
+|---|---|---|
+| `ALIGNW` | Word-align the next item | `offset & 1 == 0` |
+| `ALIGNL` | Long-align the next item | `offset & 3 == 0` |
 
-| Directive | Effect | Pads Until |
-|-----------|--------|------------|
-| `ALIGNW` | Word-align next item | offset & 0x01 == 0 |
-| `ALIGNL` | Long-align next item | offset & 0x03 == 0 |
+| Context | Starting offset | Per-item alignment | End-of-block alignment |
+|---|---|---|---|
+| `VAR` block | $04 (after the object pointer) | None | Long, after the last `VAR` block |
+| `DAT` block data | Continues object's running offset | None | None |
+| `DAT` block instructions, `ORG` (cog/LUT) | Continues object's running offset | Long, before every instruction | N/A |
+| `DAT` block instructions, `ORGH` (hub) | Continues object's running offset | None | None |
+| PUB/PRI local variables | 0 | None | None |
 
-### Best Practices
+`ALIGNW`/`ALIGNL` work in every one of these contexts except inside inline PASM
+(`ORG`/`END` within a method), where they are rejected with `ALIGNW/ALIGNL not
+allowed within inline assembly code`.
 
-1. **Use alignment for performance-critical data** - Especially LONG arrays
-2. **Consider memory layout** - Group same-sized variables together
-3. **Document alignment requirements** - Comment when alignment matters
-4. **Test on hardware** - Verify performance assumptions
+## Related Documentation
 
----
-
-*This document describes data packing and alignment in Spin2/PASM2 as implemented in the PNut-TS compiler.*
+- [ORG-Directives-Usage-Guide.md](ORG-Directives-Usage-Guide.md) - `ORG`/`ORGH`/`ORGF` and the cog/LUT/hub addressing they select
+- [RES-FIT-END-Usage-Guide.md](RES-FIT-END-Usage-Guide.md) - `RES`, `FIT`, and `END`, the other PASM2 directives that interact with cog addressing
+- [STRUCT-Usage-Guide.md](STRUCT-Usage-Guide.md) - declaring STRUCT types and their own internal field layout
+- [BYTE-WORD-LONG-Usage-Guide.md](BYTE-WORD-LONG-Usage-Guide.md) - `BYTE`/`WORD`/`LONG` as type specifiers, including comma-list "sticky type" rules
+- [Addressing-Usage-Guide.md](Addressing-Usage-Guide.md) - what `@`/`@@` return for VAR, DAT, and local-variable symbols
