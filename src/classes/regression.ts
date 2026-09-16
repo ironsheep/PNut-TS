@@ -28,9 +28,10 @@ export class RegressionReporter {
     this.spinElements = elementList;
     const fileBasename = path.basename(fileName, '.spin2');
     const outFilename = path.join(dirName, `${fileBasename}.elem`);
-    // Create a write stream
     this.logMessage(`* writing report to ${outFilename}`);
-    const stream = fs.createWriteStream(outFilename);
+    // Built in memory and written in one synchronous call -- as mapGenerator.ts does,
+    // for why: stream.end() does not wait for bytes to reach disk.
+    const lines: string[] = [];
 
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-US', {
@@ -39,34 +40,34 @@ export class RegressionReporter {
       day: '2-digit'
     });
     // Write each element to the file
-    stream.write(`# Report for regression testing\n`);
-    stream.write(`# Run: ${formattedDate}\n#\n`);
-    stream.write('# ---------------------------------------\n');
-    stream.write(`# - Showing ${elementList.length} entries\n`);
+    lines.push(`# Report for regression testing\n`);
+    lines.push(`# Run: ${formattedDate}\n#\n`);
+    lines.push('# ---------------------------------------\n');
+    lines.push(`# - Showing ${elementList.length} entries\n`);
     let currSourceLine: number = -1;
     let itemNbr: number = 0;
     for (const element of this.spinElements) {
       if (element.sourceLineIndex != currSourceLine) {
-        stream.write(''); // blank line
+        lines.push(''); // blank line
         currSourceLine = element.sourceLineIndex;
       }
       const symbolName = getSourceSymbol(this.context, element);
       const symbolInterp: string = symbolName.length > 0 ? ` [${symbolName}]` : '';
-      stream.write(` (${itemNbr}) -- ${element.toString()}${symbolInterp}\n`);
+      lines.push(` (${itemNbr}) -- ${element.toString()}${symbolInterp}\n`);
       itemNbr++;
     }
-    stream.write('# ---------------------------------------\n');
+    lines.push('# ---------------------------------------\n');
 
-    // Close the stream
-    stream.end();
+    fs.writeFileSync(outFilename, lines.join(''));
   }
 
   public writeProprocessResults(dirName: string, fileName: string, lines: TextLine[]) {
     const fileBasename = path.basename(fileName, '.spin2');
     const outFilename = path.join(dirName, `${fileBasename}.pre`);
-    // Create a write stream
     this.logMessage(`* writing report to ${outFilename}`);
-    const stream = fs.createWriteStream(outFilename);
+    // Built in memory and written in one synchronous call -- as mapGenerator.ts does,
+    // for why: stream.end() does not wait for bytes to reach disk.
+    const outLines: string[] = [];
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -74,30 +75,30 @@ export class RegressionReporter {
       day: '2-digit'
     });
     // Write each element to the file
-    stream.write(`' Report for regression testing\n`);
-    stream.write(`' Run: ${formattedDate}\n#\n`);
-    stream.write(`' ---------------------------------------\n`);
+    outLines.push(`' Report for regression testing\n`);
+    outLines.push(`' Run: ${formattedDate}\n#\n`);
+    outLines.push(`' ---------------------------------------\n`);
 
     //this.logMessage(`- received ${acPairs.length} strings`);
     let index: number = 0;
     for (const testLine of lines) {
       const indexStr: string = index.toString().padStart(3, '0');
-      stream.write(`[${indexStr}] ${testLine.sourceLineNumber}: ${testLine.text}\n`);
+      outLines.push(`[${indexStr}] ${testLine.sourceLineNumber}: ${testLine.text}\n`);
       index += 1;
     }
 
-    stream.write(`' ---------------------------------------\n`);
+    outLines.push(`' ---------------------------------------\n`);
 
-    // Close the stream
-    stream.end();
+    fs.writeFileSync(outFilename, outLines.join(''));
   }
 
   private writeResolverTestResults(dirName: string, fileName: string, lines: string[]) {
     const fileBasename = path.basename(fileName, '.spin2');
     const outFilename = path.join(dirName, `${fileBasename}.resolv`);
-    // Create a write stream
     this.logMessage(`* writing report to ${outFilename}`);
-    const stream = fs.createWriteStream(outFilename);
+    // Built in memory and written in one synchronous call -- as mapGenerator.ts does,
+    // for why: stream.end() does not wait for bytes to reach disk.
+    const outLines: string[] = [];
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -105,22 +106,21 @@ export class RegressionReporter {
       day: '2-digit'
     });
     // Write each element to the file
-    stream.write(`' Report for resolver testing\n`);
-    stream.write(`' Run: ${formattedDate}\n#\n`);
-    stream.write(`' ---------------------------------------\n`);
+    outLines.push(`' Report for resolver testing\n`);
+    outLines.push(`' Run: ${formattedDate}\n#\n`);
+    outLines.push(`' ---------------------------------------\n`);
 
     //this.logMessage(`- received ${acPairs.length} strings`);
     let testNumber: number = 1;
     for (const testLine of lines) {
       const testNbrStr: string = testNumber.toString().padStart(3, '0');
-      stream.write(`[${testNbrStr}] ${testLine}\n`);
+      outLines.push(`[${testNbrStr}] ${testLine}\n`);
       testNumber += 1;
     }
 
-    stream.write(`' ---------------------------------------\n`);
+    outLines.push(`' ---------------------------------------\n`);
 
-    // Close the stream
-    stream.end();
+    fs.writeFileSync(outFilename, outLines.join(''));
   }
 
   public runResolverRegression(dirName: string, fileName: string) {

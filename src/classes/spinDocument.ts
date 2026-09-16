@@ -282,16 +282,14 @@ export class SpinDocument {
   public writeProprocessedSrc(dirName: string, fileName: string, lines: TextLine[]) {
     const fileBasename = path.basename(fileName, '.spin2');
     const outFilename = path.join(dirName, `${fileBasename}__pre.spin2`);
-    // Create a write stream
     this.logMessage(`* writing preprocessed source to ${outFilename}`);
-    const stream = fs.createWriteStream(outFilename);
-
+    // Built in memory and written in one synchronous call -- as mapGenerator.ts does,
+    // for why: stream.end() does not wait for bytes to reach disk.
+    const outLines: string[] = [];
     for (const textLine of lines) {
-      stream.write(`${textLine.text}\n`);
+      outLines.push(`${textLine.text}\n`);
     }
-
-    // Close the stream
-    stream.end();
+    fs.writeFileSync(outFilename, outLines.join(''));
   }
 
   get fileId(): number {

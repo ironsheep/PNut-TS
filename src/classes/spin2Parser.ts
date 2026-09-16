@@ -164,18 +164,19 @@ export class Spin2Parser {
     if (this.context.compileOptions.writeListing) {
       if (this.isLogging) this.logMessage('* P2List() - write list file');
       const outFilename = this.context.compileOptions.listFilename;
-      // Create a write stream
       if (this.isLogging) this.logMessage(`  -- writing report to ${outFilename}`);
-      const stream = fs.createWriteStream(outFilename);
+      // Built in memory and written in one synchronous call -- as mapGenerator.ts does,
+      // for why: stream.end() does not wait for bytes to reach disk.
+      const lines: string[] = [];
 
       const userSymbols = this.spinResolver.userSymbolTable;
       /*
-      stream.write(`\n\n* ----------------------\n`);
+      lines.push(`\n\n* ----------------------\n`);
       for (let index = 0; index < userSymbols.length; index++) {
         const userSymbol = userSymbols[index];
-        stream.write(`userSymbol: NAME:[${userSymbol.name}] TYPE:[${eElementType[userSymbol.type]}]\n`);
+        lines.push(`userSymbol: NAME:[${userSymbol.name}] TYPE:[${eElementType[userSymbol.type]}]\n`);
       }
-      stream.write(`* ----------------------\n\n`);
+      lines.push(`* ----------------------\n\n`);
       */
       // emit: symbol list,  if we have symbols place them at top of report
       if (userSymbols.length > 0) {
@@ -307,29 +308,29 @@ export class Spin2Parser {
 
           if (this.isLogging)
             this.logMessage(`LST: symNameParts=[${symNameParts}], nonUniqueName=[${nonUniqueName.slice(0, -1)}], instanceNumber=(${instanceNumber})`);
-          stream.write(`TYPE: ${symbolTypeFixed} VALUE: ${hexValue}          NAME: ${symWithInstanceNbr}\n`);
+          lines.push(`TYPE: ${symbolTypeFixed} VALUE: ${hexValue}          NAME: ${symWithInstanceNbr}\n`);
         }
       }
       // emit spin version
-      stream.write(`\nSpin2_v${this.srcFile?.versionNumber}\n\n`);
+      lines.push(`\nSpin2_v${this.srcFile?.versionNumber}\n\n`);
       // emit: CLKMODE, CLKFREQ, XINFREQ if present
       let symbol = userSymbols.find((currSymbol) => currSymbol.name.toLocaleUpperCase() === 'CLKMODE_');
       if (symbol !== undefined) {
         const clkMode: number = Number(symbol.value);
         const valueString: string = this.rightAlignedHexValue(clkMode, 11);
-        stream.write(`CLKMODE: ${valueString}\n`);
+        lines.push(`CLKMODE: ${valueString}\n`);
       }
 
       symbol = userSymbols.find((currSymbol) => currSymbol.name.toLocaleUpperCase() === 'CLKFREQ_');
       if (symbol !== undefined) {
         const clkFreq: number = Number(symbol.value);
         const valueString: string = this.rightAlignedDecimalValue(clkFreq, 11);
-        stream.write(`CLKFREQ: ${valueString}\n`);
+        lines.push(`CLKFREQ: ${valueString}\n`);
       }
 
       const xinFrequency = this.spinResolver.xinFrequency;
       const valueString: string = this.rightAlignedDecimalValue(xinFrequency, 11);
-      stream.write(`XINFREQ: ${valueString}\n`);
+      lines.push(`XINFREQ: ${valueString}\n`);
 
       const isPasmMode: boolean = this.spinResolver.isPasmMode;
       const saveObjImageOffset: number = this.objImage.offset;
@@ -357,34 +358,34 @@ export class Spin2Parser {
       const varBytes: number = this.spinResolver.varBytes;
       const varString: string = this.rightAlignedDecimalValue(varBytes, 11);
       if (isPasmMode) {
-        stream.write(`\n\nHub bytes: ${objString}\n\n`);
+        lines.push(`\n\nHub bytes: ${objString}\n\n`);
       } else {
         // Report both early deduplication and distiller savings
         const totalSavings = this.earlyDeduplicationSavings + distillerSavings;
         if (totalSavings > 0) {
-          stream.write(`\n`);
+          lines.push(`\n`);
           if (this.earlyDeduplicationSavings > 0 && distillerSavings > 0) {
             // Both optimizations saved bytes - show individual and total
             const earlyString: string = this.rightAlignedDecimalValue(this.earlyDeduplicationSavings, 11);
             const distillerString: string = this.rightAlignedDecimalValue(distillerSavings, 11);
             const totalString: string = this.rightAlignedDecimalValue(totalSavings, 11);
-            stream.write(`\nEarly deduplication bytes saved:    ${earlyString}\n`);
-            stream.write(`Distiller optimization bytes saved: ${distillerString}\n`);
-            stream.write(`Total redundant OBJ bytes removed:  ${totalString}\n`);
+            lines.push(`\nEarly deduplication bytes saved:    ${earlyString}\n`);
+            lines.push(`Distiller optimization bytes saved: ${distillerString}\n`);
+            lines.push(`Total redundant OBJ bytes removed:  ${totalString}\n`);
           } else if (this.earlyDeduplicationSavings > 0) {
             // Only early deduplication saved bytes
             const earlyString: string = this.rightAlignedDecimalValue(this.earlyDeduplicationSavings, 11);
-            stream.write(`\nRedundant OBJ bytes removed: ${earlyString}\n`);
+            lines.push(`\nRedundant OBJ bytes removed: ${earlyString}\n`);
           } else {
             // Only distiller saved bytes
             const distillerString: string = this.rightAlignedDecimalValue(distillerSavings, 11);
-            stream.write(`\nRedundant OBJ bytes removed: ${distillerString}\n`);
+            lines.push(`\nRedundant OBJ bytes removed: ${distillerString}\n`);
           }
         } else {
-          stream.write(`\n`);
+          lines.push(`\n`);
         }
-        stream.write(`\nOBJ bytes: ${objString}\n`);
-        stream.write(`VAR bytes: ${varString}\n`);
+        lines.push(`\nOBJ bytes: ${objString}\n`);
+        lines.push(`VAR bytes: ${varString}\n`);
         // Report debug statistics when compiling with -d
         if (this.context.compileOptions.enableDebug) {
           const debugRawData = this.spinResolver.debugRawData;
@@ -396,15 +397,15 @@ export class Spin2Parser {
           const debugBytesString = this.rightAlignedDecimalValue(debugDataBytes, 11);
           const recordsPct = ((debugRecords / maxRecords) * 100).toFixed(1);
           const dataPct = ((debugDataBytes / maxDataBytes) * 100).toFixed(1);
-          stream.write(`\nDEBUG records: ${recordsString} of ${maxRecords} (${recordsPct}%)\n`);
-          stream.write(`DEBUG data:    ${debugBytesString} of ${maxDataBytes} bytes (${dataPct}%)\n`);
+          lines.push(`\nDEBUG records: ${recordsString} of ${maxRecords} (${recordsPct}%)\n`);
+          lines.push(`DEBUG data:    ${debugBytesString} of ${maxDataBytes} bytes (${dataPct}%)\n`);
         }
-        stream.write(`\n`);
+        lines.push(`\n`);
       }
 
       // emit hub-bytes use
       // const lenString: string = this.rightAlignedDecimalValue(objImage.offset, 11);
-      // stream.write(`\n\nHub bytes: ${lenString}\n\n`);
+      // lines.push(`\n\nHub bytes: ${lenString}\n\n`);
 
       // if we have object data, dump it
       if (objectLength > 0) {
@@ -423,7 +424,7 @@ export class Spin2Parser {
           }
           const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
 
-          stream.write(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
+          lines.push(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
           currOffset += lineLength;
           displayOffset += lineLength;
         }
@@ -434,7 +435,7 @@ export class Spin2Parser {
       const debugLength = debugData.length;
       // if we have object data, dump it
       if (debugLength > 0) {
-        stream.write(`\n\nDEBUG data\n\n`);
+        lines.push(`\n\nDEBUG data\n\n`);
         /// dump hex and ascii data
         let displayOffset: number = 0;
         let currOffset = 0;
@@ -451,14 +452,13 @@ export class Spin2Parser {
           }
           const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
 
-          stream.write(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
+          lines.push(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'\n`);
           currOffset += lineLength;
           displayOffset += lineLength;
         }
       }
 
-      // Close the stream
-      stream.end();
+      fs.writeFileSync(outFilename, lines.join(''));
       this.context.logger.progressMsg(`Wrote ${outFilename}`);
     }
   }

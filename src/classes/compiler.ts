@@ -53,7 +53,6 @@ export class Compiler {
   private childImages: ChildObjectsImage; // pascal ObjFileBuff
   private objectFileOffset: number = 0; // pascal ObjFilePtr
 
-  private countByFilename = new Map<string, number>();
   private readonly obj_limit: number = OBJ_LIMIT; // max object size (2MB) PNut obj_limit as of v49
 
   // Early deduplication memory statistics
@@ -154,16 +153,19 @@ export class Compiler {
     this.duplicateSources.reset();
     this.noteSourceFile(this.srcFile.fileSpec);
 
-    // TESTING: if requested, run our resolver regression test report generator
-    if (this.context.reportOptions.writeResolverReport) {
-      const reporter: RegressionReporter = new RegressionReporter(this.context);
-      reporter.runResolverRegression(this.srcFile.dirName, this.srcFile.fileName);
-    }
-
     // if we have a valid file then let's parse it and generate code
     if (this.srcFile.validFile) {
       // here we make calls to the P2* methods (e.g., this.spin2Parser.P2Compile1(), , etc.)
       try {
+        // TESTING: if requested, run our resolver regression test report generator.
+        // Inside the try so a write failure (e.g. an unwritable output directory)
+        // is reported the same way as every other compile-phase failure below,
+        // rather than propagating uncaught back to the CLI's outer catch, which
+        // logs nothing (see pnut-ts.ts: "Error already logged by Compiler.Compile()").
+        if (this.context.reportOptions.writeResolverReport) {
+          const reporter: RegressionReporter = new RegressionReporter(this.context);
+          reporter.runResolverRegression(this.srcFile.dirName, this.srcFile.fileName);
+        }
         this.objectFileCount = 0; // pascal ObjFileCount
         this.objectFileOffset = 0; // pascal ObjFilePtr
         // thinking: pass context:fileIndex instead of fileName??
@@ -618,9 +620,6 @@ export class Compiler {
               // position, which is the index compile_obj_blocks walks.
               this.objectData.recordBrkSitesForFile(childIdx, this.childImages.getBrkSitesForFile(physicalFileIdx));
               objDataOffset += objLength;
-              // DEBUG dump into .obj file for inspection
-              //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Data'); // REMOVE BEFORE FLIGHT
-              //dumpUniqueChildObjectFile(this.objectData, objDataOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
               // DEBUG dump object records for inspection
               if (this.isLoggingOutline) {
                 this.logMessageOutline(`* - -------------------------------`);
@@ -863,9 +862,6 @@ export class Compiler {
             this.childImages.recordBrkSitesForFile(this.objectFileCount, this.context.compileOptions.enableDebug ? this.objImage.brkSites : []);
             this.objectFileOffset += objectLength;
             this.objectFileCount++;
-            // DEBUG dump into .obj file for inspection
-            //const newObjFileSpec = this.uniqueObjectName(depth, srcFile.dirName, srcFile.fileName, 'Child'); // REMOVE BEFORE FLIGHT
-            //dumpUniqueChildObjectFile(this.childImages, this.objectFileOffset, newObjFileSpec, this.context); // REMOVE BEFORE FLIGHT
             if (this.isLoggingOutline)
               this.logMessageOutline(
                 `  -- NEW OBJECT -- logicalIdx=(${this.globalLogicalIndexCounter}), physicalIdx=(${physicalFileIndex}), objFiCnt=(${this.objectFileCount}), objLen=(${objectLength}), new objEndOffset=(${this.objectFileOffset})`
@@ -883,20 +879,6 @@ export class Compiler {
     if (this.isLoggingOutline)
       this.logMessageOutline(`++ compileRecursly(${depth}, [${srcFile.fileName}]) - EXIT ----------------------------------------`);
     if (this.isLoggingOutline) this.logMessageOutline(``);
-  }
-
-  private uniqueObjectName(depth: number, dirSpec: string, filename: string, structId: string): string {
-    let uniqCount: number = 1;
-    if (this.countByFilename.has(filename)) {
-      const fileSeenCount = this.countByFilename.get(filename);
-      if (fileSeenCount !== undefined) {
-        uniqCount = fileSeenCount + 1;
-      }
-    }
-    this.countByFilename.set(filename, uniqCount);
-    const sourceType = path.extname(filename);
-    const newFileSpec = path.join(dirSpec, `${structId}-${depth}-${filename}`.replace(sourceType, '.obj'));
-    return newFileSpec;
   }
 
   private logMessage(message: string): void {
