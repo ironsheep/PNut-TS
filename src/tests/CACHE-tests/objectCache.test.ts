@@ -360,29 +360,6 @@ describe('ObjectCache Unit Tests', () => {
 
   // --- Symbol Sidecar Round-trip ---
 
-  test('symbols round-trip through .sym sidecar with bigint values preserved', () => {
-    const cache = new ObjectCache(true, cacheDir);
-    const key = 'e'.repeat(64);
-    const symbols: SymbolEntry[] = [
-      new SymbolEntry('FOO', eElementType.type_con_int, BigInt('0xDEADBEEF12345678'), false),
-      new SymbolEntry('BAR', eElementType.type_method, BigInt(42), false),
-      new SymbolEntry('STR', eElementType.type_constr, 'hello world', false),
-      new SymbolEntry('INLINE_X', eElementType.type_register, BigInt(0x1f0), true)
-    ];
-
-    cache.set(key, new Uint8Array([0x01, 0x02]), { symbols });
-    const restored = cache.getSymbols(key);
-
-    expect(restored).toBeDefined();
-    expect(restored!.length).toBe(symbols.length);
-    for (let i = 0; i < symbols.length; i++) {
-      expect(restored![i].name).toBe(symbols[i].name);
-      expect(restored![i].type).toBe(symbols[i].type);
-      expect(restored![i].value).toBe(symbols[i].value);
-      expect(restored![i].isInline).toBe(symbols[i].isInline);
-    }
-  });
-
   test('serializeSymbols/deserializeSymbols are pure round-trip', () => {
     const original: SymbolEntry[] = [
       new SymbolEntry('A', eElementType.type_con_int, BigInt(0), false),
@@ -398,27 +375,6 @@ describe('ObjectCache Unit Tests', () => {
       expect(restored[i].value).toBe(original[i].value);
       expect(restored[i].isInline).toBe(original[i].isInline);
     }
-  });
-
-  test('getSymbols returns undefined when sidecar is missing', () => {
-    const cache = new ObjectCache(true, cacheDir);
-    const key = 'f'.repeat(64);
-    cache.set(key, new Uint8Array([0x01])); // no symbols
-    expect(cache.getSymbols(key)).toBeUndefined();
-  });
-
-  test('getSymbols returns undefined when sidecar is malformed', () => {
-    const cache = new ObjectCache(true, cacheDir);
-    const key = '0'.repeat(64);
-    fs.writeFileSync(path.join(cacheDir, `${key}.sym`), 'this is not json');
-    expect(cache.getSymbols(key)).toBeUndefined();
-  });
-
-  test('getSymbols returns undefined when sidecar has wrong format version', () => {
-    const cache = new ObjectCache(true, cacheDir);
-    const key = '1'.repeat(64);
-    fs.writeFileSync(path.join(cacheDir, `${key}.sym`), JSON.stringify({ cacheFormatVersion: CACHE_FORMAT_VERSION + 999, symbols: [] }));
-    expect(cache.getSymbols(key)).toBeUndefined();
   });
 
   // --- Write order: .bin written last ---

@@ -31,6 +31,7 @@ export class ObjFile {
   private _maxParameterSets: number = 0; // how many times this object is placed in memory PNut [obj_instances[].length]
   private _parameterSet: iPossibleSymbolTable[] = []; // this is indexed by instance number  Map<string:number>
   private _numberInstances: number = 0; // object line Ex: instanceName[index] : "filename" - where _numberInstances is index value for this line
+  private _isArray: boolean = false; // declared with brackets
 
   constructor(ctx: Context, fileSpec: string, elementIndex: number) {
     this.context = ctx;
@@ -95,9 +96,20 @@ export class ObjFile {
     }
   }
 
-  public setObjectInstanceCount(instanceCount: number) {
+  public setObjectInstanceCount(instanceCount: number, isArray: boolean = false) {
     // have instanceName[index]: record index value for this obj line
     this._numberInstances = instanceCount;
+    this._isArray = isArray;
+  }
+
+  /** Header slots this declaration takes: the `[count]`, or 1 without brackets. */
+  get instanceCount(): number {
+    return this._numberInstances;
+  }
+
+  /** True when the declaration was written with brackets — `d[1]` is an array of one. */
+  get isArray(): boolean {
+    return this._isArray;
   }
 
   public incrementInstanceCount() {

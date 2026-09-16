@@ -94,7 +94,17 @@ import { BrkSite } from './objectImage';
  * Bumping this invalidates every existing cache entry by changing every key.
  * Old <key>.bin files become unreachable and are cleaned by --cache-clear.
  */
-export const CACHE_FORMAT_VERSION = 9;
+export const CACHE_FORMAT_VERSION = 10;
+// v10 (2026-09-16): the .sym sidecar carries every compiled variant in the
+// subtree — raw symbols, VAR symbol sizes and own VAR size — attached to the
+// instance that compiled it, replacing per-source-file descendant symbols; each
+// cached instance gains its element count and whether it was declared as an
+// array. The sidecar is now required and replayed on EVERY hit. Before, a hit
+// replayed instances and symbols only when a map was being written, so a parent
+// stored above a hit in a build without -m recorded an instance subtree missing
+// the hit's descendants, and a later -m build that hit that parent wrote an
+// incomplete map. Override `isFloat` was also always false. The bump is
+// load-bearing: those entries are keyed identically to good ones.
 // v9 (2026-08-30): the .dbg record set is now folded up from descendants rather
 // than derived from a debugRawData count delta. The delta could not see a
 // record an earlier sibling had already contributed — injectRecord dedups and
@@ -189,8 +199,14 @@ export interface CacheStoreOptions {
    * cache format exists to fix, one axis over.
    */
   instances?: CachedInstance[];
-  /** Descendant symbols, so a hit can restore what it never compiles. */
-  subtreeSymbols?: CachedSubtreeSymbols[];
+  /** This object's own VAR facts, stored beside `symbols`. */
+  ownVar?: CachedVarFacts & { sourceFileName: string };
+  /**
+   * Distinct compiled variants of the DESCENDANTS in this subtree, referenced
+   * by `CachedInstance.variant`. A hit never compiles these objects, so what
+   * each compile produced has to be captured when it ran.
+   */
+  variants?: CachedVariant[];
 }
 
 /**
@@ -275,35 +291,58 @@ export interface CachedInstance {
    * Overrides column where a cold build prints values — a warm/cold divergence
    * of exactly the kind this release exists to remove.
    */
-  overrides?: CachedOverride[];
+  overrides: CachedOverride[];
+  /** Header slots the declaration takes (the `[count]`, or 1). */
+  elementCount: number;
+  /** Declared with brackets. */
+  isArray: boolean;
+  /** Index into the entry's `variants`: what this declaration's compile produced. */
+  variant: number;
 }
 
-/** One descendant's user symbols, carried so a hit can restore them. */
-export interface CachedSubtreeSymbols {
+/** VAR facts of one compile that its symbol values cannot carry. */
+export interface CachedVarFacts {
+  /** VAR symbol name -> bytes occupied. */
+  varSizes: [string, number][];
+  /** Own VAR block size. */
+  ownVarBytes: number;
+}
+
+/** One compile of one object, as a cache entry carries it. */
+export interface CachedVariant extends CachedVarFacts {
   sourceFileName: string;
   symbols: SymbolEntry[];
 }
 
-interface SerializedSubtreeSymbols {
+/** Everything a hit replays for the object layout. */
+export interface CachedLayoutPayload {
+  own: CachedVariant;
+  variants: CachedVariant[];
+  instances: CachedInstance[];
+}
+
+interface SerializedVariant {
   f: string;
   s: SerializedSymbol[];
+  z: [string, number][];
+  w: number;
 }
 
 interface SerializedSymFile {
   cacheFormatVersion: number;
+  /** This object's own user symbols. */
   symbols: SerializedSymbol[];
-  /** Instance subtree for map generation; absent in entries stored without --map. */
-  instances?: CachedInstance[];
+  /** This object's own VAR facts. */
+  own?: { f: string; z: [string, number][]; w: number };
   /**
-   * Symbols for every DESCENDANT in the subtree.
-   *
-   * The child's own symbols are in `symbols`. These are its grandchildren's
-   * and below — objects a hit never visits, whose methods would otherwise
-   * vanish from the map. Same short-circuit as the bytes and the structure:
-   * a skipped subtree cannot report what it contains, so it has to be
-   * captured when it is compiled.
+   * Compiled variants of every DESCENDANT, deduplicated by content. These are
+   * objects a hit never visits; same short-circuit as the bytes and the
+   * structure — a skipped subtree cannot report what it contains, so it has to
+   * be captured when it is compiled.
    */
-  subtreeSymbols?: SerializedSubtreeSymbols[];
+  variants?: SerializedVariant[];
+  /** Instance subtree; each entry names its variant. */
+  instances?: CachedInstance[];
 }
 
 interface SerializedDbgRecord {
@@ -415,37 +454,31 @@ export class ObjectCache {
     return undefined;
   }
 
-  /** Descendant symbols recorded with this entry, for map generation on a hit. */
-  getSubtreeSymbols(key: string): CachedSubtreeSymbols[] | undefined {
-    if (!this.enabled) return undefined;
-    const symPath = this.symPath(key);
-    if (!fs.existsSync(symPath)) return undefined;
-    try {
-      const parsed = JSON.parse(fs.readFileSync(symPath, 'utf8')) as SerializedSymFile;
-      if (parsed.cacheFormatVersion !== CACHE_FORMAT_VERSION) return undefined;
-      if (!Array.isArray(parsed.subtreeSymbols)) return undefined;
-      return parsed.subtreeSymbols.map((entry) => ({
-        sourceFileName: entry.f,
-        symbols: deserializeSymbols(entry.s)
-      }));
-    } catch {
-      return undefined;
-    }
-  }
-
   /**
-   * Instance subtree recorded with this entry, for map generation on a hit.
-   * Returns undefined when the sidecar is absent or from another format
-   * version; an empty array means the child genuinely had no children.
+   * The object-layout payload recorded with this entry: this object's own
+   * variant, its descendants' variants and its instance subtree. Replayed on
+   * every hit. Returns undefined when the sidecar is absent, malformed or from
+   * another format version — which the hit path treats as a corrupt entry.
    */
-  getInstances(key: string): CachedInstance[] | undefined {
+  getLayoutPayload(key: string): CachedLayoutPayload | undefined {
     if (!this.enabled) return undefined;
     const symPath = this.symPath(key);
     if (!fs.existsSync(symPath)) return undefined;
     try {
       const parsed = JSON.parse(fs.readFileSync(symPath, 'utf8')) as SerializedSymFile;
       if (parsed.cacheFormatVersion !== CACHE_FORMAT_VERSION) return undefined;
-      return Array.isArray(parsed.instances) ? parsed.instances : undefined;
+      if (!Array.isArray(parsed.symbols) || parsed.own === undefined || !Array.isArray(parsed.variants) || !Array.isArray(parsed.instances)) {
+        return undefined;
+      }
+      const variants = parsed.variants.map(deserializeVariant);
+      for (const instance of parsed.instances) {
+        if (!Number.isInteger(instance.variant) || instance.variant < 0 || instance.variant >= variants.length) return undefined;
+      }
+      return {
+        own: deserializeVariant({ f: parsed.own.f, s: parsed.symbols, z: parsed.own.z, w: parsed.own.w }),
+        variants,
+        instances: parsed.instances
+      };
     } catch {
       return undefined;
     }
@@ -466,23 +499,6 @@ export class ObjectCache {
       return undefined;
     }
     return this.get(key);
-  }
-
-  /** Retrieve cached user symbols for a key. Returns undefined if the .sym
-   *  sidecar is missing, malformed, or has a mismatched format version. */
-  getSymbols(key: string): SymbolEntry[] | undefined {
-    if (!this.enabled) return undefined;
-    const symPath = this.symPath(key);
-    if (!fs.existsSync(symPath)) return undefined;
-    try {
-      const raw = fs.readFileSync(symPath, 'utf8');
-      const parsed = JSON.parse(raw) as SerializedSymFile;
-      if (parsed.cacheFormatVersion !== CACHE_FORMAT_VERSION) return undefined;
-      if (!Array.isArray(parsed.symbols)) return undefined;
-      return deserializeSymbols(parsed.symbols);
-    } catch {
-      return undefined;
-    }
   }
 
   /** Retrieve cached hit-replay info for a key. Returns undefined if the .dbg
@@ -578,11 +594,10 @@ export class ObjectCache {
       const payload: SerializedSymFile = {
         cacheFormatVersion: CACHE_FORMAT_VERSION,
         symbols: serializeSymbols(options.symbols),
-        instances: options.instances ?? [],
-        subtreeSymbols: (options.subtreeSymbols ?? []).map((entry) => ({
-          f: entry.sourceFileName,
-          s: serializeSymbols(entry.symbols)
-        }))
+        own:
+          options.ownVar !== undefined ? { f: options.ownVar.sourceFileName, z: options.ownVar.varSizes, w: options.ownVar.ownVarBytes } : undefined,
+        variants: (options.variants ?? []).map(serializeVariant),
+        instances: options.instances ?? []
       };
       fs.writeFileSync(this.symPath(key), JSON.stringify(payload));
     }
@@ -662,6 +677,16 @@ export class ObjectCache {
   private depPath(key: string): string {
     return path.join(this.cacheDir, `${key}.dep`);
   }
+}
+
+// --- Variant serialization helpers -------------------------------------------
+
+function serializeVariant(variant: CachedVariant): SerializedVariant {
+  return { f: variant.sourceFileName, s: serializeSymbols(variant.symbols), z: variant.varSizes, w: variant.ownVarBytes };
+}
+
+function deserializeVariant(serialized: SerializedVariant): CachedVariant {
+  return { sourceFileName: serialized.f, symbols: deserializeSymbols(serialized.s), varSizes: serialized.z, ownVarBytes: serialized.w };
 }
 
 // --- Symbol serialization helpers --------------------------------------------

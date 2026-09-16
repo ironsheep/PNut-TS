@@ -15,6 +15,7 @@ import { ObjectImage } from '../classes/objectImage';
 import { SpinFiles } from '../classes/spinFiles';
 import { ObjectSymbolStore } from '../classes/objectSymbolStore';
 import { ObjInstanceStore } from '../classes/objInstanceInfo';
+import { ObjectLayout } from '../classes/objectLayout';
 
 export interface RuntimeEnvironment {
   serialPortDevices: string[];
@@ -179,6 +180,8 @@ export class Context {
   public objectSymbolStore: ObjectSymbolStore;
   // Map file support: object instance info (names, overrides)
   public objInstanceStore: ObjInstanceStore;
+  /** Object layout of the last compile, built when a map is written. */
+  public objectLayout: ObjectLayout | undefined = undefined;
 
   constructor() {
     this.logOptions = {

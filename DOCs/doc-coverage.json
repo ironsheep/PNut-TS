@@ -103,7 +103,8 @@
     ],
     "map-file": [
       "src/classes/mapGenerator.ts",
-      "src/classes/objInstanceInfo.ts"
+      "src/classes/objInstanceInfo.ts",
+      "src/classes/objectLayout.ts"
     ],
     "diagnostics": [
       "src/classes/logger.ts",

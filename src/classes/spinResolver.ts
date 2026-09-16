@@ -280,6 +280,11 @@ export class SpinResolver {
 
   // VAR processing support data
   private varPtr: number = 4;
+  // Per-compile VAR facts the memory map needs and the symbol table cannot
+  // hold: a VAR symbol's value is only its offset (and struct id), so its size
+  // and this object's own VAR block size are captured where they are computed.
+  private varSymbolSizeMap: Map<string, number> = new Map();
+  private ownVarSize: number = 0;
 
   // Spin2 processing support data
   private blockStack: BlockStack;
@@ -460,6 +465,16 @@ export class SpinResolver {
     return this.varPtr;
   }
 
+  /** VAR symbol name -> bytes it occupies (element size x count), for this compile. */
+  get varSymbolSizes(): Map<string, number> {
+    return new Map(this.varSymbolSizeMap);
+  }
+
+  /** This object's own VAR block size (after its long-align); 0 in PASM mode. */
+  get ownVarBytes(): number {
+    return this.ownVarSize;
+  }
+
   get isPasmMode(): boolean {
     return this.pasmMode;
   }
@@ -500,6 +515,8 @@ export class SpinResolver {
     this.inObjBlock = false;
     this.pasmMode = this.determinePasmMode();
     this.spinFiles.setPasmMode(this.pasmMode); // publish to top level
+    this.varSymbolSizeMap.clear();
+    this.ownVarSize = 0;
     this.compile_con_blocks_1st();
     if (this.context.passOptions.afterConBlock == false) {
       this.compile_obj_blocks_id(); // inhibit SIZEOF within here
@@ -607,6 +624,7 @@ export class SpinResolver {
     // PNut compile_var_blocks:
     if (this.isLoggingOutline) this.logMessageOutline('++ compile_var_blocks()');
     this.varPtr = 4; // start variable pointer at 4 to accommodate long pointer to object
+    this.varSymbolSizeMap.clear();
     this.logRestoredElementLocation(0); // start from first in list
 
     // for each VAR block...
@@ -717,12 +735,14 @@ export class SpinResolver {
           }
           const newVarSymbol: iSymbol = { name: symbolName, type: variableType, value: BigInt(adjustedValue) };
           this.recordSymbol(newVarSymbol);
+          this.varSymbolSizeMap.set(symbolName, instanceCount * variableSize);
         } while (this.getCommaOrEndOfLine());
 
         // not end of this block, yet...
       } while (this.nextElementType() != eElementType.type_block);
     }
     this.alignVar(0b11); // align to next long for start of next instance
+    this.ownVarSize = this.varPtr;
     if (this.isLoggingOutline) this.logMessageOutline(`  -- compile_var_blocks() EXIT w/varPtr=(${this.varPtr})(${hexLong(this.varPtr, '0x')})`);
   }
 
@@ -4659,7 +4679,8 @@ export class SpinResolver {
           const symbolName: string = this.currElement.stringValue;
           // handle instance [index]
           let instanceCount: number = 1;
-          if (this.checkLeftBracket()) {
+          const isObjArray: boolean = this.checkLeftBracket();
+          if (isObjArray) {
             const valueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
             if (valueReturn.value < 1n || valueReturn.value > 255n) {
               // [error_ocmbf1tx]
@@ -4688,7 +4709,7 @@ export class SpinResolver {
           const newObjSymbol: iSymbol = { name: symbolName, type: eElementType.type_obj, value: BigInt(objSymbolValue) };
           this.recordSymbol(newObjSymbol);
           // now let's process constant overrides
-          objFileRecord.setObjectInstanceCount(instanceCount);
+          objFileRecord.setObjectInstanceCount(instanceCount, isObjArray);
           // here is @@index;
           for (let index = 0; index < instanceCount; index++) {
             if (this.objectInstanceInMemoryCount > this.objs_limit) {

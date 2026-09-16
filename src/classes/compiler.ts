@@ -17,11 +17,12 @@ import { OBJ_LIMIT } from './spinResolver';
 import { ObjInstanceInfo } from './objInstanceInfo';
 import { DuplicateSourceWatch } from '../utils/duplicateSources';
 import { eElementType } from './types';
+import fs from 'fs';
 import {
   CACHE_FORMAT_VERSION,
   CachedInstance,
   CachedOverride,
-  CachedSubtreeSymbols,
+  CachedVariant,
   CacheMetadata,
   DebugInfo,
   ManifestEntry,
@@ -29,8 +30,18 @@ import {
   manifestEntryFor,
   mergeManifests,
   patchBrkSite,
-  recomputeChildChecksum
+  recomputeChildChecksum,
+  serializeSymbols
 } from './objectCache';
+import {
+  CompiledVariant,
+  LayoutBuildInput,
+  RecordedDeclaration,
+  buildObjectLayout,
+  layoutInputToJson,
+  layoutToJson,
+  recordedTreeFrom
+} from './objectLayout';
 
 // src/classes/compiler.ts
 
@@ -105,6 +116,7 @@ export class Compiler {
     this.globalLogicalIndexCounter = 0;
     this.recordedInstances = [];
     this.currentInstanceId = -1;
+    this.topVariant = undefined;
     this.replayedDescendantSymbols.clear();
   }
 
@@ -130,7 +142,9 @@ export class Compiler {
     return overrideSymbolTable.allSymbols.map((symbol) => ({
       name: symbol.name,
       value: typeof symbol.value === 'bigint' ? symbol.value.toString() : symbol.value,
-      isFloat: symbol.type.toString().includes('float')
+      // `type` is the numeric enum; a string test on it was never true, so
+      // every float override was recorded as an integer.
+      isFloat: symbol.type === eElementType.type_con_float
     }));
   }
 
@@ -184,6 +198,9 @@ export class Compiler {
 
         // Build object instance info for map file generation
         this.buildObjInstanceInfo();
+
+        // Build the object layout from the final image, before anything moves it
+        this.buildObjectLayoutWhenWanted();
 
         // Pass early deduplication savings to spin2Parser for list file reporting
         this.spin2Parser.setEarlyDeduplicationSavings(this.memoryStats.memoryBytesSaved);
@@ -273,14 +290,11 @@ export class Compiler {
    * knowledge of source files at all — by design — so it cannot be the source
    * of this association.
    */
-  private recordedInstances: {
-    parentInstanceId: number;
-    childPosition: number;
-    sourceFileName: string;
-    /** Overrides this instance was declared with; the map prints them. */
-    overrides: CachedOverride[];
-  }[] = [];
+  private recordedInstances: RecordedDeclaration[] = [];
   private currentInstanceId: number = -1;
+
+  /** What the top object's compile produced (the top is never cached). */
+  private topVariant: CompiledVariant | undefined = undefined;
 
   /**
    * Symbols for descendants restored from a cache hit, keyed by source file
@@ -378,6 +392,20 @@ export class Compiler {
             );
           }
 
+          // The .sym sidecar carries the object-layout payload: what this
+          // child's compile and every descendant's compile produced, and the
+          // instance subtree. Required on every hit, map or not: a parent that
+          // compiles above this hit stores its own entry from what is replayed
+          // here, so skipping the replay in a build without -m stored an
+          // incomplete subtree that a later -m build then served.
+          const layoutPayload = this.objectCache.getLayoutPayload(cacheKey);
+          if (layoutPayload === undefined) {
+            throw new Error(
+              `Object cache: missing or invalid .sym sidecar for [${srcFile.fileName}] (key=${cacheKey.substring(0, 12)}...). ` +
+                `Run with --cache-clear to rebuild.`
+            );
+          }
+
           // Replay this child's subtree exportdef contributions onto the
           // shared defSymbols so subsequent siblings see them. v1.54.6's
           // critical fix: without this, sibling preprocesses run against a
@@ -458,18 +486,14 @@ export class Compiler {
             this.objectFileCount++;
           }
 
-          // Restore the child's user symbols so the map file generator sees them.
-          // Only read the .sym sidecar when a map is actually being written —
-          // saves I/O on the common path.
+          // This child's own compiled variant, as its compile would have
+          // recorded it.
+          this.recordedInstances[this.currentInstanceId].variant = this.compiledVariantFromCache(layoutPayload.own);
+          // The current map generator still reads symbols per source file.
           if (this.context.compileOptions.writeMapFile) {
-            const cachedSymbols = this.objectCache.getSymbols(cacheKey);
-            if (cachedSymbols !== undefined) {
-              const fileIndex = this.context.sourceFiles.getFileIndex(srcFile);
-              if (fileIndex >= 0) {
-                this.context.objectSymbolStore.storeSymbols(fileIndex, cachedSymbols);
-              }
-            } else if (this.isLoggingOutline) {
-              this.logMessageOutline(`  -- CACHE HIT but .sym missing/invalid for [${srcFile.fileName}] — map will be incomplete for this object`);
+            const fileIndex = this.context.sourceFiles.getFileIndex(srcFile);
+            if (fileIndex >= 0) {
+              this.context.objectSymbolStore.storeSymbols(fileIndex, layoutPayload.own.symbols);
             }
           }
 
@@ -488,33 +512,36 @@ export class Compiler {
           // skipped subtree cannot report what it contains — so it needs the
           // same treatment: capture at store, replay at hit.
           if (this.context.compileOptions.writeMapFile) {
-            // Restore descendant symbols too. The .sym restore below covers
-            // only THIS child; its grandchildren are never visited on a hit,
-            // so without this their methods disappear from the map even though
-            // the hierarchy above now shows them.
-            const cachedSubtreeSymbols = this.objectCache.getSubtreeSymbols(cacheKey);
-            if (cachedSubtreeSymbols !== undefined) {
-              for (const entry of cachedSubtreeSymbols) {
-                if (!this.replayedDescendantSymbols.has(entry.sourceFileName)) {
-                  this.replayedDescendantSymbols.set(entry.sourceFileName, entry.symbols);
-                }
+            // Descendant symbols for the current map generator, which reads
+            // them per source file: the first variant of each file in the
+            // subtree. Its grandchildren are never visited on a hit, so without
+            // this their methods disappear from the map.
+            const seenDescendantFiles = new Set<string>();
+            for (const cached of layoutPayload.instances) {
+              if (seenDescendantFiles.has(cached.sourceFileName)) continue;
+              seenDescendantFiles.add(cached.sourceFileName);
+              const symbols = layoutPayload.variants[cached.variant].symbols;
+              if (symbols.length > 0 && !this.replayedDescendantSymbols.has(cached.sourceFileName)) {
+                this.replayedDescendantSymbols.set(cached.sourceFileName, symbols);
               }
             }
-
-            const cachedInstances = this.objectCache.getInstances(cacheKey);
-            if (cachedInstances !== undefined) {
-              const subtreeBase = this.recordedInstances.length;
-              for (const cached of cachedInstances) {
-                // Names, not indices, and resolved later: a replayed subtree
-                // can name a file that has not been registered yet, because
-                // this hit is what skipped loading it.
-                this.recordedInstances.push({
-                  parentInstanceId: cached.relativeParent === -1 ? this.currentInstanceId : subtreeBase + cached.relativeParent,
-                  childPosition: cached.childPosition,
-                  sourceFileName: cached.sourceFileName,
-                  overrides: cached.overrides ?? []
-                });
-              }
+          }
+          {
+            const subtreeBase = this.recordedInstances.length;
+            const replayedVariants = layoutPayload.variants.map((variant) => this.compiledVariantFromCache(variant));
+            for (const cached of layoutPayload.instances) {
+              // Names, not indices, and resolved later: a replayed subtree
+              // can name a file that has not been registered yet, because
+              // this hit is what skipped loading it.
+              this.recordedInstances.push({
+                parentInstanceId: cached.relativeParent === -1 ? this.currentInstanceId : subtreeBase + cached.relativeParent,
+                childPosition: cached.childPosition,
+                sourceFileName: cached.sourceFileName,
+                overrides: cached.overrides,
+                elementCount: cached.elementCount,
+                isArray: cached.isArray,
+                variant: replayedVariants[cached.variant]
+              });
             }
           }
 
@@ -572,7 +599,10 @@ export class Compiler {
                 overrides: this.overridesFromSymbolTable(overrideSymbolTable),
                 parentInstanceId: this.currentInstanceId,
                 childPosition: index,
-                sourceFileName: childObjSourceFile.fileName
+                sourceFileName: childObjSourceFile.fileName,
+                elementCount: objFile.instanceCount,
+                isArray: objFile.isArray,
+                variant: undefined
               });
               const enclosingInstanceId = this.currentInstanceId;
               this.currentInstanceId = childInstanceId;
@@ -668,6 +698,20 @@ export class Compiler {
           const childSymbols = this.spin2Parser.getUserSymbolTable();
           if (fileIndex >= 0) {
             this.context.objectSymbolStore.storeSymbols(fileIndex, childSymbols);
+          }
+          // What THIS compile produced, attached to the declaration that caused
+          // it — not to the source file, which a later compile of the same file
+          // with other overrides would overwrite.
+          const compiledVariant: CompiledVariant = {
+            sourceFileName: srcFile.fileName,
+            symbols: childSymbols,
+            varSizes: this.spin2Parser.getVarSymbolSizes(),
+            ownVarBytes: this.spin2Parser.getOwnVarBytes()
+          };
+          if (depth === 0) {
+            this.topVariant = compiledVariant;
+          } else {
+            this.recordedInstances[this.currentInstanceId].variant = compiledVariant;
           }
 
           const objectLength: number = this.objImage.offset;
@@ -784,35 +828,58 @@ export class Compiler {
             // that slipped through key-version protection).
             // Relativise this subtree's instances so they can be replanted
             // under a different parent on a later hit.
-            const subtreeInstances: CachedInstance[] = this.recordedInstances.slice(instanceMarkAtKey).map((recorded) => ({
-              relativeParent: recorded.parentInstanceId === this.currentInstanceId ? -1 : recorded.parentInstanceId - instanceMarkAtKey,
-              childPosition: recorded.childPosition,
-              sourceFileName: recorded.sourceFileName,
-              overrides: recorded.overrides
-            }));
-            // Capture every descendant's symbols so a later hit can restore
-            // what it will not compile. Deduped by source file — several
-            // instances of one object share one symbol set.
-            const seenDescendants = new Set<string>();
-            const subtreeSymbols: CachedSubtreeSymbols[] = [];
-            for (const recorded of this.recordedInstances.slice(instanceMarkAtKey)) {
-              if (seenDescendants.has(recorded.sourceFileName)) continue;
-              seenDescendants.add(recorded.sourceFileName);
-              const descendantFile = this.context.sourceFiles.getFile(recorded.sourceFileName);
-              if (descendantFile === undefined) continue;
-              const descendantIndex = this.context.sourceFiles.getFileIndex(descendantFile);
-              const symbols = this.context.objectSymbolStore.getSymbols(descendantIndex);
-              if (symbols !== undefined && symbols.length > 0) {
-                subtreeSymbols.push({ sourceFileName: recorded.sourceFileName, symbols });
+            // Each descendant carries the variant ITS compile (or replay)
+            // produced, so a later hit restores every fork with its own
+            // symbols. Variants are deduplicated by content: identical compiles
+            // of one object store one copy.
+            const variants: CachedVariant[] = [];
+            const variantIndexByContent = new Map<string, number>();
+            const subtreeInstances: CachedInstance[] = this.recordedInstances.slice(instanceMarkAtKey).map((recorded, offset) => {
+              if (recorded.variant === undefined) {
+                throw new Error(
+                  `Internal error: ObjectLayout: recorded declaration ${instanceMarkAtKey + offset} (${recorded.sourceFileName}) has no compiled variant at cache store`
+                );
               }
-            }
+              const cachedVariant: CachedVariant = {
+                sourceFileName: recorded.variant.sourceFileName,
+                symbols: recorded.variant.symbols,
+                varSizes: [...recorded.variant.varSizes.entries()],
+                ownVarBytes: recorded.variant.ownVarBytes
+              };
+              const content = JSON.stringify([
+                cachedVariant.sourceFileName,
+                serializeSymbols(cachedVariant.symbols),
+                cachedVariant.varSizes,
+                cachedVariant.ownVarBytes
+              ]);
+              let variantIndex = variantIndexByContent.get(content);
+              if (variantIndex === undefined) {
+                variantIndex = variants.length;
+                variants.push(cachedVariant);
+                variantIndexByContent.set(content, variantIndex);
+              }
+              return {
+                relativeParent: recorded.parentInstanceId === this.currentInstanceId ? -1 : recorded.parentInstanceId - instanceMarkAtKey,
+                childPosition: recorded.childPosition,
+                sourceFileName: recorded.sourceFileName,
+                overrides: recorded.overrides,
+                elementCount: recorded.elementCount,
+                isArray: recorded.isArray,
+                variant: variantIndex
+              };
+            });
             this.objectCache.set(cacheKey, binaryCopy, {
               metadata,
               symbols: childSymbols,
+              ownVar: {
+                sourceFileName: srcFile.fileName,
+                varSizes: [...compiledVariant.varSizes.entries()],
+                ownVarBytes: compiledVariant.ownVarBytes
+              },
               debugInfo,
               manifest: subtreeManifest,
               instances: subtreeInstances,
-              subtreeSymbols
+              variants
             });
             if (this.isLoggingOutline)
               this.logMessageOutline(
@@ -879,6 +946,44 @@ export class Compiler {
     if (this.isLoggingOutline)
       this.logMessageOutline(`++ compileRecursly(${depth}, [${srcFile.fileName}]) - EXIT ----------------------------------------`);
     if (this.isLoggingOutline) this.logMessageOutline(``);
+  }
+
+  /** A cached variant in the form the compile records. */
+  private compiledVariantFromCache(cached: CachedVariant): CompiledVariant {
+    return {
+      sourceFileName: cached.sourceFileName,
+      symbols: cached.symbols,
+      varSizes: new Map(cached.varSizes),
+      ownVarBytes: cached.ownVarBytes
+    };
+  }
+
+  /**
+   * Build the object layout when a map is being written.
+   *
+   * `PNUT_TS_LAYOUT_JSON` (undocumented, for the test suite) also builds it and
+   * writes the builder's input and the resulting layout, as JSON, to that path.
+   */
+  private buildObjectLayoutWhenWanted(): void {
+    this.context.objectLayout = undefined;
+    const dumpPath = process.env.PNUT_TS_LAYOUT_JSON;
+    if (!this.context.compileOptions.writeMapFile && !dumpPath) {
+      return;
+    }
+    const finalImage = this.spin2Parser.finalImageForLayout();
+    const topFile = this.context.sourceFiles.getTopFile();
+    const input: LayoutBuildInput = {
+      kind: finalImage.kind,
+      image: finalImage.image,
+      varBytes: finalImage.varBytes,
+      hubLoadBase: this.spin2Parser.hubLoadBase(),
+      top: recordedTreeFrom(topFile.fileName, this.topVariant, this.recordedInstances)
+    };
+    const layout = buildObjectLayout(input);
+    this.context.objectLayout = layout;
+    if (dumpPath) {
+      fs.writeFileSync(dumpPath, JSON.stringify({ input: layoutInputToJson(input), layout: layoutToJson(layout) }));
+    }
   }
 
   private logMessage(message: string): void {

@@ -19,8 +19,7 @@ Only child objects are cacheable. The top-level object is never keyed and never
 stored — the recursion gate is `depth > 0`
 (`src/classes/compiler.ts:304`).
 
-This document describes the mechanism as it stands at v1.55.4, with
-`CACHE_FORMAT_VERSION` 9.
+This document describes the mechanism with `CACHE_FORMAT_VERSION` 10.
 
 ## Command-line surface
 
@@ -151,7 +150,7 @@ One entry is five files in the cache directory, all named for the key
 | File | Contents | Required on a hit |
 |---|---|---|
 | `<key>.bin` | The compiled child binary, raw | Yes — its presence is the hit gate |
-| `<key>.sym` | The child's user symbols, its instance subtree, and its descendants' symbols | Only when a `.map` is being written |
+| `<key>.sym` | The layout payload: the child's own compiled variant, its descendants' compiled variants, and its instance subtree | Yes, on every hit |
 | `<key>.dbg` | The hit-replay payload: debug records, `brkCode` write sites, subtree `exportdef` contributions | Yes, on every hit |
 | `<key>.dep` | The dependency manifest | Yes — validation reads it first |
 | `<key>.meta` | Human-readable JSON diagnostic | No, never read by the hit path |
@@ -179,31 +178,51 @@ interface SerializedDepFile {
 `ManifestEntry` (`:135-138`) is a resolved **absolute** path and the SHA-256 of
 that file's raw bytes, hex.
 
-**`.sym`** — `SerializedSymFile` (`:268-283`):
+**`.sym`** — `SerializedSymFile` (`src/classes/objectCache.ts:331-349`):
 
 ```ts
 interface SerializedSymFile {
   cacheFormatVersion: number;
-  symbols: SerializedSymbol[];              // this child's own user symbols
-  instances?: CachedInstance[];             // its instance subtree
-  subtreeSymbols?: SerializedSubtreeSymbols[];  // its DESCENDANTS' symbols
+  symbols: SerializedSymbol[];                     // this child's own user symbols
+  own?: { f: string; z: [string, number][]; w: number };  // this child's own VAR facts
+  variants?: SerializedVariant[];                  // its DESCENDANTS' compiled variants
+  instances?: CachedInstance[];                    // its instance subtree
+}
+
+interface SerializedVariant {
+  f: string;                  // source file name
+  s: SerializedSymbol[];      // user symbols
+  z: [string, number][];      // VAR symbol name -> bytes occupied
+  w: number;                  // own VAR block size
 }
 ```
 
-`SerializedSymbol` (`:212-217`) is deliberately terse — `n` name, `t` type
-(`eElementType`), `v` value, `i` present only when the symbol is inline. A
-`bigint` value is tagged as `{ $b: "<decimal>" }` so the round trip is lossless
-(`:648-668`). `SerializedSubtreeSymbols` (`:263-266`) is `f` (source file name)
-and `s` (that file's symbols).
+A **variant** is what one compile of one object produced: its user symbols, the
+size of each VAR symbol, and its own VAR block size. The last two are not
+recoverable from the symbols — a VAR symbol's value holds only its offset — so
+they are captured where the compile computes them. Variants are stored per
+compile, not per source file: two declarations of one file with different
+overrides can place the same label at different offsets, and each instance has
+to keep the offsets its own compile produced. The `variants` list is
+deduplicated by content, so identical compiles of one object store one copy.
+`own` and `symbols` together are the child's own variant.
 
-`CachedInstance` (`:242-255`) records one object instance inside the subtree:
+`SerializedSymbol` (`:252-257`) is deliberately terse — `n` name, `t` type
+(`eElementType`), `v` value, `i` present only when the symbol is inline. A
+`bigint` value is tagged as `{ $b: "<decimal>" }` so the round trip is lossless.
+
+`CachedInstance` (`src/classes/objectCache.ts:282-302`) records one object
+instance inside the subtree:
 
 ```ts
 interface CachedInstance {
   relativeParent: number;      // -1 = a direct child of the subtree root
   childPosition: number;       // position in the parent's OBJ block
   sourceFileName: string;
-  overrides?: CachedOverride[];
+  overrides: CachedOverride[];
+  elementCount: number;        // header slots the declaration takes: [count], or 1
+  isArray: boolean;            // declared with brackets
+  variant: number;             // index into the entry's variants
 }
 ```
 
@@ -211,11 +230,13 @@ It is self-contained rather than index-based on purpose: a source **name**
 rather than a source-file index (indices are registration order and need not
 match on a later run), and a parent counted **from the subtree root** rather
 than an absolute instance id (the subtree lands at a different offset in every
-compile that reuses it).
+compile that reuses it). An array declaration `d[3]` compiles its object once,
+so it is one `CachedInstance` with `elementCount` 3.
 
-`CachedOverride` (`:236-240`) is `{ name, value: string, isFloat }`. The value
-is a string because the sidecar is JSON and JSON has no `bigint`; the map prints
-these rather than computing with them.
+`CachedOverride` (`:276-280`) is `{ name, value: string, isFloat }`. The value
+is a string because the sidecar is JSON and JSON has no `bigint`; it holds the
+override's unsigned 32-bit pattern (a float's IEEE-754 bits), and `isFloat` says
+which it is.
 
 **`.dbg`** — `SerializedDbgFile` (`:296-304`):
 
@@ -236,10 +257,10 @@ read by a human staring at a cache directory.
 ## `CACHE_FORMAT_VERSION`
 
 ```ts
-export const CACHE_FORMAT_VERSION = 9;
+export const CACHE_FORMAT_VERSION = 10;
 ```
 
-`src/classes/objectCache.ts:82`.
+`src/classes/objectCache.ts:97`.
 
 It is hashed into every key (`:355`) *and* stamped into every JSON sidecar.
 Bumping it therefore changes every key, which makes every existing entry
@@ -259,13 +280,14 @@ The most recent bumps:
 | 7 | The `.dep` dependency manifest was added, so a hit revalidates every file its subtree was built from. |
 | 8 | The resolution root and the `-I` list joined the key, and `CachedInstance` gained `overrides`. |
 | 9 | The `.dbg` sidecar became subtree-scoped in both halves — its record set is folded up from descendants rather than derived from a `debugRawData` count delta, and its `brkSites` now cover the descendants embedded in the stored `.bin` as well as the object's own region. |
+| 10 | The `.sym` sidecar carries compiled variants per instance instead of symbols per source file, `CachedInstance` gained `elementCount`, `isArray` and `variant`, and the sidecar became required and replayed on every hit. Before, a hit replayed its instances and symbols only when a `.map` was being written, so a parent compiled above that hit in a build without `-m` stored an instance subtree missing the hit's descendants, and a later `-m` build that hit the parent wrote an incomplete map. Override `isFloat` was also always recorded false. |
 
 ### Every sidecar is subtree-scoped
 
 An entry's `.bin` holds the object's own image **and its descendants'**, so
 every sidecar beside it has to describe the same span. As of format 9 they all
-do — `.dep`, `.sym`, the instance list, the `.dbg` record set and the `.dbg`
-brkSites. A new sidecar must be built that way or it re-opens a defect class
+do — `.dep`, `.sym` (the instance list and every variant in it), the `.dbg`
+record set and the `.dbg` brkSites. A new sidecar must be built that way or it re-opens a defect class
 that has now cost two releases.
 
 Both members of that class shipped in v1.55.5 and were the same mistake wearing
@@ -436,19 +458,28 @@ back from the sidecars (`src/classes/compiler.ts:330-478`):
 4. **The binary is spliced into `childImages`** — after being offered to
    `findDuplicateChild`, so a cached image dedupes against an already-placed
    identical one exactly as a freshly compiled image would (`:392-411`).
-5. **Symbols are restored**, only when a `.map` is being written: the child's
-   own from `.sym` (`:417-427`), and its descendants' from the same sidecar's
-   `subtreeSymbols` (`:448-455`). Descendants are held by *name*, because the
-   hit is what skipped loading them, so they have no source-file index yet.
-6. **The instance subtree is replayed** (`:457-471`), relative parents
-   re-based onto the current recursion point. Without this a hit would silently
-   flatten the hierarchy in the `.map`.
+5. **The `.sym` sidecar is mandatory too**, and is read with the `.dbg`
+   before anything is replayed (`src/classes/compiler.ts:401-407`). Its absence
+   throws `Object cache: missing or invalid .sym sidecar for [<file>] (key=…).
+   Run with --cache-clear to rebuild.` It is load-bearing on every hit, `-m` or
+   not: a parent compiling above this hit stores its own entry from what is
+   replayed here.
+6. **The child's own variant and its instance subtree are replayed**
+   (`:491`, `:529-546`): each replayed instance carries its element count,
+   array flag, overrides and the variant its compile produced, with relative
+   parents re-based onto the current recursion point. Without this a hit would
+   silently flatten the hierarchy in the `.map` and lose every descendant's
+   symbols. When a `.map` is being written, symbols are also handed to the map
+   generator by source file name, because the hit is what skipped loading those
+   files.
 7. **The manifest is handed upward** (`:434-435`), as described above.
 
-The store side is the mirror image (`src/classes/compiler.ts:657-757`): the
-subtree's debug records, `brkSite` list, `defSymbols` slice, instance slice and
-descendant symbols are all captured from the same accumulators before
-`objectCache.set()` writes them.
+The store side is the mirror image (`src/classes/compiler.ts:832-882`): the
+subtree's debug records, `brkSite` list, `defSymbols` slice and instance slice
+are captured from the same accumulators, each instance with the variant its own
+compile or replay attached (`:705-715`), before `objectCache.set()` writes them.
+A variant is captured at the compile that produced it, never read back by source
+file, so a stored payload does not depend on which other objects compiled first.
 
 ## `--cache-verify`
 

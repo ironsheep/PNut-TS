@@ -133,6 +133,56 @@ export class Spin2Parser {
     return [...this.spinResolver.userSymbolTable];
   }
 
+  /** VAR symbol sizes captured by the last compile (see SpinResolver.varSymbolSizes). */
+  public getVarSymbolSizes(): Map<string, number> {
+    return this.spinResolver.varSymbolSizes;
+  }
+
+  /**
+   * The top object's final image, as the memory map describes it: psize bytes
+   * after the vsize/psize longs for Spin, the raw hub bytes for PASM. A copy,
+   * because ComposeRam later moves the image within the same buffer. Valid
+   * after the top-level P2Compile2 and before ComposeRam.
+   */
+  public finalImageForLayout(): { kind: 'spin' | 'pasm'; image: Uint8Array; varBytes: number } {
+    if (this.spinResolver.isPasmMode) {
+      return { kind: 'pasm', image: new Uint8Array(this.objImage.rawUint8Array.subarray(0, this.objImage.offset)), varBytes: 0 };
+    }
+    const size = this.spinResolver.executableSize;
+    return { kind: 'spin', image: new Uint8Array(this.objImage.rawUint8Array.subarray(8, 8 + size)), varBytes: this.spinResolver.variableSize };
+  }
+
+  /** Own VAR block size of the last compile (see SpinResolver.ownVarBytes). */
+  public getOwnVarBytes(): number {
+    return this.spinResolver.ownVarBytes;
+  }
+
+  /**
+   * Where the top object's image will start in the composed .bin.
+   *
+   * ComposeRam places things in front of the image, and this states what it
+   * places, so the memory map can print the base before ComposeRam runs:
+   *   - Spin: the interpreter.
+   *   - DEBUG: the debugger and the compressed debug data (in front of the
+   *     interpreter for Spin). Not long-aligned.
+   *   - PASM without DEBUG: the clock setter, when it is inserted.
+   * ComposeRam checks its actual placement against this value.
+   */
+  public hubLoadBase(): number {
+    const isPasmMode: boolean = this.spinResolver.isPasmMode;
+    const isDebugMode: boolean = this.context.compileOptions.enableDebug;
+    let base: number = 0;
+    if (isPasmMode == false) {
+      base += this.externalFiles.spinInterpreterLength;
+    }
+    if (isDebugMode) {
+      base += this.externalFiles.spinDebuggerLength + this.spinResolver.debugData.length;
+    } else if (isPasmMode && this.spinResolver.clockMode != 0 && this.checkClockSetterInsert()) {
+      base += this.externalFiles.clockSetterLength;
+    }
+    return base;
+  }
+
   /**
    * Direct access to the in-progress DebugData table. Used by the object
    * cache to snapshot record counts before/after a child compile, extract
@@ -555,8 +605,23 @@ export class Spin2Parser {
       this.P2InsertDebugger();
     }
     // insert clock setter?
+    let clockSetterBytes: number = 0;
     if (isDebugMode == false && isPasmMode && this.spinResolver.clockMode != 0) {
-      this.P2InsertClockSetter();
+      clockSetterBytes = this.P2InsertClockSetter();
+    }
+
+    // The image now sits behind everything inserted in front of it. The memory
+    // map printed that position before this ran, so the two must agree.
+    let placedBase: number = 0;
+    if (isPasmMode == false) {
+      placedBase += this.externalFiles.spinInterpreterLength;
+    }
+    if (isDebugMode) {
+      placedBase += this.externalFiles.spinDebuggerLength + this.spinResolver.debugData.length;
+    }
+    placedBase += clockSetterBytes;
+    if (placedBase !== this.hubLoadBase()) {
+      throw new Error(`Internal error: hub load base: image placed at ${placedBase} but hubLoadBase() reports ${this.hubLoadBase()}`);
     }
 
     const nonLoaderObjImage = ObjectImage.copyFrom(this.objImage);
@@ -924,9 +989,11 @@ export class Spin2Parser {
     return foundAutoclkStatus;
   }
 
-  public P2InsertClockSetter() {
+  public P2InsertClockSetter(): number {
     // PNut insert_clock_setter:
     // if _AUTOCLK not defined or _AUTOCLK <> 0 then insert clock setter
+    // Returns the bytes inserted in front of the image (0 when none).
+    let insertedBytes: number = 0;
     if (this.checkClockSetterInsert()) {
       if (this.spinResolver.clockMode != 0b00) {
         const _ext1_ = 0x0;
@@ -961,8 +1028,10 @@ export class Spin2Parser {
         // install _appblocks_
         const numberOfBlocks = (this.objImage.offset >> (9 + 2)) + 1;
         this.objImage.replaceLong(numberOfBlocks, _appblocks_);
+        insertedBytes = clockSetterLength;
       }
     }
+    return insertedBytes;
   }
 
   public LoadHardware() {
