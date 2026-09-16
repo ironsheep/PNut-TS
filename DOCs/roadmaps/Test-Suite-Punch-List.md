@@ -821,10 +821,9 @@ Release packaging is done only by `.github/workflows/release.yml` on tag push
 (Stephen, 2026-09-16); in the container `bld-dist` is used only to build the Linux
 binary for local testing. Rewrite the section to say so. `PACKAGING.md` and
 `scripts/release-tools/cs_pack.sh` describe a local six-binary packaging and
-macOS-signing flow from `pkgs/` — and the release workflow does not use them; retire or rewrite
-them with the section. `bld-dist` itself now builds only the two Linux binaries
-(2026-09-16); `cs_pack.sh` and `PACKAGING.md` are not used by the release
-workflow.
+macOS-signing flow from `pkgs/` that the release workflow does not use; retire
+or rewrite them with the section. (`bld-dist` itself builds only the two Linux
+binaries since 2026-09-16.)
 
 ---
 

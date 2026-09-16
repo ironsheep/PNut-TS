@@ -161,6 +161,12 @@ export class Spin2Parser {
   }
 
   public P2List() {
+    // The .obj is requested by -O on its own; it must not depend on -l.
+    if (this.context.compileOptions.writeObj) {
+      const saveObjImageOffset: number = this.objImage.offset;
+      this.writeObjectFile(this.objImage, 0, this.objImage.length, outputFilespecs(this.context).object); // full
+      this.objImage.setOffsetTo(saveObjImageOffset);
+    }
     if (this.context.compileOptions.writeListing) {
       if (this.isLogging) this.logMessage('* P2List() - write list file');
       const outFilename = this.context.compileOptions.listFilename;
@@ -333,14 +339,7 @@ export class Spin2Parser {
       lines.push(`XINFREQ: ${valueString}\n`);
 
       const isPasmMode: boolean = this.spinResolver.isPasmMode;
-      const saveObjImageOffset: number = this.objImage.offset;
-
       const objectOffset: number = isPasmMode ? 0 : 8;
-
-      if (this.context.compileOptions.writeObj) {
-        this.writeObjectFile(this.objImage, 0, this.objImage.length, outputFilespecs(this.context).object); // full
-        this.objImage.setOffsetTo(saveObjImageOffset);
-      }
 
       // test code!!!
       /*

@@ -7,7 +7,7 @@
  * (another process, a test harness, --cache-verify's own reference compare)
  * that opens the file right after the compiler exits could see a stale or
  * truncated version. That defect class is why the .bin/.flash/.map writers
- * were already made synchronous (see mapGenerator.ts:69); this suite covers
+ * were already made synchronous (as mapGenerator.ts is); this suite covers
  * the remaining four.
  *
  * It also covers the unwritable-output-path case: today's fix means a write
@@ -189,5 +189,27 @@ describe('synchronous writers: -l, -i, --regression', () => {
     expect(stderrText).not.toMatch(/at emitErrorNT/);
     // Must NOT falsely announce success for the file that failed to write.
     expect(stderrText).not.toMatch(/Wrote .*spin_test20\.lst/);
+  });
+});
+
+describe('-O on its own', () => {
+  let dir: string;
+
+  afterEach(() => {
+    if (dir) cleanupDir(dir);
+  });
+
+  test('writes the .obj without -l, identical to the GOLD', () => {
+    const files = ['spin_test14.spin2', 'spin_test14_child1.spin2', 'spin_test14_child2.spin2'];
+    dir = stageInto(
+      files.map((name) => ({ srcDir: OBJ_TEST_DIR, name })),
+      'obj-only'
+    );
+    execFileSync('node', [toolPath, '-q', '-O', 'spin_test14.spin2'], { cwd: dir, stdio: 'pipe' });
+    const objPath = path.join(dir, 'spin_test14.obj');
+    expect(fs.existsSync(objPath)).toBe(true);
+    expect(fs.existsSync(path.join(dir, 'spin_test14.lst'))).toBe(false);
+    const gold = fs.readFileSync(path.join(OBJ_TEST_DIR, 'spin_test14.obj.GOLD'));
+    expect(Buffer.compare(fs.readFileSync(objPath), gold)).toBe(0);
   });
 });
