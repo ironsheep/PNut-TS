@@ -1,0 +1,52 @@
+'' compile-time QLOG / QEXP folding: boundary and known values
+'' Every constant here is folded by the compiler (PNut: cordic_qlog / cordic_qexp).
+'' The CON values appear in the listing symbol table; the PUB expressions are
+'' folded into the method bytecode.
+' {Spin2_v43}
+
+CON
+
+   ' boundaries
+   QLOG_0000_0000 = qlog $0000_0000
+   QLOG_0000_0001 = qlog $0000_0001
+   QLOG_0000_0002 = qlog $0000_0002
+   QLOG_7FFF_FFFF = qlog $7FFF_FFFF
+   QLOG_8000_0000 = qlog $8000_0000
+   QLOG_FFFF_FFFE = qlog $FFFF_FFFE
+   QLOG_FFFF_FFFF = qlog $FFFF_FFFF
+
+   QEXP_0000_0000 = qexp $0000_0000
+   QEXP_0000_0001 = qexp $0000_0001
+   QEXP_07FF_FFFF = qexp $07FF_FFFF
+   QEXP_7FFF_FFFF = qexp $7FFF_FFFF
+   QEXP_8000_0000 = qexp $8000_0000
+   QEXP_F800_0000 = qexp $F800_0000
+   QEXP_FFFF_FFFE = qexp $FFFF_FFFE
+   QEXP_FFFF_FFFF = qexp $FFFF_FFFF
+
+   ' resolver table values (TEST/SHORT/resolverTESTs/dumpTables)
+   QLOG_0001_E5E0 = qlog $0001_E5E0
+   QEXP_8765_4321 = qexp $8765_4321
+   QEXP_EDCB_A987 = qexp $EDCB_A987
+
+   ' inputs from coverage_004.spin2
+   QLOG_D837_90B2 = qlog $D837_90B2
+   QLOG_439E_B72F = qlog $439E_B72F
+   QEXP_E3A3_B5B6 = qexp $E3A3_B5B6
+   QEXP_E6C6_723E = qexp $E6C6_723E
+   QEXP_F73D_41FD = qexp $F73D_41FD
+
+PUB go() | value
+
+    ' the coverage_004.spin2 inputs, folded in method code
+    value := qlog $d83790b2
+    value := qexp $e3a3b5b6
+    value := qlog $439eb72f
+    value := qexp $e6c6723e
+    value := qexp $f73d41fd
+    ' boundaries, folded in method code
+    value := qlog $FFFFFFFF
+    value := qlog $FFFFFFFE
+    value := qlog $80000000
+    value := qexp $FFFFFFFF
+    value := qexp $80000000

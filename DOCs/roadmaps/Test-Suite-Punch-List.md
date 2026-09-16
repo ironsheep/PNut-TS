@@ -14,12 +14,11 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 
 | # | Item | Compiled output | Status |
 |---|---|---|---|
-| 1 | QLOG/QEXP compile-time precision | **YES** | open — CORDIC port recommended |
 | 2 | Stale preprocessor GOLDs | no | open — decision (a)/(b) |
 | 4 | Dead flash/RAM download code | no | open |
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
 | 6 | GOLD-regen workflow cleanup | no | open — triggers passed, outcomes unrecorded |
-| 9 | `dumpTables` + `-I` relative path | **YES** (9.1 = item 1) | open |
+| 9 | `-I` relative path in the preproc test | no | open |
 | 10 | Language-spec extraction pipeline | no | open — Stephen's decision |
 | 11 | `#pragma exportdef` value | no wrong code | open — Stephen's decision |
 | 13 | Documentation residue (13a, 13d) | no | open |
@@ -31,41 +30,6 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
 | 22 | `.lst`/`.pre` unawaited streams | no | **in sprint: Map-Instance-Correctness** |
 | 23 | `RELEASE-PROCESS.md` wrong release-build step | no | open |
-
----
-
-## 1. `op_qlog` / `op_qexp` saturation precision bug
-
-> **Compiled output: YES** — wrong compile-time constants, silently.
-
-**Surfaced by:** `pnut-ts-resolver.test.ts` against `dumpTables.spin2`. After
-filtering header lines, exactly **one** assertion mismatches the GOLD:
-
-```
-[039] 0xFFFFFFFF, 0x00000000, op_qlog = 0x00000000   ← PNut-TS
-[039] 0xFFFFFFFF, 0x00000000, op_qlog = 0xFFFFFFFF   ← PNut (GOLD)
-```
-
-**Root cause:** `spinResolver.ts:11319-11328`. For input `$FFFFFFFF`,
-`Math.log2(0xFFFFFFFF) ≈ 32.0`, `× 2^27 = 0x100000000`, BigInt-truncated, then
-masked to 32 bits → `0x00000000`. PNut clamps the saturated case to
-`0xFFFFFFFF`. The author left a warning comment acknowledging the precision
-gap (`+/- 2 bits`) and that it might cause regression failures.
-
-**Symmetric concern:** `op_qexp` at `spinResolver.ts:11332-11339` carries the
-same warning (`+/- 3 bits`) but no regression failure has been observed for
-it yet — could be that the resolver fixture doesn't exercise the saturation
-boundary. Worth reviewing both together.
-
-**User-visible impact:** any compile-time constant expression using
-`QLOG($FFFFFFFF)` (or values whose `log2 × 2^27` exceeds `2^32`) silently
-produces the wrong constant. Probability: low (most constants don't sit on
-the saturation boundary), but the failure mode is silent corruption.
-
-**Suggested fix:** clamp the result to `0xFFFFFFFF` instead of letting it
-overflow-then-mask. Verify against the same set of inputs PNut's CORDIC
-QLOG/QEXP handles. Add explicit edge-case test entries to the resolver
-regression suite (current suite catches it almost by accident).
 
 ---
 
@@ -396,21 +360,16 @@ is the cause. Pick the handling option then.
 
 ---
 
-## 9. `TEST/FULL` `dumpTables` failure + `-I` relative-path bug (added 2026-08-08)
+## 9. `TEST/FULL` `-I` relative-path bug (added 2026-08-08)
 
-> **Compiled output: YES for 9.1** — the 2026-09-13 investigation found `dumpTables` fails on the same compile-time QLOG/QEXP constants as item 1, and clears with the CORDIC port. **9.2 is test-harness only.**
+> **Compiled output: no** — test-harness only.
 
 **Surfaced by:** CLI-Robustness entry-baseline correction.
 
-`jest-full-config` carries **4** failures (`dumpTables`, `condCode`,
-`condCodeElse`, `include`), proven pre-existing at `58180b1`. Three are item 2
-above. Two things are *not* covered there:
-
-1. **`dumpTables`** — not a preprocessor GOLD issue; needs its own look.
-2. **`TEST/FULL/pnut-ts-preproc.test.ts` runs the CLI with `-I inc` relative to
-   cwd rather than to the test directory** — a likely contributing cause for the
-   `include` failure independent of GOLD staleness, and a latent trap for any
-   future test in that file.
+`TEST/FULL/pnut-ts-preproc.test.ts` runs the CLI with `-I inc` relative to cwd
+rather than to the test directory — a likely contributing cause for the
+`include` failure independent of GOLD staleness (item 2), and a latent trap for
+any future test in that file.
 
 ## 10. Language-specification extraction pipeline broken in place (added 2026-08-09)
 
@@ -499,7 +458,7 @@ carried values.
 
 ## Cross-cutting note: regression tests against "us-vs-us" GOLDs
 
-Three of the items above (`#1 op_qlog`, `#2 preproc GOLDs`, the deleted
+Several suites (the resolver `dumpTables` GOLD, `#2 preproc GOLDs`, the deleted
 `--regression tables` apparatus, the deleted `pnut-ts-element` test) all
 share one structural problem: regression suites that compare PNut-TS output
 against PNut-TS-generated snapshots from a prior date. These rot whenever

@@ -103,6 +103,34 @@ export function compareObjOrBinFiles(outputFSpec: string, goldenFSpec: string): 
   return filesMatchStatus;
 }
 
+export function compareObjOrBinFilesExact(outputFSpec: string, goldenFSpec: string): boolean {
+  // byte-for-byte: no 1-ULP tolerance. Use where every folded constant must be bit-exact.
+  if (!fs.existsSync(outputFSpec)) {
+    console.error(`ERROR: missing compile output [${outputFSpec}]`);
+    return false;
+  }
+  if (!fs.existsSync(goldenFSpec)) {
+    console.error(`ERROR: missing GOLDEN output [${goldenFSpec}]`);
+    return false;
+  }
+  const outputBuffer = fs.readFileSync(outputFSpec);
+  const goldenBuffer = fs.readFileSync(goldenFSpec);
+  const filesMatch: boolean = outputBuffer.equals(goldenBuffer);
+  if (!filesMatch) {
+    let firstDiff: number = Math.min(outputBuffer.length, goldenBuffer.length);
+    for (let index = 0; index < firstDiff; index++) {
+      if (outputBuffer[index] !== goldenBuffer[index]) {
+        firstDiff = index;
+        break;
+      }
+    }
+    console.error(
+      `ERROR: [${path.basename(outputFSpec)}](${outputBuffer.length}) <=> [${path.basename(goldenFSpec)}](${goldenBuffer.length}) first difference at byte ${firstDiff}`
+    );
+  }
+  return filesMatch;
+}
+
 function compareBinaryWithFloatTolerance(outputFSpec: string, goldenFSpec: string): boolean {
   const outputBuffer = fs.readFileSync(outputFSpec);
   const goldenBuffer = fs.readFileSync(goldenFSpec);

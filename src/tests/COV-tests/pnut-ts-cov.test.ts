@@ -8,7 +8,7 @@ import path from 'path';
 
 // Alternatively, if you want to use the synchronous version, you can do:
 import { sync as globSync } from 'glob';
-import { appendDiagnosticString, compareListingFiles, removeExistingFile, topLevel } from '../testUtils';
+import { appendDiagnosticString, compareListingFiles, compareObjOrBinFilesExact, removeExistingFile, topLevel } from '../testUtils';
 
 // test lives in <rootDir>/src/tests/FULL
 const testDirPath = path.resolve(__dirname, '../../../TEST/COV-tests');
@@ -27,6 +27,92 @@ const directories = [
   }
 ];
 
+// Files that use debug() without matching the debug_/isp_/coverage_debug_ prefix.
+// Must agree with the -PerFileFlag list in TEST/COV-tests/rebuild-gold.ps1, which
+// is how their Windows GOLDs were built (-cd).
+const debugByFile: string[] = ['coverage_clock_003'];
+
+function listFixtures(pattern: string): string[] {
+  let files: string[] = [];
+  try {
+    files = globSync(`${testDirPath}/${pattern}`);
+  } catch (error) {
+    console.error('ERROR: glob issue:', error);
+  }
+  // Filter out files that match the *__pre.spin2 pattern (-i output files)
+  files = files.filter((file) => !file.endsWith('__pre.spin2') && !file.endsWith('-pre.spin2'));
+  if (files.length > 1) {
+    files.sort();
+  }
+  return files;
+}
+
+function compileAndCompare(file: string, isDebugGroup: boolean) {
+  const basename = path.basename(file, '.spin2');
+
+  const listingFSpec = path.join(testDirPath, `${basename}.lst`);
+  const objectFSpec = path.join(testDirPath, `${basename}.obj`);
+  const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
+  const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
+
+  // Remove existing files
+  removeExistingFile(listingFSpec);
+  removeExistingFile(objectFSpec);
+  removeExistingFile(binaryFSpec);
+  removeExistingFile(elementsFSpec);
+
+  const args: string[] = ['-v', '-l'];
+  if (basename === 'coverage_003_v44') {
+    args.push('-44');
+  }
+  if (isDebugGroup || debugByFile.includes(basename)) {
+    args.push('-d');
+  }
+  args.push('-O', '--regression', 'element', '--');
+
+  // compile our file generating output files
+  try {
+    execSync(`node ${toolPath}/pnut-ts.js ${args.join(' ')} ${file}`);
+  } catch (error) {
+    console.error(`ERROR: running PNut-ts: ${error}`);
+    fail(`Execution failed for ${file}`);
+  }
+
+  let whatFailed: string = '';
+  // Compare listing files
+  const goldenFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
+  if (!compareListingFiles(listingFSpec, goldenFSpec)) {
+    whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
+  }
+
+  // Compare object and binary files byte-for-byte. The listing comparison
+  // tolerates +/-1 in any 4-byte window, which hid wrong compile-time QEXP
+  // constants; these exact checks do not.
+  const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
+  if (!compareObjOrBinFilesExact(objectFSpec, goldenObjFSpec)) {
+    whatFailed = appendDiagnosticString(whatFailed, 'Object Files', ', ');
+  }
+  const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
+  if (!compareObjOrBinFilesExact(binaryFSpec, goldenBinFSpec)) {
+    whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
+  }
+
+  if (whatFailed.length > 0) {
+    whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');
+  }
+  expect(whatFailed).toBe('');
+}
+
+// Fixtures committed ahead of their Windows GOLD regeneration. Named, not
+// inferred from a missing GOLD: any other fixture without GOLDs must fail, so a
+// lost GOLD cannot pass silently. Remove a name once its GOLDs are committed.
+const PENDING_WINDOWS_GOLDS: string[] = ['coverage_qlog_qexp'];
+
+function testOrPending(file: string): jest.It {
+  const basename = path.basename(file, '.spin2');
+  return PENDING_WINDOWS_GOLDS.includes(basename) ? test.skip : test;
+}
+
 describe('Directory existence tests', () => {
   test.each(directories)('$relFolder should exist', ({ path }) => {
     if (!fs.existsSync(path)) {
@@ -36,145 +122,19 @@ describe('Directory existence tests', () => {
 });
 
 describe('PNut_ts builds our COV non-debug() test files correctly', () => {
-  let files: string[] = [];
-  try {
-    files = globSync(`${testDirPath}/!(debug_|isp_|coverage_debug_)*.spin2`);
-  } catch (error) {
-    console.error('ERROR: glob issue:', error);
-  }
-  // Filter out files that match the *__pre.spin2 pattern (-i output files)
-  files = files.filter((file) => !file.endsWith('__pre.spin2') && !file.endsWith('-pre.spin2'));
-  if (files.length > 1) {
-    files.sort();
-  }
-
+  const files: string[] = listFixtures('!(debug_|isp_|coverage_debug_)*.spin2');
   files.forEach((file) => {
-    test(`Compile file: ${path.basename(file)}`, () => {
-      const basename = path.basename(file, '.spin2');
-
-      const listingFSpec = path.join(testDirPath, `${basename}.lst`);
-      const objectFSpec = path.join(testDirPath, `${basename}.obj`);
-      const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
-      const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
-
-      // Remove existing files
-      removeExistingFile(listingFSpec);
-      removeExistingFile(objectFSpec);
-      removeExistingFile(binaryFSpec);
-      removeExistingFile(elementsFSpec);
-      const conditionalArgs: string[] = basename === 'coverage_003_v44' ? ['-44'] : [];
-      const options: string[] = ['-v', '-l', '-O', '--regression', 'element', '--'];
-      const adjustedArgs: string[] = [...options.slice(0, 2), ...conditionalArgs, ...options.slice(2)];
-
-      // compile our file generating output files
-      try {
-        execSync(`node ${toolPath}/pnut-ts.js ${adjustedArgs.join(' ')} ${file}`);
-      } catch (error) {
-        console.error(`ERROR: running PNut-ts: ${error}`);
-        fail(`Execution failed for ${file}`);
-      }
-
-      // count the number of matching outputs, should be 3!
-      let whatFailed: string = '';
-      // ID the golden listing file
-      const goldenFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
-      // Compare listing files
-      const filesMatch: boolean = compareListingFiles(listingFSpec, goldenFSpec);
-      if (!filesMatch) {
-        whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
-      }
-
-      // ID the golden .obj file
-      //const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
-      // Compare object files
-      //filesMatch = compareObjOrBinFiles(objectFSpec, goldenObjFSpec);
-      //if (!filesMatch) {
-      //  whatFailed = appendDiagnosticString(whatFailed, 'Object Files', ', ');
-      //}
-
-      // ID the golden .bin file
-      //const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
-      // Compare binary files
-      //filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
-      //if (!filesMatch) {
-      //  whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
-      //}
-
-      if (whatFailed.length > 0) {
-        whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');
-      }
-      expect(whatFailed).toBe('');
+    testOrPending(file)(`Compile file: ${path.basename(file)}`, () => {
+      compileAndCompare(file, false);
     });
   });
 });
 
 describe('PNut_ts builds our COV debug() test files correctly', () => {
-  let files: string[] = [];
-  try {
-    files = globSync(`${testDirPath}/{debug_,isp_,coverage_debug_}*.spin2`);
-  } catch (error) {
-    console.error('ERROR: glob issue:', error);
-  }
-  // Filter out files that match the *__pre.spin2 pattern (-i output files)
-  files = files.filter((file) => !file.endsWith('__pre.spin2') && !file.endsWith('-pre.spin2'));
-  if (files.length > 1) {
-    files.sort();
-  }
-
+  const files: string[] = listFixtures('{debug_,isp_,coverage_debug_}*.spin2');
   files.forEach((file) => {
-    test(`Compile file: ${path.basename(file)}`, () => {
-      const options: string = '-v -l -d -O --regression element --';
-      const basename = path.basename(file, '.spin2');
-
-      const listingFSpec = path.join(testDirPath, `${basename}.lst`);
-      const objectFSpec = path.join(testDirPath, `${basename}.obj`);
-      const binaryFSpec = path.join(testDirPath, `${basename}.bin`);
-      const elementsFSpec = path.join(testDirPath, `${basename}.elem`);
-
-      // Remove existing files
-      removeExistingFile(listingFSpec);
-      removeExistingFile(objectFSpec);
-      removeExistingFile(binaryFSpec);
-      removeExistingFile(elementsFSpec);
-
-      // compile our file generating output files
-      try {
-        execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
-      } catch (error) {
-        console.error(`ERROR: running PNut-ts: ${error}`);
-        fail(`Execution failed for ${file}`);
-      }
-
-      // count the number of matching outputs, should be 3!
-      let whatFailed: string = '';
-      // ID the golden listing file
-      const goldenFSpec = path.join(testDirPath, `${basename}.lst.GOLD`);
-      // Compare listing files
-      const filesMatch: boolean = compareListingFiles(listingFSpec, goldenFSpec);
-      if (!filesMatch) {
-        whatFailed = appendDiagnosticString(whatFailed, 'Listing Files', ', ');
-      }
-
-      // ID the golden .obj file
-      //const goldenObjFSpec = path.join(testDirPath, `${basename}.obj.GOLD`);
-      // Compare object files
-      //filesMatch = compareObjOrBinFiles(objectFSpec, goldenObjFSpec);
-      //if (!filesMatch) {
-      //  whatFailed = appendDiagnosticString(whatFailed, 'Object Files', ', ');
-      //}
-
-      // ID the golden .bin file
-      //const goldenBinFSpec = path.join(testDirPath, `${basename}.bin.GOLD`);
-      // Compare binary files
-      //filesMatch = compareObjOrBinFiles(binaryFSpec, goldenBinFSpec);
-      //if (!filesMatch) {
-      //  whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
-      //}
-
-      if (whatFailed.length > 0) {
-        whatFailed = appendDiagnosticString(whatFailed, "Don't match!", ' ');
-      }
-      expect(whatFailed).toBe('');
+    testOrPending(file)(`Compile file: ${path.basename(file)}`, () => {
+      compileAndCompare(file, true);
     });
   });
 });

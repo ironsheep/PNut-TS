@@ -27,6 +27,7 @@ import { hexAddress, hexByte, hexLong, hexWord } from '../utils/formatUtils';
 import { eMemberType, ObjectStructures } from './objectStructures';
 import { ObjectStructureRecord } from './objectStructureRecord';
 import { dumpBytes } from '../utils/dumpUtils';
+import { cordic_qexp, cordic_qlog } from '../utils/cordicQ';
 
 // Internal types used for passing complex values
 interface iValueReturn {
@@ -11422,25 +11423,13 @@ private checkDec(): boolean {
         break;
 
       case eOperationType.op_qlog: //  QLOG
-        // if a is non-zero... then calculate else leave it at zero
-        //
-        // WARNING this result MAY cause binary differences in our output file! WARNING
-        //  consider this code if we see problems in our regression tests
-        //  it's all a matter of precision...
-        //   Following is +/- 2 bits
-        if (a) {
-          // WAS a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27)));
-          a = BigInt(Math.trunc(Math.log2(Number(a)) * Math.pow(2, 27) + 0.5));
-        }
+        // integer CORDIC ported from PNut's cordic_qlog (bit-exact, see src/utils/cordicQ.ts)
+        a = BigInt(cordic_qlog(Number(a)));
         break;
 
       case eOperationType.op_qexp: //  QEXP
-        // WARNING this result MAY cause binary differences in our output file! WARNING
-        //  consider this code if we see problems in our regression tests
-        //  it's all a matter of precision...
-        //   Following is +/- 3 bits  // trunc ..E9, round ..EA (Chip gets E8!) a=0xFFFFFFFF
-        // WAS a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27))));
-        a = BigInt(Math.trunc(Math.pow(2, Number(a) / Math.pow(2, 27)) + 0.25));
+        // integer CORDIC ported from PNut's cordic_qexp (bit-exact, see src/utils/cordicQ.ts)
+        a = BigInt(cordic_qexp(Number(a)));
         break;
 
       case eOperationType.op_log2: //  LOG2
