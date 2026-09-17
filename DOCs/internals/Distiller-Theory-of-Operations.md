@@ -2,20 +2,43 @@
 
 ## Overview
 
-The **Object Distiller** is a sophisticated binary optimization system in the PNut-TS compiler that eliminates redundant object code from the final binary. It operates after object compilation to identify and remove duplicate object instances, significantly reducing binary size while maintaining functionality.
+The **Object Distiller** (`ObjectDistiller.distillObjects()`,
+`src/classes/objectDistiller.ts`) removes byte-identical duplicate child
+object images from the compiled binary. It runs from
+`SpinResolver.distill_obj_blocks()`, called after `compile_obj_blocks()` has
+already assembled every child into the parent's `objImage` — see "Distiller
+Process Flow" below for exactly how much it removes and when.
 
 ## Purpose and Benefits
 
 ### Primary Goals
-1. **Binary Size Optimization**: Removes duplicate object code from the final binary
-2. **Memory Efficiency**: Reduces RAM and flash memory usage on P2 microcontrollers
-3. **Code Deduplication**: Eliminates redundant copies of identical child objects
-4. **Link-Time Optimization**: Performs optimizations that aren't possible during individual object compilation
+1. **Binary Size Optimization**: `eliminateRedundantObjects()` drops a
+   redundant object's bytes outright (Phase 3/4 below); `distillObjects()`
+   returns the exact count removed
+2. **Memory Efficiency**: reduces the compiled **code** footprint only — see
+   "Performance Impact" below for what it does not touch
+3. **Code Deduplication**: `areRecordsEquivalent()` requires identical size,
+   identical sub-object-ID list and identical binary content before two
+   objects are considered the same
+4. **Link-Time Optimization**: distillation runs on the fully-assembled
+   parent image (after `compile_obj_blocks()`), so it can compare objects
+   that were compiled independently and know nothing of each other
 
 ### Performance Impact
-- **Size Reduction**: Can achieve significant binary size reductions (tracked via `distilledBytes`)
-- **Memory Savings**: Reduces both program and variable memory requirements
-- **Runtime Efficiency**: Maintains original performance while using less memory
+- **Size Reduction**: `distillObjects()`'s return value
+  (`startingOffset - objImage.offset`, added into `this.distilledBytes`) is
+  the exact byte count removed — see "Optimization Impact" below; there is no
+  fixed or typical percentage
+- **Memory Savings**: **code/program memory only.** The distiller compares
+  and removes object **code** bytes; it never reads or writes a VAR offset
+  (VAR offsets are the second LONG of each sub-object table slot, backpatched
+  by `compile_obj_blocks()` before distillation runs — see
+  [Theory-of-Operations.md](Theory-of-Operations.md) §4.2 "Object Instance
+  Spacing"). Each surviving reference to a deduplicated object still gets its
+  own VAR allocation; distillation does not reduce VAR memory.
+- **Runtime Efficiency**: eliminated objects are removed outright (Phase 4),
+  so the surviving, deduplicated object's own bytes — and thus its runtime
+  behavior — are unchanged from before distillation
 
 ## Architecture Overview
 
@@ -48,7 +71,10 @@ export class DistillerList { ... }
 ## Distiller Record Structure
 
 ### Record Format
-Each object in the distiller is represented by a `DistillerRecord`:
+Each object in the distiller is represented by a `DistillerRecord`
+(`src/classes/distillerList.ts`). The real class backs each of these with a
+private field and a getter (`objectOffset` and `subObjectIds` also have
+setters, used during Phase 4/5); shown here as plain fields for brevity:
 
 ```typescript
 class DistillerRecord {
@@ -89,12 +115,16 @@ Record Structure:
 
 ### Entry Point
 
-The distiller is invoked from `SpinResolver.distill_obj_blocks()`:
+The distiller is invoked from `SpinResolver.distill_obj_blocks()`, which only
+runs in SPIN2 mode (`this.pasmMode == false` — a PASM2-only top object has no
+object tree to distill) and accumulates bytes removed across calls:
 
 ```typescript
 private distill_obj_blocks() {
-  const bytesRemoved = this.objectDistiller.distillObjects(this.objImage);
-  this.distilledBytes = bytesRemoved;
+  if (this.pasmMode == false) {
+    const bytesRemoved = this.objectDistiller.distillObjects(this.objImage);
+    this.distilledBytes += bytesRemoved;
+  }
 }
 ```
 
@@ -240,15 +270,18 @@ The `DistillerList` class provides collection management:
 ## Integration Points
 
 ### In Compilation Pipeline
+Per `SpinResolver.compile2()` (see
+[Theory-of-Operations.md](Theory-of-Operations.md) §4.2), in call order:
 ```
-Compilation Flow:
-├── Symbol Resolution
-├── Code Generation
-├── Object Assembly
-├── Object Integration
-├── Distiller Optimization  ← ObjectDistiller.distillObjects()
-└── Final Binary Output
+compile_var_blocks() / compile_sub_blocks_id()   (symbol/method IDs)
+compile_dat_blocks() / compile_sub_blocks()       (bytecode/PASM2 generation)
+compile_obj_blocks()                              (child binaries copied in, VAR offsets patched)
+distill_obj_blocks() → ObjectDistiller.distillObjects()   ← this document
+compile_final()                                   (checksum + symbol table, this object only)
 ```
+`ComposeRam()`'s final `.bin`/`.obj` writes happen later still, once every
+object in the tree has been through this sequence — see
+[Theory-of-Operations.md](Theory-of-Operations.md) Phase 6.
 
 ### Location in Code
 - **SpinResolver**: `src/classes/spinResolver.ts` - Invokes distiller
@@ -282,10 +315,12 @@ private logMessage(message: string): void {
 - **Rebuild Buffer**: O(total_binary_size) temporary space
 
 ### Optimization Impact
-The distiller typically achieves:
-- **10-40% binary size reduction** for object-heavy applications
-- **Proportional memory savings** at runtime
-- **No performance penalty** - identical runtime behavior
+`distillObjects()` returns the exact byte count it removed
+(`startingOffset - objImage.offset`); how much that is depends entirely on how
+many byte-identical child object instances a given source tree compiles —
+there is no fixed or typical percentage to cite. Eliminated objects are
+removed from the image outright (Phase 4), so runtime behavior for the
+surviving, deduplicated object is identical to the pre-distillation copy.
 
 ## Error Handling
 
@@ -315,12 +350,12 @@ public get records(): DistillerList {
 
 ## Conclusion
 
-The Object Distiller provides sophisticated link-time optimization for PNut-TS compiled binaries. The clean class-based architecture with `ObjectDistiller`, `DistillerList`, and `DistillerRecord` enables:
-
-1. **Clear Separation of Concerns**: Algorithm logic in ObjectDistiller, data management in DistillerList
-2. **Type Safety**: Typed classes instead of integer arrays
-3. **Maintainability**: Self-documenting method names and structure
-4. **Testability**: Isolated components easier to unit test
-5. **Extensibility**: New optimization strategies easy to implement
-
-The five-phase approach ensures both correctness and optimal size reduction, making it a critical component for memory-constrained P2 microcontroller applications.
+`ObjectDistiller.distillObjects()` runs its five phases (Build, Scrub,
+Eliminate, Rebuild, Reconnect — detailed above) once per SPIN2-mode object,
+from `SpinResolver.distill_obj_blocks()`, and removes byte-identical
+duplicate child object **code** from that object's compiled image before
+`compile_final()` appends the checksum and symbol table (see
+[Theory-of-Operations.md](Theory-of-Operations.md) §5.1/§6.5). It does not
+affect VAR memory (see "Performance Impact" above) and, as of v1.55.8, its
+records are not read by map generation (see "Map Generation Integration"
+above).

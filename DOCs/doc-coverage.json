@@ -137,8 +137,8 @@
     "scripts/gold/README.md": { "class": "process", "verified": null },
     "tools/README.md":      { "class": "process", "verified": null },
 
-    "DOCs/internals/Theory-of-Operations.md":            { "class": "governed", "covers": ["compiler-core", "preprocessor"], "verified": "1.55.2" },
-    "DOCs/internals/Distiller-Theory-of-Operations.md":  { "class": "governed", "covers": ["distiller"], "verified": null },
+    "DOCs/internals/Theory-of-Operations.md":            { "class": "governed", "covers": ["compiler-core", "preprocessor"], "verified": "1.55.8" },
+    "DOCs/internals/Distiller-Theory-of-Operations.md":  { "class": "governed", "covers": ["distiller"], "verified": "1.55.8" },
     "DOCs/internals/Flash-Loader-Theory-of-Operations.md": { "class": "governed", "covers": ["flash-loader"], "verified": null },
     "DOCs/internals/SingleStep-Debugger-Theory-of-Operations.md": { "class": "governed", "covers": ["debug"], "verified": null },
     "DOCs/internals/Spin2-Interpreter-v55-Theory-of-Operations.md": { "class": "governed", "covers": ["interpreter"], "verified": "1.55.0" },
