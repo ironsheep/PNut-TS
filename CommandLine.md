@@ -55,10 +55,19 @@ Options:
          $ pnut-ts my-top-level.spin2         # compile leaving .bin file
          $ pnut-ts -l my-top-level.spin2      # compile file leaving .bin and .lst files
          
+```
 
+A normal compile (not `--help`) starts by printing a sign-on banner, unless
+`-q`/`--quiet` is given:
+
+```text
 pnut-ts: * Propeller Spin2/PASM2 Compiler 'pnut_ts' (c) 2024-2026 Iron Sheep Productions, LLC., Parallax Inc.
 pnut-ts: * Version 1.55.7, {buildDateHere}
 ```
+
+`{buildDateHere}` is a placeholder substituted with the real build date only
+when a release is packaged; a plain `npm run build` leaves it literal, as
+shown here.
 
 These options should already make sense but here's a light-weight recap:
 
@@ -118,6 +127,18 @@ first compile after such an upgrade recompiles everything. This is intended:
 entries written by earlier versions could be stale in ways those versions could
 not detect. Both v1.55.4 and v1.55.5 changed the format, so upgrading across
 either boundary rebuilds once.
+
+**An unrecognized option aborts the build** *(v1.55.8)*. A mistyped or unknown
+option such as `--bogus` no longer prints a warning and compiles anyway — it
+exits non-zero and writes no output files:
+
+```
+PNut-TS: error: unknown option '--bogus'
+
+  (See --help for available options)
+```
+
+`--help` and `--version` are unaffected.
 
 And of course `-h` or `--help` produces the output as shown above.
 

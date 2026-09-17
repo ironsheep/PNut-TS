@@ -117,10 +117,10 @@
   },
 
   "documents": {
-    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.7" },
+    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.8" },
     "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.4", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: central changelog guide, class 2 / Released mode" },
-    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.7", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
-    "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.55.7" },
+    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.8", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
+    "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.55.8" },
 
     "BUILD-RUN.md":         { "class": "process", "verified": null },
     "PACKAGING.md":         { "class": "process", "verified": null },

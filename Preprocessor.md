@@ -40,7 +40,7 @@ Here's more detail on each of the supported directives
 
 If you see the similarity to the FlexSpin directive set, you are correct! This capability was patterned after the directives supported by FlexSpin so that there will be fewer compatibility issues when utilizing spin2 code with either compiler.
 
-**Note:** C-style `#if` and `#elseif` are **not** supported — this preprocessor has no expression evaluator, so there is nothing for them to test. Use `#ifdef` / `#ifndef` and `#elseifdef` / `#elseifndef` instead. Writing `#if` or `#elseif` is reported as an error naming the supported spelling.
+**Note:** C-style `#if` and `#elseif` are **not** supported — this preprocessor has no expression evaluator, so there is nothing for them to test. Use `#ifdef` / `#ifndef` and `#elseifdef` / `#elseifndef` instead. Writing `#if` or `#elseif` is reported as an error naming the supported spelling. *(As of v1.55.8 — earlier versions misread both silently: `#if` was absorbed as the start of a `CON` enumeration, and `#elseif` was treated as a bare `#else`, discarding its condition with no diagnostic.)*
 
 ### Directives
 
@@ -239,9 +239,15 @@ OBJ driver : "default_driver"
 
 Similarly if SYMBOL was defined on the command line (`-DSYMBOL`), then a `#pragma exportdef SYMBOL` will not have any effect, and `-U SYMBOL` prevents the export entirely — command-line options outrank the pragma.
 
+Because an exported symbol carries presence only, writing it where a quoted filename belongs — for example `DAT ... FILE SYMBOL` instead of `DAT ... FILE "data.bin"` — is an error naming the cause *(v1.55.8)*:
+
+```
+myfile.spin2:4:error:Invalid filename: "SYMBOL" is a preprocessor symbol (from -D or #pragma exportdef); such symbols carry presence only and cannot be used as a value here -- use a quoted filename
+```
+
 ## Diagnostics
 
-*This section describes behavior as of v1.55.2, with the v1.55.3 additions marked.* Earlier versions recorded most preprocessor problems and then discarded them — a malformed directive produced no message and the build succeeded, compiling whichever lines the broken conditional happened to select.
+Earlier versions recorded most preprocessor problems and then discarded them — a malformed directive produced no message and the build succeeded, compiling whichever lines the broken conditional happened to select. Diagnostics added since are marked below with the version that introduced them.
 
 ### Message format
 
@@ -263,15 +269,17 @@ An error stops the compile and **the output files are deleted**, so a failed bui
 | `#ifdef`/`#ifndef` never closed by `#endif` | error `Expected #ENDIF`, reported against the line that **opened** the block |
 | `#else`, `#endif`, `#elseifdef` or `#elseifndef` with no open conditional | error `Must be preceeded by #IFDEF or #IFNDEF` |
 | A directive that needs a symbol, written without one | error `Expected a preprocessor symbol` |
-| A directive that is not recognized | error naming the directive |
-| `#if` or `#elseif` (C-style, unsupported here) | error naming the supported spelling (`#ifdef`/`#ifndef`, `#elseifdef`/`#elseifndef`) |
+| `#if` or `#elseif` (C-style, unsupported here) *(v1.55.8)* | error naming the supported spelling (`#ifdef`/`#ifndef`, `#elseifdef`/`#elseifndef`), reported on the line that wrote it |
 | `{Spin2_vNN}` naming a version this compiler does not support | error, citing the line the directive is on |
 | `#include` with an unsupported filetype, or a filename whose quotes are missing | error describing the actual problem |
+| A preprocessor symbol (from `-D` or `#pragma exportdef`) written where a quoted filename belongs, e.g. `DAT ... FILE SYMBOL` *(v1.55.8)* | error `Invalid filename: "SYMBOL" is a preprocessor symbol (from -D or #pragma exportdef); such symbols carry presence only and cannot be used as a value here -- use a quoted filename` |
 | `#undef` of a symbol that was never defined | **warning**; build continues |
 | `#undef` of a predefined `__*__` symbol *(v1.55.3)* | **warning** `cannot undefine built-in symbol [...]`; the symbol stays defined and the build continues |
 | Function-like `#define NAME(args)` *(v1.55.3)* | error `#define does not support arguments — only simple symbol definitions` |
-| `-D SYMBOL=value` or `-U SYMBOL=value` on the command line | error naming the option and the unsupported form, non-zero exit — `-D`/`-U` take a presence-only symbol name |
-| `-D`/`-U` given a name that is not a legal symbol name (leading digit, a character other than letter/digit/underscore, or empty) | error `... is not a valid preprocessor symbol name`, non-zero exit |
+| `-D SYMBOL=value` or `-U SYMBOL=value` on the command line *(v1.55.8)* | error naming the option and the unsupported form, non-zero exit — `-D`/`-U` take a presence-only symbol name |
+| `-D`/`-U` given a name that is not a legal symbol name (leading digit, a character other than letter/digit/underscore, or empty) *(v1.55.8)* | error `... is not a valid preprocessor symbol name`, non-zero exit |
+
+An unrecognized directive spelling, such as `#definee` or `#ifdeff`, is not caught as a preprocessor problem by name — it falls through to being parsed as Spin2, and fails there (typically `Expected "," or end of line`) because a bare `#` followed by identifiers is otherwise the start of a CON enumeration.
 
 Bare directives — `#define`, `#ifdef`, `#include` and friends written with no argument — used to be swallowed silently, because a CON enumeration start also begins with `#`. They are now caught. Valid CON enumeration starts are unaffected.
 
@@ -287,7 +295,7 @@ Where the original PNut has the same directive, PNut-TS uses PNut's exact messag
 
 ### If a file that used to build now fails
 
-That is expected for a small class of sources, and it is the reason this release exists. A stray `#endif`, an unclosed `#ifdef`, a directive missing its symbol, an unknown directive, or an unsupported `{Spin2_vNN}` all used to compile "successfully". They did not produce the program you thought they did — a broken conditional nest silently selects the wrong lines. If a source of yours starts failing here, it was very likely not compiling what you intended.
+That is expected for a small class of sources, and it is the reason this diagnostics pass exists. A stray `#endif`, an unclosed `#ifdef`, a directive missing its symbol, a C-style `#if`/`#elseif`, or an unsupported `{Spin2_vNN}` all used to compile "successfully". They did not produce the program you thought they did — a broken conditional nest silently selects the wrong lines. If a source of yours starts failing here, it was very likely not compiling what you intended.
 
 ### Nesting depth
 
