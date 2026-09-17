@@ -20,7 +20,6 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 6 | GOLD-regen workflow cleanup | no | open — triggers passed, outcomes unrecorded |
 | 9 | `-I` relative path in the preproc test | no | open |
 | 10 | Language-spec extraction pipeline | no | open — Stephen's decision |
-| 11 | `#pragma exportdef` value | no wrong code | open — Stephen's decision |
 | 13 | Documentation residue (13a, 13d) | no | open |
 | 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
 | 16 | MAP tests lack STRUCTs | no | **in sprint: Map-Instance-Correctness** |
@@ -415,42 +414,6 @@ documented canonical flow, regenerate all four outputs, decide whether
 hand-audited), and consider dropping raw enum ordinals from the emitted JSON.
 **Scope decision is Stephen's**: repair sprint, retire the tree, or leave as
 historical reference with a staleness banner.
-
----
-
-## 11. `#pragma exportdef` exports presence, not the value (added 2026-08-09)
-
-> **Compiled output: no wrong code** — a feature gap: the value is never exported, and the documented pattern fails to compile. Needs Stephen's decision.
-
-**Surfaced by:** Preproc-Symbols sprint §6 — reproducing every `Preprocessor.md`
-claim against the built compiler before re-stamping it. The doc's flagship
-MEMDRIVER example (define a driver filename, export it, child instantiates
-`OBJ driver : MEMDRIVER`) **does not compile**: the child errors
-`Invalid filename, use "FilenameInQuotes"`.
-
-**Root cause:** `#pragma exportdef SYMBOL` pushes only the symbol *name* into
-`preProcessorOptions.defSymbols` (`spinDocument.ts:818`), and
-`getPragmaSymbolValue()` hardcodes `value = '1'` (`spinDocument.ts` — the
-value on the `#define` line is never read by the pragma path). Child
-documents define `defSymbols` entries as presence-only (`SA_NUMBER_NO`,
-value 1). Net effect: the child's `#ifndef MEMDRIVER` guard correctly sees
-the symbol as defined — so it *skips its own default* — but the exported
-symbol never substitutes, leaving the raw name in the child's source. The
-worst case of half-working: the export suppresses the fallback and supplies
-nothing.
-
-**What works today:** exporting presence flags for `#ifdef`/`#ifndef`
-configuration in children. That part is real and `Preprocessor.md` now
-documents exactly that (the value-export claim and the MEMDRIVER example were
-corrected 2026-08-09).
-
-**Decision needed (Stephen):** implement value export (FlexSpin, which this
-preprocessor is patterned on, exports the value — the mechanism would need
-`getPragmaSymbolValue()` to look up the symbol's current value and
-`defSymbols` to carry name+value pairs into child `SpinDocument`s), or accept
-presence-only as the feature's scope and leave the doc as now written. The
-doc text was imported from FlexSpin's semantics; the implementation never
-carried values.
 
 ---
 

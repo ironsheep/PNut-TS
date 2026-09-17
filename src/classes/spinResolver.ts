@@ -908,6 +908,19 @@ export class SpinResolver {
       this.getElement();
       this.isLogging = savedLogState; // so exceptions have logging in good state...
       if (this.currElement.type != eElementType.type_con_int) {
+        // A `-D`'d or `#pragma exportdef`'d preprocessor symbol carries presence
+        // only into other files (Preprocessor.md) -- it never text-substitutes
+        // outside the file that defined it, so a child that writes it where a
+        // quoted filename belongs reaches here as a bare, unresolved identifier.
+        // Name that cause explicitly rather than leaving the generic message to
+        // be read as "you forgot the quotes".
+        const bareIdentifier: string = this.currElement.stringValue;
+        if (bareIdentifier.length > 0 && this.context.preProcessorOptions.defSymbols.includes(bareIdentifier.toUpperCase())) {
+          // [error_ifufiq-exportdef]
+          throw new Error(
+            `Invalid filename: "${bareIdentifier}" is a preprocessor symbol (from -D or #pragma exportdef); such symbols carry presence only and cannot be used as a value here -- use a quoted filename`
+          );
+        }
         // [error_ifufiq]
         throw new Error('Invalid filename, use "FilenameInQuotes"');
       }
