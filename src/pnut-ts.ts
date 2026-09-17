@@ -248,7 +248,15 @@ export class PNutInTypeScript {
     if (foundJest && !runningCoverageTesting) {
       processArgv = processArgv.slice(0, 2);
     }
-    const combinedArgs: string[] = this.argsArray.length == 0 ? processArgv : [...processArgv, ...this.argsArray.slice(2)];
+    // An in-process caller (argsArray provided) hands us a self-contained argv
+    // of the form ['node', 'pnut-ts.js', ...testFlags]; parse exactly that.
+    // Splicing in the real process.argv here (as this used to do) fed jest's
+    // own flags -- '--coverage', '--verbose', etc. -- to commander alongside
+    // the test's flags whenever running under coverage. That only "worked"
+    // because an unknown option was silently ignored; making unknown options
+    // abort (below) would otherwise abort every in-process test run under
+    // coverage on jest's own flags.
+    const combinedArgs: string[] = this.argsArray.length == 0 ? processArgv : this.argsArray;
     //console.log(`DBG: combinedArgs=[${combinedArgs}](${combinedArgs.length})`);
 
     //if (!runningCoverageTesting) {
@@ -265,28 +273,22 @@ export class PNutInTypeScript {
       this.program.parse(combinedArgs);
     } catch (error: unknown) {
       if (error instanceof CommanderError) {
-        //this.context.logger.logMessage(`XYZZY Error: name=[${error.name}], code=[${error.code}], message=[${error.message}]`);
-        // Handle --version: exit cleanly
-        if (error.code === 'commander.version') {
+        // --version and --help exit cleanly; commander already wrote their output.
+        // (error.name is always 'CommanderError' for these -- it comes from the
+        // imported class, not a string we control -- but a minified distribution
+        // build can rename the class itself, so branch on the stable string code
+        // instead of the class/error name.)
+        if (error.code === 'commander.version' || error.code === 'commander.help' || error.code === 'commander.helpDisplayed') {
           return Promise.resolve(0);
         }
-        if (error.name === 'CommanderError') {
-          this.context.logger.logMessage(``); // our blank line so prompt is not too close after output
-          //this.context.logger.logMessage(`  xyzxzy `);
-          if (error.message !== '(outputHelp)') {
-            this.context.logger.logMessage(`  (See --help for available options)\n`);
-            //this.program.outputHelp();
-          }
-        } else {
-          if (error.name != 'oe' && error.name != 'Ee' && error.name != 'CommanderError2' && error.message != 'outputHelp') {
-            this.context.logger.logMessage(`Catch name=[${error.name}], message=[${error.message}]`);
-            // Instead of throwing, return a resolved Promise with a specific value, e.g., -1
-            return Promise.resolve(1);
-          }
-        }
+        // Anything else is a parse failure -- unknown option, missing argument,
+        // excess arguments, etc. Commander already wrote the error message;
+        // abort rather than silently continuing to compile.
+        this.context.logger.logMessage(``); // our blank line so prompt is not too close after output
+        this.context.logger.logMessage(`  (See --help for available options)\n`);
+        return Promise.resolve(1);
       } else {
         this.context.logger.logMessage(`XYZZY Catch unknown error=[${error}]`);
-        // Instead of throwing, return a resolved Promise with a specific value, e.g., -1
         return Promise.resolve(1);
       }
     }
