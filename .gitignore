@@ -241,10 +241,6 @@ src/utils/f2.ts
 Error.txt
 *.elemORIG
 *.FIXME
-math_128.*
-Spin2_v51_misc.*
-scripts/run-LANG-misc
-scripts/run-LANG-math
 *.flash
 *.HOLD
 *__pre.spin2
