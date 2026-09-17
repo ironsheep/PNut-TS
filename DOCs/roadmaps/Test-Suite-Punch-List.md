@@ -14,11 +14,9 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 
 | # | Item | Compiled output | Status |
 |---|---|---|---|
-| 2 | Stale preprocessor GOLDs | no | open — decision (a)/(b) |
 | 4 | Dead flash/RAM download code | no | open |
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
 | 6 | GOLD-regen workflow cleanup | no | open — triggers passed, outcomes unrecorded |
-| 9 | `-I` relative path in the preproc test | no | open |
 | 10 | Language-spec extraction pipeline | no | open — Stephen's decision |
 | 13 | Documentation residue (13a, 13d) | no | open |
 | 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
@@ -27,44 +25,6 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
 | 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
 | 22 | `.lst`/`.pre` unawaited streams | no | **in sprint: Map-Instance-Correctness** |
-
----
-
-## 2. Stale preprocessor GOLDs
-
-> **Compiled output: no** — us-vs-us preprocessor snapshots (`TEST/PREPROC-tests/*.pre.GOLD`); decision (a)/(b) below still open.
-
-**Surfaced by:** `pnut-ts-preproc.test.ts` — three failures: `condCode`,
-`condCodeElse`, `include`. GOLDs date from January 2024.
-
-**Root cause — two intertwined issues:**
-
-1. **Format change.** The preprocessor's output format intentionally changed
-   to *retain* preprocessor-directive lines as comments (e.g. `' #define
-   CLOCK_200MHZ` shows on the source-line where the directive lived) instead
-   of dropping them entirely. This makes downstream error reporting more
-   useful. The Jan 2024 GOLDs reflect the old "directive lines stripped"
-   format.
-
-2. **CON-only fixture sources fail compile.** `condCode.spin2`,
-   `condCodeElse.spin2`, and `include.spin2` are CON-only test files (no
-   `PUB` or `DAT`) — legal as imported objects but not as top-level. The
-   compiler now correctly errors with `No PUB method or DAT block found`.
-   The `.pre` report has already been emitted by the time that error fires,
-   so the report itself is fine — but the spurious error in the test output
-   muddies diagnosis.
-
-**Suggested fix:** decide whether to (a) regenerate `.pre.GOLD` files from
-current output and treat going forward as us-vs-us snapshots that we own
-end-to-end, or (b) follow the same logic as the deleted `--regression
-tables` apparatus and drop preprocessor-vs-GOLD comparison entirely (the
-preprocessor is exercised through every `*.spin2` compile in the regular
-regression suite — its correctness is implicitly tested). Option (a) keeps
-a focused regression for the preprocessor specifically; option (b) reduces
-maintenance burden.
-
-If keeping (a): also add a `PUB main()` stub to each fixture so the spurious
-"No PUB method or DAT block" error stops appearing in the test output.
 
 ---
 
@@ -357,17 +317,6 @@ is the cause. Pick the handling option then.
 
 ---
 
-## 9. `TEST/FULL` `-I` relative-path bug (added 2026-08-08)
-
-> **Compiled output: no** — test-harness only.
-
-**Surfaced by:** CLI-Robustness entry-baseline correction.
-
-`TEST/FULL/pnut-ts-preproc.test.ts` runs the CLI with `-I inc` relative to cwd
-rather than to the test directory — a likely contributing cause for the
-`include` failure independent of GOLD staleness (item 2), and a latent trap for
-any future test in that file.
-
 ## 10. Language-specification extraction pipeline broken in place (added 2026-08-09)
 
 > **Compiled output: no** — documentation tooling. Re-checked 2026-09-14: both broken imports still present. Needs Stephen's scope decision (repair, retire, or banner).
@@ -419,11 +368,12 @@ historical reference with a staleness banner.
 
 ## Cross-cutting note: regression tests against "us-vs-us" GOLDs
 
-Several suites (the resolver `dumpTables` GOLD, `#2 preproc GOLDs`, the deleted
-`--regression tables` apparatus, the deleted `pnut-ts-element` test) all
-share one structural problem: regression suites that compare PNut-TS output
-against PNut-TS-generated snapshots from a prior date. These rot whenever
-the format intentionally evolves and there's no mechanism to refresh them.
+Several suites (the resolver `dumpTables` GOLD, the `TEST/FULL/preprocessTESTs`
+preproc GOLDs, the deleted `--regression tables` apparatus, the deleted
+`pnut-ts-element` test) all share one structural problem: regression suites
+that compare PNut-TS output against PNut-TS-generated snapshots from a prior
+date. These rot whenever the format intentionally evolves and there's no
+mechanism to refresh them.
 
 The deletions in v1.54.3 (`--regression tables`, `pnut-ts-element`) accept
 that some of these snapshot comparisons aren't worth maintaining because
@@ -431,7 +381,9 @@ the underlying data (bytecode tables, elementizer output format) is
 *designed* to evolve. Items that survived (resolver, preprocessor) capture
 behaviors that *shouldn't* change — math operations and preprocessor
 semantics — so a stable GOLD makes sense provided we own the regenerate
-flow.
+flow. (The preprocessor GOLDs were regenerated and given a
+regenerate-recipe header in the test file itself — see
+`src/tests/FULL/pnut-ts-preproc.test.ts` — closing former punch list §2/§9.)
 
 A general principle worth adopting: any GOLD that PNut (Pascal) cannot
 produce must come with a documented "how to refresh this" recipe in the

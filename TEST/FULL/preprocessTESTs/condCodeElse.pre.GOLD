@@ -1,5 +1,5 @@
 ' Report for regression testing
-' Run: 01/31/2024
+' Run: 09/17/2026
 #
 ' ---------------------------------------
 [000] 1: '' =================================================================================================
@@ -13,26 +13,31 @@
 [008] 9: ' NOTE: this file is processed twice once with no directives and once with -DCLOCK_300MHZ directive
 [009] 10: ' {Spin2_v43}
 [010] 11: 
-[011] 13: 
-[012] 14: CON { timing }
-[013] 15: 
-[014] 21: 
-[015] 22:   CLK_FREQ = 200_000_000                                        ' system freq as a constant
-[016] 23: 
-[017] 25: 
-[018] 26:   _clkfreq = CLK_FREQ                                           ' set system clock
-[019] 27: 
-[020] 28: 
-[021] 29: CON { license }
-[022] 30: {{
-[023] 31: 
-[024] 32:  -------------------------------------------------------------------------------------------------
-[025] 33:   MIT License
-[026] 34: 
-[027] 35:   Copyright (c) 2024 Iron Sheep Productions, LLC
-[028] 36: 
-[029] 37:   Permission is hereby granted... dummy license block for test purposes
-[030] 38:  =================================================================================================
-[031] 39: }}
-[032] 40: 
+[011] 12: ' #define CLOCK_200MHZ
+[012] 13: 
+[013] 14: CON { timing }
+[014] 15: 
+[015] 16: ' #ifdef CLOCK_300MHZ
+[016] 20: ' #elseifdef CLOCK_200MHZ
+[017] 21: 
+[018] 22:   CLK_FREQ = 200_000_000                                        ' system freq as a constant
+[019] 23: 
+[020] 24: ' #endif
+[021] 25: 
+[022] 26:   _clkfreq = CLK_FREQ                                           ' set system clock
+[023] 27: 
+[024] 28: PUB main()
+[025] 29: 
+[026] 30: CON { license }
+[027] 31: {{
+[028] 32: 
+[029] 33:  -------------------------------------------------------------------------------------------------
+[030] 34:   MIT License
+[031] 35: 
+[032] 36:   Copyright (c) 2024 Iron Sheep Productions, LLC
+[033] 37: 
+[034] 38:   Permission is hereby granted... dummy license block for test purposes
+[035] 39:  =================================================================================================
+[036] 40: }}
+[037] 41: 
 ' ---------------------------------------

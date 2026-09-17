@@ -1,5 +1,21 @@
 /* eslint-disable no-console */
 'use strict';
+//
+// NOTE: PNut-TS-owned GOLDs
+// -------------------------
+// The .pre.GOLD files under TEST/FULL/preprocessTESTs/ are NOT ported from the
+// Windows PNut compiler -- PNut has no equivalent regression report. They are
+// PNut-TS-generated snapshots that WE own (Stephen, 2026-09-16).
+//
+// To regenerate one (only after confirming, line by line against
+// DOCs/internals/usage-guides-new/Preprocessor-Usage-Guide.md and the source
+// .spin2, that every directive/branch outcome is correct -- a wrong behavior
+// frozen into a GOLD is the risk these fixtures exist to avoid):
+//   npm run build
+//   node dist/pnut-ts.js -I TEST/FULL/preprocessTESTs/inc --regression preproc -- \
+//     TEST/FULL/preprocessTESTs/<name>.spin2
+//   cp TEST/FULL/preprocessTESTs/<name>.pre TEST/FULL/preprocessTESTs/<name>.pre.GOLD
+//
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -51,7 +67,11 @@ describe('PNut_ts generates correct preProcessor output', () => {
       // if the report file exists delete it before we start
       removeExistingFile(reportFSpec);
 
-      const options: string = ' -I inc --regression preproc --';
+      // -I must resolve relative to this suite's fixture directory, not the
+      // process cwd (which is wherever the test runner happens to be invoked
+      // from) -- was punch list §9, closed by this fix.
+      const includeDir = path.join(testDirPath, 'inc');
+      const options: string = ` -I ${includeDir} --regression preproc --`;
       try {
         execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
       } catch (error) {
