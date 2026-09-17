@@ -1,16 +1,22 @@
 /** @format */
 
-// GOLD corpora vs the image decoder (Map-Instance-Correctness §4, part 1).
+// GOLD corpora vs the image decoder and the .map (Map-Instance-Correctness §4).
 //
 // For every existing fixture whose Windows .obj.GOLD has child objects:
 //   1. the GOLD decodes with no inconsistency (PNut's own bytes);
 //   2. a fresh compile, staged in a temp directory, yields the same image in
 //      its listing dump and its .obj (two containers, one compile);
 //   3. that image equals the GOLD image byte for byte — or, for the fixtures
-//      below with a known numeric divergence, has the identical decoded tree.
+//      below with a known numeric divergence, has the identical decoded tree
+//      (part 1);
+//   4. the fresh compile's .map agrees structurally (image regions, slot
+//      counts, VAR bases, method addresses) with that same decode — which is
+//      already proven structurally equal to the GOLD bytes by step 3 (part 2,
+//      mapGroundTruth.checkMapStructure — these fixtures carry no
+//      expected.json, so only structural facts, not names, are checked here).
 //
 // GOLD files are read in place, read-only. Nothing is written into TEST/.
-// Slow: roughly 80-100 s in total (WUMMI and LARGE compiles dominate).
+// Slow: roughly 130 s in total (WUMMI and LARGE compiles dominate).
 
 'use strict';
 
@@ -18,6 +24,8 @@ import fs from 'fs';
 import path from 'path';
 import { compileSpin2, stageTree, StagedTree } from '../CACHE-tests/cacheFixtures';
 import { DecodedProgram, decodeImage, describeProgram, readListingImage, readObjFile } from './mapOracle';
+import { checkMapStructure } from './mapGroundTruth';
+import { parseMap } from './mapParser';
 
 const testRoot = path.resolve(__dirname, '../../../TEST');
 const COMPILE_TIMEOUT_MS = 180000;
@@ -134,7 +142,7 @@ describe.each(corpora.map((corpus) => [corpus.dir, corpus] as const))('GOLD corp
       const goldProgram = decodeImage(gold);
       expect(goldProgram.problems).toEqual([]);
 
-      compileSpin2(tree.dir, `${basename}.spin2`, corpus.debug(basename) ? '-q -d -l -O' : '-q -l -O');
+      compileSpin2(tree.dir, `${basename}.spin2`, corpus.debug(basename) ? '-q -d -l -m -O' : '-q -l -m -O');
       const listing = readListingImage(path.join(tree.dir, `${basename}.lst`));
       const obj = readObjFile(path.join(tree.dir, `${basename}.obj`), 'spin');
       expect(Buffer.compare(listing.image, obj.image)).toBe(0);
@@ -143,6 +151,15 @@ describe.each(corpora.map((corpus) => [corpus.dir, corpus] as const))('GOLD corp
       const freshProgram = decodeImage(listing);
       if (freshProgram.problems.length > 0) {
         throw new Error(`fresh decode inconsistent:\n${describeProgram(freshProgram)}`);
+      }
+
+      // Part 2: the .map's structural facts (image regions, slot counts, VAR
+      // bases, method addresses) against this same decode — already proven
+      // structurally equal to the GOLD bytes above.
+      const map = parseMap(fs.readFileSync(path.join(tree.dir, `${basename}.map`), 'utf8'));
+      const mapProblems = checkMapStructure(map, freshProgram);
+      if (mapProblems.length > 0) {
+        throw new Error(`.map structure disagrees with the decode:\n${mapProblems.join('\n')}`);
       }
 
       const bytesMatch = Buffer.compare(listing.image, gold.image) === 0 && listing.varSize === gold.varSize;
