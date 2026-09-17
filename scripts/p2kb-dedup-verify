@@ -1,204 +1,768 @@
-#!/bin/bash
-# p2kb-dedup-verify — re-measure the P2 Knowledge Base entry
-# `p2kbSpin2ObjectImageDedup` against the compiler in dist/.
-#
-# WHY THIS EXISTS
-#   That entry documents object-image deduplication using measurements taken
-#   against a specific pnut-ts build, and it self-flags:
-#       "Compiler-coupled behaviour: re-measure rather than assume if a result
-#        surprises you."
-#   Its fixtures live in the entry, not in this repo, so verifying it used to
-#   mean rebuilding them by hand from prose. This script stages them, compiles
-#   each with -m, and reports the exact signals the entry's own
-#   `verification.method` says to read: the `Objects:` count and the DAT symbol
-#   addresses.
-#
-#   It also dumps the MEMORY LAYOUT label columns, because the entry carries a
-#   `map_caveat` warning P2 developers away from those labels. Whether that
-#   caveat is still warranted is a thing you should SEE, not take on trust.
-#
-# USAGE
-#   npm run build && ./scripts/p2kb-dedup-verify [-k]
-#     -k   keep the scratch directory and print its path
-#
-# EXIT
-#   0 = every case matched the entry's recorded measurement
-#   1 = at least one diverged — the entry needs re-measurement, or the
-#       compiler regressed. Read the dump before deciding which.
+#!/usr/bin/env node
+/* eslint-disable no-console */
+'use strict';
 
-set -u
-SCRIPT=${0##*/}
-KEEP=0
-[ "${1:-}" = "-k" ] && KEEP=1
+// p2kb-dedup-verify — re-measure the P2 Knowledge Base entry
+// `p2kbSpin2ObjectImageDedup` against the compiler in dist/, and check the
+// three map-shapes the entry's map_caveat used to warn readers away from
+// (identical-copy / nested VAR bases, OBJ arrays, a DAT-layout fork).
+//
+// WHY THIS EXISTS
+//   That entry documents object-image deduplication using measurements taken
+//   against a specific pnut-ts build, and it self-flags:
+//       "Compiler-coupled behaviour: re-measure rather than assume if a result
+//        surprises you."
+//   Its fixtures live in the entry, not in this repo, so verifying it used to
+//   mean rebuilding them by hand from prose. This script stages them, compiles
+//   each with -m, and reads the exact signal the entry's verification.method
+//   should now name: the SUMMARY sentence's image count (the 1.55.8 map has
+//   no `Objects:` line — see DOCs/internals/MAP-File-Format.md). The entry's
+//   published `Objects: N` figures were measured on pre-1.55.8 builds and
+//   correspond exactly to this build's SUMMARY image count I; that mapping is
+//   asserted by every case below, not just assumed.
+//
+//   It also checks three map shapes the entry's map_caveat used to warn about
+//   generically ("do NOT trust those labels"): two identical (and nested)
+//   copies sharing an image still get distinct, correctly-nested VAR bases;
+//   an OBJ array's elements each get their own correct VAR address, including
+//   an OBJ declared AFTER an array; and a DAT-layout fork lays out separate
+//   DAT offsets per forked image. These were the shapes Map-Instance-
+//   Correctness found broken at 1.55.4-1.55.7 (punch list §20) and fixed for
+//   1.55.8.
+//
+// USAGE
+//   npm run build && ./scripts/p2kb-dedup-verify [-k]
+//     -k   keep the scratch directory and print its path
+//
+// EXIT
+//   0 = every case matched
+//   1 = at least one diverged — read the failure, which always names the case
 
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
-PNUT="${REPO}/dist/pnut-ts.js"
-if [ ! -f "${PNUT}" ]; then
-  echo "${SCRIPT}: ${PNUT} not found — run 'npm run build' first" >&2
-  exit 1
-fi
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execSync } = require('child_process');
 
-WORK="$(mktemp -d)"
-trap '[ "${KEEP}" -eq 0 ] && rm -rf "${WORK}"' EXIT
+const REPO = path.resolve(__dirname, '..');
+const PNUT = path.join(REPO, 'dist', 'pnut-ts.js');
+const PARSER = path.join(REPO, 'dist', 'tests', 'MAP-tests', 'mapParser.js');
 
-PASS=0
-FAIL=0
+const KEEP = process.argv.includes('-k');
 
-# --- the entry's fixtures, staged verbatim from its own code blocks ---------
+if (!fs.existsSync(PNUT)) {
+  console.error(
+    `p2kb-dedup-verify: ${PNUT} not found — run 'npm run build' first`
+  );
+  process.exit(1);
+}
+if (!fs.existsSync(PARSER)) {
+  console.error(
+    `p2kb-dedup-verify: ${PARSER} not found — run 'npm run build' first`
+  );
+  process.exit(1);
+}
+const { parseMap } = require(PARSER);
 
-# Seeded driver: BUS_TAG reaches a DAT long, so an override changes image bytes.
-cat > "${WORK}/drv.spin2" <<'EOF'
-CON
-  BUS_TAG = -1
-DAT
-  tag  LONG  BUS_TAG
-PUB start() : r
-  r := tag
-EOF
+const WORK = fs.mkdtempSync(path.join(os.tmpdir(), 'p2kb-verify-'));
+process.on('exit', () => {
+  if (!KEEP) {
+    fs.rmSync(WORK, { recursive: true, force: true });
+  }
+});
 
-# Unseeded driver: BUS_TAG is never referenced, so an override cannot fork.
-cat > "${WORK}/drv_unref.spin2" <<'EOF'
-CON
-  BUS_TAG = -1
-DAT
-  tag  LONG  0
-PUB start() : r
-  r := tag
-EOF
+let PASS = 0;
+let FAIL = 0;
+const failedCases = [];
 
-# 3-tier cascade: each tier seeds its own DAT and forwards to the child.
-cat > "${WORK}/casc_leaf.spin2" <<'EOF'
-CON
-  LEAF_TAG = -1
-DAT
-  ltag  LONG  LEAF_TAG
-PUB go() : r
-  r := ltag
-EOF
-cat > "${WORK}/casc_mid.spin2" <<'EOF'
-CON
-  MID_TAG = -1
-OBJ
-  leaf : "casc_leaf" | LEAF_TAG = MID_TAG
-DAT
-  mtag  LONG  MID_TAG
-PUB go() : r
-  r := mtag + leaf.go()
-EOF
-
-mk_top() {  # $1 = filename, $2... = OBJ lines
-  local out="${WORK}/$1"; shift
-  { echo "OBJ"
-    for line in "$@"; do echo "  ${line}"; done
-    echo "PUB main() : r"
-    echo "  r := a.${CALL}() + b.${CALL}()"
-  } > "${out}"
+function write(name, text) {
+  fs.writeFileSync(path.join(WORK, name), text);
 }
 
-# --- runner ----------------------------------------------------------------
-
-run_case() {
-  local label="$1" top="$2" expect="$3" note="$4"
-  local base="${top%.spin2}"
-  ( cd "${WORK}" && node "${PNUT}" -m "${top}" >/dev/null 2>&1 )
-  local map="${WORK}/${base}.map"
-  if [ ! -f "${map}" ]; then
-    echo "  ✗ ${label}"
-    echo "      compile FAILED — no ${base}.map produced"
-    ( cd "${WORK}" && node "${PNUT}" -m "${top}" 2>&1 | grep -i error | head -3 | sed 's/^/      /' )
-    FAIL=$((FAIL+1)); return
-  fi
-  local got
-  got=$(grep -m1 'Objects:' "${map}" | tr -dc '0-9')
-  if [ "${got}" = "${expect}" ]; then
-    echo "  ✓ ${label}"
-    PASS=$((PASS+1))
-  else
-    echo "  ✗ ${label}"
-    echo "      entry says Objects: ${expect} — measured Objects: ${got}"
-    FAIL=$((FAIL+1))
-  fi
-  echo "      ${note}"
-  # The two signals the entry's verification.method names, plus the labels its
-  # map_caveat warns about. Printed for every case, pass or fail.
-  sed -n '/=== MEMORY LAYOUT ===/,/^=== /p' "${map}" \
-    | grep -E '^\s+\$[0-9A-F]' | sed 's/^/      /'
-  echo ""
+function compile(top, extraFlags) {
+  const flags = extraFlags ? `${extraFlags} ` : '';
+  try {
+    execSync(`node ${JSON.stringify(PNUT)} -m ${flags}${JSON.stringify(top)}`, {
+      cwd: WORK,
+      stdio: 'pipe'
+    });
+  } catch (error) {
+    return { ok: false, error };
+  }
+  const mapFile = path.join(WORK, top.replace(/\.spin2$/, '.map'));
+  if (!fs.existsSync(mapFile)) {
+    return { ok: false, error: new Error('no .map produced') };
+  }
+  const text = fs.readFileSync(mapFile, 'utf8');
+  return { ok: true, text, map: parseMap(text) };
 }
 
-echo ""
-echo "${SCRIPT}: re-measuring p2kbSpin2ObjectImageDedup"
-echo "  compiler: $(node "${PNUT}" --version 2>&1 | tr -d '\r')"
-echo "  scratch:  ${WORK}"
-echo ""
-echo "Each case prints its MEMORY LAYOUT rows: address range, size, source"
-echo "object, instance label, and overrides. 'A+1' means one region shared by"
-echo "A and one other instance."
-echo ""
+/** Compile with -b and return the .bin bytes, or throw naming the failure. */
+function compileBin(top) {
+  execSync(`node ${JSON.stringify(PNUT)} -b ${JSON.stringify(top)}`, {
+    cwd: WORK,
+    stdio: 'pipe'
+  });
+  const binFile = path.join(WORK, top.replace(/\.spin2$/, '.bin'));
+  if (!fs.existsSync(binFile)) {
+    throw new Error(`${top}: -b did not produce a .bin`);
+  }
+  return fs.readFileSync(binFile);
+}
 
-CALL=start
-mk_top t1.spin2 'a : "drv" | BUS_TAG = 100' 'b : "drv" | BUS_TAG = 100'
-run_case "identical overrides (100,100), seeded" t1.spin2 2 \
-         "one shared image, one shared DAT — the singleton"
+/**
+ * Run one case: compile `top`, assert the SUMMARY image count against the
+ * entry's own `Objects: N` figure for this fixture, and run any extra
+ * structural checks. `check(map)` may throw or return an array of problem
+ * strings; either fails the case, naming it.
+ */
+function runCase(label, top, entryObjects, note, check) {
+  const result = compile(top);
+  if (!result.ok) {
+    console.log(`  ✗ ${label}`);
+    console.log(`      compile FAILED: ${result.error.message}`);
+    FAIL++;
+    failedCases.push(label);
+    return undefined;
+  }
+  const { map } = result;
+  const gotImages = map.images.length;
+  const problems = [];
+  if (gotImages !== entryObjects) {
+    problems.push(
+      `entry says Objects: ${entryObjects} (-> SUMMARY images) — measured ${gotImages}`
+    );
+  }
+  if (check) {
+    try {
+      const extra = check(map, result.text) || [];
+      problems.push(...extra);
+    } catch (error) {
+      problems.push(`check threw: ${error.message}`);
+    }
+  }
+  if (problems.length === 0) {
+    console.log(`  ✓ ${label}`);
+    PASS++;
+  } else {
+    console.log(`  ✗ ${label}`);
+    for (const p of problems) {
+      console.log(`      ${p}`);
+    }
+    FAIL++;
+    failedCases.push(label);
+  }
+  console.log(`      ${note}`);
+  console.log(`      ${map.summarySentence}`);
+  console.log('');
+  return { map, text: result.text };
+}
 
-mk_top t2.spin2 'a : "drv" | BUS_TAG = 100' 'b : "drv" | BUS_TAG = 200'
-run_case "differing overrides (100,200), seeded" t2.spin2 3 \
-         "two images, independent DAT — the override changed image bytes"
+/**
+ * A standalone assertion, not tied to one compile, for cross-case facts (e.g.
+ * comparing two already-compiled cases' byte totals or binaries). Prints and
+ * counts exactly like runCase.
+ */
+function runCheck(label, note, fn) {
+  const problems = [];
+  try {
+    problems.push(...(fn() || []));
+  } catch (error) {
+    problems.push(`check threw: ${error.message}`);
+  }
+  if (problems.length === 0) {
+    console.log(`  ✓ ${label}`);
+    PASS++;
+  } else {
+    console.log(`  ✗ ${label}`);
+    for (const p of problems) {
+      console.log(`      ${p}`);
+    }
+    FAIL++;
+    failedCases.push(label);
+  }
+  console.log(`      ${note}`);
+  console.log('');
+}
 
-mk_top t3.spin2 'a : "drv_unref" | BUS_TAG = 100' 'b : "drv_unref" | BUS_TAG = 200'
-run_case "differing overrides, CON unreferenced" t3.spin2 2 \
-         "SILENTLY MERGED — wanted two, got one (the_silent_trap)"
+// ---------------------------------------------------------------------------
+// Fixtures — the entry's own, staged verbatim from its prose
+// ---------------------------------------------------------------------------
 
-mk_top t4.spin2 'a : "drv" | BUS_TAG = 6' 'b : "drv"'
-run_case "one declaration overridden, sibling not" t4.spin2 3 \
-         "SILENTLY FORKED — wanted one, got two (the_other_silent_trap)"
+write(
+  'drv.spin2',
+  [
+    'CON',
+    '  BUS_TAG = -1',
+    'DAT',
+    '  tag  LONG  BUS_TAG',
+    'PUB start() : r',
+    '  r := tag',
+    ''
+  ].join('\n')
+);
 
-mk_top t5.spin2 'a : "drv" | BUS_TAG = 6' 'b : "drv" | BUS_TAG = 6'
-run_case "the same override applied to both" t5.spin2 2 \
-         "the correct form of the case above"
+write(
+  'drv_unref.spin2',
+  [
+    'CON',
+    '  BUS_TAG = -1',
+    'DAT',
+    '  tag  LONG  0',
+    'PUB start() : r',
+    '  r := tag',
+    ''
+  ].join('\n')
+);
 
-CALL=go
-mk_top t6.spin2 'a : "casc_mid" | MID_TAG = 1' 'b : "casc_mid" | MID_TAG = 2'
-run_case "one top override, 3-tier seeded+forwarding chain" t6.spin2 5 \
-         "every DAT-bearing tier forked: top + 2 mid + 2 leaf"
+write(
+  'casc_leaf.spin2',
+  [
+    'CON',
+    '  LEAF_TAG = -1',
+    'DAT',
+    '  ltag  LONG  LEAF_TAG',
+    'PUB go() : r',
+    '  r := ltag',
+    ''
+  ].join('\n')
+);
 
-# --- map_caveat evidence, asserted rather than printed ---------------------
+write(
+  'casc_mid.spin2',
+  [
+    'CON',
+    '  MID_TAG = -1',
+    'OBJ',
+    '  leaf : "casc_leaf" | LEAF_TAG = MID_TAG',
+    'DAT',
+    '  mtag  LONG  MID_TAG',
+    'PUB go() : r',
+    '  r := mtag + leaf.go()',
+    ''
+  ].join('\n')
+);
 
-echo "map_caveat evidence (entry says: 'do NOT trust those labels')"
-echo ""
-echo "  1. Forked instances must be distinguishable — name, source, override:"
-sed -n '/=== MEMORY LAYOUT ===/,/^=== /p' "${WORK}/t2.map" \
-  | grep -E '^\s+\$[0-9A-F]' | sed 's/^/       /'
-echo ""
+// Reused for the identical-copy/nested-VAR-base case below.
+write(
+  'motor.spin2',
+  [
+    'CON',
+    '  GAIN = 1',
+    'VAR',
+    '  long speed',
+    '  word limit',
+    'OBJ',
+    '  log : "drv" | BUS_TAG = 4',
+    'PUB go(delta) : r',
+    '  speed += delta * GAIN',
+    '  r := log.start()',
+    ''
+  ].join('\n')
+);
 
-# A forked file has one DAT region per image. SYMBOL INDEX must report the DAT
-# symbol once PER INSTANCE, not once per source file.
-#
-# This is asserted, not merely displayed, because it is the exact claim that
-# went stale: it was TRUE when the retraction was drafted on 2026-08-22 and was
-# fixed later in the same release. An amendment retaining it would have told P2
-# developers to avoid the section that now answers their question.
-SYMROWS=$(sed -n '/=== SYMBOL INDEX ===/,$p' "${WORK}/t2.map" | grep -cE '^\s+TAG\s')
-echo "  2. SYMBOL INDEX must give per-INSTANCE DAT addresses (expect 2 rows):"
-sed -n '/=== SYMBOL INDEX ===/,$p' "${WORK}/t2.map" | grep -E '^\s+TAG\s' | sed 's/^/       /'
-if [ "${SYMROWS}" -eq 2 ]; then
-  echo "     ✓ ${SYMROWS} rows — one per image. The per-source-file collapse is gone."
-  PASS=$((PASS+1))
-else
-  echo "     ✗ ${SYMROWS} row(s) — expected 2, one per image."
-  echo "       The per-source-file collapse has returned. Any P2KB amendment"
-  echo "       claiming SYMBOL INDEX is per-instance is now wrong."
-  FAIL=$((FAIL+1))
-fi
-echo ""
+// Reused for the DAT-layout-fork case below (same shape as the spec's
+// worked-example demo_buf.spin2: a CON sizes the DAT array).
+write(
+  'buf.spin2',
+  [
+    'CON',
+    '  SIZE = 8',
+    'VAR',
+    '  long count',
+    'DAT',
+    '  buffer  BYTE  0[SIZE]',
+    '  tail    LONG  0',
+    'PUB put(value)',
+    '  tail := value',
+    '  buffer[count] := value',
+    '  count := (count + 1) // SIZE',
+    ''
+  ].join('\n')
+);
 
-echo "----------------------------------------------------------------------"
-if [ "${FAIL}" -eq 0 ]; then
-  echo "${SCRIPT}: ${PASS} case(s) matched the entry. Every dedup claim holds."
-else
-  echo "${SCRIPT}: ${PASS} matched, ${FAIL} DIVERGED — the entry is stale for"
-  echo "           this build, or the compiler regressed. Read the dumps above."
-fi
-[ "${KEEP}" -eq 1 ] && echo "${SCRIPT}: scratch kept at ${WORK}"
-echo ""
-exit $([ "${FAIL}" -eq 0 ] && echo 0 || echo 1)
+function mkTop(name, objLines, calls) {
+  write(
+    name,
+    [
+      'OBJ',
+      ...objLines.map((l) => `  ${l}`),
+      'PUB main() : r',
+      `  r := ${calls}`,
+      ''
+    ].join('\n')
+  );
+}
+
+console.log('');
+console.log(
+  'p2kb-dedup-verify: re-measuring p2kbSpin2ObjectImageDedup against the 1.55.8 .map grammar'
+);
+console.log(
+  `  compiler: ${execSync(`node ${JSON.stringify(PNUT)} --version`, {
+    cwd: WORK
+  })
+    .toString()
+    .trim()}`
+);
+console.log(`  scratch:  ${WORK}`);
+console.log('');
+console.log(
+  "  Mapping: the entry's Objects: N (measured pre-1.55.8) is this build's SUMMARY"
+);
+console.log(
+  '  image count I (DOCs/internals/MAP-File-Format.md). Every case asserts N === I.'
+);
+console.log('');
+
+// --- the entry's own cases -------------------------------------------------
+
+mkTop(
+  't1.spin2',
+  ['a : "drv" | BUS_TAG = 100', 'b : "drv" | BUS_TAG = 100'],
+  'a.start() + b.start()'
+);
+runCase(
+  'identical overrides (100,100), seeded',
+  't1.spin2',
+  2,
+  'one shared image, one shared DAT — the singleton'
+);
+
+mkTop(
+  't2.spin2',
+  ['a : "drv" | BUS_TAG = 100', 'b : "drv" | BUS_TAG = 200'],
+  'a.start() + b.start()'
+);
+runCase(
+  'differing overrides (100,200), seeded',
+  't2.spin2',
+  3,
+  'two images, independent DAT'
+);
+
+mkTop(
+  't3.spin2',
+  ['a : "drv_unref" | BUS_TAG = 100', 'b : "drv_unref" | BUS_TAG = 200'],
+  'a.start() + b.start()'
+);
+runCase(
+  'differing overrides, CON unreferenced',
+  't3.spin2',
+  2,
+  'SILENTLY MERGED — wanted two, got one'
+);
+
+mkTop(
+  't4.spin2',
+  ['a : "drv" | BUS_TAG = 6', 'b : "drv"'],
+  'a.start() + b.start()'
+);
+const mirrorForked = runCase(
+  'one declaration overridden, sibling not',
+  't4.spin2',
+  3,
+  'SILENTLY FORKED — wanted one, got two (the mirror trap)'
+);
+
+mkTop(
+  't5.spin2',
+  ['a : "drv" | BUS_TAG = 6', 'b : "drv" | BUS_TAG = 6'],
+  'a.start() + b.start()'
+);
+const mirrorFixed = runCase(
+  'the same override applied to both',
+  't5.spin2',
+  2,
+  'the correct form of the case above'
+);
+
+// The entry's own byte figures (348/216) are specific to its own fixture,
+// which is not published here; what generalizes is the RELATION: the forked
+// (3-image) version must be strictly larger than the merged (2-image)
+// version, because it carries a second copy of drv's code and DAT.
+runCheck(
+  'mirror trap: forked Code/DAT bytes > merged Code/DAT bytes',
+  `entry's own fixture measured 348 (forked) / 216 (merged) bytes; our reconstruction measured ${mirrorForked ? mirrorForked.map.totals.codeDataBytes : '?'} (forked) / ${mirrorFixed ? mirrorFixed.map.totals.codeDataBytes : '?'} (merged) — absolute bytes are fixture-specific and not expected to match, the relation is`,
+  () => {
+    if (mirrorForked === undefined || mirrorFixed === undefined) {
+      return [
+        'one of the two mirror-trap cases failed to compile — cannot compare'
+      ];
+    }
+    const forkedBytes = mirrorForked.map.totals.codeDataBytes;
+    const fixedBytes = mirrorFixed.map.totals.codeDataBytes;
+    if (!(forkedBytes > fixedBytes)) {
+      return [
+        `forked Code/DAT bytes (${forkedBytes}) is not greater than merged (${fixedBytes})`
+      ];
+    }
+    return [];
+  }
+);
+
+mkTop(
+  't6.spin2',
+  ['a : "casc_mid" | MID_TAG = 1', 'b : "casc_mid" | MID_TAG = 2'],
+  'a.go() + b.go()'
+);
+runCase(
+  'one top override, 3-tier seeded+forwarding chain',
+  't6.spin2',
+  5,
+  'every DAT-bearing tier forked: top + 2 mid + 2 leaf'
+);
+
+// --- new cases: the three map shapes Map-Instance-Correctness fixed --------
+
+mkTop(
+  't7.spin2',
+  ['left : "motor"', 'right : "motor"'],
+  'left.go(1) + right.go(-1)'
+);
+runCase(
+  'identical-copy VAR bases, nested (LEFT/RIGHT each own a "log")',
+  't7.spin2',
+  3,
+  'top + shared motor image + shared drv(log) image; each of the 4 non-top instances must get its own, correctly-nested VAR base',
+  (map) => {
+    const problems = [];
+    const varBlockOf = (path) => map.varBlocks.find((v) => v.instance === path);
+    const left = varBlockOf('LEFT');
+    const right = varBlockOf('RIGHT');
+    const leftLog = varBlockOf('LEFT.LOG');
+    const rightLog = varBlockOf('RIGHT.LOG');
+    for (const [name, row] of [
+      ['LEFT', left],
+      ['RIGHT', right],
+      ['LEFT.LOG', leftLog],
+      ['RIGHT.LOG', rightLog]
+    ]) {
+      if (row === undefined) problems.push(`no VAR block row for ${name}`);
+    }
+    if (problems.length > 0) return problems;
+    const seen = new Set();
+    for (const row of [left, right, leftLog, rightLog]) {
+      if (seen.has(row.rangeStart))
+        problems.push(
+          `VAR base $${row.rangeStart.toString(16)} reused across instances`
+        );
+      seen.add(row.rangeStart);
+    }
+    // motor's own detail block gives LOG's VAR offset within its parent.
+    const motorBlock = map.details.find((d) => d.source === 'motor.spin2');
+    if (motorBlock === undefined) {
+      problems.push('no OBJECT DETAILS block for motor.spin2');
+      return problems;
+    }
+    const logSlot = motorBlock.childSlots.find((s) => s.names.includes('LOG'));
+    if (logSlot === undefined) {
+      problems.push('motor.spin2 has no "LOG" child slot');
+      return problems;
+    }
+    if (leftLog.rangeStart !== left.rangeStart + logSlot.varOffset) {
+      problems.push(
+        `LEFT.LOG VAR base $${leftLog.rangeStart.toString(16)} != LEFT $${left.rangeStart.toString(16)} + slot offset +$${logSlot.varOffset.toString(16)}`
+      );
+    }
+    if (rightLog.rangeStart !== right.rangeStart + logSlot.varOffset) {
+      problems.push(
+        `RIGHT.LOG VAR base $${rightLog.rangeStart.toString(16)} != RIGHT $${right.rangeStart.toString(16)} + slot offset +$${logSlot.varOffset.toString(16)}`
+      );
+    }
+    return problems;
+  }
+);
+
+mkTop(
+  't8.spin2',
+  ['d[3] : "drv"'],
+  'd[0].start() + d[1].start() + d[2].start()'
+);
+runCase(
+  'OBJ array, 3 elements sharing one image',
+  't8.spin2',
+  2,
+  'top + one shared drv image; each element needs its own VAR row',
+  (map) => {
+    const problems = [];
+    const rows = ['D[0]', 'D[1]', 'D[2]'].map((p) =>
+      map.varBlocks.find((v) => v.instance === p)
+    );
+    rows.forEach((row, i) => {
+      if (row === undefined) problems.push(`no VAR block row for D[${i}]`);
+    });
+    if (problems.length > 0) return problems;
+    const starts = rows.map((r) => r.rangeStart);
+    if (new Set(starts).size !== 3)
+      problems.push(
+        `D[0..2] VAR bases not all distinct: ${starts.map((s) => '$' + s.toString(16)).join(', ')}`
+      );
+    const image = map.images.find((im) => im.source === 'drv.spin2');
+    const expected = ['D[0]', 'D[1]', 'D[2]'];
+    const gotList = image ? image.instances : undefined;
+    if (
+      image === undefined ||
+      JSON.stringify(gotList) !== JSON.stringify(expected)
+    ) {
+      problems.push(
+        `drv.spin2 image Instances list is not D[0],D[1],D[2] (the array run, expanded): got ${gotList ? gotList.join(',') : '(no image)'}`
+      );
+    }
+    return problems;
+  }
+);
+
+mkTop(
+  't9.spin2',
+  ['d[3] : "drv"', 'e : "drv_unref"'],
+  'd[0].start() + d[1].start() + d[2].start() + e.start()'
+);
+runCase(
+  'OBJ declared AFTER an array in the same parent',
+  't9.spin2',
+  3,
+  'top + shared drv image (array) + drv_unref image (E); E must land correctly, not as a placeholder',
+  (map) => {
+    const problems = [];
+    const eTree = map.tree.find((r) => r.path === 'E');
+    if (eTree === undefined) {
+      problems.push('no OBJECT TREE row for E');
+      return problems;
+    }
+    if (eTree.source !== 'drv_unref.spin2') {
+      problems.push(
+        `E source is "${eTree.source}", expected drv_unref.spin2 (placeholder/misattribution regression)`
+      );
+    }
+    if (
+      /^object_?\d*$/i.test(eTree.source) ||
+      /^object_?\d*$/i.test(eTree.path)
+    ) {
+      problems.push(
+        `E looks like a placeholder name: source="${eTree.source}" path="${eTree.path}"`
+      );
+    }
+    const eVar = map.varBlocks.find((v) => v.instance === 'E');
+    const arrayLast = map.varBlocks.find((v) => v.instance === 'D[2]');
+    if (eVar === undefined || arrayLast === undefined) {
+      problems.push('missing VAR block row for E or D[2]');
+      return problems;
+    }
+    if (eVar.rangeStart <= arrayLast.rangeStart) {
+      problems.push(
+        `E's VAR base $${eVar.rangeStart.toString(16)} does not follow D[2]'s $${arrayLast.rangeStart.toString(16)}`
+      );
+    }
+    const eDetail = map.details.find((d) => d.source === 'drv_unref.spin2');
+    if (eDetail === undefined) {
+      problems.push('no OBJECT DETAILS block for drv_unref.spin2 (E)');
+    } else if (eDetail.dat.length === 0) {
+      problems.push('drv_unref.spin2 (E) OBJECT DETAILS has no DAT rows');
+    }
+    return problems;
+  }
+);
+
+// SIZE changes buffer's byte length, so a and b must fork into separate
+// images with different DAT offsets for `tail` (the field after the array).
+write(
+  't10.spin2',
+  [
+    'OBJ',
+    '  a : "buf" | SIZE = 4',
+    '  b : "buf" | SIZE = 100',
+    'PUB main()',
+    '  a.put(1)',
+    '  b.put(2)',
+    ''
+  ].join('\n')
+);
+runCase(
+  'DAT-layout fork: a|SIZE=4, b|SIZE=100',
+  't10.spin2',
+  3,
+  'top + two forked buf images (differing DAT layout)',
+  (map) => {
+    const problems = [];
+    const bufBlocks = map.details.filter((d) => d.source === 'buf.spin2');
+    if (bufBlocks.length !== 2) {
+      problems.push(
+        `expected 2 distinct buf.spin2 OBJECT DETAILS blocks, got ${bufBlocks.length}`
+      );
+      return problems;
+    }
+    const tailOffsets = bufBlocks.map((b) => {
+      const tail = b.dat.find((d) => d.name === 'TAIL');
+      return tail ? tail.offset : undefined;
+    });
+    if (tailOffsets.includes(undefined)) {
+      problems.push('one of the forked buf images has no TAIL DAT row');
+    } else if (tailOffsets[0] === tailOffsets[1]) {
+      problems.push(
+        `both forked images place TAIL at the same offset +$${tailOffsets[0].toString(16)} — the fork did not change the layout`
+      );
+    }
+    return problems;
+  }
+);
+
+// --- entry cases previously carried forward without reconstruction --------
+//
+// Reconstructed from the entry's own prose (fixture source not published).
+// Load-bearing claims are image counts and binary identity, not the entry's
+// specific byte totals, which are its own fixture's numbers.
+
+// "two DIFFERING overrides of a CON the object never references -> Objects:
+// 2, ONE image, binaries md5-identical to the same program with the
+// overrides made equal."
+write(
+  'drv_unref2.spin2',
+  [
+    'CON',
+    '  UNUSED = 1',
+    '  SEED = 42',
+    'DAT',
+    '  tag  LONG  SEED',
+    'PUB start() : r',
+    '  r := tag',
+    ''
+  ].join('\n')
+);
+mkTop(
+  't11_diff.spin2',
+  ['a : "drv_unref2" | UNUSED = 5', 'b : "drv_unref2" | UNUSED = 7'],
+  'a.start() + b.start()'
+);
+mkTop(
+  't11_same.spin2',
+  ['a : "drv_unref2" | UNUSED = 5', 'b : "drv_unref2" | UNUSED = 5'],
+  'a.start() + b.start()'
+);
+runCase(
+  'two DIFFERING overrides of a CON never referenced',
+  't11_diff.spin2',
+  2,
+  'SILENTLY MERGED (same mechanism as the unreferenced-CON case above); the load-bearing claim is binary identity with the overrides made equal, checked next'
+);
+runCheck(
+  '...its .bin is md5-identical to the same program with the overrides made equal',
+  "entry's own claim: binaries md5-identical to the same program with the overrides made equal",
+  () => {
+    const diffBin = compileBin('t11_diff.spin2');
+    const sameBin = compileBin('t11_same.spin2');
+    if (!diffBin.equals(sameBin)) {
+      return [
+        `t11_diff.bin (${diffBin.length} bytes) and t11_same.bin (${sameBin.length} bytes) differ`
+      ];
+    }
+    return [];
+  }
+);
+
+// The entry's completeness_rule: a mid tier forwarding only ONE of a leaf's
+// TWO DAT-sizing CONs cannot make a caller needing the other CON agree with
+// it, so the leaf forks; forwarding the missing constant merges it back to
+// one. Measured (entry): Objects: 4, two driver images -> Objects: 3, one.
+write(
+  'leaf2.spin2',
+  [
+    'CON',
+    '  MAX_A = 4',
+    '  MAX_B = 4',
+    'DAT',
+    '  bufA  BYTE  0[MAX_A]',
+    '  bufB  BYTE  0[MAX_B]',
+    'PUB start() : r',
+    '  r := bufA[0] + bufB[0]',
+    ''
+  ].join('\n')
+);
+write(
+  'mid_incomplete.spin2',
+  [
+    'CON',
+    '  MID_A = 4',
+    'OBJ',
+    '  lf : "leaf2" | MAX_A = MID_A',
+    'PUB start() : r',
+    '  r := lf.start()',
+    ''
+  ].join('\n')
+);
+write(
+  'mid_complete.spin2',
+  [
+    'CON',
+    '  MID_A = 4',
+    '  MID_B = 4',
+    'OBJ',
+    '  lf : "leaf2" | MAX_A = MID_A, MAX_B = MID_B',
+    'PUB start() : r',
+    '  r := lf.start()',
+    ''
+  ].join('\n')
+);
+mkTop(
+  't12_incomplete.spin2',
+  ['a : "mid_incomplete" | MID_A = 6', 'b : "leaf2" | MAX_A = 6, MAX_B = 6'],
+  'a.start() + b.start()'
+);
+mkTop(
+  't12_complete.spin2',
+  [
+    'a : "mid_complete" | MID_A = 6, MID_B = 6',
+    'b : "leaf2" | MAX_A = 6, MAX_B = 6'
+  ],
+  'a.start() + b.start()'
+);
+runCase(
+  'completeness rule: mid forwards only MAX_A, direct caller needs MAX_B too',
+  't12_incomplete.spin2',
+  4,
+  "the two effective leaf2 configurations can't agree (MAX_B unforwarded) -> two driver images",
+  (map) => {
+    const leafBlocks = map.details.filter((d) => d.source === 'leaf2.spin2');
+    if (leafBlocks.length !== 2) {
+      return [
+        `expected 2 distinct leaf2.spin2 images (the entry's "two driver images"), got ${leafBlocks.length}`
+      ];
+    }
+    return [];
+  }
+);
+runCase(
+  '...adding the missing forwarding constant (MID_B) merges them back to one',
+  't12_complete.spin2',
+  3,
+  'both effective leaf2 configurations now agree -> one driver image',
+  (map) => {
+    const leafBlocks = map.details.filter((d) => d.source === 'leaf2.spin2');
+    if (leafBlocks.length !== 1) {
+      return [
+        `expected 1 leaf2.spin2 image (the entry's "one"), got ${leafBlocks.length}`
+      ];
+    }
+    return [];
+  }
+);
+
+// ---------------------------------------------------------------------------
+
+console.log(
+  '----------------------------------------------------------------------'
+);
+if (FAIL === 0) {
+  console.log(
+    `p2kb-dedup-verify: ${PASS} case(s) matched. Every dedup claim and every fixed map shape holds.`
+  );
+} else {
+  console.log(
+    `p2kb-dedup-verify: ${PASS} matched, ${FAIL} DIVERGED: ${failedCases.join('; ')}`
+  );
+}
+if (KEEP) {
+  console.log(`p2kb-dedup-verify: scratch kept at ${WORK}`);
+}
+console.log('');
+
+process.exit(FAIL === 0 ? 0 : 1);
