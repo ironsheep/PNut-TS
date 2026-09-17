@@ -401,8 +401,16 @@ streams without awaiting them, so the process could exit before the bytes were
 flushed. A script reading an output immediately after the compiler returned could
 then see the *previous* run's contents, or a partially written file, and under
 load the `.flash` output could be left zero-length. Because the failure depended
-on timing it looked intermittent, and a rebuild appeared to fix it. Any new
-output file should follow the same synchronous pattern.
+on timing it looked intermittent, and a rebuild appeared to fix it.
+
+As of v1.55.8 the `.lst` listing, the `-i` preprocessed-source dump and the
+`--regression` element/preprocessor/resolver reports join this pattern too:
+each is built in memory and written once with `fs.writeFileSync`, replacing an
+unawaited `fs.createWriteStream().end()`. A write failure — an unwritable
+output directory, for example — is now a normal error with a non-zero exit
+instead of an uncaught stack trace, and "Wrote `<file>`.lst" is no longer
+printed for a listing that failed to write. Any new output file should follow
+the same synchronous pattern.
 
 ### 6.4 Hub Memory Management
 The compiler enforces P2 memory constraints:

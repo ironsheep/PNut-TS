@@ -61,11 +61,14 @@ class DistillerRecord {
 
 // NOTE (v1.55.4): `subObjectIds` still describes the binary object tree and is
 // still what dedup compares. It is NO LONGER how the `.map` file's hierarchy is
-// derived. Map generation now reads an explicit instance store built during
-// compilation (`src/classes/objInstanceInfo.ts`), because walking `subObjectIds`
-// could not distinguish two declarations of one object and could not see the
-// descendants of a cache-served child at all. `mapGenerator` still reads
-// distiller records — but by RECORD index, never by objectId.
+// derived; that changed again in v1.55.8.
+//
+// NOTE (v1.55.8): `mapGenerator` no longer reads distiller records at all — by
+// RECORD index or otherwise. The `.map` file is built from `ObjectLayout`
+// (`src/classes/objectLayout.ts`), which walks the compiled image's own object
+// header tables directly, following the Spin2 interpreter's object-call rule.
+// The distiller's records remain the input to dedup; they are simply no longer
+// the map's data source.
 }
 ```
 
@@ -297,15 +300,18 @@ if (matchIndex < 0) {
 
 ## Map Generation Integration
 
-The distiller exposes its record list for map file generation:
+**As of v1.55.8, the map generator does not use the distiller at all.** The
+`.map` file is built from `ObjectLayout` (`src/classes/objectLayout.ts`), which
+derives every image and instance fact from the compiled image's own object
+header tables — see `DOCs/internals/MAP-File-Format.md`. The distiller still
+exposes its record list (below) for dedup's own use; nothing in map generation
+reads it.
 
 ```typescript
 public get records(): DistillerList {
   return this.distillerList;
 }
 ```
-
-This allows the map generator to access object metadata (IDs, offsets, sizes) for memory map output.
 
 ## Conclusion
 

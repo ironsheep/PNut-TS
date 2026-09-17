@@ -4,12 +4,6 @@ All notable changes to the "Pnut - A reimplementation in TypeScript" are documen
 
 Check [Keep a Changelog](http://keepachangelog.com/) for reminders on how to structure this file. Also, note that our version numbering adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Known compatibility issues w/PNut
-
-There is one issue which we are unable to address in this implementation:
-
-1. **Floating point constants**: The mantissa (bits 22:0) can be +/- 1 ls-bit different in value (_this is a math library limitation_)
-
 ## [FutureVersions]
 
 Work to appear in upcoming releases:
@@ -20,6 +14,72 @@ Work to appear in upcoming releases:
 - Keep up with PNut changes soon after they are released.
 
 ## [Unreleased]
+
+## v1.55.8 (2026-09-17)
+
+The `.map` file is rewritten around images and instances, compile-time float and CORDIC math match PNut bit for bit, and every text output the compiler writes is complete when it exits.
+
+### Breaking Changes
+
+- **BREAKING**: The `.map` file format changed again — new section names
+  (`SUMMARY`, `OBJECT TREE`, `MEMORY LAYOUT`, `OBJECT DETAILS`, `ADDRESS INDEX`,
+  `SYMBOL INDEX`), new columns, and a row model built around images (`#1`,
+  `#2`, …) and instance paths (`A`, `A.LEAF`, `D[1]`). Anything that parses
+  `.map` needs updating; see `DOCs/internals/MAP-File-Format.md` for the
+  grammar and a worked example.
+- **BREAKING**: Any existing object cache is discarded on upgrade. The on-disk
+  format changed again; the first compile after upgrading rebuilds every
+  cached object, and nothing from an older cache is reused.
+- **BREAKING**: An unknown or mistyped command-line option (such as `--bogus`)
+  no longer prints "unknown option" and compiles anyway — it aborts with a
+  non-zero exit and writes no output files. `--help` and `--version` are
+  unaffected.
+- **BREAKING**: `-D` and `-U` reject `SYM=value` and any name that is not a
+  legal symbol (a leading digit, a character other than letter/digit/
+  underscore, or an empty name), with an error and a non-zero exit, instead of
+  silently registering a symbol that `#ifdef` can never match. Both remain
+  presence-only; there is no command-line form of `#define SYMBOL value`.
+- **BREAKING**: `#if` and `#elseif` are errors, reported on the line that
+  wrote them, naming the supported spelling (`#ifdef`/`#ifndef`,
+  `#elseifdef`/`#elseifndef`). A source using either used to be silently
+  misread: `#if` was absorbed as the start of a `CON` enumeration, and
+  `#elseif` was treated as a bare `#else`, discarding its condition with no
+  diagnostic.
+
+### Bug Fixes
+
+- **Float literals and compile-time float math match PNut bit for bit.** About
+  a quarter of float literals parsed one bit off (`3.14159` differed in its
+  last mantissa bit), and `POW`, `LOG`, `EXP` and the float operators and
+  comparisons diverged from PNut for many inputs.
+- **`QLOG` and `QEXP` in constant expressions match PNut bit for bit.** Many
+  inputs were off by a low bit, and `QLOG($FFFFFFFF)` folded to 0 instead of
+  `$FFFFFFFF`.
+- **Constant expressions comparing a negative number with `>` or `>=` fold as
+  signed compares**, as PNut does — `-1 > 0` folded to true.
+- **A malformed float literal such as `1.5e` is an error**, instead of
+  silently compiling as an integer followed by a stray symbol.
+- **A `CON` enumeration whose first name starts with `else` or `endif`**, such
+  as `ELSEWHERE`, compiles instead of failing with `Must be preceeded by
+  #IFDEF or #IFNDEF`.
+- **`.map` gives every element of an `OBJ` array its own row and VAR
+  address**, and an `OBJ` declared after an array in the same object no
+  longer inherits the array's address.
+- **`.map` VAR bases are correct for identical copies of an object and for
+  objects nested inside them**, and forks whose overrides change `DAT`
+  layout, VAR size or code show their own addresses rather than another
+  instance's.
+- **A warm cached build's `.map` matches an uncached build's**, including
+  when the cache was filled by an earlier build that did not request a map.
+- **`-O` writes the `.obj` file even without `-l`.** It used to report
+  success and write nothing.
+- **The `.lst` listing, the `-i` preprocessed-source file, and `--regression`
+  reports are complete when the compiler exits, and an unwritable output
+  directory is a clean error** — no stack trace, and no "Wrote" line for a
+  file that was not written.
+- **Using an exported preprocessor symbol (`#pragma exportdef`) where a
+  filename belongs** gets an error naming the cause, instead of `Invalid
+  filename, use "FilenameInQuotes"`.
 
 ## v1.55.7 (2026-09-13)
 

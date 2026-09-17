@@ -50,7 +50,7 @@ The features of this new implementation are:
 - `--cache-verify` proves a cached build is honest: it compiles the project a second time without the cache, in a separate process, and fails the build if the two results differ (as of v1.55.4)
 - A warning when one build reaches byte-identical source through two different paths, naming both files - the build still succeeds, but duplicated source is a structural smell only the compiler can see (as of v1.55.4)
 - The cache is checked for correctness, not just for speed: as of v1.55.5 a cached object also carries its nested objects' `debug()` information, so a cached build with `-d` produces the same binary as an uncached one whichever program filled the cache first (upgrading discards any existing cache, so the first build after it recompiles)
-- Memory map files (`-m`) describing object structure and memory allocation, including one entry per *instance* when an object is used more than once (the `.map` format changed in v1.55.4 - see the CHANGELOG if you parse these files)
+- Memory map files (`-m`) naming each compiled *image* and each *instance* that runs it, with the address range, size and VAR block of every instance (the `.map` format changed again in v1.55.4 and v1.55.8 - see the CHANGELOG if you parse these files)
 - Internal table-size-limits are now easy to adjust if we find a need.
 
 ## Installing PNut-TS

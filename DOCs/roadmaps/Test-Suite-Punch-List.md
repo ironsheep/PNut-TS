@@ -18,12 +18,12 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
 | 6 | GOLD-regen workflow cleanup | no | open — 6.1/6.3/6.5/6.6 closed 2026-09-17; 6.2/6.4 await a Windows session |
 | 10 | Language-spec extraction pipeline | no | open — measured 2026-09-17, Stephen's decision (repair vs retire) |
-| 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
-| 16 | MAP tests lack STRUCTs | no | **in sprint: Map-Instance-Correctness** |
+| 14 | Test-harness items | no | closed 2026-09-17 (Map-Instance-Correctness) |
+| 16 | MAP tests lack STRUCTs | no | closed 2026-09-17 (Map-Instance-Correctness) |
 | 19 | Coverage gate unmeetable | no | open |
-| 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
+| 20 | `.map` VAR bases / OBJ arrays | no (map only) | closed 2026-09-17 (Map-Instance-Correctness) |
 | 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
-| 22 | `.lst`/`.pre` unawaited streams | no | **in sprint: Map-Instance-Correctness** |
+| 22 | `.lst`/`.pre` unawaited streams | no | closed 2026-09-17 (Map-Instance-Correctness) |
 
 ---
 
@@ -364,7 +364,7 @@ test file's header, or it doesn't belong in the suite.
 
 ## 14. Test-harness items from the 1.55.4 closeout audit (added 2026-08-24)
 
-> **Compiled output: no** — test harness. **Taken into the Map-Instance-Correctness sprint (scope confirmed 2026-09-14).** Re-checked 2026-09-14: `package.json` `test` still lacks `--runInBand` (14b).
+> **Compiled output: no** — test harness. **Closed 2026-09-17 (Map-Instance-Correctness sprint).** 14a: `src/tests/MAP-tests/verify-map.ts` was rewritten for the 1.55.8 grammar — it now cross-references the compiled `.map` against `expected.json` and an independent header-walk decode (`mapOracle.ts`), asserting exact image bases and VAR addresses rather than the old coarse `mapEntry >= 4 * (methods + 1)` lower bound (commits `c3e6392`, `326d8b5`). 14b: `package.json`'s `test` script now runs `jest --runInBand` (commit `15a649a`), matching `.claude/skill-conventions.md`. Ready for the closeout archive sweep.
 
 ### 14a. `verify-map.ts` method-entry check is a coarse lower bound
 
@@ -406,7 +406,7 @@ serialising around it.
 
 ## 16. MAP test cases do not cover structures (added 2026-08-09, merged here 2026-08-30)
 
-> **Compiled output: no** — test coverage. **Taken into the Map-Instance-Correctness sprint (scope confirmed 2026-09-14).**
+> **Compiled output: no** — test coverage. **Closed 2026-09-17 (Map-Instance-Correctness sprint).** `TEST/MAP-tests/test8-struct/struct_map.spin2` and shape fixture `S18_struct_copies` (`TEST/MAP-tests/shapes/`) exercise `STRUCT` fields in `.map` output, asserted by `objectLayout.test.ts` / `mapFormat.test.ts`. Ready for the closeout archive sweep.
 
 No MAP fixture exercises a `STRUCT`, so nothing verifies how structures and
 their fields display in map output. The 1.55.4 map redesign (instance model,
@@ -458,7 +458,7 @@ options in the dispatch report for task «#72».
 
 ## 20. `.map` VAR bases for shared images, and OBJ arrays (added 2026-09-14)
 
-> **Compiled output: no** — the `.map` misdescribes a correct binary. **Taken into the Map-Instance-Correctness sprint (scope confirmed 2026-09-14)** as one member of a defect class.
+> **Compiled output: no** — the `.map` misdescribes a correct binary. **Closed 2026-09-17 (Map-Instance-Correctness sprint)**, superseded by the 1.55.8 rewrite: `ObjectLayout` (`src/classes/objectLayout.ts`) derives every instance's VAR base and array membership from the parent's own header-table entries, one per element, so merged copies and an OBJ declared after an array both get correct, distinct addresses. Verified by compiling `d[3] : "drv"` followed by `e : "drv"` — `D[0]`, `D[1]`, `D[2]` and `E` each print correct, ascending VAR bases and their own `Child slots`/`VAR` rows — and by the `S18_struct_copies` and array-shape fixtures in `TEST/MAP-tests/shapes/` (349/349 MAP-tests pass). The `P2KB-map-caveat-retraction-1.55.4.md` "Known wrong" block was re-measured and retracted in commit `9f5df2c`. Ready for the closeout archive sweep.
 
 **Surfaced by:** re-measuring the P2KB `map_caveat` amendment against 1.55.7.
 Ground truth is the parent object's header table — one `(object offset, VAR
@@ -556,7 +556,14 @@ sprint is the natural tool for step 2.
 ## 22. `.lst` and `.pre` are written through streams nobody waits on (added 2026-09-14)
 
 > **Compiled output: no** — output-file integrity; no failure observed.
-> **Taken into the Map-Instance-Correctness sprint (Stephen, 2026-09-14).**
+> **Closed 2026-09-17 (Map-Instance-Correctness sprint), commit `283c094`.**
+> The `.lst` listing, the `-i` preprocessed-source dump and the `--regression`
+> element/preprocessor/resolver reports are now built in memory and written
+> once with `fs.writeFileSync`, as `.bin`/`.flash`/`.map` already were. The
+> dead `dumpUniqueObjectFile`/`dumpUniqueChildObjectFile` helpers and their
+> commented-out call sites are removed. An unwritable output directory is now
+> reported as a normal error with a non-zero exit instead of an uncaught stack
+> trace. Ready for the closeout archive sweep.
 
 1.55.4 made the `.bin`, `.flash` and `.map` writes synchronous after an unawaited
 stream produced a zero-byte `.flash` (archived item 12). Its CHANGELOG names the
