@@ -23,8 +23,15 @@ const testDirPath = path.resolve(__dirname, '../../../TEST/ALLCODE-tests');
 const toolPath = path.resolve(__dirname, '../../../dist');
 
 // Files that require debug compilation but don't match the standard prefix patterns
+//
+// coverage_003_v44.spin2 does NOT belong here: its v55 GOLD (153de2f, 2026-05-13)
+// was regenerated with -c (no DEBUG data/records section, OBJ bytes 332). The
+// pre-v55 GOLD was -cd (DEBUG data present, OBJ bytes 340) which is why this file
+// was originally listed here; the v55 rebuild-gold.ps1 never carried it into its
+// -cd PerFileFlag map (only the NOTE comment claimed it would), so the committed
+// GOLD is -c. Forcing -d here reintroduces the stale 340-byte/DEBUG-data shape and
+// mismatches the current GOLD in Coverage Mode. See Test-Suite-Punch-List.md §6.6.
 const explicitDebugFiles = [
-  'coverage_003_v44.spin2',
   'coverage_clock_003.spin2',
   'v46_test_debug_mask.spin2',
   'v50_test_conditional_debug.spin2',

@@ -7,7 +7,7 @@ they accumulate further.
 
 ---
 
-## Status index (2026-09-14)
+## Status index (2026-09-17)
 
 **Compiled output** asks one question: does this item mean the compiler can
 produce a wrong program (`.bin` / `.obj` / `.flash`)?
@@ -16,7 +16,7 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 |---|---|---|---|
 | 4 | Dead flash/RAM download code | no | open |
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
-| 6 | GOLD-regen workflow cleanup | no | open — triggers passed, outcomes unrecorded |
+| 6 | GOLD-regen workflow cleanup | no | open — 6.1/6.3/6.5/6.6 closed 2026-09-17; 6.2/6.4 await a Windows session |
 | 10 | Language-spec extraction pipeline | no | open — Stephen's decision |
 | 13 | Documentation residue (13a, 13d) | no | open |
 | 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
@@ -154,7 +154,27 @@ purity anyway).
 
 ## 6. GOLD-regen workflow cleanup (deferred from v55 prep, 2026-05-11)
 
-> **Compiled output: no** — GOLD-regen workflow. Re-checked 2026-09-14: 21 legacy `*-rebuild-v*` dirs, 544 `.elem*` files, no `EXCEPT-tests/rebuild-gold.ps1`, TOF GOLDs still gitignored. The v55 regen (2026-05-13) has happened, so the 6.4–6.6 triggers have passed; their outcomes were never recorded here.
+> **Compiled output: no** — GOLD-regen workflow. Closed out 2026-09-17: 6.1
+> (20 legacy `*-rebuild-v52/` dirs + their gitignore entry), 6.3 (544 `.elem`/
+> `.elemORIG`/`.elemGOOD` files — `.elemold`/`.elemOLD`/`.elem.REF`, not named
+> by this item, were left alone), and 6.5 (V52A-tests substring rule — verified
+> correct, no drift) are deleted/verified and their subsections below removed.
+> 6.6 is closed as a **fixed test-code defect, not a GOLD or compiler
+> problem**: `src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.HOLD` forced
+> `-d` for `coverage_003_v44.spin2` via a stale `explicitDebugFiles` entry
+> left over from the pre-v55 GOLD (which *was* built `-cd`); the v55 regen
+> (153de2f) rebuilt this file's GOLD as `-c` (no `DEBUG data`/`DEBUG records`
+> section, 332 OBJ bytes) and nobody updated the list to match. Compiling
+> with `-d` reproduces the old 340-byte/DEBUG-data shape byte-for-byte
+> against the pre-v55 GOLD, proving the compiler is right and only the test
+> harness was stale; fixed by removing the entry. The unrelated `-44` CLI
+> argument `pnut-ts-cov.test.ts` passed for this file has never been a real
+> pnut-ts option (Spin2 language-version forcing is source-tag-only, via
+> `{Spin2_vNN}`, which this file has never carried) — it silently
+> no-opped (commander prints "unknown option" but PNut-TS's error handler
+> falls through and compiles anyway) and has been removed as dead/misleading
+> test code. 6.2 (EXCEPT-tests errout format) and 6.4 (TOF GOLDs) remain
+> open: both need a Windows PNut session that hasn't happened yet.
 
 **Context:** A unified GOLD-regen workflow was built in `scripts/gold/`
 (library + driver + bundle/apply scripts + 26 per-suite `rebuild-gold.ps1`
@@ -163,28 +183,6 @@ supersedes the legacy per-suite scaffolding and the manual "tarball-by-hand
 to Windows" process. The following cleanup items were deferred so the
 workflow could be built and verified end-to-end without touching unrelated
 state.
-
-### 6.1 Delete legacy `<SUITE>-rebuild-v52/` scaffolding directories
-
-Twenty-two directories under `TEST/<suite>/<SUITE>-rebuild-v52/` (and
-`TEST/LARGE-tests/<sub>/LARGE-<sub>-rebuild-v52/`) contain near-identical
-hand-written rebuild-gold scripts, each hard-coded to `PNut_shell_v52`. They
-are gitignored (`.gitignore:293+`) but live in working trees and cause
-discovery noise. The new `TEST/<suite>/rebuild-gold.ps1` files (committed)
-replace them entirely.
-
-```bash
-find TEST -type d -name '*-rebuild-v*' -exec rm -rf {} +
-```
-
-Remove the corresponding `.gitignore` entries (line 293+, the `# v52 GOLD
-file rebuild folders (temporary - for Windows compilation)` block) at the
-same time so the gitignore doesn't carry dead entries.
-
-**Trigger:** after the first successful end-to-end v55 regen (sanity-check
-round-trip against v52 passes, v55 regen lands without surprises). The
-legacy scripts are a fallback if the new workflow has a latent bug; delete
-once the new workflow has produced at least one trustworthy GOLD set.
 
 ### 6.2 EXCEPT-tests errout-format resolution
 
@@ -214,27 +212,6 @@ Three possible outcomes drive different follow-ups:
 **Trigger:** run `investigate-errout.ps1` on Windows whenever next at the
 Windows box. The empirical output dictates the path; no design work needed
 until then.
-
-### 6.3 Clean up `.elem*` intermediate file noise
-
-`find TEST -name '*.elem*'` shows 541 stale intermediate files:
-- 344 `.elem` (pnut-ts `--regression element` output, kept after test runs)
-- 196 `.elemORIG` (manual baselines from earlier dev work)
-- 1 `.elemGOOD` (one-off)
-
-All gitignored. None used by current tests. They pollute IDE file explorers
-and `find`/`ls` output but cause no functional issue.
-
-```bash
-find TEST -name '*.elem' -o -name '*.elemORIG' -o -name '*.elemGOOD' -delete
-```
-
-Worth turning into `npm run clean-elem` if it becomes a recurring chore.
-Probably won't — once cleared, the elementizer-output convention has moved
-on.
-
-**Trigger:** when the working tree noise becomes irritating, or as a one-time
-hygiene pass after the v55 regen lands.
 
 ### 6.4 LARGE-tests/TOF gitignored GOLDs investigation
 
@@ -272,48 +249,6 @@ map-oracle GOLD test lists the five as `knownByteDivergence`.
 on Windows, then remove the five from `knownByteDivergence` in
 `src/tests/MAP-tests/mapOracleGold.test.ts` and drop the TOF exclusion in
 `pnut-ts-large.test.ts`.
-
-### 6.5 V52A-tests rule drift — verify after first regen
-
-The legacy `V52A-rebuild-v52/rebuild-gold.ps1` compiled every V52A file
-with `-cd`. The `.test.ts` (per user's "this is the formal source of
-truth" directive) uses a case-insensitive substring rule: files containing
-"debug" get `-d`, others don't. The new `TEST/V52A-tests/rebuild-gold.ps1`
-implements the substring rule.
-
-Three of 17 V52A files contain "debug":
-- `v46_test_debug_mask.spin2`
-- `v50_test_conditional_debug.spin2`
-- `v52a_test_debug_end_session.spin2`
-
-The other 14 will compile with `-c` under the new rule. If existing GOLDs
-were generated with `-cd` (the legacy behavior), the v52 round-trip sanity
-check will surface 14 unexpected diffs. Either:
-
-- the `.test.ts` rule is correct and existing GOLDs were generated under
-  wrong rules (regenerate, fix the drift)
-- the `.test.ts` rule is wrong (some "non-debug-named" files actually use
-  debug() and need `-d` to compile correctly) → fix the rule
-
-**Trigger:** v52 round-trip sanity check output. The diff signature reveals
-which side has the bug.
-
-### 6.6 COV-tests `coverage_003_v44.spin2` — version-forced file
-
-The pnut-ts test passes `-44` to force compile-as-v44 for this one file.
-Windows PNut (single binary, e.g. `PNut_v55.exe`) cannot produce
-v44-bytecode output from a v55 install. The new `COV-tests/rebuild-gold.ps1`
-still includes the file but compiles it with the current version's bytecode.
-
-Options for handling:
-- Skip the file in Windows regen (leave its existing GOLD untouched — but
-  then the GOLD becomes stale relative to other files in the same suite)
-- Install `PNut_v44.exe` alongside the current version and call out to it
-  for just this one file (manifest-driven per-file version override)
-- Drop the `-44` test (cost: lose v44 backward-compat coverage)
-
-**Trigger:** v55 regen apply step. If the v44 GOLD diffs unexpectedly, this
-is the cause. Pick the handling option then.
 
 ---
 
@@ -501,7 +436,12 @@ exact-address assertion would land on the same uncovered surface.
 
 ## 19. `RELEASE-PROCESS.md` coverage gate cannot be met (added 2026-09-13)
 
-> **Compiled output: no** — release-process gate. Its one failure (`coverage_003_v44`) is attributed to a GOLD built with v55 bytecode (6.6); not proven.
+> **Compiled output: no** — release-process gate. Its one failure
+> (`coverage_003_v44` under the coverage-mode `ALLCODE-tests` harness) was
+> §6.6, a stale-test-list defect, **fixed 2026-09-17** (not a GOLD or
+> compiler problem). The threshold-vs-current-numbers gap below is
+> unaffected by that fix and is still open — it needs Stephen's decision
+> (see the dispatch report options), not code.
 
 §2 of the release checklist requires Statements >= 88%, Branches >= 84%,
 Functions >= 86% — a baseline labelled v1.51.x. No 1.55.x release has met it:
@@ -510,12 +450,15 @@ the committed report (`jest-coverage/`, last refreshed at v1.55.0) reads
 same level. A gate every release passes by being ignored is not a gate.
 `RELEASE-PROCESS.md` therefore stays `verified: 1.55.5` in the manifest.
 
-The same run carries one failure, `ALLCODE-tests` `coverage_003_v44.spin2`
-(listing, object and binary mismatch) — the version-forced file of §6.6.
+`ALLCODE-tests` `coverage_003_v44.spin2` (listing, object and binary
+mismatch) — the version-forced file of §6.6 — was the coverage run's one
+*test* failure; it is now fixed (§6, above) and does not bear on the
+percentage gap below.
 
 **Fix:** re-baseline the table from a current run (or state the rule as "no
-worse than the last release's committed report"), and resolve §6.6 so the
-coverage run is green.
+worse than the last release's committed report"). §6.6 no longer blocks
+this — Stephen still needs to choose which form the rule takes; see the
+options in the dispatch report for task «#72».
 
 ---
 

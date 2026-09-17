@@ -1,6 +1,0 @@
-{
-  "displayName": "ALL CODE suite of tests",
-  "roots": ["<rootDir>/../dist/tests/ALLCODE-tests/"],
-  "testMatch": ["**/*.test.js"],
-  "verbose": true
-}

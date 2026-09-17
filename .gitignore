@@ -290,9 +290,6 @@ REF/p2com.LST
 .devcontainer/docker-compose.override.yml
 .bashrc
 
-# v52 GOLD file rebuild folders (temporary - for Windows compilation)
-*-rebuild-v52/
-
 # Bug investigation folders (temporary working directories)
 BUG-*/
 

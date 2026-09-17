@@ -62,9 +62,6 @@ function compileAndCompare(file: string, isDebugGroup: boolean) {
   removeExistingFile(elementsFSpec);
 
   const args: string[] = ['-v', '-l'];
-  if (basename === 'coverage_003_v44') {
-    args.push('-44');
-  }
   if (isDebugGroup || debugByFile.includes(basename)) {
     args.push('-d');
   }
