@@ -70,7 +70,7 @@ function formatRunList(items: string[]): string {
   let i = 0;
   const arrayItem = (text: string): { prefix: string; index: number } | undefined => {
     const m = /^(.*)\[(\d+)\]$/.exec(text);
-    return m === undefined || m === null ? undefined : { prefix: m[1], index: parseInt(m[2], 10) };
+    return m === null ? undefined : { prefix: m[1], index: parseInt(m[2], 10) };
   };
   while (i < items.length) {
     const first = arrayItem(items[i]);

@@ -91,9 +91,14 @@ describe('map ground truth: matrix', () => {
           const value = Number(marker.value) >>> 0;
           const hits = findLongValue(raw.image, value);
           const block = map.details[0];
-          const found = block?.dat.find((d) => d.name.toUpperCase() === marker.name.toUpperCase());
-          expect(found).toBeDefined();
-          expect(hits).toContain(found!.address);
+          if (block === undefined) {
+            throw new Error('.map carries no detail block, so no DAT symbol can be located');
+          }
+          const found = block.dat.find((d) => d.name.toUpperCase() === marker.name.toUpperCase());
+          if (found === undefined) {
+            throw new Error(`.map detail block has no DAT symbol named ${marker.name}`);
+          }
+          expect(hits).toContain(found.address);
         }
       } finally {
         tree.cleanup();
