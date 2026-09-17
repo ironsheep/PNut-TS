@@ -17,6 +17,8 @@
 //
 // GOLD files are read in place, read-only. Nothing is written into TEST/.
 // Slow: roughly 130 s in total (WUMMI and LARGE compiles dominate).
+//
+// A corpus whose directory is absent from the checkout is skipped, not run.
 
 'use strict';
 
@@ -70,6 +72,9 @@ const corpora: Corpus[] = [
     blobs: ['vl53l5cx_mm1_1_fw.dat', 'p2font16']
   },
   {
+    // Local-only: TEST/WUMMI-tests is gitignored, so it is present only where it
+    // was placed by hand. A clean clone — CI, the release workflow, an outside
+    // contributor — has no such directory, and this corpus is skipped there.
     dir: 'WUMMI-tests',
     exclude: ['FG1', 'Main', 'Mustererkennung'],
     debug: () => true,
@@ -114,6 +119,15 @@ function topology(program: DecodedProgram): unknown {
 
 describe.each(corpora.map((corpus) => [corpus.dir, corpus] as const))('GOLD corpus %s', (_dir, corpus) => {
   const sourceDir = path.join(testRoot, corpus.dir);
+
+  // A corpus this checkout does not carry (a local-only corpus, see WUMMI-tests
+  // above): report the absence as a skipped test, visible in the run, rather
+  // than failing collection for every corpus.
+  if (!fs.existsSync(sourceDir)) {
+    test.skip(`${corpus.dir} is not in this checkout`, () => {});
+    return;
+  }
+
   const fixtures = fixturesWithChildren(corpus);
   let tree: StagedTree;
 
