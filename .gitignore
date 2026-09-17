@@ -309,3 +309,8 @@ DOCs/internals/usage-guides/.vscode/settings.json
 # GOLD-regen transfer staging (scripts/gold/prep-windows-jobs.sh).
 # Zips of test sources + returned GOLD sets. Never committed.
 /GoldPrep/
+
+# P2KB/doc-agent handoff archive — applied amendments, kept locally only.
+# A doc moves here once confirmed applied to the external corpus; the corpus
+# is the system of record from then on, so the repo stops carrying it.
+DOCs/handoff/*/archive/

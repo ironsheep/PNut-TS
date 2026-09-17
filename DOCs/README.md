@@ -66,8 +66,8 @@ Strategic plans for architectural improvements and optimizations:
 - **[Object-Cache-Future-Enhancements.md](roadmaps/Object-Cache-Future-Enhancements.md)** - Cache work considered and not yet scheduled
 - **[Test-Coverage-Improvement-Roadmap.md](roadmaps/Test-Coverage-Improvement-Roadmap.md)** - Coverage plan (figures date from v1.51.7; the per-area follow-on, Coverage-100, is in `completed/`)
 - **[Dead-Code-Elimination-Opportunities-Study.md](roadmaps/Dead-Code-Elimination-Opportunities-Study.md)** - Study, not a commitment to ship
-- **[P2KB-abort-trap-amendment.md](roadmaps/P2KB-abort-trap-amendment.md)** - Replacement text for P2KB's ABORT/trap entries, which repeat an error this guide set once carried
-- **[P2KB-map-caveat-retraction-1.55.4.md](roadmaps/P2KB-map-caveat-retraction-1.55.4.md)** - Replacement text for an external knowledge-base entry our `.map` fix obsoleted
+- **[P2KB-abort-trap-amendment.md](handoff/p2kb/P2KB-abort-trap-amendment.md)** - Replacement text for P2KB's ABORT/trap entries, which repeat an error this guide set once carried
+- **[P2KB-map-caveat-retraction-1.55.4.md](handoff/p2kb/P2KB-map-caveat-retraction-1.55.4.md)** - Replacement text for an external knowledge-base entry our `.map` fix obsoleted
 
 Completed plans, closeouts, retrospectives and dated punch-list archives move to
 **[roadmaps/completed/](roadmaps/completed/)** - including the performance,

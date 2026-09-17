@@ -1,16 +1,16 @@
 {
   "$comment": [
-    "Documentation coverage manifest — the currency contract for this repo's markdown.",
+    "Documentation coverage manifest \u2014 the currency contract for this repo's markdown.",
     "",
     "PURPOSE. A document is OUT OF DATE when the thing it describes has changed since",
     "the document was last verified against it. Age alone is not the signal: a stable",
     "spec can be old and correct, a recently-touched doc can be wrong. This manifest",
-    "supplies the two facts that make staleness computable — what each document covers,",
+    "supplies the two facts that make staleness computable \u2014 what each document covers,",
     "and when it was last verified.",
     "",
     "EXHAUSTIVE. Every tracked *.md must appear here exactly once. A file that is not",
     "listed is itself a finding: `npm run docs-check` reports it as UNCLASSIFIED. That",
-    "rule is the whole point — without it this manifest reproduces, one level up, the",
+    "rule is the whole point \u2014 without it this manifest reproduces, one level up, the",
     "bug it exists to prevent (the document nobody thought of).",
     "",
     "CLASSES.",
@@ -27,32 +27,30 @@
     "VERIFIED. For shipped/governed entries, `verified` is the release version the doc",
     "was last checked against. A doc is stale when any file matching its covered areas",
     "has a commit newer than the tag for `verified`. Set it only after actually",
-    "re-reading the document against the code — it is a claim, not a timestamp.",
+    "re-reading the document against the code \u2014 it is a claim, not a timestamp.",
     "  null = never verified under this scheme; treated as stale on first run.",
     "",
     "  A PARTIAL UPDATE DOES NOT EARN THE STAMP. `verified` means the WHOLE document",
     "  was checked, not the section you happened to change. Editing one section and",
     "  stamping the file marks the untouched sections as current when nobody looked at",
-    "  them — which is worse than leaving it stale, because stale is visible in the",
+    "  them \u2014 which is worse than leaving it stale, because stale is visible in the",
     "  report and a false stamp is not.",
     "",
     "  Learned the hard way, 2026-08-08: Preprocessor.md was stamped 1.55.2 after its",
     "  Diagnostics, #error, #warn and #undef sections were rewritten and verified",
     "  against the binary. Its Predefined Symbols table was never read, and carried",
-    "  three errors — a symbol name that does not exist (__PNUTTS__ vs the actual",
+    "  three errors \u2014 a symbol name that does not exist (__PNUTTS__ vs the actual",
     "  __PNUT_TS__), a wrong value for __propeller__, and __VERSION__ documented as",
     "  usable when it is defined too late for the preprocessor to ever see it.",
     "",
     "  If you can only verify part of a document, leave `verified` where it was and",
     "  note what still needs reading. Half a verification is not a verification."
   ],
-
   "policy": {
     "autoAddGovernedPerSprint": 3,
     "shippedAlwaysAutoAdd": true,
     "note": "Auto-added means the document becomes a numbered plan section. Removing one requires a stated reason recorded in the plan. See .claude/skills/sprint-plan/project-overlay.md"
   },
-
   "areas": {
     "preprocessor": [
       "src/classes/spinDocument.ts",
@@ -115,152 +113,699 @@
       "package.json"
     ]
   },
-
   "documents": {
-    "README.md":            { "class": "shipped",  "covers": ["cli"], "verified": "1.55.8" },
-    "CHANGELOG.md":         { "class": "shipped",  "covers": [], "verified": "1.55.4", "note": "Currency is enforced by the release process, not by area drift — every release adds an entry. Voicing: central changelog guide, class 2 / Released mode" },
-    "CommandLine.md":       { "class": "shipped",  "covers": ["cli"], "verified": "1.55.8", "note": "Help transcript is pasted from the shipping build — regenerate, do not hand-edit" },
-    "Preprocessor.md":      { "class": "shipped",  "covers": ["preprocessor", "diagnostics"], "verified": "1.55.8" },
-
-    "BUILD-RUN.md":         { "class": "process", "verified": null },
-    "PACKAGING.md":         { "class": "process", "verified": null },
-    "Testing.md":           { "class": "process", "verified": null },
-    "Coverage.md":          { "class": "process", "verified": null },
-    "Goals.md":             { "class": "process", "verified": null },
-    "DOCs/README.md":       { "class": "process", "verified": null },
-    "DOCs/RELEASE-PROCESS.md": { "class": "governed", "covers": ["packaging"], "verified": "1.55.5" },
-    "DOCs/DEV/README-dist.md": { "class": "process", "verified": null },
-    "DOCs/voicing/README.md": { "class": "process", "verified": "1.55.2" },
-    "DOCs/voicing/Usage-Guide-Voicing.md": { "class": "process", "verified": "1.55.2" },
-    "DOCs/voicing/Shipped-Docs-Voicing.md": { "class": "process", "verified": "1.55.2" },
-    "TEST/MAP-tests/README.md": { "class": "process", "verified": null },
-    "scripts/gold/README.md": { "class": "process", "verified": null },
-    "tools/README.md":      { "class": "process", "verified": null },
-
-    "DOCs/internals/Theory-of-Operations.md":            { "class": "governed", "covers": ["compiler-core", "preprocessor"], "verified": "1.55.8" },
-    "DOCs/internals/Distiller-Theory-of-Operations.md":  { "class": "governed", "covers": ["distiller"], "verified": "1.55.8" },
-    "DOCs/internals/Flash-Loader-Theory-of-Operations.md": { "class": "governed", "covers": ["flash-loader"], "verified": null },
-    "DOCs/internals/SingleStep-Debugger-Theory-of-Operations.md": { "class": "governed", "covers": ["debug"], "verified": null },
-    "DOCs/internals/Spin2-Interpreter-v55-Theory-of-Operations.md": { "class": "governed", "covers": ["interpreter"], "verified": "1.55.0" },
-    "DOCs/internals/SPIN2-BIN-Format.md":                { "class": "governed", "covers": ["object-format"], "verified": "1.55.8", "note": "Re-verified 2026-09-17 (punch list 13a): all line-number citations replaced with symbol/routine names, every claim re-checked against current source and a real compiled .bin." },
-    "DOCs/internals/Object-Cache-Theory-of-Operations.md": { "class": "governed", "covers": ["object-cache"], "verified": "1.55.8", "note": "Describes the SHIPPED cache mechanism. The roadmap documents under DOCs/roadmaps/ argue decisions; this one describes behavior." },
-    "DOCs/internals/MAP-File-Format.md":                 { "class": "governed", "covers": ["map-file"], "verified": "1.55.8", "note": "Parser-grade .map spec. Previously the map-file area had ZERO covering documents, so mapGenerator.ts could change without staling anything." },
-    "DOCs/internals/TECHNICAL-DEBT.md":                  { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/PASM2-ASSEMBLY-LABELS.md":           { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4" },
-    "DOCs/internals/DEBUG-WINDOW-DIRECTIVE-MATRIX.md":   { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/MANUAL-FEATURE-DISTRIBUTION-GUIDE.md": { "class": "governed", "covers": [], "verified": null },
-    "DOCs/internals/PLL-Clock-Mode-Selection.md":        { "class": "governed", "covers": ["flash-loader"], "verified": null },
-    "DOCs/language-specification/README.md":             { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4", "note": "SPEC_DOC in .claude/skill-conventions.md" },
-    "DOCs/language-specification/ide-integration/README.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.4" },
-    "DOCs/language-specification/REQUESTS/PNUT-TS-MISSING-EFFECTS.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.8" },
-
-    "DOCs/internals/usage-guides-new/Preprocessor-Usage-Guide.md": { "class": "governed", "covers": ["preprocessor", "diagnostics"], "verified": "1.55.3" },
-    "DOCs/internals/usage-guides-new/Clock-Configuration-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Control-Flow-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Error-Handling-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core", "diagnostics"], "verified": "1.55.7", "note": "ABORT/trap semantics rewritten 2026-09-14 against v55 interpreter source + compiled examples; hardware-confirmed 69/69 on P2 (TEST/HW-probes/abort-trap/logs)" },
-    "DOCs/internals/usage-guides-new/Floating-Point-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Lookup-Table-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Multi-Cog-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Operators-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Pin-Operations-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Random-Number-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Spin2-Object-Patterns-Guide.md": { "class": "governed", "covers": ["compiler-core", "object-format"], "verified": null },
-    "DOCs/internals/usage-guides-new/String-Constants-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides-new/Timing-Operations-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-
-    "DOCs/internals/usage-guides/Addressing-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/BYTE-WORD-LONG-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/BYTEFIT-WORDFIT-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/DEBUG-MASK-Usage-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
-    "DOCs/internals/usage-guides/DITTO-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/Data-Packing-Alignment-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.8" },
-    "DOCs/internals/usage-guides/Debug-Pin-Piggybacking-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
-    "DOCs/internals/usage-guides/Debug-Strategy-Guide.md": { "class": "governed", "covers": ["debug"], "verified": null },
-    "DOCs/internals/usage-guides/FIELD-Operator-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/FILE-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/Inline-PASM-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": "1.55.8" },
-    "DOCs/internals/usage-guides/Method-Pointer-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/ORG-Directives-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/PASM2-Authoring-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/Pointer-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/REP-Instruction-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/RES-FIT-END-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/STRUCT-Usage-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-    "DOCs/internals/usage-guides/WC-WZ-WCZ-Effects-Guide.md": { "class": "governed", "covers": ["compiler-core"], "verified": null },
-
-    "DOCs/internals/theory-of-operations/BITMAP_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/FFT_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/LOGIC_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/MIDI_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/PLOT_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/SCOPE_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/SCOPE_XY_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/SPECTRO_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-    "DOCs/internals/theory-of-operations/TERM_Theory_of_Operations.md": { "class": "governed", "covers": ["debug"], "verified": "1.55.0" },
-
-    "DOCs/Regression-Test-Coverage-Report.md": { "class": "process", "verified": null, "note": "Punch list 13d, closed 2026-09-17: was classed generated with no generator, frozen at v1.51.7 for two releases. Reclassified hand-maintained; a real generator (scripts/generate-coverage-report.js, npm run coverage-report) now owns the one mechanically-derivable part (the Measured Snapshot section, fenced by GENERATED:BEGIN/END markers) and everything else is hand-authored narrative." },
-
-    "DOCs/internals/DEBUG-Statement-Quoting-Briefing-for-Doc-Agents.md": { "class": "historical" },
-    "DOCs/internals/LUT-Immediate-Addressing-Briefing-for-Doc-Agents.md": { "class": "historical" },
-    "DOCs/internals/DEBUG-WINDOW-ToO-COMPLETENESS-AUDIT.md": { "class": "historical" },
-    "DOCs/internals/Preprocessor-P2KB-Update-Request.md": { "class": "historical", "note": "Handoff spec for the P2KB maintainer agent; a record of what was requested, not a living doc" },
-    "DOCs/internals/Flash-Loader-P2KB-Update-Request.md": { "class": "historical" },
-    "DOCs/internals/Flash-Loader-P2KB-Update-Request-RCFAST.md": { "class": "historical" },
-    "DOCs/internals/P2KB-Gap-XBYTE-SETQ-SETQ2-Mode.md": { "class": "historical" },
-    "DOCs/internals/Forum-WAITSEx-WC-Without-SETQ-2026-07-04.md": { "class": "historical" },
-    "DOCs/internals/RDPIN-C-Flag-Bit31-vs-FlexSpin-2026-07-05.md": { "class": "historical" },
-    "DOCs/internals/PKG-STUDY.md": { "class": "historical" },
-    "DOCs/analysis/Default-Parameters-Feasibility.md": { "class": "historical" },
-    "DOCs/analysis/Spin2-Interpreter-Analysis.md": { "class": "historical" },
-    "DOCs/analysis/Spin2-Interpreter-Analysis-Chip-Feedback.md": { "class": "historical" },
-    "DOCs/analysis/Spin2-Interpreter-Analysis-Round2-Findings.md": { "class": "historical" },
-    "DOCs/analysis/Spin2-Interpreter-Analysis-Round4-Findings.md": { "class": "historical" },
-    "DOCs/analysis/Spin2-Interpreter-Analysis-Round5-Findings.md": { "class": "historical" },
-    "DOCs/language-specification/documentation/PASM2-SPIN2-Language-Specification-Extraction-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/Architectural-Extraction-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/CLI-Robustness-Sprint-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-08-08-CLI-Robustness-CLOSEOUT.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-08-08-CLI-Robustness-Retrospective.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Preprocessor-Symbol-Correctness-Sprint-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-08-09-Preproc-Symbols-CLOSEOUT.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-08-09-Preproc-Symbols-Retrospective.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-08-09-Punch-List-Archive.md": { "class": "historical", "note": "Dated punch-list sweep archive; a record of what was outstanding at that closeout" },
-    "DOCs/roadmaps/completed/Object-Cache-Transitive-Invalidation-Sprint-Plan.md": { "class": "historical", "note": "Archived at closeout 2026-08-24; lifecycle marker at head points to the closeout audit" },
-    "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-CLOSEOUT.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-Retrospective.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/2026-09-14-Punch-List-Archive.md": { "class": "historical", "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)" },
-    "DOCs/roadmaps/completed/2026-08-24-Punch-List-Archive.md": { "class": "historical", "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)" },
-    "DOCs/roadmaps/P2KB-abort-trap-amendment.md": { "class": "historical", "note": "Proposed amendment for an EXTERNAL corpus (P2KB) ABORT/trap entries; apply after hardware probe confirms" },
-    "DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md": { "class": "historical", "note": "Measurement record + proposed amendment for an EXTERNAL corpus (P2KB); archives with the sprint" },
-    "DOCs/roadmaps/Compiler-Subsystem-Extraction-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/Map-Instance-Correctness-Sprint-Plan.md": { "class": "historical", "note": "Active sprint plan (archives to completed/ at closeout)" },
-    "DOCs/roadmaps/completed/Coverage-100-Sprint-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/Dead-Code-Elimination-Opportunities-Study.md": { "class": "historical" },
-    "DOCs/roadmaps/Multi-Error-Reporting-Compiler-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/Object-Cache-Correctness-Analysis.md": { "class": "governed", "covers": ["object-cache", "compiler-core"], "verified": "1.55.4", "note": "Living cache-correctness analysis; amended by each cache sprint. Reclassified from historical 2026-08-21 after row A8 was disproven." },
-    "DOCs/roadmaps/Object-Cache-Future-Enhancements.md": { "class": "historical" },
-    "DOCs/roadmaps/Test-Coverage-Improvement-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/Test-Suite-Punch-List.md": { "class": "governed", "covers": [], "verified": null, "note": "PUNCH_LIST_DOC — active list, swept at every sprint closeout" },
-    "DOCs/roadmaps/completed/BigInt-to-Number-Research.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Compiler-Listing-Enhancement-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Compiler-Listing-Enhancement-Proposal.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Distiller-Extraction-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Distiller-Extraction-Sprint-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Early-Deduplication-Fix-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Performance-Analysis-and-Optimization-Roadmap.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Performance-Optimization-Ledger.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Performance-Optimization-Sprint-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/Persistent-Object-Cache-Plan.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v52a-IMPLEMENTATION/V52A_IMPLEMENTATION_GUIDE.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v52a-IMPLEMENTATION/V52A_LANGUAGE_REFERENCE_ADDITIONS.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v52a-IMPLEMENTATION/v52a_CHANGES.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v53-IMPLEMENTATION/V53_IMPLEMENTATION_GUIDE.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v53-IMPLEMENTATION/V53_LANGUAGE_REFERENCE_ADDITIONS.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v53-IMPLEMENTATION/v53_CHANGES.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_IMPLEMENTATION_GUIDE.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_LANGUAGE_REFERENCE_ADDITIONS.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_SPRINT_PLAN.md": { "class": "historical" },
-    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/v54_CHANGES.md": { "class": "historical" },
-    "REF/chat-240124-0139.md": { "class": "historical" }
+    "README.md": {
+      "class": "shipped",
+      "covers": [
+        "cli"
+      ],
+      "verified": "1.55.8"
+    },
+    "CHANGELOG.md": {
+      "class": "shipped",
+      "covers": [],
+      "verified": "1.55.4",
+      "note": "Currency is enforced by the release process, not by area drift \u2014 every release adds an entry. Voicing: central changelog guide, class 2 / Released mode"
+    },
+    "CommandLine.md": {
+      "class": "shipped",
+      "covers": [
+        "cli"
+      ],
+      "verified": "1.55.8",
+      "note": "Help transcript is pasted from the shipping build \u2014 regenerate, do not hand-edit"
+    },
+    "Preprocessor.md": {
+      "class": "shipped",
+      "covers": [
+        "preprocessor",
+        "diagnostics"
+      ],
+      "verified": "1.55.8"
+    },
+    "BUILD-RUN.md": {
+      "class": "process",
+      "verified": null
+    },
+    "PACKAGING.md": {
+      "class": "process",
+      "verified": null
+    },
+    "Testing.md": {
+      "class": "process",
+      "verified": null
+    },
+    "Coverage.md": {
+      "class": "process",
+      "verified": null
+    },
+    "Goals.md": {
+      "class": "process",
+      "verified": null
+    },
+    "DOCs/README.md": {
+      "class": "process",
+      "verified": null
+    },
+    "DOCs/RELEASE-PROCESS.md": {
+      "class": "governed",
+      "covers": [
+        "packaging"
+      ],
+      "verified": "1.55.5"
+    },
+    "DOCs/DEV/README-dist.md": {
+      "class": "process",
+      "verified": null
+    },
+    "DOCs/voicing/README.md": {
+      "class": "process",
+      "verified": "1.55.2"
+    },
+    "DOCs/voicing/Usage-Guide-Voicing.md": {
+      "class": "process",
+      "verified": "1.55.2"
+    },
+    "DOCs/voicing/Shipped-Docs-Voicing.md": {
+      "class": "process",
+      "verified": "1.55.2"
+    },
+    "TEST/MAP-tests/README.md": {
+      "class": "process",
+      "verified": null
+    },
+    "scripts/gold/README.md": {
+      "class": "process",
+      "verified": null
+    },
+    "tools/README.md": {
+      "class": "process",
+      "verified": null
+    },
+    "DOCs/internals/Theory-of-Operations.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core",
+        "preprocessor"
+      ],
+      "verified": "1.55.8"
+    },
+    "DOCs/internals/Distiller-Theory-of-Operations.md": {
+      "class": "governed",
+      "covers": [
+        "distiller"
+      ],
+      "verified": "1.55.8"
+    },
+    "DOCs/internals/Flash-Loader-Theory-of-Operations.md": {
+      "class": "governed",
+      "covers": [
+        "flash-loader"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/SingleStep-Debugger-Theory-of-Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/Spin2-Interpreter-v55-Theory-of-Operations.md": {
+      "class": "governed",
+      "covers": [
+        "interpreter"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/SPIN2-BIN-Format.md": {
+      "class": "governed",
+      "covers": [
+        "object-format"
+      ],
+      "verified": "1.55.8",
+      "note": "Re-verified 2026-09-17 (punch list 13a): all line-number citations replaced with symbol/routine names, every claim re-checked against current source and a real compiled .bin."
+    },
+    "DOCs/internals/Object-Cache-Theory-of-Operations.md": {
+      "class": "governed",
+      "covers": [
+        "object-cache"
+      ],
+      "verified": "1.55.8",
+      "note": "Describes the SHIPPED cache mechanism. The roadmap documents under DOCs/roadmaps/ argue decisions; this one describes behavior."
+    },
+    "DOCs/internals/MAP-File-Format.md": {
+      "class": "governed",
+      "covers": [
+        "map-file"
+      ],
+      "verified": "1.55.8",
+      "note": "Parser-grade .map spec. Previously the map-file area had ZERO covering documents, so mapGenerator.ts could change without staling anything."
+    },
+    "DOCs/internals/TECHNICAL-DEBT.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/PASM2-ASSEMBLY-LABELS.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": "1.55.4"
+    },
+    "DOCs/internals/DEBUG-WINDOW-DIRECTIVE-MATRIX.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/MANUAL-FEATURE-DISTRIBUTION-GUIDE.md": {
+      "class": "governed",
+      "covers": [],
+      "verified": null
+    },
+    "DOCs/internals/PLL-Clock-Mode-Selection.md": {
+      "class": "governed",
+      "covers": [
+        "flash-loader"
+      ],
+      "verified": null
+    },
+    "DOCs/language-specification/README.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": "1.55.4",
+      "note": "SPEC_DOC in .claude/skill-conventions.md"
+    },
+    "DOCs/language-specification/ide-integration/README.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": "1.55.4"
+    },
+    "DOCs/language-specification/REQUESTS/PNUT-TS-MISSING-EFFECTS.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": "1.55.8"
+    },
+    "DOCs/internals/usage-guides-new/Preprocessor-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "preprocessor",
+        "diagnostics"
+      ],
+      "verified": "1.55.3"
+    },
+    "DOCs/internals/usage-guides-new/Clock-Configuration-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Control-Flow-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Error-Handling-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core",
+        "diagnostics"
+      ],
+      "verified": "1.55.7",
+      "note": "ABORT/trap semantics rewritten 2026-09-14 against v55 interpreter source + compiled examples; hardware-confirmed 69/69 on P2 (TEST/HW-probes/abort-trap/logs)"
+    },
+    "DOCs/internals/usage-guides-new/Floating-Point-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Lookup-Table-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Multi-Cog-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Operators-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Pin-Operations-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Random-Number-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Spin2-Object-Patterns-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core",
+        "object-format"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/String-Constants-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides-new/Timing-Operations-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/Addressing-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/BYTE-WORD-LONG-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/BYTEFIT-WORDFIT-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/DEBUG-MASK-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/DITTO-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/Data-Packing-Alignment-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": "1.55.8"
+    },
+    "DOCs/internals/usage-guides/Debug-Pin-Piggybacking-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/Debug-Strategy-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/FIELD-Operator-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/FILE-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/Inline-PASM-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": "1.55.8"
+    },
+    "DOCs/internals/usage-guides/Method-Pointer-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/ORG-Directives-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/PASM2-Authoring-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/Pointer-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/REP-Instruction-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/RES-FIT-END-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/STRUCT-Usage-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/usage-guides/WC-WZ-WCZ-Effects-Guide.md": {
+      "class": "governed",
+      "covers": [
+        "compiler-core"
+      ],
+      "verified": null
+    },
+    "DOCs/internals/theory-of-operations/BITMAP_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/FFT_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/LOGIC_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/MIDI_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/PLOT_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/SCOPE_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/SCOPE_XY_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/SPECTRO_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/internals/theory-of-operations/TERM_Theory_of_Operations.md": {
+      "class": "governed",
+      "covers": [
+        "debug"
+      ],
+      "verified": "1.55.0"
+    },
+    "DOCs/Regression-Test-Coverage-Report.md": {
+      "class": "process",
+      "verified": null,
+      "note": "Punch list 13d, closed 2026-09-17: was classed generated with no generator, frozen at v1.51.7 for two releases. Reclassified hand-maintained; a real generator (scripts/generate-coverage-report.js, npm run coverage-report) now owns the one mechanically-derivable part (the Measured Snapshot section, fenced by GENERATED:BEGIN/END markers) and everything else is hand-authored narrative."
+    },
+    "DOCs/internals/DEBUG-Statement-Quoting-Briefing-for-Doc-Agents.md": {
+      "class": "historical"
+    },
+    "DOCs/internals/LUT-Immediate-Addressing-Briefing-for-Doc-Agents.md": {
+      "class": "historical"
+    },
+    "DOCs/internals/DEBUG-WINDOW-ToO-COMPLETENESS-AUDIT.md": {
+      "class": "historical"
+    },
+    "DOCs/internals/Forum-WAITSEx-WC-Without-SETQ-2026-07-04.md": {
+      "class": "historical"
+    },
+    "DOCs/internals/RDPIN-C-Flag-Bit31-vs-FlexSpin-2026-07-05.md": {
+      "class": "historical"
+    },
+    "DOCs/internals/PKG-STUDY.md": {
+      "class": "historical"
+    },
+    "DOCs/analysis/Default-Parameters-Feasibility.md": {
+      "class": "historical"
+    },
+    "DOCs/analysis/Spin2-Interpreter-Analysis.md": {
+      "class": "historical"
+    },
+    "DOCs/analysis/Spin2-Interpreter-Analysis-Chip-Feedback.md": {
+      "class": "historical"
+    },
+    "DOCs/analysis/Spin2-Interpreter-Analysis-Round2-Findings.md": {
+      "class": "historical"
+    },
+    "DOCs/analysis/Spin2-Interpreter-Analysis-Round4-Findings.md": {
+      "class": "historical"
+    },
+    "DOCs/analysis/Spin2-Interpreter-Analysis-Round5-Findings.md": {
+      "class": "historical"
+    },
+    "DOCs/language-specification/documentation/PASM2-SPIN2-Language-Specification-Extraction-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Architectural-Extraction-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/CLI-Robustness-Sprint-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-08-08-CLI-Robustness-CLOSEOUT.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-08-08-CLI-Robustness-Retrospective.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Preprocessor-Symbol-Correctness-Sprint-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-08-09-Preproc-Symbols-CLOSEOUT.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-08-09-Preproc-Symbols-Retrospective.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-08-09-Punch-List-Archive.md": {
+      "class": "historical",
+      "note": "Dated punch-list sweep archive; a record of what was outstanding at that closeout"
+    },
+    "DOCs/roadmaps/completed/Object-Cache-Transitive-Invalidation-Sprint-Plan.md": {
+      "class": "historical",
+      "note": "Archived at closeout 2026-08-24; lifecycle marker at head points to the closeout audit"
+    },
+    "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-CLOSEOUT.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-Retrospective.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/2026-09-14-Punch-List-Archive.md": {
+      "class": "historical",
+      "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)"
+    },
+    "DOCs/roadmaps/completed/2026-08-24-Punch-List-Archive.md": {
+      "class": "historical",
+      "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)"
+    },
+    "DOCs/handoff/p2kb/P2KB-abort-trap-amendment.md": {
+      "class": "historical",
+      "note": "Outstanding handoff to the P2KB maintainer agent; moves to the untracked archive/ once confirmed applied (DOCs/handoff/README.md)"
+    },
+    "DOCs/handoff/p2kb/P2KB-map-caveat-retraction-1.55.4.md": {
+      "class": "historical",
+      "note": "Outstanding handoff to the P2KB maintainer agent; moves to the untracked archive/ once confirmed applied (DOCs/handoff/README.md)"
+    },
+    "DOCs/roadmaps/Compiler-Subsystem-Extraction-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Map-Instance-Correctness-Sprint-Plan.md": {
+      "class": "historical",
+      "note": "Active sprint plan (archives to completed/ at closeout)"
+    },
+    "DOCs/roadmaps/completed/Coverage-100-Sprint-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Dead-Code-Elimination-Opportunities-Study.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Multi-Error-Reporting-Compiler-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Object-Cache-Correctness-Analysis.md": {
+      "class": "governed",
+      "covers": [
+        "object-cache",
+        "compiler-core"
+      ],
+      "verified": "1.55.4",
+      "note": "Living cache-correctness analysis; amended by each cache sprint. Reclassified from historical 2026-08-21 after row A8 was disproven."
+    },
+    "DOCs/roadmaps/Object-Cache-Future-Enhancements.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Test-Coverage-Improvement-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/Test-Suite-Punch-List.md": {
+      "class": "governed",
+      "covers": [],
+      "verified": null,
+      "note": "PUNCH_LIST_DOC \u2014 active list, swept at every sprint closeout"
+    },
+    "DOCs/roadmaps/completed/BigInt-to-Number-Research.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Compiler-Listing-Enhancement-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Compiler-Listing-Enhancement-Proposal.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Distiller-Extraction-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Distiller-Extraction-Sprint-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Early-Deduplication-Fix-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Performance-Analysis-and-Optimization-Roadmap.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Performance-Optimization-Ledger.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Performance-Optimization-Sprint-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/Persistent-Object-Cache-Plan.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v52a-IMPLEMENTATION/V52A_IMPLEMENTATION_GUIDE.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v52a-IMPLEMENTATION/V52A_LANGUAGE_REFERENCE_ADDITIONS.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v52a-IMPLEMENTATION/v52a_CHANGES.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v53-IMPLEMENTATION/V53_IMPLEMENTATION_GUIDE.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v53-IMPLEMENTATION/V53_LANGUAGE_REFERENCE_ADDITIONS.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v53-IMPLEMENTATION/v53_CHANGES.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_IMPLEMENTATION_GUIDE.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_LANGUAGE_REFERENCE_ADDITIONS.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/V54_SPRINT_PLAN.md": {
+      "class": "historical"
+    },
+    "DOCs/roadmaps/completed/v54-IMPLEMENTATION/v54_CHANGES.md": {
+      "class": "historical"
+    },
+    "REF/chat-240124-0139.md": {
+      "class": "historical"
+    },
+    "DOCs/handoff/README.md": {
+      "class": "process",
+      "note": "Index + convention for external-agent handoff folders; lists what is currently outstanding"
+    }
   }
 }

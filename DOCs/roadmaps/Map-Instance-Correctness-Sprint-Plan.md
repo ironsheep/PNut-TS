@@ -352,7 +352,7 @@ path reports the error and exits non-zero (reproduce today's behavior first).
 
 **Current:** `scripts/p2kb-dedup-verify` parses `MEMORY LAYOUT` / `SYMBOL INDEX`
 rows in the 1.55.4 format and exercises only forked copies;
-`DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md` proposes caveat text with a
+`DOCs/handoff/p2kb/P2KB-map-caveat-retraction-1.55.4.md` proposes caveat text with a
 "Known wrong through 1.55.7" block.
 
 **Target:** the script reads the §3 format and adds identical-copy VAR, array and
@@ -469,7 +469,7 @@ as a class:
 | `DOCs/internals/Distiller-Theory-of-Operations.md` | **Update** — §9 |
 | `DOCs/internals/Theory-of-Operations.md` | **Update** — §9 (§22 writes) |
 | `TEST/MAP-tests/README.md` | **Update** — §5 |
-| `DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md` | **Update** — §8 |
+| `DOCs/handoff/p2kb/P2KB-map-caveat-retraction-1.55.4.md` | **Update** — §8 |
 | `DOCs/README.md` (`:14`, `:69`) | Excluded — index lines stay true; re-read at closeout |
 | `Preprocessor.md` (`:255`), `usage-guides-new/Preprocessor-Usage-Guide.md` (`:367`) | Excluded — "a failed build deletes outputs including `.map`": **out of scope, NOT verified** (§3 error case reproduces it) |
 | `DOCs/internals/SPIN2-BIN-Format.md` (`:131`) | Excluded — historical note on the 1.55.4 writers; NOT verified |

@@ -65,9 +65,11 @@ right form, and explain why the wrong one fails — not merely that it does.
 
 Verify that the "correct" form actually is. An anti-pattern whose recommended
 fix produces a warning is worse than no anti-pattern at all, because the reader
-trusts it. (This is not hypothetical: P2KB's preprocessor entry recommends a
-defensive `#UNDEF` that warns under PNut-TS v1.55.2 — see
-`DOCs/internals/Preprocessor-P2KB-Update-Request.md`.)
+trusts it. (This is not hypothetical: P2KB's preprocessor entry once recommended
+a defensive `#UNDEF` that warned under PNut-TS v1.55.2. We drafted the
+correction, it was applied to P2KB, and the entry is right now — but the guide
+carried a warning-producing "fix" for months, which is the failure this rule
+exists to prevent.)
 
 ## Checklist before finishing
 

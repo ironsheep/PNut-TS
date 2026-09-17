@@ -538,7 +538,7 @@ both shapes — left as the historical record; the fix release says what changed
 header table entries (one per element), name array elements `D[0]`, `D[1]`, …,
 and add MAP fixtures for merged copies with VAR and for an array declared before
 another OBJ, asserted against header-derived addresses. Then re-measure and trim
-the "Known wrong" block from `DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md`.
+the "Known wrong" block from `DOCs/handoff/p2kb/P2KB-map-caveat-retraction-1.55.4.md`.
 
 ---
 
