@@ -107,10 +107,9 @@ jobs:
             mkdir -p "packages/pnut-ts-${platform}-${PACKED_VERSION}/pnut_ts"
 
             # Copy documentation files.
-            # This list must stay in step with scripts-pkg/_dist/, which is what
-            # the local macOS packaging path ships — see the "Shipped
-            # documentation" section of DOCs/RELEASE-PROCESS.md. A missing file
-            # is a hard failure: a release must not publish without its docs.
+            # This list is the authority for what ships in a release — see
+            # PACKAGING.md. A missing file is a hard failure: a release must
+            # not publish without its docs.
             for doc in README.md CHANGELOG.md AUTHORS CommandLine.md Preprocessor.md copyright; do
               if [ ! -f "${doc}" ]; then
                 echo "ERROR: required package document '${doc}' not found" >&2

@@ -1,778 +1,146 @@
-# PNut-TS Packaging Requirements
+# PNut-TS Packaging
 
-This document describes the packaging system for the PNut-TS compiler, targeting 6 platform/architecture combinations.
+This document describes how PNut-TS is packaged and released today. It is the
+authority for packaging **mechanics**; `DOCs/RELEASE-PROCESS.md` is the
+authority for the release **checklist** (tests, docs, version bump) and links
+here for how the build itself works.
 
-## Overview
-
-PNut-TS is distributed as **standalone executables** with the Node.js 18 runtime embedded. Users do not need Node.js installed - the compiler is a single self-contained binary per platform.
-
-## Current State Summary
-
-| Aspect | Current Implementation |
-|--------|----------------------|
-| Distribution Type | Standalone executable (Node.js embedded) |
-| Build Tool | TypeScript → esbuild → pkg |
-| Embedded Runtime | Node.js 18 |
-| Platforms | 6 (Windows, Linux, macOS × 2 architectures each) |
-| Runtime Dependencies | None (Commander.js bundled) |
-| Code Signing | macOS only (Apple Developer ID) |
-| Notarization | macOS DMGs only |
-| Current Version | 1.51.7 |
+Packaging happens **only** in `.github/workflows/release.yml`, triggered by
+pushing a `v*` tag (or run manually via `workflow_dispatch`, with an optional
+`dry_run` input that skips the final release-publishing job). There is no
+local packaging step, no manual macOS-signing process, and no `npm publish`
+anywhere in the current process.
 
 ---
 
-## Target Platforms
+## Distribution shape
 
-### Platform Matrix
-
-| Platform | Architecture | Primary Binary | Compat Alias | Size (approx) |
-|----------|-------------|----------------|--------------|---------------|
-| Windows | x64 | `pnut-ts.exe` | `pnut_ts.exe` | 39 MB |
-| Windows | ARM64 | `pnut-ts.exe` | `pnut_ts.exe` | 29 MB |
-| Linux | x64 | `pnut-ts` | `pnut_ts` (symlink) | 47 MB |
-| Linux | ARM64 | `pnut-ts` | `pnut_ts` (symlink) | 45 MB |
-| macOS | x64 (Intel) | `pnut-ts` | `pnut_ts` (symlink) | 52 MB |
-| macOS | ARM64 (Apple Silicon) | `pnut-ts` | `pnut_ts` (symlink) | 47 MB |
-
-**Note:** Both `pnut-ts` and `pnut_ts` names work. The hyphenated name (`pnut-ts`) is the primary executable; the underscored name (`pnut_ts`) is provided for backward compatibility.
-
-### pkg Target Strings
+PNut-TS ships as a **standalone executable** with the Node.js runtime
+embedded — users do not need Node.js installed. Six platform/architecture
+combinations are built from the `pkg.targets` list in `package.json`:
 
 ```json
 "targets": [
-  "node18-win-x64",
-  "node18-win-arm64",
-  "node18-linux-x64",
-  "node18-linux-arm64",
-  "node18-macos-x64",
-  "node18-macos-arm64"
+  "node22-win-arm64",
+  "node22-win-x64",
+  "node22-linux-x64",
+  "node22-linux-arm64",
+  "node22-macos-x64",
+  "node22-macos-arm64"
 ]
 ```
 
----
+The packaging tool is `@yao-pkg/pkg` (invoked as `npx @yao-pkg/pkg . --out-path pkgs`
+in the workflow), a maintained fork of the original `vercel/pkg` that supports
+Node 20+ targets. `pkg.assets` in `package.json` (`out/ext/*`) embeds the
+external `.obj` files (`Spin2_interpreter.obj`, `Spin2_debugger.obj`,
+`flash_loader.obj`, `clock_setter.obj`, from `src/ext/`) into every binary.
 
-## Build Pipeline
-
-### Stage 1: TypeScript Compilation
-
-```
-npm run build
-```
-
-- **Input**: `src/**/*.ts`
-- **Output**: `dist/` directory
-- **Compiler**: tsc (TypeScript 5.7.2)
-- **Pre-step**: Copies `src/ext/*.obj` → `dist/ext/`
-- **Post-step**: Makes `dist/pnut-ts.js` executable
-
-### Stage 2: ESBuild Bundling
-
-```
-npm run esbuild
-```
-
-- **Input**: `src/pnut-ts.ts` (entry point)
-- **Output**: `out/pnut-ts.js` (single bundled file)
-- **Bundler**: esbuild 0.21.5
-- **Format**: CommonJS
-- **Pre-step**: Copies `src/ext/*.obj` → `out/ext/`
-- **Post-step**: Injects build date via `scripts/insertBuildDate.js`
-- **For Distribution**: Adds `--minify` flag
-
-### Stage 3: Binary Packaging
-
-```
-pkg .
-```
-
-- **Tool**: pkg 5.8.1
-- **Input**: `out/pnut-ts.js` + `out/ext/*`
-- **Output**: 6 standalone executables in `pkgs/`
-- **What pkg does**: Combines Node.js 18 runtime + bundled application + assets into a single executable
-- **Assets**: External `.obj` files embedded in the executable
-
-### Full Distribution Build
-
-```
-npm run bld-dist
-```
-
-Executes: `build` → `esbuild` → `npm pack` → `pkg .`
+Both `pnut-ts` (primary) and `pnut_ts` (compatibility alias) names work in
+every package: `pnut_ts` is a symlink to `pnut-ts` on Unix and a copy of
+`pnut-ts.exe` on Windows (symlinks there require admin rights).
 
 ---
 
-## External Assets (Bundled)
+## What `.github/workflows/release.yml` does
 
-Four compiled object files are included in every platform package:
+### Job 1: `build` (`ubuntu-latest`)
 
-| File | Purpose | Size |
-|------|---------|------|
-| `Spin2_interpreter.obj` | P2 Spin2 interpreter bytecode | 6,184 bytes |
-| `Spin2_debugger.obj` | P2 debug support | 2,932 bytes |
-| `flash_loader.obj` | Flash programming support | 496 bytes |
-| `clock_setter.obj` | Clock configuration | 64 bytes |
+1. Reads `package.json`'s `version` and derives the packed form used in
+   filenames (`1.55.7` → `015507`).
+2. Validates the pushed tag's base version matches `package.json` (tolerating
+   `-test`/`-rc`/`-beta`/`-alpha` suffixes as pre-releases).
+3. `npm ci`, `npm run build`, `npm run esbuild`, `npm test`.
+4. Builds all six standalone executables in one step:
+   `npx @yao-pkg/pkg . --out-path pkgs`.
+5. **Prepare package contents**: for each of the six platforms, creates
+   `packages/pnut-ts-<platform>-<packed-version>/pnut_ts/`, copies in the
+   pkg-built binary (as `pnut-ts`, plus the `pnut_ts` compatibility alias),
+   and copies these documents from the repo root:
 
-**Location in source**: `src/ext/`
-**Location in bundle**: `out/ext/` → embedded via pkg
+   `README.md` · `CHANGELOG.md` · `AUTHORS` · `CommandLine.md` ·
+   `Preprocessor.md` · `copyright` · `LICENSE.txt` (or `LICENSE`)
 
----
+   **The step fails the job if any of the first six is missing** (explicit
+   `[ ! -f "${doc}" ]` check per file); the license file falls back from
+   `LICENSE.txt` to `LICENSE` and only warns if neither exists.
+6. Zips the four Windows/Linux folders directly and uploads them as the
+   `packages-zip` artifact. The two macOS folders are uploaded as separate
+   artifacts (`macos-x64-pkg`, `macos-arm64-pkg`) for the next job, along with
+   `package.json` itself (`version-info` artifact).
 
-## Package Contents
+### Job 2: `macos-sign` (`macos-latest`, needs `build`)
 
-### ZIP Naming Convention
+1. Downloads the macOS package folders and `package.json`, restores
+   executable permissions (GitHub Actions artifacts don't preserve them).
+2. **Only if the `MACOS_CERTIFICATE` secret is set**: imports the signing
+   certificate into a temporary keychain, code-signs both `pnut-ts` binaries
+   with the hardened runtime and a timestamp, verifies each signature, and
+   recreates the `pnut_ts` compatibility symlink (signing can disturb it).
+   Without that secret, this step and every following signing/notarizing step
+   in this job are skipped — the job still builds and zips DMGs, just
+   unsigned and unnotarized.
+3. Builds a branded DMG background image, then a styled DMG per architecture
+   (`hdiutil create`/`convert`), with a Finder window layout applied via
+   AppleScript and, if present, custom folder/volume icons from `assets/`.
+4. **Only if signing was enabled**: signs each DMG, then submits it to Apple
+   notarization (`xcrun notarytool submit ... --wait`) and staples the ticket
+   (`xcrun stapler staple`).
+5. Zips each DMG (`pnut-ts-macos-<arch>-<packed-version>.zip`) and uploads
+   both as the `packages-macos-zip` artifact.
 
-```
-pnut-ts-{platform}-{arch}-{version}.zip
-```
+**Secrets used by this job** (verified against `release.yml`):
 
-Examples:
-- `pnut-ts-linux-arm64-015106.zip`
-- `pnut-ts-linux-x64-015106.zip`
-- `pnut-ts-win-arm64-015106.zip`
-- `pnut-ts-win-x64-015106.zip`
-- `pnut-ts-macos-arm64-015106.dmg` (Apple Silicon)
-- `pnut-ts-macos-x64-015106.dmg` (Intel)
+| Secret | Used for |
+|---|---|
+| `MACOS_CERTIFICATE` | Base64-encoded `.p12` signing certificate; presence gates all signing/notarizing steps |
+| `MACOS_CERTIFICATE_PWD` | Password for the `.p12` certificate |
+| `KEYCHAIN_PWD` | Password for the temporary keychain created to hold it |
+| `APPLE_TEAM_ID` | Apple Developer Team ID, used in the codesign identity string and passed to `notarytool` |
+| `APPLE_DEVELOPER_NAME` | Developer name, used in the codesign identity string |
+| `APPLE_ID` | Apple ID email, passed to `notarytool submit` |
+| `APPLE_ID_PASSWORD` | App-specific password, passed to `notarytool submit` |
 
-### Windows & Linux Package Shape (ZIP)
+### Job 3: `release` (`ubuntu-latest`, needs both jobs above, skipped entirely when `dry_run` is true)
 
-All ZIPs unpack to a folder named `pnut_ts/`:
-
-```
-pnut_ts/
-├── pnut_ts          (Linux) or pnut_ts.exe (Windows)
-├── AUTHORS
-├── CHANGELOG.md
-├── CommandLine.md
-├── copyright
-├── LICENSE
-├── Preprocessor.md
-└── README.md
-```
-
-**Key Points:**
-- Standalone executable with Node.js embedded (~29-47 MB)
-- External `.obj` files embedded in executable (no `ext/` folder)
-- Flat structure (no subdirectories)
-- 7 documentation files + 1 executable = 8 files total
-
-**Note:** `Goals.md` appeared in some packages but is internal documentation - NOT intended for distribution.
-
-### macOS Package Shape (DMG)
-
-macOS is distributed as a **signed and notarized DMG** containing:
-
-```
-pnut_ts.dmg
-└── pnut_ts/
-    ├── pnut_ts      ← standalone executable (NOT JS file)
-    ├── AUTHORS
-    ├── CHANGELOG.md
-    ├── CommandLine.md
-    ├── copyright
-    ├── LICENSE
-    ├── Preprocessor.md
-    └── README.md
-```
-
-**Key Points:**
-- Same structure as Windows/Linux (standalone binary, no `ext/` folder)
-- Distributed as DMG (not ZIP)
-- DMG must be code-signed and notarized
-- Users do NOT need Node.js installed
-
-**Note:** PNut-TS is a CLI tool (pkg-generated binary), NOT an Electron app like PNut-Term-TS. This means:
-- Simpler signing (just the binary, not nested .app bundle)
-- No .app bundle structure required
-- DMG contains `pnut_ts/` folder directly
-
-**Icon Limitation:** Custom icons cannot be set directly on the standalone binary because macOS code signing with hardened runtime rejects resource forks ("resource fork, Finder information, or similar detritus not allowed"). The icon is instead set on the containing `pnut_ts/` folder in the DMG.
+1. Downloads every artifact (`packages-zip`, `packages-macos-zip`,
+   `version-info`) and generates `checksums.txt` (`sha256sum *`) over all of
+   them.
+2. Decides pre-release status by comparing the tag to `package.json`'s exact
+   version.
+3. Builds the release body by extracting this version's section out of
+   `CHANGELOG.md` — matching either the current `## vX.Y.Z (date)` heading or
+   the older Keep a Changelog `## [X.Y.Z] date` form — and pulling its lede
+   sentence as the release headline, falling back to the first bullet for
+   older entries that predate the lede convention.
+4. Publishes the GitHub release with `softprops/action-gh-release`, attaching
+   every zip plus `checksums.txt`.
 
 ---
 
-## Required Visual Assets (macOS)
-
-| Asset | Format | Dimensions | Purpose |
-|-------|--------|------------|---------|
-| DMG Background | PNG | 500×300 | Installer window background with arrow |
-| App Icon | ICNS | multiple sizes | Icon for the standalone executable |
-| Volume Icon | ICNS | multiple sizes | Icon shown when DMG is mounted |
-
-**DMG Background Content:**
-- Product name: "PNut-TS"
-- Company: "Iron Sheep Productions, LLC"
-- Arrow pointing from app to Applications folder
-- Text: "Drag to Applications Folder to Install"
-
-**Icon Requirements:**
-- ICNS files must contain multiple sizes (16, 32, 128, 256, 512, 1024)
-- Can be generated from a 1024×1024 PNG source
-
-**TODO - Assets to Create:**
-- [ ] DMG background image (adapt `create-dmg-background.sh` from PNut-Term-TS)
-- [ ] App icon for standalone executable
-- [ ] Volume icon for mounted DMG
-
----
-
-## Code Signing Requirements
-
-### macOS Code Signing (Required)
-
-| Requirement | Details |
-|-------------|---------|
-| Certificate | Developer ID Application |
-| Identity | `Iron Sheep Productions, LLC (T67FW2JCJW)` |
-| Options | `--options=runtime` (hardened runtime) |
-| Tool | `codesign` |
-| Timestamp | `--timestamp` (required for notarization) |
-
-**Signing Command**:
-```bash
-codesign --force --sign "$IDENTITY" \
-    --options runtime \
-    --timestamp \
-    pnut_ts
-```
-
-### macOS DMG Creation
-
-**Required Assets**:
-| Asset | Dimensions | Purpose |
-|-------|------------|---------|
-| `dmg-background.png` | 500x300 | Installer window background |
-| App icon (`.icns`) | various | Icon for the executable |
-| Volume icon (`.icns`) | various | Icon when DMG is mounted |
-
-**DMG Structure** (when mounted):
-```
-/Volumes/PNut-TS/
-├── pnut_ts/              ← folder with app + docs
-│   ├── pnut_ts           ← signed standalone binary
-│   ├── AUTHORS
-│   ├── CHANGELOG.md
-│   └── ... (other docs)
-├── Applications          ← symlink to /Applications
-└── .background/
-    └── background.png    ← hidden background image
-```
-
-**DMG Creation Process**:
-1. Create staging directory with `pnut_ts/` folder contents
-2. Create `Applications` symlink → `/Applications`
-3. Create `.background/` folder with background image
-4. Create temp read-write DMG: `hdiutil create -format UDRW`
-5. Mount and apply AppleScript styling (window size, icon positions)
-6. Convert to compressed: `hdiutil convert -format UDZO`
-
-**AppleScript Window Styling**:
-```applescript
-tell application "Finder"
-    tell disk "PNut-TS"
-        set bounds of container window to {400, 100, 900, 400}
-        set icon size of theViewOptions to 72
-        set background picture of theViewOptions to file ".background:background.png"
-        set position of item "pnut_ts" to {125, 150}
-        set position of item "Applications" to {375, 150}
-    end tell
-end tell
-```
-
-### macOS Notarization (Required)
-
-| Step | Command |
-|------|---------|
-| Submit | `xcrun notarytool submit <dmg> --keychain-profile "pnut-ts-notary" --wait` |
-| Staple | `xcrun stapler staple <dmg>` |
-| Validate | `xcrun stapler validate <dmg>` |
-
-**Keychain Profile Setup** (one-time):
-```bash
-xcrun notarytool store-credentials "pnut-ts-notary" \
-    --apple-id "your-apple-id@example.com" \
-    --team-id "T67FW2JCJW" \
-    --password "app-specific-password"
-```
-
-### Windows
-
-No code signing currently implemented.
-
-### Linux
-
-No code signing required.
-
----
-
-## Current Manual Workflow
-
-The current packaging process is **manual** and runs on a macOS host.
-
-### Phase 1: Build (in dev container)
+## Local testing: `npm run bld-dist`
 
 ```bash
-npm run bld-dist
+npm run build && npm run esbuild && npx @yao-pkg/pkg . -t node22-linux-x64 -o pkgs/p2-pnut-ts-linux-x64 && npx @yao-pkg/pkg . -t node22-linux-arm64 -o pkgs/p2-pnut-ts-linux-arm64
 ```
 
-This produces:
-- `pkgs/` - 6 platform binaries
-- `out/pnut-ts.js` - bundled JS file (for macOS)
-- `out/ext/` - external .obj files (for macOS)
-- `p2-pnut-ts-*.tgz` - npm package
-
-### Phase 2: Copy to Packaging Directory (Finder/manual)
-
-```bash
-# All paths relative to Dropbox/.../DIST/
-pkgs/*           → _pkgs/           # All 6 platform binaries
-out/pnut-ts.js   → _pkgs/           # JS file for macOS
-out/ext/         → _pkgs/ext/       # External assets for macOS
-prebuilds/       → _pkgs/prebuilds/ # Native modules (if any)
-```
-
-Also ensure `_dist/` has current documentation files.
-
-### Phase 3: Package and Sign
-
-```bash
-cd DIST/
-./cs_pack.sh                    # Organize into platform folders + sign macOS
-./cs_zip.sh 015106              # Create versioned ZIPs (e.g., v1.51.06)
-```
-
-### Phase 4: macOS DMG Creation (Manual GUI Tool)
-
-```bash
-# 1. Run DropDMG (GUI app) to create DMGs for each macOS architecture
-#    - Validate content of each DMG is correct
-
-# 2. Sign the DMGs
-./cs_dmg.sh
-
-# 3. Notarize ARM64 DMG
-./cs_not_dmgarm64.sh
-xcrun stapler staple _unzipped/macos/macos-arm64.dmg
-
-# 4. Notarize x64 DMG
-./cs_not_dmgx64.sh
-xcrun stapler staple _unzipped/macos/macos-x64.dmg
-
-# 5. Zip the DMGs
-./cs_zip_dmgs.sh
-```
-
-### Phase 5: Upload to GitHub
-
-```bash
-# Upload all ZIPs from _UPLOAD/ to GitHub Releases page
-```
-
-### Phase 6: Git Tagging
-
-```bash
-git tag -a v1.51.6 -m "Tag message"
-git push origin --tags
-```
+This builds only the two Linux binaries, for local sanity-testing in the
+container. It does not build Windows or macOS binaries, does not sign or
+notarize anything, and does not run `npm pack` — there is no npm package
+artifact in the current process, and no `npm publish` step exists anywhere in
+this repository or workflow.
 
 ---
 
-## Script Inventory
+## Version numbering
 
-| Script | Purpose | Inputs |
-|--------|---------|--------|
-| `cs_pack.sh` | Organize binaries + sign macOS | Reads from `_pkgs/`, `_dist/` |
-| `cs_zip.sh` | Create platform ZIPs | `{version}` e.g., `015106` |
-| `cs_dmg.sh` | Sign DMG files | DMGs in `_unzipped/macos/` |
-| `cs_not_dmgarm64.sh` | Notarize ARM64 DMG | Uses keychain profile |
-| `cs_not_dmgx64.sh` | Notarize x64 DMG | Uses keychain profile |
-| `cs_zip_dmgs.sh` | Zip DMGs for upload | DMGs in `_unzipped/macos/` |
-| `cs_fixUploadNames.sh` | Rename ZIPs with version | `{version}` (has bug - unused) |
-| `cs_cln.sh` | Clean output directories | Interactive confirmation |
+The version string follows `MAJOR.PNUTVERSION.PATCH` (e.g. `1.55.7` for PNut
+v55, patch 7) and must agree in three places:
 
----
+- `package.json` — `version`
+- `package-lock.json` — both `version` fields near the top
+- `src/pnut-ts.ts` — the `version` field of the CLI class
 
-## Issues to Fix in New Workflow
-
-### 1. macOS must use standalone binary
-
-**Current:** macOS ships raw JS file (requires Node.js)
-**Required:** macOS should ship standalone executable (same as Windows/Linux)
-
-The pkg binaries ARE being signed in `cs_pack.sh` (lines 21-22) but then NOT used (lines 31, 40 are commented out). The new workflow must use the signed pkg binary.
-
-### 2. Goals.md incorrectly included
-
-`Goals.md` is internal documentation that was accidentally distributed. Must be excluded from packages.
-
-### 3. Documentation source files
-
-Ensure `_dist/` or equivalent contains exactly these 7 files:
-- AUTHORS
-- CHANGELOG.md
-- CommandLine.md
-- copyright
-- LICENSE
-- Preprocessor.md
-- README.md
-
-### 4. Bug in `cs_fixUploadNames.sh`
-
-Line 44 uses undefined `${version_suffix}` instead of `${BUILD_VERSION}`. (May not matter if script is replaced by GitHub Actions.)
-
----
-
-## Version Numbering
-
-| Format | Example | Usage |
-|--------|---------|-------|
-| Semantic | `1.51.5` | package.json, display |
-| Packed | `015105` | ZIP file naming |
-
-**ZIP Naming**: `pnut-ts-{platform}-{arch}-{version}.zip`
-
-Example: `pnut-ts-linux-x64-015105.zip`
-
----
-
-## Design Decisions
-
-| Decision | Choice |
-|----------|--------|
-| Windows code signing | No |
-| macOS DMGs | Yes, automate creation |
-| npm publish | No |
-| Package structure | Consistent across platforms (macOS may differ slightly) |
-
----
-
-## Automation Requirements
-
-### GitHub Actions Capabilities
-
-| Task | Tool | Available on Runner |
-|------|------|---------------------|
-| Build binaries | pkg | Yes (via npm) |
-| Create DMG | `hdiutil` | Yes (macOS native) |
-| Code sign | `codesign` | Yes (macOS native) |
-| Notarize | `xcrun notarytool` | Yes (macOS native) |
-| Staple | `xcrun stapler` | Yes (macOS native) |
-| Create ZIP | `zip` / `ditto` | Yes (all platforms) |
-| Upload release | `gh` / actions | Yes |
-
-### Required GitHub Secrets
-
-| Secret | Purpose |
-|--------|---------|
-| `APPLE_DEVELOPER_ID_CERT` | Base64-encoded .p12 certificate |
-| `APPLE_DEVELOPER_ID_CERT_PASSWORD` | Password for .p12 |
-| `APPLE_ID` | Apple ID for notarization |
-| `APPLE_ID_PASSWORD` | App-specific password |
-| `APPLE_TEAM_ID` | Team ID (T67FW2JCJW) |
-
-### DMG Creation Command
-
-```bash
-hdiutil create -volname "PNut_TS" \
-  -srcfolder ./pnut_ts \
-  -ov -format UDZO \
-  pnut-ts-macos-arm64.dmg
-```
-
----
-
-## Dependencies
-
-### Build Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| typescript | 5.7.2 | Compilation |
-| esbuild | 0.21.5 | Bundling |
-| pkg | 5.8.1 | Binary packaging |
-
-### Runtime Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| commander | 12.1.0 | CLI parsing |
-
----
-
-## File Locations
-
-| Path | Purpose |
-|------|---------|
-| `package.json` | Build config, pkg targets |
-| `scripts/prepExt` | Copy .obj files |
-| `scripts/insertBuildDate.js` | Inject build date |
-| `scripts-pkg/` | Post-build packaging scripts |
-| `scripts-pkg/_dist/` | Documentation for packages |
-| `scripts-pkg/_pkgs/` | Staging for binaries |
-| `scripts-pkg/_unzipped/` | Organized platform folders |
-| `scripts-pkg/_UPLOAD/` | Final ZIPs for release |
-
----
-
----
-
-## Required Upgrade: Node.js and pkg
-
-### Current State (DO NOT REMOVE - fallback recipe)
-
-| Component | Version | Status |
-|-----------|---------|--------|
-| pkg | `5.8.1` (vercel/pkg) | Unmaintained (3 years) |
-| Node Target | `node18` | **END OF LIFE** (April 30, 2025) |
-
-### Node.js LTS Timeline
-
-| Version | Active LTS Ends | End of Life | Status |
-|---------|-----------------|-------------|--------|
-| Node 18 | Oct 2023 | Apr 2025 | **EOL - unsupported** |
-| Node 20 | Oct 2024 | Apr 2026 | Maintenance |
-| Node 22 | Oct 2025 | Apr 2027 | **Active LTS** ✓ |
-| Node 24 | Oct 2026 | Apr 2028 | Active LTS (newest) |
-
-### Upgrade Path
-
-The original `vercel/pkg` does not support Node 20 or 22.
-
-**Solution**: Switch to [`@yao-pkg/pkg`](https://github.com/yao-pkg/pkg) - actively maintained fork (v6.11.0) that supports `node20` and `node22` targets.
-
-**Changes Required**:
-
-```json
-// package.json - CURRENT (keep until tested)
-"devDependencies": {
-  "pkg": "^5.8.1"
-}
-"pkg": {
-  "targets": [
-    "node18-win-arm64",
-    "node18-win-x64",
-    "node18-linux-x64",
-    "node18-linux-arm64",
-    "node18-macos-x64",
-    "node18-macos-arm64"
-  ]
-}
-
-// package.json - UPGRADE TO (after testing)
-"devDependencies": {
-  "@yao-pkg/pkg": "^6.11.0"
-}
-"pkg": {
-  "targets": [
-    "node22-win-arm64",
-    "node22-win-x64",
-    "node22-linux-x64",
-    "node22-linux-arm64",
-    "node22-macos-x64",
-    "node22-macos-arm64"
-  ]
-}
-```
-
-**Testing Required**: Build all 6 platforms and verify binaries work before committing upgrade.
-
----
-
-## GitHub Actions Workflow
-
-### Automated Release Process
-
-The release process is automated via GitHub Actions (`.github/workflows/release.yml`):
-
-```
-Trigger: Push tag v*
-    ↓
-Build Job (ubuntu-latest)
-    ├── npm ci
-    ├── npm run build
-    ├── npm run esbuild
-    ├── npm test
-    ├── npx @yao-pkg/pkg . --out-path pkgs
-    ├── Package with docs → ZIP (Windows/Linux)
-    └── Upload artifacts
-    ↓
-macOS Sign Job (macos-latest)
-    ├── Download macOS package artifacts
-    ├── Import signing certificate
-    ├── Sign binaries (codesign)
-    ├── Create DMGs (hdiutil)
-    ├── Sign DMGs (codesign)
-    ├── Notarize DMGs (notarytool)
-    ├── Staple tickets (stapler)
-    └── Upload DMG artifacts
-    ↓
-Release Job (ubuntu-latest)
-    ├── Download all artifacts
-    ├── Generate checksums
-    └── Create GitHub Release
-```
-
-### Required GitHub Secrets
-
-| Secret | Purpose |
-|--------|---------|
-| `MACOS_CERTIFICATE` | Base64-encoded .p12 certificate |
-| `MACOS_CERTIFICATE_PWD` | Password for the .p12 certificate |
-| `KEYCHAIN_PWD` | Password for temporary keychain |
-| `APPLE_TEAM_ID` | Apple Developer Team ID (e.g., T67FW2JCJW) |
-| `APPLE_DEVELOPER_NAME` | Developer name for signing identity |
-| `APPLE_ID` | Apple ID email for notarization |
-| `APPLE_ID_PASSWORD` | App-specific password for notarization |
-
-### CI Workflow
-
-The CI workflow (`.github/workflows/ci.yml`) runs on every push/PR to main:
-
-1. **Lint** - ESLint check
-2. **Test** - Jest test suite
-3. **Build Check** - Verify TypeScript and pkg build
-
----
-
-## Local macOS Testing Scripts
-
-For local testing on macOS before committing changes, use the scripts in `scripts-pkg-macos/`:
-
-### Workflow
-
-```bash
-# 1. Generate background image (one-time)
-./create-dmg-background.sh
-
-# 2. Sign the standalone binary
-./SIGN-BINARY.command
-
-# 3. Create DMG installers
-./CREATE-STANDARD-DMGS.command
-
-# 4. Sign the DMG files
-./SIGN-DMGS.command
-
-# 5. Notarize with Apple
-./NOTARIZE-AND-STAPLE.command
-```
-
-### Script Inventory
-
-| Script | Purpose |
-|--------|---------|
-| `entitlements.plist` | Entitlements for hardened runtime (JIT, memory) |
-| `create-dmg-background.sh` | Generate PNut-TS branded background image |
-| `SIGN-BINARY.command` | Sign pkg binary with Developer ID |
-| `CREATE-STANDARD-DMGS.command` | Create DMG with drag-to-install UI |
-| `SIGN-DMGS.command` | Sign the DMG files |
-| `NOTARIZE-AND-STAPLE.command` | Submit to Apple and staple ticket |
-
-### Prerequisites
-
-1. **Apple Developer ID Application certificate** installed in Keychain
-2. **Keychain profile** named `pnut-ts-notary` configured:
-
-```bash
-xcrun notarytool store-credentials "pnut-ts-notary" \
-    --apple-id "your-apple-id@example.com" \
-    --team-id "YOUR_TEAM_ID" \
-    --password "app-specific-password"
-```
-
-3. **Package directories** with format: `pnut-ts-macos-{arch}-{version}/pnut_ts/pnut_ts`
-
----
-
-## Release Checklist
-
-### Before Release
-
-- [ ] Update version in `package.json`
-- [ ] Update `CHANGELOG.md`
-- [ ] Run full test suite: `npm run test-full`
-- [ ] Commit changes
-
-### Release
-
-```bash
-# Create and push tag
-git tag -a v1.51.6 -m "Release v1.51.6"
-git push origin v1.51.6
-
-# GitHub Actions will automatically:
-# - Build all 6 platform packages
-# - Sign and notarize macOS DMGs
-# - Create GitHub Release with all artifacts
-```
-
-### Post-Release Verification
-
-- [ ] Download and test each platform package
-- [ ] Verify macOS DMG opens without Gatekeeper warning
-- [ ] Verify `pnut_ts --version` shows correct version
-
----
-
-## Future Consideration: App Bundle Wrapper
-
-### The Problem
-
-macOS code signing with hardened runtime does not allow resource forks on binaries. This means custom icons cannot be set directly on the `pnut_ts` executable - the codesign tool rejects them with "resource fork, Finder information, or similar detritus not allowed".
-
-The `vercel/pkg` tool (now archived) never implemented `--icon` support for macOS binaries.
-
-### Current Workaround
-
-Set the custom icon on the `pnut_ts/` folder instead of the binary. Users see the icon in the DMG when dragging to Applications.
-
-### Future Alternative: Minimal App Bundle
-
-Wrap the CLI binary in a minimal `.app` bundle structure. App bundles can have icons via `Info.plist` (stored in `Contents/Resources/`) without breaking code signatures.
-
-**Structure:**
-```
-PNut-TS.app/
-├── Contents/
-│   ├── Info.plist          ← references the icon
-│   ├── MacOS/
-│   │   └── pnut_ts         ← the signed binary
-│   └── Resources/
-│       └── app-icon.icns   ← the icon file
-```
-
-**Minimal Info.plist:**
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>pnut_ts</string>
-    <key>CFBundleIconFile</key>
-    <string>app-icon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.ironsheep.pnut-ts</string>
-    <key>CFBundleName</key>
-    <string>PNut-TS</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleVersion</key>
-    <string>1.51.5</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.13</string>
-</dict>
-</plist>
-```
-
-**Pros:**
-- Icon displays properly on the app
-- Proper macOS application experience
-- Could add file associations in the future
-
-**Cons:**
-- More complex packaging
-- Users install `.app` instead of raw binary
-- CLI usage requires adding to PATH or creating symlink
-
-**References:**
-- [The Eclectic Light Company: How to add a custom icon without breaking signature](https://eclecticlight.co/2019/07/20/how-to-add-a-custom-icon-to-an-app-without-breaking-its-signature/)
-- [Apple QA1940: Resource fork not allowed](https://developer.apple.com/library/archive/qa/qa1940/_index.html)
+`release.yml` derives the packed form used in artifact filenames by
+zero-padding each part to two digits (`1.55.7` → `015507`), used in names like
+`pnut-ts-linux-x64-015507.zip`.

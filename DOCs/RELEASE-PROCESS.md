@@ -89,6 +89,15 @@ grep -oE '\(m[0-9]+\)' src/classes/*.ts | cut -d: -f2 | sort | uniq -d
   npm run docs-check
   ```
 
+  > **Ordering gotcha:** `docs-check` dates each `verified` stamp against the
+  > *git tag* for that version, not the commit date. Run here, before the
+  > version bump lands, it can only fall back to "using doc's last commit" for
+  > the version you are about to ship — the tag doesn't exist yet. Treat this
+  > run as advisory; **run it again after creating the local annotated tag in
+  > Post-Release, before pushing it**, so the version-tag-dated comparison is
+  > accurate. If that second run finds something the first run missed, fix it
+  > and re-tag before pushing.
+
   This is the **backstop**, not the primary net — the sprint-plan documentation
   gate is what catches docs describing behavior the sprint set out to change.
   This catches the residue: drift in claims that were true once, and docs made
@@ -151,21 +160,28 @@ these files.
 
 ## Release Build
 
-After all checklist items pass:
+The release build happens **only** in `.github/workflows/release.yml`,
+triggered by pushing a `v*` tag. There is no local six-binary build, no manual
+macOS-signing step, and no `npm publish` anywhere in the current process; the
+container's `npm run bld-dist` builds two Linux binaries for local testing
+only.
 
-```bash
-npm run bld-dist
-```
-
-This produces:
-- npm package (`.tgz`)
-- Platform binaries in `pkgs/` directory
+**See `PACKAGING.md` for the mechanics** — what each of the workflow's three
+jobs does, the platform target list, the macOS signing/notarization secrets,
+the shipped-docs copy and its missing-doc check, and version numbering. This
+document covers the release *checklist*; `PACKAGING.md` covers how the build
+itself works, so the two are not duplicated here.
 
 ---
 
 ## Post-Release
 
-- [ ] Tag the release in git: `git tag v1.XX.Y`
+- [ ] Tag the release in git with an **annotated** tag:
+      `git tag -a v1.XX.Y -m "v1.XX.Y"`
+- [ ] Re-run `npm run docs-check` now that the tag exists — see the ordering
+      gotcha under Documentation Updates above. Fix anything the tag-dated
+      comparison newly reveals, then re-tag (`git tag -f -a v1.XX.Y -m ...`)
+      before pushing.
 - [ ] Push tag: `git push origin v1.XX.Y`
 
   Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds every
@@ -177,40 +193,35 @@ This produces:
 - [ ] Verify the published release page: headline sentence reads correctly, the
       "What's New" body matches the changelog entry, all six platform archives
       attached
-- [ ] Publish to npm if applicable
+
+  If `secrets.MACOS_CERTIFICATE` is not configured on the repo, the macOS
+  archives will contain unsigned, unnotarized binaries — check for that rather
+  than assuming signing happened.
+
 - [ ] Add a row to the **Release History** table below
+
+> **There is no npm-publish step.** Nothing in this repository or workflow
+> runs `npm publish`, and no install instructions anywhere point users at the
+> npm registry — distribution is the six platform archives above, full stop.
+> `package.json`'s `name` (`p2-pnut-ts`) exists for `npx @yao-pkg/pkg` and
+> local `npm pack`/`bld-dist` testing, not for publishing.
 
 ---
 
 ## Shipped documentation
 
-Two packaging paths exist and both must ship the same documentation:
+The set of documents copied into every release package, and the workflow step
+that copies them (and fails the release if one is missing), are described in
+`PACKAGING.md` under "What `.github/workflows/release.yml` does".
 
-| Path | Trigger | Source of the docs |
-|---|---|---|
-| `.github/workflows/release.yml` | `v*` tag push | the repo originals, copied directly |
-| `scripts-pkg/cs_pack.sh` (local, macOS signing) | run by hand from the `DIST` folder | whatever is sitting in `scripts-pkg/_dist/` |
-
-The shipped set is:
-
-`README.md` · `CHANGELOG.md` · `AUTHORS` · `CommandLine.md` ·
-`Preprocessor.md` · `LICENSE` · `copyright`
-
-The workflow copies these from the repo and **fails the release if one is
-missing**. The local path copies them from `scripts-pkg/_dist/`, which is a
-hand-maintained duplicate and is gitignored — so it drifts silently and is the
-one to watch.
-
-- [ ] Before a local package build, refresh `scripts-pkg/_dist/` from the repo
-      originals rather than editing the copies in place
-- [ ] When adding a document to the shipped set, add it in **both** places — the
-      workflow's `for doc in ...` list and `scripts-pkg/_dist/`
+- [ ] When adding a document to the shipped set, update the workflow's
+      `for doc in ...` list in the "Prepare package contents" step
+      (`.github/workflows/release.yml`), and `PACKAGING.md`'s copy of that list
 
 > `copyright` was reconciled 2026-08-09 (Preproc-Symbols sprint §9): the root
 > file now carries the public `github.com/ironsheep/PNut_TS` URL and credits
-> Iron Sheep Productions, LLC **and** Parallax Inc., matching what the `_dist`
-> path had been shipping, and it is in the workflow's copy list. The shipped
-> set above is complete.
+> Iron Sheep Productions, LLC **and** Parallax Inc. — a fact worth keeping here
+> since it was a real drift incident, not packaging mechanics.
 
 ---
 

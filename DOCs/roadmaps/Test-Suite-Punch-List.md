@@ -28,7 +28,6 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 20 | `.map` VAR bases / OBJ arrays | no (map only) | **in sprint: Map-Instance-Correctness** |
 | 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
 | 22 | `.lst`/`.pre` unawaited streams | no | **in sprint: Map-Instance-Correctness** |
-| 23 | `RELEASE-PROCESS.md` wrong release-build step | no | open |
 
 ---
 
@@ -724,22 +723,6 @@ commented out.
 
 **Fix:** build the text in memory and write it with `fs.writeFileSync`, as
 `mapGenerator.ts` does; delete the two dead dump helpers.
-
----
-
-## 23. `RELEASE-PROCESS.md` names the wrong release build (added 2026-09-16)
-
-> **Compiled output: no** — release documentation. Seen while verifying «#53».
-
-`DOCs/RELEASE-PROCESS.md` "Release Build" says to run `npm run bld-dist` after
-the checklist and that it "produces" the npm package and the platform binaries.
-Release packaging is done only by `.github/workflows/release.yml` on tag push
-(Stephen, 2026-09-16); in the container `bld-dist` is used only to build the Linux
-binary for local testing. Rewrite the section to say so. `PACKAGING.md` and
-`scripts/release-tools/cs_pack.sh` describe a local six-binary packaging and
-macOS-signing flow from `pkgs/` that the release workflow does not use; retire
-or rewrite them with the section. (`bld-dist` itself builds only the two Linux
-binaries since 2026-09-16.)
 
 ---
 
