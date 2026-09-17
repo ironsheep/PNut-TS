@@ -1,276 +1,154 @@
 /**
- * Map File Verification Tests
+ * Map File Verification Tests (Map-Instance-Correctness §5)
  *
- * Tests that verify .map file output matches .lst file and expected.json
+ * Eight named fixtures, each compiled once (staged into a temp tree — see
+ * `TEST/MAP-tests/README.md` for what each one checks) and checked with
+ * `verifyMapAgainstExpected` against its `expected.json`. `expected.json`
+ * carries only facts a human can check against source; every address in the
+ * check comes from the map itself, cross-checked against mapOracle's
+ * independent header-walk decode of the `.lst`.
+ *
+ * `mapFormat.test.ts` already covers the spec's worked example, warm==cold
+ * and named edge cases — this suite does not repeat that; it owns the eight
+ * named fixtures' exact facts instead.
  */
 
 /* eslint-disable no-console */
 
-import * as path from 'path';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
-import { verifyMapAgainstExpected, formatResults } from './verify-map';
+import * as path from 'path';
+import { compileSpin2, StagedTree, stageTree } from '../CACHE-tests/cacheFixtures';
+import { formatResults, verifyMapAgainstExpected } from './verify-map';
 
-// When compiled to dist/tests/MAP-tests/, __dirname is dist/tests/MAP-tests/
-const COMPILER_PATH = path.resolve(__dirname, '../../pnut-ts.js');
-// Test data files are in TEST/MAP-tests/, not the dist folder
 const TEST_DIR = path.resolve(__dirname, '../../../TEST/MAP-tests');
+const COMPILE_TIMEOUT_MS = 60000;
 
-function compileTest(testDir: string, topFile: string): void {
-  const sourceFile = path.join(testDir, topFile);
-  try {
-    execSync(`node ${COMPILER_PATH} -l -m ${sourceFile}`, {
-      cwd: testDir,
-      encoding: 'utf8',
-      stdio: 'pipe'
-    });
-  } catch (error: unknown) {
-    if (error instanceof Error && 'stderr' in error) {
-      throw new Error(`Compilation failed: ${(error as { stderr: string }).stderr}`);
-    }
-    throw error;
-  }
+interface Fixture {
+  dir: string;
+  top: string;
+  files: string[];
 }
 
-function cleanupGeneratedFiles(testDir: string): void {
-  const extensions = ['.lst', '.map', '.obj', '.bin'];
-  const files = fs.readdirSync(testDir);
-  for (const file of files) {
-    if (extensions.some((ext) => file.endsWith(ext))) {
-      fs.unlinkSync(path.join(testDir, file));
-    }
-  }
+const FIXTURES: Record<string, Fixture> = {
+  'test1-simple': { dir: 'test1-simple', top: 'simple_top.spin2', files: ['simple_top.spin2', 'simple_child.spin2'] },
+  'test2-deep': { dir: 'test2-deep', top: 'deep_top.spin2', files: ['deep_top.spin2', 'deep_mid.spin2', 'deep_leaf.spin2'] },
+  'test3-wide': { dir: 'test3-wide', top: 'wide_top.spin2', files: ['wide_top.spin2', 'wide_a.spin2', 'wide_b.spin2', 'wide_c.spin2'] },
+  'test4-override': { dir: 'test4-override', top: 'override_top.spin2', files: ['override_top.spin2', 'param_child.spin2'] },
+  'test5-inline': { dir: 'test5-inline', top: 'inline_top.spin2', files: ['inline_top.spin2'] },
+  'test6-hubexec': { dir: 'test6-hubexec', top: 'hubexec_top.spin2', files: ['hubexec_top.spin2'] },
+  'test7-version': { dir: 'test7-version', top: 'version_top.spin2', files: ['version_top.spin2'] },
+  'test8-struct': { dir: 'test8-struct', top: 'struct_map.spin2', files: ['struct_map.spin2'] }
+};
+
+/** Stage a fixture's sources and its expected.json into a fresh temp tree. Nothing is written under TEST/. */
+function stageFixture(name: string): StagedTree {
+  const fixture = FIXTURES[name];
+  const sources = [...fixture.files, 'expected.json'].map((f) => path.join(TEST_DIR, fixture.dir, f));
+  return stageTree(sources, name);
 }
 
-describe('Map File Verification', () => {
-  describe('test1-simple', () => {
-    const testDir = path.join(TEST_DIR, 'test1-simple');
-    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
+describe.each(Object.keys(FIXTURES))('Map File Verification: %s', (name) => {
+  const fixture = FIXTURES[name];
+  const expectedJson = JSON.parse(fs.readFileSync(path.join(TEST_DIR, fixture.dir, 'expected.json'), 'utf8'));
+  let tree: StagedTree;
 
-    beforeAll(() => {
-      compileTest(testDir, expectedJson.top_file);
-    });
+  beforeAll(() => {
+    tree = stageFixture(name);
+    compileSpin2(tree.dir, fixture.top, '-l -m');
+  }, COMPILE_TIMEOUT_MS);
 
-    afterAll(() => {
-      cleanupGeneratedFiles(testDir);
-    });
-
-    it('should verify map matches listing and expected values', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      if (!result.passed) {
-        console.log(formatResults(result));
-      }
-      expect(result.passed).toBe(true);
-    });
-
-    it('should have correct object count', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const objectCheck = result.checks.find((c) => c.name === 'Object count');
-      expect(objectCheck?.passed).toBe(true);
-    });
-
-    it('should have correct VAR symbol count', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const varCheck = result.checks.find((c) => c.name === 'VAR symbol count (top object)');
-      expect(varCheck?.passed).toBe(true);
-    });
-
-    it('should have correct OBJ bytes', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const bytesCheck = result.checks.find((c) => c.name === 'OBJ bytes match');
-      expect(bytesCheck?.passed).toBe(true);
-    });
+  afterAll(() => {
+    tree.cleanup();
   });
 
-  describe('test2-deep', () => {
-    const testDir = path.join(TEST_DIR, 'test2-deep');
-    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
-
-    beforeAll(() => {
-      compileTest(testDir, expectedJson.top_file);
-    });
-
-    afterAll(() => {
-      cleanupGeneratedFiles(testDir);
-    });
-
-    it('should verify map matches listing and expected values', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      if (!result.passed) {
-        console.log(formatResults(result));
-      }
-      expect(result.passed).toBe(true);
-    });
-
-    it('should have correct object count for deep hierarchy', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const objectCheck = result.checks.find((c) => c.name === 'Object count');
-      expect(objectCheck?.passed).toBe(true);
-      expect(objectCheck?.expected).toBe('3'); // 3 deep levels
-    });
-  });
-
-  describe('test3-wide', () => {
-    const testDir = path.join(TEST_DIR, 'test3-wide');
-    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
-
-    beforeAll(() => {
-      compileTest(testDir, expectedJson.top_file);
-    });
-
-    afterAll(() => {
-      cleanupGeneratedFiles(testDir);
-    });
-
-    it('should verify map matches listing and expected values', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      if (!result.passed) {
-        console.log(formatResults(result));
-      }
-      expect(result.passed).toBe(true);
-    });
-
-    it('should have correct object count for wide hierarchy', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const objectCheck = result.checks.find((c) => c.name === 'Object count');
-      expect(objectCheck?.passed).toBe(true);
-      expect(objectCheck?.expected).toBe('4'); // 1 top + 3 children
-    });
-  });
-
-  describe('test4-override', () => {
-    const testDir = path.join(TEST_DIR, 'test4-override');
-    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
-
-    beforeAll(() => {
-      compileTest(testDir, expectedJson.top_file);
-    });
-
-    afterAll(() => {
-      cleanupGeneratedFiles(testDir);
-    });
-
-    it('should verify map matches listing and expected values', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      if (!result.passed) {
-        console.log(formatResults(result));
-      }
-      expect(result.passed).toBe(true);
-    });
-
-    it('should have correct object count for override instances', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const objectCheck = result.checks.find((c) => c.name === 'Object count');
-      expect(objectCheck?.passed).toBe(true);
-      expect(objectCheck?.expected).toBe('4'); // 1 top + 3 instances of param_child
-    });
-
-    it('should have correct OBJ bytes', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const bytesCheck = result.checks.find((c) => c.name === 'OBJ bytes match');
-      expect(bytesCheck?.passed).toBe(true);
-    });
-  });
-
-  /**
-   * The index sections are lookups, and a lookup that omits an image or prints
-   * a non-address is worse than no lookup at all. test4-override forks one
-   * source file into three images, which is the case that exposed both faults:
-   * every symbol appeared once, at the first image's base, and method rows
-   * carried header-table slot indices in a column headed "Address".
-   */
-  describe('test4-override — index sections describe every image', () => {
-    const testDir = path.join(TEST_DIR, 'test4-override');
-    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
-    let mapText = '';
-
-    beforeAll(() => {
-      compileTest(testDir, expectedJson.top_file);
-      mapText = fs.readFileSync(path.join(testDir, expectedJson.top_file.replace(/\.spin2$/, '.map')), 'utf8');
-    });
-
-    afterAll(() => {
-      cleanupGeneratedFiles(testDir);
-    });
-
-    function sectionOf(name: string): string[] {
-      const lines = mapText.split(/\r?\n/);
-      const start = lines.findIndex((l) => l.startsWith(`=== ${name} ===`));
-      expect(start).toBeGreaterThanOrEqual(0);
-      const rest = lines.slice(start + 1);
-      const end = rest.findIndex((l) => l.startsWith('=== '));
-      return (end === -1 ? rest : rest.slice(0, end)).filter((l) => l.trim().length > 0);
+  it('verifies map against expected.json, cross-checked against mapOracle', () => {
+    const result = verifyMapAgainstExpected(tree.dir);
+    if (!result.passed) {
+      console.log(formatResults(result));
     }
-
-    it('SYMBOL INDEX carries one row per instance, each at its own address', () => {
-      const rows = sectionOf('SYMBOL INDEX').filter((l) => /^\s+COMPUTE\s/.test(l));
-      expect(rows).toHaveLength(3);
-
-      const instances = rows.map((l) => l.trim().split(/\s+/)[2]);
-      expect(instances.sort()).toEqual(['CHILD1', 'CHILD2', 'CHILD3']);
-
-      const addresses = rows.map((l) => l.trim().split(/\s+/)[4]);
-      expect(new Set(addresses).size).toBe(3);
-    });
-
-    it('ADDRESS INDEX lists every image and stays in ascending address order', () => {
-      const rows = sectionOf('ADDRESS INDEX').filter((l) => /^\s+\$[0-9A-F]+\s/.test(l));
-      const addresses = rows.map((l) => parseInt(l.trim().split(/\s+/)[0].replace('$', ''), 16));
-      expect(addresses).toEqual([...addresses].sort((a, b) => a - b));
-
-      // Three CODE rows for param_child — one per image, not one per file.
-      const codeRows = rows.filter((l) => /\sCODE\s/.test(l) && /param_child/.test(l));
-      expect(codeRows).toHaveLength(3);
-    });
-
-    it('every METHOD address falls inside its own object, not at a slot index', () => {
-      const layout = sectionOf('MEMORY LAYOUT')
-        .map((l) => l.match(/^\s*\$([0-9A-F]+)\s+\$([0-9A-F]+)\s+\d+\s+(\S+)\s+(\S+)/))
-        .filter((m): m is RegExpMatchArray => m !== null && m[3] !== 'VAR')
-        .map((m) => ({ start: parseInt(m[1], 16), end: parseInt(m[2], 16), instance: m[4] }));
-      expect(layout.length).toBeGreaterThan(0);
-
-      const methodRows = sectionOf('ADDRESS INDEX').filter((l) => /\sMETHOD\s/.test(l));
-      expect(methodRows.length).toBeGreaterThan(0);
-
-      for (const row of methodRows) {
-        const parts = row.trim().split(/\s+/);
-        const address = parseInt(parts[0].replace('$', ''), 16);
-        const instance = parts[2];
-        const owner = layout.find((o) => o.instance === instance);
-        expect(owner).toBeDefined();
-        // A slot index would be a small number far below its object's base.
-        expect(address).toBeGreaterThanOrEqual(owner!.start);
-        expect(address).toBeLessThanOrEqual(owner!.end);
-      }
-    });
+    expect(result.passed).toBe(true);
   });
 
-  describe('test7-version', () => {
-    const testDir = path.join(TEST_DIR, 'test7-version');
-    const expectedJson = JSON.parse(fs.readFileSync(path.join(testDir, 'expected.json'), 'utf8'));
+  it('has the expected instance and image counts', () => {
+    const result = verifyMapAgainstExpected(tree.dir);
+    const instCheck = result.checks.find((c) => c.name === 'instance count');
+    const imgCheck = result.checks.find((c) => c.name === 'image count');
+    expect(instCheck?.passed).toBe(true);
+    expect(instCheck?.expected).toBe(String(expectedJson.totals.instance_count));
+    expect(imgCheck?.passed).toBe(true);
+    expect(imgCheck?.expected).toBe(String(expectedJson.totals.image_count));
+  });
+});
 
-    beforeAll(() => {
-      compileTest(testDir, expectedJson.top_file);
-    });
+/**
+ * test4-override forks one source file into three images. This is the case
+ * that exposed both faults the old grammar's checker missed: every symbol
+ * appearing once at the first image's base, and method rows carrying
+ * header-table slot indices in a column headed "Address".
+ */
+describe('test4-override — index sections describe every image', () => {
+  let tree: StagedTree;
 
-    afterAll(() => {
-      cleanupGeneratedFiles(testDir);
-    });
+  beforeAll(() => {
+    tree = stageFixture('test4-override');
+    compileSpin2(tree.dir, 'override_top.spin2', '-l -m');
+  }, COMPILE_TIMEOUT_MS);
 
-    it('should verify map matches listing and expected values', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      if (!result.passed) {
-        console.log(formatResults(result));
-      }
-      expect(result.passed).toBe(true);
-    });
+  afterAll(() => {
+    tree.cleanup();
+  });
 
-    it('should have correct language version from directive', () => {
-      const result = verifyMapAgainstExpected(testDir);
-      const versionCheck = result.checks.find((c) => c.name === 'Language version');
-      expect(versionCheck?.passed).toBe(true);
-      expect(versionCheck?.expected).toBe('Spin2_v45');
-    });
+  function mapText(): string {
+    return fs.readFileSync(path.join(tree.dir, 'override_top.map'), 'utf8');
+  }
+
+  function sectionOf(name: string): string[] {
+    const lines = mapText().split(/\r?\n/);
+    const start = lines.findIndex((l: string) => l.startsWith(`=== ${name} ===`));
+    expect(start).toBeGreaterThanOrEqual(0);
+    const rest = lines.slice(start + 1);
+    const end = rest.findIndex((l: string) => l.startsWith('=== '));
+    return (end === -1 ? rest : rest.slice(0, end)).filter((l: string) => l.trim().length > 0);
+  }
+
+  it('SYMBOL INDEX carries one row per instance, each at its own address', () => {
+    const rows = sectionOf('SYMBOL INDEX').filter((l) => /^\s+COMPUTE\s/.test(l));
+    expect(rows).toHaveLength(3);
+
+    const owners = rows.map((l) => l.trim().split(/\s+/)[2]);
+    expect(owners.sort()).toEqual(['#2', '#3', '#4']);
+
+    const addresses = rows.map((l) => l.trim().split(/\s+/)[3]);
+    expect(new Set(addresses).size).toBe(3);
+  });
+
+  it('ADDRESS INDEX lists every image and stays in ascending address order', () => {
+    const rows = sectionOf('ADDRESS INDEX').filter((l) => /^\s+\$[0-9A-F]+\s/.test(l));
+    const addresses = rows.map((l) => parseInt(l.trim().split(/\s+/)[0].replace('$', ''), 16));
+    expect(addresses).toEqual([...addresses].sort((a, b) => a - b));
+
+    const imageStartRows = rows.filter((l) => /\sIMAGE\s/.test(l));
+    expect(imageStartRows).toHaveLength(4);
+  });
+
+  it('every METHOD address falls inside its own image, not at a slot index', () => {
+    const layout = sectionOf('MEMORY LAYOUT')
+      .map((l) => l.match(/^\s*\$([0-9A-F]+)-\$([0-9A-F]+)\s+\d+\s+#(\d+)/))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map((m) => ({ start: parseInt(m[1], 16), end: parseInt(m[2], 16), image: `#${m[3]}` }));
+    expect(layout.length).toBeGreaterThan(0);
+
+    const methodRows = sectionOf('ADDRESS INDEX').filter((l) => /\sMETHOD\s/.test(l));
+    expect(methodRows.length).toBeGreaterThan(0);
+
+    for (const row of methodRows) {
+      const parts = row.trim().split(/\s+/);
+      const address = parseInt(parts[0].replace('$', ''), 16);
+      const owner = layout.find((o) => o.image === parts[2]);
+      expect(owner).toBeDefined();
+      // A slot index would be a small number far below its image's base.
+      expect(address).toBeGreaterThanOrEqual(owner!.start);
+      expect(address).toBeLessThanOrEqual(owner!.end);
+    }
   });
 });

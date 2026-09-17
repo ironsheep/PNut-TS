@@ -1,41 +1,27 @@
 {
-  "description": "Test 1: Simple parent/child hierarchy - basic method signatures, VAR and DAT",
+  "description": "Test 1: Simple parent/child hierarchy - one image per object, one instance each",
   "top_file": "simple_top.spin2",
-  "objects": [
+  "images": [
+    { "source": "simple_top.spin2", "methods": ["go", "addNums"], "dat": [], "pasm_labels": [] },
+    { "source": "simple_child.spin2", "methods": ["getValue"], "dat": [{ "name": "myValue", "type": "LONG" }], "pasm_labels": [] }
+  ],
+  "instances": [
     {
-      "name": "simple_top",
-      "file": "simple_top.spin2",
-      "methods": [
-        {"name": "go", "visibility": "PUB", "params": 0, "returns": 0, "locals": 1},
-        {"name": "addNums", "visibility": "PUB", "params": 2, "returns": 1, "locals": 0}
-      ],
+      "path": "(top)",
+      "image": 0,
       "vars": [
-        {"name": "counter", "type": "LONG", "count": 1},
-        {"name": "flags", "type": "BYTE", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
+        { "name": "counter", "type": "LONG", "size": 4 },
+        { "name": "flags", "type": "BYTE", "size": 1 }
+      ]
     },
     {
-      "name": "simple_child",
-      "file": "simple_child.spin2",
-      "methods": [
-        {"name": "getValue", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "state", "type": "LONG", "count": 1}
-      ],
-      "dat": [
-        {"name": "myValue", "type": "LONG", "count": 1}
-      ],
-      "pasm_labels": []
+      "path": "CHILD",
+      "image": 1,
+      "vars": [{ "name": "state", "type": "LONG", "size": 4 }]
     }
   ],
   "totals": {
-    "object_count": 2,
-    "method_count": 3,
-    "var_symbols": 3,
-    "dat_symbols": 1,
-    "pasm_labels": 0
+    "instance_count": 2,
+    "image_count": 2
   }
 }

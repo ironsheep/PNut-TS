@@ -1,57 +1,44 @@
 {
-  "description": "Test 2: Deep nesting (top -> mid -> leaf) - 3 levels deep with varied signatures",
+  "description": "Test 2: Deep nesting (top -> mid -> leaf), three images, one instance each",
   "top_file": "deep_top.spin2",
-  "objects": [
+  "images": [
+    { "source": "deep_top.spin2", "methods": ["run", "internal"], "dat": [], "pasm_labels": [] },
+    { "source": "deep_mid.spin2", "methods": ["process", "getState"], "dat": [], "pasm_labels": [] },
     {
-      "name": "deep_top",
-      "file": "deep_top.spin2",
-      "methods": [
-        {"name": "run", "visibility": "PUB", "params": 0, "returns": 2, "locals": 2},
-        {"name": "internal", "visibility": "PRI", "params": 1, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "topValue", "type": "LONG", "count": 1},
-        {"name": "topFlags", "type": "WORD", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
-    },
-    {
-      "name": "deep_mid",
-      "file": "deep_mid.spin2",
-      "methods": [
-        {"name": "process", "visibility": "PUB", "params": 2, "returns": 1, "locals": 0},
-        {"name": "getState", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "midState", "type": "LONG", "count": 1},
-        {"name": "midCount", "type": "BYTE", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
-    },
-    {
-      "name": "deep_leaf",
-      "file": "deep_leaf.spin2",
-      "methods": [
-        {"name": "compute", "visibility": "PUB", "params": 1, "returns": 1, "locals": 1},
-        {"name": "squared", "visibility": "PRI", "params": 1, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "lastResult", "type": "LONG", "count": 1}
-      ],
+      "source": "deep_leaf.spin2",
+      "methods": ["compute", "squared"],
       "dat": [
-        {"name": "multiplier", "type": "LONG", "count": 1},
-        {"name": "offset", "type": "WORD", "count": 1}
+        { "name": "multiplier", "type": "LONG" },
+        { "name": "offset", "type": "WORD" }
       ],
       "pasm_labels": []
     }
   ],
+  "instances": [
+    {
+      "path": "(top)",
+      "image": 0,
+      "vars": [
+        { "name": "topValue", "type": "LONG", "size": 4 },
+        { "name": "topFlags", "type": "WORD", "size": 2 }
+      ]
+    },
+    {
+      "path": "MID",
+      "image": 1,
+      "vars": [
+        { "name": "midState", "type": "LONG", "size": 4 },
+        { "name": "midCount", "type": "BYTE", "size": 1 }
+      ]
+    },
+    {
+      "path": "MID.LEAF",
+      "image": 2,
+      "vars": [{ "name": "lastResult", "type": "LONG", "size": 4 }]
+    }
+  ],
   "totals": {
-    "object_count": 3,
-    "method_count": 6,
-    "var_symbols": 5,
-    "dat_symbols": 2,
-    "pasm_labels": 0
+    "instance_count": 3,
+    "image_count": 3
   }
 }

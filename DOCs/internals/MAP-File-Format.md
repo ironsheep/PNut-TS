@@ -529,6 +529,17 @@ labels`; `Offset` locates the labelled instruction inside the method's bytes in
 the image. The same name may appear on more than one row when different methods
 use it; the offsets tell them apart.
 
+A label inside an `ORGH` … `END` inline block runs in hub mode, not cog mode, so
+it has no cog address: its `Cog` cell is `-` and `Offset` is relative to the
+image base, the same as a `DAT` or `PASM labels` offset:
+
+```
+  Inline PASM
+  Name  Cog  Offset   Address
+  ----  ---  -------  -------
+  STEP  -    +$00042  $000C6
+```
+
 ### Child slots
 
 ```

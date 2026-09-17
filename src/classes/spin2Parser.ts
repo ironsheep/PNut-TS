@@ -516,7 +516,7 @@ export class Spin2Parser {
    * Generate memory map file (.map) if enabled
    */
   public P2Map(): void {
-    const mapGenerator = new MapGenerator(this.context, this.spinResolver);
+    const mapGenerator = new MapGenerator(this.context);
     mapGenerator.generate();
   }
 

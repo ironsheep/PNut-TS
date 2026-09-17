@@ -1,76 +1,39 @@
 {
-  "description": "Test 4: Constant override instances - same object with different CON values",
+  "description": "Test 4: Constant override instances - each override changes compiled bytes, so param_child forks into three distinct images",
   "top_file": "override_top.spin2",
-  "objects": [
+  "images": [
+    { "source": "override_top.spin2", "methods": ["main", "getTotal"], "dat": [], "pasm_labels": [] },
+    { "source": "param_child.spin2", "methods": ["compute", "getResult"], "dat": [], "pasm_labels": [] },
+    { "source": "param_child.spin2", "methods": ["compute", "getResult"], "dat": [], "pasm_labels": [] },
+    { "source": "param_child.spin2", "methods": ["compute", "getResult"], "dat": [], "pasm_labels": [] }
+  ],
+  "instances": [
     {
-      "name": "override_top",
-      "file": "override_top.spin2",
-      "methods": [
-        {"name": "main", "visibility": "PUB", "params": 0, "returns": 0, "locals": 0},
-        {"name": "getTotal", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "total", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
+      "path": "(top)",
+      "image": 0,
+      "vars": [{ "name": "total", "type": "LONG", "size": 4 }]
     },
     {
-      "name": "param_child",
-      "file": "param_child.spin2",
-      "instance": "CHILD1",
-      "overrides": [],
-      "methods": [
-        {"name": "compute", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0},
-        {"name": "getResult", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "result", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
+      "path": "CHILD1",
+      "image": 1,
+      "overrides": "-",
+      "vars": [{ "name": "result", "type": "LONG", "size": 4 }]
     },
     {
-      "name": "param_child",
-      "file": "param_child.spin2",
-      "instance": "CHILD2",
-      "overrides": [
-        {"name": "DEFAULT_VALUE", "value": 20}
-      ],
-      "methods": [
-        {"name": "compute", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0},
-        {"name": "getResult", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "result", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
+      "path": "CHILD2",
+      "image": 2,
+      "overrides": "DEFAULT_VALUE=20",
+      "vars": [{ "name": "result", "type": "LONG", "size": 4 }]
     },
     {
-      "name": "param_child",
-      "file": "param_child.spin2",
-      "instance": "CHILD3",
-      "overrides": [
-        {"name": "DEFAULT_VALUE", "value": 30},
-        {"name": "MULTIPLIER", "value": 5}
-      ],
-      "methods": [
-        {"name": "compute", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0},
-        {"name": "getResult", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "result", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
+      "path": "CHILD3",
+      "image": 3,
+      "overrides": "DEFAULT_VALUE=30,MULTIPLIER=5",
+      "vars": [{ "name": "result", "type": "LONG", "size": 4 }]
     }
   ],
   "totals": {
-    "object_count": 4,
-    "method_count": 8,
-    "var_symbols": 4,
-    "dat_symbols": 0,
-    "pasm_labels": 0
+    "instance_count": 4,
+    "image_count": 4
   }
 }

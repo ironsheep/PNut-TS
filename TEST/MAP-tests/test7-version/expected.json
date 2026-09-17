@@ -1,27 +1,19 @@
 {
-  "description": "Test 7: Version directive - verifies map shows language version from {Spin2_vNN} directive",
+  "description": "Test 7: Explicit {Spin2_v45} language version directive is reflected in the map header",
   "top_file": "version_top.spin2",
   "language_version": 45,
-  "objects": [
+  "images": [
+    { "source": "version_top.spin2", "methods": ["go", "getValue"], "dat": [], "pasm_labels": [] }
+  ],
+  "instances": [
     {
-      "name": "version_top",
-      "file": "version_top.spin2",
-      "methods": [
-        {"name": "go", "visibility": "PUB", "params": 0, "returns": 0, "locals": 1},
-        {"name": "getValue", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "value", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
+      "path": "(top)",
+      "image": 0,
+      "vars": [{ "name": "value", "type": "LONG", "size": 4 }]
     }
   ],
   "totals": {
-    "object_count": 1,
-    "method_count": 2,
-    "var_symbols": 1,
-    "dat_symbols": 0,
-    "pasm_labels": 0
+    "instance_count": 1,
+    "image_count": 1
   }
 }

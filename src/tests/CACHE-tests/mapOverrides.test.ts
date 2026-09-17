@@ -30,12 +30,16 @@ function compile(dir: string, entry: string, flags: string): void {
   execSync(`node ${toolPath} -m ${flags} ${entry}`, { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
 }
 
-function memoryLayout(dir: string, entry: string): string[] {
+// The Overrides column lives in OBJECT TREE (§3 map format): one row per
+// instance, so this reads that section rather than MEMORY LAYOUT.
+function objectTree(dir: string, entry: string): string[] {
   const lines = fs.readFileSync(path.join(dir, entry.replace(/\.spin2$/, '.map')), 'utf8').split(/\r?\n/);
-  const start = lines.findIndex((line) => line.startsWith('=== MEMORY LAYOUT ==='));
+  const start = lines.findIndex((line) => line.startsWith('=== OBJECT TREE ==='));
   const rest = lines.slice(start + 1);
   const end = rest.findIndex((line) => line.startsWith('=== '));
-  return (end === -1 ? rest : rest.slice(0, end)).filter((line) => /^\s+\$[0-9A-F]+/.test(line));
+  return (end === -1 ? rest : rest.slice(0, end)).filter(
+    (line) => /^\s+\S/.test(line) && !/^\s+-+(\s+-+)*$/.test(line) && !/^\s+Instance\s/.test(line)
+  );
 }
 
 describe('.map Overrides column', () => {
@@ -52,15 +56,15 @@ describe('.map Overrides column', () => {
 
     test('each instance shows the overrides it was declared with', () => {
       compile(dir, 'override_top.spin2', '');
-      const rows = memoryLayout(dir, 'override_top.spin2');
+      const rows = objectTree(dir, 'override_top.spin2');
       const child2 = rows.find((row) => /\bCHILD2\b/.test(row));
       const child3 = rows.find((row) => /\bCHILD3\b/.test(row));
       const child1 = rows.find((row) => /\bCHILD1\b/.test(row));
       expect(child2).toContain('DEFAULT_VALUE=20');
       expect(child3).toContain('DEFAULT_VALUE=30');
       expect(child3).toContain('MULTIPLIER=5');
-      // child1 takes the defaults, so its cell stays empty.
-      expect(child1?.trimEnd().endsWith('CHILD1')).toBe(true);
+      // child1 takes the defaults, so its Overrides cell is `-`.
+      expect(child1?.trimEnd().endsWith('-')).toBe(true);
     }, 30_000);
   });
 
@@ -76,11 +80,11 @@ describe('.map Overrides column', () => {
     test('survives a cache hit, so the warm map matches the cold one', () => {
       const cacheDir = path.join(dir, '.ovr-cache');
       compile(dir, 'ovr_deep_top.spin2', `--cache --cache-clear --cache-dir ${cacheDir}`);
-      const cold = memoryLayout(dir, 'ovr_deep_top.spin2');
+      const cold = objectTree(dir, 'ovr_deep_top.spin2');
       expect(cold.find((row) => /M\.KID/.test(row))).toContain('LSEED=77');
 
       compile(dir, 'ovr_deep_top.spin2', `--cache --cache-dir ${cacheDir}`);
-      const warm = memoryLayout(dir, 'ovr_deep_top.spin2');
+      const warm = objectTree(dir, 'ovr_deep_top.spin2');
       expect(warm.find((row) => /M\.KID/.test(row))).toContain('LSEED=77');
       expect(warm).toEqual(cold);
     }, 30_000);
@@ -88,10 +92,10 @@ describe('.map Overrides column', () => {
     test('matches an uncached build exactly', () => {
       const cacheDir = path.join(dir, '.ovr-cache');
       compile(dir, 'ovr_deep_top.spin2', '');
-      const uncached = memoryLayout(dir, 'ovr_deep_top.spin2');
+      const uncached = objectTree(dir, 'ovr_deep_top.spin2');
       compile(dir, 'ovr_deep_top.spin2', `--cache --cache-clear --cache-dir ${cacheDir}`);
       compile(dir, 'ovr_deep_top.spin2', `--cache --cache-dir ${cacheDir}`);
-      expect(memoryLayout(dir, 'ovr_deep_top.spin2')).toEqual(uncached);
+      expect(objectTree(dir, 'ovr_deep_top.spin2')).toEqual(uncached);
     }, 30_000);
   });
 });

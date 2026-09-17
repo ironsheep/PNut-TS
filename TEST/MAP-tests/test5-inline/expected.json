@@ -1,31 +1,18 @@
 {
-  "description": "Test 5: Inline PASM - ORG/END blocks within methods",
+  "description": "Test 5: Inline PASM (cog-mode ORG/END block inside a method) - Inline PASM sub-table with Cog addresses",
   "top_file": "inline_top.spin2",
-  "objects": [
+  "images": [
+    { "source": "inline_top.spin2", "methods": ["main", "runInline"], "dat": [], "pasm_labels": [] }
+  ],
+  "instances": [
     {
-      "name": "inline_top",
-      "file": "inline_top.spin2",
-      "methods": [
-        {"name": "main", "visibility": "PUB", "params": 0, "returns": 0, "locals": 1},
-        {"name": "runInline", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "result", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": [],
-      "inline_pasm_labels": [
-        {"name": "entry"},
-        {"name": "done"}
-      ]
+      "path": "(top)",
+      "image": 0,
+      "vars": [{ "name": "result", "type": "LONG", "size": 4 }]
     }
   ],
   "totals": {
-    "object_count": 1,
-    "method_count": 2,
-    "var_symbols": 1,
-    "dat_symbols": 0,
-    "pasm_labels": 0,
-    "inline_pasm_labels": 2
+    "instance_count": 1,
+    "image_count": 1
   }
 }

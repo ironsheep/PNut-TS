@@ -1,74 +1,60 @@
 {
-  "description": "Test 3: Wide hierarchy - 1 top with 3 siblings, includes PASM labels",
+  "description": "Test 3: Wide hierarchy - one top with three sibling children, each its own image (one has DAT, one PASM labels)",
   "top_file": "wide_top.spin2",
-  "objects": [
+  "images": [
+    { "source": "wide_top.spin2", "methods": ["main", "getResult"], "dat": [], "pasm_labels": [] },
     {
-      "name": "wide_top",
-      "file": "wide_top.spin2",
-      "methods": [
-        {"name": "main", "visibility": "PUB", "params": 0, "returns": 0, "locals": 3},
-        {"name": "getResult", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "result", "type": "LONG", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
-    },
-    {
-      "name": "wide_a",
-      "file": "wide_a.spin2",
-      "methods": [
-        {"name": "getA", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0},
-        {"name": "setA", "visibility": "PUB", "params": 1, "returns": 0, "locals": 0}
-      ],
-      "vars": [
-        {"name": "valueA", "type": "BYTE", "count": 1},
-        {"name": "flagA", "type": "BYTE", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": []
-    },
-    {
-      "name": "wide_b",
-      "file": "wide_b.spin2",
-      "methods": [
-        {"name": "getB", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0},
-        {"name": "runPasm", "visibility": "PUB", "params": 0, "returns": 0, "locals": 0}
-      ],
-      "vars": [
-        {"name": "valueB", "type": "WORD", "count": 1}
-      ],
-      "dat": [],
-      "pasm_labels": [
-        {"name": "entry"},
-        {"name": "loop"},
-        {"name": "done"}
-      ]
-    },
-    {
-      "name": "wide_c",
-      "file": "wide_c.spin2",
-      "methods": [
-        {"name": "getC", "visibility": "PUB", "params": 0, "returns": 1, "locals": 0},
-        {"name": "setIndex", "visibility": "PUB", "params": 1, "returns": 0, "locals": 0},
-        {"name": "lookupVal", "visibility": "PRI", "params": 1, "returns": 1, "locals": 0}
-      ],
-      "vars": [
-        {"name": "valueC", "type": "LONG", "count": 1},
-        {"name": "indexC", "type": "LONG", "count": 1}
-      ],
+      "source": "wide_a.spin2",
+      "methods": ["getA", "setA"],
       "dat": [
-        {"name": "table", "type": "LONG", "count": 4}
+        { "name": "multipliers", "type": "WORD" },
+        { "name": "maxValue", "type": "LONG" }
       ],
+      "pasm_labels": []
+    },
+    {
+      "source": "wide_b.spin2",
+      "methods": ["getB", "runPasm"],
+      "dat": [],
+      "pasm_labels": ["entry", "loop", "done"]
+    },
+    {
+      "source": "wide_c.spin2",
+      "methods": ["getC", "setIndex", "lookupVal"],
+      "dat": [{ "name": "table", "type": "LONG" }],
       "pasm_labels": []
     }
   ],
+  "instances": [
+    {
+      "path": "(top)",
+      "image": 0,
+      "vars": [{ "name": "result", "type": "LONG", "size": 4 }]
+    },
+    {
+      "path": "CHILDA",
+      "image": 1,
+      "vars": [
+        { "name": "valueA", "type": "BYTE", "size": 1 },
+        { "name": "flagA", "type": "BYTE", "size": 1 }
+      ]
+    },
+    {
+      "path": "CHILDB",
+      "image": 2,
+      "vars": [{ "name": "valueB", "type": "WORD", "size": 2 }]
+    },
+    {
+      "path": "CHILDC",
+      "image": 3,
+      "vars": [
+        { "name": "valueC", "type": "LONG", "size": 4 },
+        { "name": "indexC", "type": "LONG", "size": 4 }
+      ]
+    }
+  ],
   "totals": {
-    "object_count": 4,
-    "method_count": 9,
-    "var_symbols": 7,
-    "dat_symbols": 1,
-    "pasm_labels": 3
+    "instance_count": 4,
+    "image_count": 4
   }
 }

@@ -8,13 +8,12 @@ import { PreprocessorError, SpinDocument } from './spinDocument';
 import { Spin2Parser } from './spin2Parser';
 import { RegressionReporter } from './regression';
 import { DatFile, ObjFile, SpinFiles } from './spinFiles';
-import { SymbolEntry, SymbolTable } from './symbolTable';
+import { SymbolTable } from './symbolTable';
 import { ChildObjectsImage } from './childObjectsImage';
 import { loadFileAsUint8Array, loadUint8ArrayFailed } from '../utils/files';
 import { ObjectImage } from './objectImage';
 import path from 'path';
 import { OBJ_LIMIT } from './spinResolver';
-import { ObjInstanceInfo } from './objInstanceInfo';
 import { DuplicateSourceWatch } from '../utils/duplicateSources';
 import { eElementType } from './types';
 import fs from 'fs';
@@ -117,7 +116,6 @@ export class Compiler {
     this.recordedInstances = [];
     this.currentInstanceId = -1;
     this.topVariant = undefined;
-    this.replayedDescendantSymbols.clear();
   }
 
   /**
@@ -195,9 +193,6 @@ export class Compiler {
 
         // Log cache statistics if cache is enabled
         this.logCacheStats();
-
-        // Build object instance info for map file generation
-        this.buildObjInstanceInfo();
 
         // Build the object layout from the final image, before anything moves it
         this.buildObjectLayoutWhenWanted();
@@ -295,17 +290,6 @@ export class Compiler {
 
   /** What the top object's compile produced (the top is never cached). */
   private topVariant: CompiledVariant | undefined = undefined;
-
-  /**
-   * Symbols for descendants restored from a cache hit, keyed by source file
-   * name.
-   *
-   * Held by NAME because these files are never loaded: the hit is what skipped
-   * them, so they have no entry in Context.sourceFiles and therefore no source
-   * file index to key on. buildObjInstanceInfo gives each one an index at the
-   * end, once the whole tree is known.
-   */
-  private replayedDescendantSymbols: Map<string, SymbolEntry[]> = new Map();
 
   /**
    * Sees every resolved source path this build touches, and says so when two
@@ -489,13 +473,6 @@ export class Compiler {
           // This child's own compiled variant, as its compile would have
           // recorded it.
           this.recordedInstances[this.currentInstanceId].variant = this.compiledVariantFromCache(layoutPayload.own);
-          // The current map generator still reads symbols per source file.
-          if (this.context.compileOptions.writeMapFile) {
-            const fileIndex = this.context.sourceFiles.getFileIndex(srcFile);
-            if (fileIndex >= 0) {
-              this.context.objectSymbolStore.storeSymbols(fileIndex, layoutPayload.own.symbols);
-            }
-          }
 
           // Hand this subtree's manifest up. It was validated as the
           // condition of this hit, so it is current by construction and the
@@ -511,21 +488,6 @@ export class Compiler {
           // the same short-circuit that produced the staleness defect — a
           // skipped subtree cannot report what it contains — so it needs the
           // same treatment: capture at store, replay at hit.
-          if (this.context.compileOptions.writeMapFile) {
-            // Descendant symbols for the current map generator, which reads
-            // them per source file: the first variant of each file in the
-            // subtree. Its grandchildren are never visited on a hit, so without
-            // this their methods disappear from the map.
-            const seenDescendantFiles = new Set<string>();
-            for (const cached of layoutPayload.instances) {
-              if (seenDescendantFiles.has(cached.sourceFileName)) continue;
-              seenDescendantFiles.add(cached.sourceFileName);
-              const symbols = layoutPayload.variants[cached.variant].symbols;
-              if (symbols.length > 0 && !this.replayedDescendantSymbols.has(cached.sourceFileName)) {
-                this.replayedDescendantSymbols.set(cached.sourceFileName, symbols);
-              }
-            }
-          }
           {
             const subtreeBase = this.recordedInstances.length;
             const replayedVariants = layoutPayload.variants.map((variant) => this.compiledVariantFromCache(variant));
@@ -693,12 +655,7 @@ export class Compiler {
           if (this.isLoggingOutline) this.logMessageOutline(`  -- compRecur(${depth}).compile2 ENTRY`);
           this.spin2Parser.P2Compile2(depth == 0); // NOTE: if at zero  (see above note...)
 
-          // Save symbols for this object (for map file generation)
-          const fileIndex = this.context.sourceFiles.getFileIndex(srcFile);
           const childSymbols = this.spin2Parser.getUserSymbolTable();
-          if (fileIndex >= 0) {
-            this.context.objectSymbolStore.storeSymbols(fileIndex, childSymbols);
-          }
           // What THIS compile produced, attached to the declaration that caused
           // it — not to the source file, which a later compile of the same file
           // with other overrides would overwrite.
@@ -1077,164 +1034,5 @@ export class Compiler {
       this.logMessageOutline('==============================================');
       this.logMessageOutline('');
     }
-  }
-
-  /**
-   * Build the object instance tree for map generation.
-   *
-   * Consumes the instances recorded during compilation (see
-   * `recordedInstances`) rather than reconstructing the hierarchy from
-   * distiller records. The reconstruction was the defect: it had to translate
-   * between four different index spaces — distiller record index, distiller
-   * objectId, source-file index, and a bitfield packed into the OBJ symbol —
-   * and got several of the conversions wrong, silently, in ways that only
-   * showed when an object was declared more than once.
-   *
-   * Two things are still resolved here because they are not known during the
-   * descent: the declared instance NAME (which comes from the parent's
-   * type_obj symbols) and the distiller RECORD (which does not exist until
-   * distillation has run and cannot be captured earlier — elimination splices
-   * records out of the list).
-   */
-  private replayedIndexByName: Map<string, number> = new Map();
-
-  /**
-   * Index under which a never-loaded descendant's replayed symbols live.
-   *
-   * Allocated above the real source-file range so it cannot collide with a
-   * loaded file's index. These objects exist in the map — with a name, a size
-   * and methods — while never having been opened this run, which is the whole
-   * point of a cache hit.
-   */
-  private indexForReplayedDescendant(sourceFileName: string): number {
-    const symbols = this.replayedDescendantSymbols.get(sourceFileName);
-    if (symbols === undefined) return -1;
-    const existing = this.replayedIndexByName.get(sourceFileName);
-    if (existing !== undefined) return existing;
-    const index = this.context.sourceFiles.fileCount + this.replayedIndexByName.size;
-    this.replayedIndexByName.set(sourceFileName, index);
-    this.context.objectSymbolStore.storeSymbols(index, symbols);
-    return index;
-  }
-
-  private buildObjInstanceInfo(): void {
-    this.context.objInstanceStore.clear();
-    this.replayedIndexByName.clear();
-
-    const allSymbols = this.context.objectSymbolStore.getAllSymbols();
-    const topFile = this.context.sourceFiles.getTopFile();
-    const topFileIndex = this.context.sourceFiles.getFileIndex(topFile);
-
-    // The top level is instance -1's child in recording terms: it has no
-    // declaring parent and no position in anyone's OBJ block.
-    const topInstance = new ObjInstanceInfo(
-      topFile.fileName.replace(/\.spin2$/i, ''),
-      topFile.fileName,
-      topFileIndex,
-      -1,
-      -1,
-      this.context.objInstanceStore.allocateInstanceId()
-    );
-    this.context.objInstanceStore.addInstance(topInstance);
-
-    // Recorded children. Instance ids run in recording order, and the top
-    // level occupies id 0, so a recorded entry's id is its index + 1 and a
-    // recorded parentInstanceId of -1 means "declared by the top level".
-    for (let recordedIdx = 0; recordedIdx < this.recordedInstances.length; recordedIdx++) {
-      const recorded = this.recordedInstances[recordedIdx];
-      // Resolve the source file here rather than at record time: replayed
-      // subtrees can name files that were not registered yet when recorded.
-      const childFile = this.context.sourceFiles.getFile(recorded.sourceFileName);
-      const sourceFileName = recorded.sourceFileName;
-      const sourceFileIndex =
-        childFile !== undefined ? this.context.sourceFiles.getFileIndex(childFile) : this.indexForReplayedDescendant(recorded.sourceFileName);
-      const parentInstanceId = recorded.parentInstanceId === -1 ? 0 : recorded.parentInstanceId + 1;
-
-      // Resolve the declared name from the PARENT's symbols. Two corrections
-      // over the previous code, both of which produced wrong labels:
-      //
-      //  - the symbol table is keyed by SOURCE-FILE index, so it must be read
-      //    with the parent's source-file index; it was being read with a
-      //    distiller record index, which could return another object's symbols
-      //    outright.
-      //  - a type_obj symbol's value is
-      //        ((objFileCount - 1) << 24) | objectInstanceInMemoryCount
-      //    (spinResolver.ts). The child's declaration position is in the HIGH
-      //    bits; the old code masked `value & 0xffffff`, reading the
-      //    instance-in-memory counter — a different quantity entirely — and
-      //    comparing it against a position.
-      const parentInstance = this.context.objInstanceStore.getInstance(parentInstanceId);
-      const parentSymbols = parentInstance ? allSymbols.get(parentInstance.sourceFileIndex) : undefined;
-      let instanceName = `child_${recorded.childPosition}`;
-      if (parentSymbols !== undefined) {
-        for (const sym of parentSymbols) {
-          if (sym.type !== eElementType.type_obj) continue;
-          const value = typeof sym.value === 'bigint' ? Number(sym.value) : 0;
-          if (value >>> 24 === recorded.childPosition) {
-            instanceName = sym.name;
-            break;
-          }
-        }
-      }
-
-      const instance = new ObjInstanceInfo(
-        instanceName,
-        sourceFileName,
-        sourceFileIndex,
-        parentInstanceId,
-        recorded.childPosition,
-        this.context.objInstanceStore.allocateInstanceId()
-      );
-      // The Overrides column exists to explain why one source file became
-      // several images. It was printed empty for years because nothing ever
-      // filled it in.
-      for (const override of recorded.overrides) {
-        instance.addOverride(override.name, override.value, override.isFloat);
-      }
-      this.context.objInstanceStore.addInstance(instance);
-    }
-
-    this.assignDistillerRecords();
-
-    if (this.isLoggingOutline) this.logMessageOutline(`Built instance info for ${this.context.objInstanceStore.count} instances`);
-  }
-
-  /**
-   * Attach each instance to the distiller record holding its size and offset.
-   *
-   * Walked in parallel rather than indexed: the distiller tree and the
-   * recorded instance tree have the same SHAPE — each parent's `subObjectIds`
-   * lists its children in declaration order, the same order the compiler
-   * descended in — so zipping them is well defined even though the record
-   * INDICES are not stable (elimination splices records out).
-   *
-   * Deduplication legitimately points several instances at one record. That is
-   * the DAT-singleton case working as intended, and it is exactly what the old
-   * object-keyed lookup could not represent.
-   */
-  private assignDistillerRecords(): void {
-    const records = this.spin2Parser.distiller.records;
-    const store = this.context.objInstanceStore;
-
-    const walk = (recordIndex: number, instanceId: number): void => {
-      const instance = store.getInstance(instanceId);
-      if (instance === undefined) return;
-      instance.recordIndex = recordIndex;
-
-      const record = records.getRecordAt(recordIndex);
-      if (record === undefined) return;
-
-      const children = store.getChildInstances(instanceId);
-      const subObjectIds = record.subObjectIds;
-      const pairCount = Math.min(children.length, subObjectIds.length);
-      for (let position = 0; position < pairCount; position++) {
-        const childRecordIndex = records.findRecordIndexByObjectId(subObjectIds[position] & 0x7fffffff);
-        if (childRecordIndex >= 0) {
-          walk(childRecordIndex, children[position].instanceId);
-        }
-      }
-    };
-
-    walk(0, 0);
   }
 }

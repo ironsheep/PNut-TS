@@ -196,17 +196,18 @@ export function compileWarm(tree: StagedTree, entry: string, extraFlags: string 
 // --- Assertion signals ---------------------------------------------------
 
 /**
- * The `Objects:` count from the map's PROGRAM SUMMARY — how many distinct
- * object images the binary contains. A cache that serves a stale image breaks
- * content-based dedup and this count rises.
+ * How many distinct object images the binary contains, counted from the
+ * `--- #n <source> ---` headings in `OBJECT DETAILS` (one per image, §3 map
+ * format). A cache that serves a stale image breaks content-based dedup and
+ * this count rises.
  */
 export function readObjectCount(mapPath: string): number {
   const map = fs.readFileSync(mapPath, 'utf8');
-  const match = map.match(/^\s*Objects:\s+(\d+)\s*$/m);
-  if (match === null) {
-    throw new Error(`readObjectCount: no 'Objects:' line in [${mapPath}]`);
+  const matches = map.match(/^--- #\d+ /gm);
+  if (matches === null) {
+    throw new Error(`readObjectCount: no image headings in [${mapPath}]`);
   }
-  return Number(match[1]);
+  return matches.length;
 }
 
 /**
@@ -224,13 +225,13 @@ export function readObjectCount(mapPath: string): number {
 export function readDatSymbolAddresses(mapPath: string): Map<string, string[]> {
   const map = fs.readFileSync(mapPath, 'utf8');
   const found = new Map<string, string[]>();
-  for (const line of map.split('\n')) {
-    // Symbol  Object  Instance  DAT  $ADDR
-    // The Instance column arrived in 1.55.4, when the index sections started
-    // describing every image rather than every source file.
-    const match = line.match(/^\s*(\S+)\s+\S+\s+\S+\s+DAT\s+(\$[0-9A-Fa-f]+)\s*$/);
-    if (match !== null) {
-      const [, name, address] = match;
+  const start = map.indexOf('=== SYMBOL INDEX ===');
+  const section = start === -1 ? '' : map.slice(start);
+  for (const line of section.split('\n')) {
+    // Symbol  Type  Owner  Address (§3 map format)
+    const parts = line.trim().split(/\s+/);
+    if (parts.length === 4 && parts[1] === 'DAT' && /^\$[0-9A-Fa-f]+$/.test(parts[3])) {
+      const [name, , , address] = parts;
       const addresses = found.get(name) ?? [];
       addresses.push(address);
       found.set(name, addresses);

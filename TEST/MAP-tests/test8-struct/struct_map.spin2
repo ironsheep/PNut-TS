@@ -1,0 +1,21 @@
+{Spin2_v55}
+' struct_map.spin2 - Test 8: STRUCT VAR symbols (nested struct + array member)
+' Adapted from TEST/LANG-FEAT-tests/struct_basic.spin2
+
+CON
+  STRUCT point(LONG x, LONG y)
+  STRUCT rect(point topLeft, point bottomRight)
+
+VAR
+  rect box
+  LONG samples[3]
+
+PUB main() : r
+  box.topLeft.x := 1
+  box.topLeft.y := 2
+  box.bottomRight.x := 3
+  box.bottomRight.y := 4
+  samples[0] := 10
+  samples[1] := 20
+  samples[2] := 30
+  r := box.topLeft.x + samples[0]

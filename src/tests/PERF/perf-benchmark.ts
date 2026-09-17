@@ -5,12 +5,41 @@ import { PNutInTypeScript } from '../../pnut-ts';
 import { sync as globSync } from 'glob';
 import { performance } from 'perf_hooks';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 // Path resolution (from dist/tests/PERF/ after compilation)
 const ROOT_DIR = path.resolve(__dirname, '../../..');
 const TEST_DIR = path.join(ROOT_DIR, 'TEST');
 const RESULTS_DIR = path.join(TEST_DIR, 'PERF-results');
+
+// The compiler writes its outputs (.lst/.obj/.bin/.map) next to the source
+// file it compiled — there is no output-directory flag, only `-o` for the
+// binary's basename. A benchmark run therefore used to overwrite files in
+// TEST/ itself, including committed fixtures such as
+// TEST/MAP-tests/test5-inline/inline_top.map with whatever the CURRENT
+// generator produces — stale the moment the generator changes, and dirtying
+// `git status` on every run. Each category's fixtures are copied once into a
+// private temp directory outside the repo, and every compile in that category
+// runs against the copy; nothing under TEST/ is ever written to.
+const STAGING_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'pnut-perf-'));
+process.on('exit', () => {
+  try {
+    fs.rmSync(STAGING_ROOT, { recursive: true, force: true });
+  } catch {
+    // best-effort cleanup
+  }
+});
+
+/** Copy one category's fixture directory into the staging root, once. */
+function stageCategory(category: string): string {
+  const source = path.join(TEST_DIR, category);
+  const staged = path.join(STAGING_ROOT, category);
+  if (!fs.existsSync(staged) && fs.existsSync(source)) {
+    fs.cpSync(source, staged, { recursive: true });
+  }
+  return STAGING_ROOT;
+}
 
 // Read version from package.json
 const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8'));
@@ -300,7 +329,8 @@ async function main(): Promise<void> {
   const categoryNames = Object.keys(CATEGORY_CONFIG);
 
   for (const category of categoryNames) {
-    const files = discoverFiles(category, TEST_DIR);
+    const stagedBase = stageCategory(category);
+    const files = discoverFiles(category, stagedBase);
     console.log(`Benchmarking ${category} (${files.length} files)...`);
 
     const categoryResults: FileResult[] = [];

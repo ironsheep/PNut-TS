@@ -1,0 +1,28 @@
+{
+  "description": "Test 6: Hub-executable PASM (ORGH DAT, no ORG/cog labels) - DAT rows, no PASM labels sub-table",
+  "top_file": "hubexec_top.spin2",
+  "images": [
+    {
+      "source": "hubexec_top.spin2",
+      "methods": ["main", "runHubCode"],
+      "dat": [
+        { "name": "hubEntry", "type": "LONG" },
+        { "name": "hubLoop", "type": "LONG" },
+        { "name": "hubDone", "type": "LONG" },
+        { "name": "dataTable", "type": "LONG" }
+      ],
+      "pasm_labels": []
+    }
+  ],
+  "instances": [
+    {
+      "path": "(top)",
+      "image": 0,
+      "vars": [{ "name": "result", "type": "LONG", "size": 4 }]
+    }
+  ],
+  "totals": {
+    "instance_count": 1,
+    "image_count": 1
+  }
+}

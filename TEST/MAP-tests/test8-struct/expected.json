@@ -1,0 +1,22 @@
+{
+  "description": "Test 8: STRUCT VAR symbols - a nested struct (rect of two points) and an array member, adapted from TEST/LANG-FEAT-tests/struct_basic.spin2",
+  "top_file": "struct_map.spin2",
+  "language_version": 55,
+  "images": [
+    { "source": "struct_map.spin2", "methods": ["main"], "dat": [], "pasm_labels": [] }
+  ],
+  "instances": [
+    {
+      "path": "(top)",
+      "image": 0,
+      "vars": [
+        { "name": "box", "type": "STRUCT", "size": 16 },
+        { "name": "samples", "type": "LONG", "size": 12 }
+      ]
+    }
+  ],
+  "totals": {
+    "instance_count": 1,
+    "image_count": 1
+  }
+}
