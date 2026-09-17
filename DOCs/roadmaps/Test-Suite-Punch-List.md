@@ -16,14 +16,15 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 |---|---|---|---|
 | 4 | Dead flash/RAM download code | no | open |
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
-| 6 | GOLD-regen workflow cleanup | no | open — 6.1/6.3/6.5/6.6 closed 2026-09-17; 6.2/6.4 await a Windows session |
+| 6 | GOLD-regen workflow cleanup | no | open — only 6.2 (EXCEPT errout format) left; 6.4 closed 2026-09-17 by the Windows regen, residue is §23 |
 | 10 | Language-spec extraction pipeline | no | open — measured 2026-09-17, Stephen's decision (repair vs retire) |
 | 14 | Test-harness items | no | closed 2026-09-17 (Map-Instance-Correctness) |
 | 16 | MAP tests lack STRUCTs | no | closed 2026-09-17 (Map-Instance-Correctness) |
 | 19 | Coverage gate unmeetable | no | open |
 | 20 | `.map` VAR bases / OBJ arrays | no (map only) | closed 2026-09-17 (Map-Instance-Correctness) |
-| 21 | WUMMI Group B divergence from PNut | **POSSIBLY** | **deferred — re-verify first** |
+| 21 | WUMMI Group B divergence from PNut | no | closed 2026-09-17 — stale GOLDs, suite now 49/49 |
 | 22 | `.lst`/`.pre` unawaited streams | no | closed 2026-09-17 (Map-Instance-Correctness) |
+| 23 | Non-ASCII in string literals loses a byte | **YES** | closed 2026-09-17 — source now decoded byte-faithfully |
 
 ---
 
@@ -249,6 +250,21 @@ on Windows, then remove the five from `knownByteDivergence` in
 `src/tests/MAP-tests/mapOracleGold.test.ts` and drop the TOF exclusion in
 `pnut-ts-large.test.ts`.
 
+> ✅ **DONE 2026-09-17 — and it split the five into 3 stale + 2 real.** Stephen
+> regenerated TOF (and BLDC and COV) on Windows PNut v55. The regen changed
+> exactly the five TOF basenames named above and left the other four fixtures'
+> GOLDs byte-identical, confirming the stale-GOLD diagnosis. `knownByteDivergence`
+> and the whole-suite TOF exclusion are both removed.
+>
+> **Three of the five now pass** — `isp_hdmi_debug`, `isp_vl53l5cx`, `p2textdrv`.
+> BLDC's three are green too (its exclusion list is gone), and COV gained
+> `coverage_qlog_qexp`'s first GOLD, which adjudicated the «#74» CORDIC port as
+> correct.
+>
+> ⚠ **Two do NOT, and they are now a real divergence, not a stale GOLD** — see
+> §23. This is the finding the regen was supposed to expose: with current GOLDs
+> in place the remaining difference is ours.
+
 ---
 
 ## 10. Language-specification extraction pipeline broken in place (added 2026-08-09)
@@ -454,6 +470,18 @@ worse than the last release's committed report"). §6.6 no longer blocks
 this — Stephen still needs to choose which form the rule takes; see the
 options in the dispatch report for task «#72».
 
+> **Partly answered, Stephen 2026-09-17 — the CADENCE half is settled, the
+> THRESHOLD half is still open.** Coverage is refreshed with each PNut parity
+> release, and is separately run as an instrument when the goal is to find thin
+> spots and extend the regression suite. It is **not a per-release blocker and
+> no release is held for it**; `RELEASE-PROCESS.md` §2 now says so. An interim
+> coverage update is owed after v1.55.8, on its own schedule.
+>
+> What still needs his ruling is only the *form of the rule* — re-baseline the
+> table to a current run, or restate it as "no worse than the last release's
+> committed report". Raise it with the next coverage update rather than at a
+> release.
+
 ---
 
 ## 20. `.map` VAR bases for shared images, and OBJ arrays (added 2026-09-14)
@@ -514,7 +542,7 @@ the "Known wrong" block from `DOCs/roadmaps/P2KB-map-caveat-retraction-1.55.4.md
 
 ---
 
-## 21. WUMMI "Group B" binaries differ from PNut's — DEFERRED; re-verify before any action (added 2026-09-14)
+## 21. WUMMI "Group B" binaries differ from PNut's — ✅ CLOSED 2026-09-17 (stale GOLDs)
 
 > **Compiled output: POSSIBLY** — the bytes differ from PNut's; whether behavior
 > differs is unknown. **Deferred by Stephen 2026-09-14.** Do not diagnose or fix
@@ -539,11 +567,41 @@ summary where PNut prints one, and the `.bin` differs accordingly (79,617 agains
 object images share one DAT region, so a wrong merge would change what the
 program does, not just its size.
 
+> ✅ **CLOSED 2026-09-17. It was a stale GOLD, not our distiller.** The three
+> GOLDs were regenerated on Windows PNut v55 and the suite now runs **49 passed,
+> 0 failed** (was 3 failed / 46 passed). Conclusive detail: this item recorded
+> PNut-TS emitting `79,617` bin bytes for FG1 against a GOLD of `79,629`; the
+> fresh v55 GOLD is **79,617** — exactly our output. Nothing in the dedup or
+> distiller was ever wrong here. The "smaller objects" figures below are a
+> pre-v55 GOLD being compared against v55 output. Left in place as the record of
+> how the misreading happened.
+>
+> ⚠ **Re-verified 2026-09-17, and the diagnosis above is probably wrong.** Step 1
+> was run at HEAD 173e70d: the divergence reproduces unchanged — **3 failed / 46
+> passed**, the same three fixtures, so the 1.55.4 map/cache rework did not move
+> it. But the cause looks like a **stale GOLD, not our distiller**: the three
+> failing `.obj.GOLD` files are dated **2025-07-09/11** while all 46 passing ones
+> are **2026-05-13**, the v55 regeneration date. These three missed that
+> regeneration — the identical shape as §6.4's five TOF GOLDs, which is already
+> a known-good explanation for exactly this symptom. A pre-v55 GOLD compared
+> against v55 output diverges in object size and layout, which is what the
+> "smaller objects" figures below describe.
+>
+> **So do not diagnose the distiller yet.** Regenerate the three GOLDs first
+> (`GoldPrep/04-WUMMI-tests.zip`, targeted to these three) and re-run. If they go
+> green, this item closes as a GOLD-currency defect and the dedup theory below
+> was a misreading. If they still fail against *fresh v55* GOLDs, the divergence
+> is real and step 2 applies with the evidence finally isolated.
+>
+> ⚠ `TEST/WUMMI-tests` is gitignored in full (`.gitignore:254`) — these GOLDs are
+> **not recoverable from git**. Regenerate only the three; never run a
+> whole-suite regen here without a snapshot.
+
 **Before any action:**
 
-1. Build the current compiler and run the WUMMI suite. Record which fixtures
-   fail and their byte counts. 1.55.4 replaced the `.map` instance model and
-   changed the cache, so the 1.55.2 figures cannot be assumed.
+1. ~~Build the current compiler and run the WUMMI suite.~~ **DONE 2026-09-17** —
+   3 failed / 46 passed at 173e70d; see the re-verification note above. The
+   1.55.2 figures below still cannot be assumed as *causes*, only as symptoms.
 2. Only if the divergence reproduces: compare object-header tables and
    image-region counts per object against PNut's `.obj`, to find which objects
    were merged differently.
@@ -594,3 +652,74 @@ Item numbers are never reused, so references elsewhere stay valid.
 | 7 | `completed/2026-08-09-Punch-List-Archive.md` |
 | 5b, 5e, 5f, and three unnumbered `.map` items (all closed in 1.55.4) | `completed/2026-08-24-Punch-List-Archive.md` |
 | 3, 8, 12, 13b, 13c, 13e, 13f, 17, 18 | `completed/2026-09-14-Punch-List-Archive.md` |
+
+---
+
+## 23. ✅ CLOSED — a non-ASCII byte in a string literal emitted one byte short (2026-09-17)
+
+> **Compiled output: YES.** Listing, object AND binary all differ. Isolated by
+> the 2026-09-17 Windows regen, which cleared every other stale-GOLD explanation
+> in TOF — so with current GOLDs in place, this difference is **ours**.
+
+**Failing:** `TEST/LARGE-tests/TOF/demo_180degrFOV` and
+`isp_180degrFOV_TOFsensor`. Both fail identically in the LARGE suite (all three
+outputs) and in the map-oracle GOLD test. Everything else in TOF, BLDC and COV
+passes against the same regen batch.
+
+**What is known:**
+
+- Image **length matches** and **VAR size matches** in both; only content
+  differs. First differing byte is early — `$30` for `isp_180degrFOV_TOFsensor`,
+  `$d0` for `demo_180degrFOV`.
+- These are the **two largest object trees in the suite**.
+  `isp_180degrFOV_TOFsensor` is the only fixture with **three direct children**
+  (`isp_pcf8575`, `isp_vl53l5cx`, `isp_hdmi_debug`), several of which have
+  children of their own; `demo_180degrFOV` is simply the wrapper above it.
+- **Not a shared-child dedup case** — checked: `isp_pcf8575` uses `jm_i2c` while
+  `isp_vl53l5cx` uses `isp_i2c`, so no object appears twice in the tree.
+- Every child compiles clean standalone, including `isp_vl53l5cx` with its
+  86 KB `FILE` blob. The divergence appears only in the assembled parent.
+
+**ROOT CAUSE — not the object tree at all.** The depth was a coincidence; these
+two fixtures are simply the only ones in the corpus with a non-ASCII character
+in a string literal:
+
+```
+screenTitle     BYTE    "-- 180° Field of View Sensor Debug --", 0
+```
+
+`isp_180degrFOV_TOFsensor.spin2:248` holds the degree sign as the UTF-8 pair
+`c2 b0`. PNut has no Unicode model — it is byte-oriented and emits **both**
+bytes, giving a 39-byte array. `loadFileAsString` decoded the file as UTF-8, so
+`°` arrived as ONE JavaScript character and `charCodeAt` emitted ONE byte: 38.
+Every method offset and DAT address after it shifted down by one
+(`DVRCOMMAND` at `FFF000FA` against PNut's `FFF000FB`), which is why the
+listing, object *and* binary all differed while `OBJ bytes` still matched.
+
+⭐ **Why this hid for so long, and why WUMMI was always right:** latin1 was only
+ever reached as a *fallback*, when the UTF-8 decode produced U+FFFD. WUMMI's
+German sources are malformed UTF-8, so they fell through to latin1 and were
+byte-exact by accident. Correctness depended on the source file being invalid.
+
+**Fix:** `src/utils/files.ts` `loadFileAsString` now decodes latin1 — every byte
+maps 1:1 to a character of the same value, which is exactly PNut's model and is
+identical to UTF-8 for pure-ASCII source. UTF-16 is still detected, by embedded
+NULs; the old `\xC0` heuristic went, since under byte-faithful decoding it fires
+on any file containing that ordinary byte.
+
+**Scope beyond these fixtures:** this affected *any* source with a non-ASCII byte
+in a string literal, in any suite — the two TOF fixtures are just where the fresh
+GOLDs made it visible.
+
+**Verified:** LARGE 82/82 (was 80/82), MAP 349/349, WUMMI 49/49, full gated
+regression **1000/1000 across 43 suites with zero skips** (was 986 + 2 skips).
+
+**Separate defect fixed in the same pass:** the listing's
+`Redundant OBJ bytes removed:` line was summing `earlyDeduplicationSavings` —
+a compile-time cache/reuse count that removes nothing from the image — and had a
+three-line variant PNut never prints (§21). It now reports the distiller's figure
+alone, in PNut's single-line form. ⚠ Residual, not diagnosed: our distiller's
+figure can still disagree with PNut's (this fixture reports 1_676 where PNut
+prints no line) while both emit `OBJ bytes: 117_824`, so the images agree and
+only the accounting differs. `compareListingFiles` filters these lines, which is
+why no test sees it.

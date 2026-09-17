@@ -44,17 +44,15 @@ const qlogFromResolverTable: iKnownValue[] = [
   { input: 0x0001e5e0, expected: 0x87654187, source: 'dumpTables [038]' },
   { input: 0xffffffff, expected: 0xffffffff, source: 'dumpTables [039]' }
 ];
+// [042] ADJUDICATED 2026-09-17 by the Windows GOLD of coverage_qlog_qexp.spin2,
+// which folds this exact input: PNut emits $34DF5949, matching the port. The
+// dumpTables row said $34DF5948 and was corrected — that table is generated from
+// REF/OperatorTests.txt, not Windows PNut output, so it was the weaker source.
 const qexpFromResolverTable: iKnownValue[] = [
   { input: 0x00000000, expected: 0x00000001, source: 'dumpTables [040]' },
-  { input: 0x87654321, expected: 0x0001e5e0, source: 'dumpTables [041]' }
+  { input: 0x87654321, expected: 0x0001e5e0, source: 'dumpTables [041]' },
+  { input: 0xedcba987, expected: 0x34df5949, source: 'dumpTables [042] + coverage_qlog_qexp GOLD' }
 ];
-
-// dumpTables [042] expects QEXP($EDCBA987) = $34DF5948. That table is not
-// Windows PNut output (it is generated from REF/OperatorTests.txt), and the
-// port gives $34DF5949 — the correctly rounded value (2^(x/2^27) = 887052616.68),
-// consistent with PNut's rounding on every GOLD-backed value above. Pending the
-// Windows GOLD of TEST/COV-tests/coverage_qlog_qexp.spin2, which folds this input.
-const qexpPendingAdjudication: iKnownValue[] = [{ input: 0xedcba987, expected: 0x34df5948, source: 'dumpTables [042]' }];
 
 describe('cordic_qlog matches PNut', () => {
   test.each(named([...qlogFromPNutGold, ...qlogFromCoverageNotes, ...qlogFromResolverTable]))('QLOG $name ($source)', ({ input, expected }) => {
@@ -64,9 +62,6 @@ describe('cordic_qlog matches PNut', () => {
 
 describe('cordic_qexp matches PNut', () => {
   test.each(named([...qexpFromPNutGold, ...qexpFromCoverageNotes, ...qexpFromResolverTable]))('QEXP $name ($source)', ({ input, expected }) => {
-    expect(hex(cordic_qexp(input))).toBe(hex(expected));
-  });
-  test.skip.each(named(qexpPendingAdjudication))('QEXP $name ($source) — pending Windows GOLD adjudication', ({ input, expected }) => {
     expect(hex(cordic_qexp(input))).toBe(hex(expected));
   });
 });

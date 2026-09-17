@@ -67,16 +67,14 @@ describe('PNut_ts detects .spin2 exceptions w/debug() & without correctly', () =
     console.error('ERROR: glob issue:', error);
   }
   if (files.length > 1) {
-    // BLDC-Motor-drv: these three GOLDs predate the v55 GOLD regeneration (their
-    // bytecode numbering is pre-v55), pending a Windows regen via
-    // TEST/LARGE-tests/BLDC-Motor-drv/rebuild-gold.ps1. Every other BLDC fixture runs.
-    const staleBldcGolds: string[] = ['demo_dual_motor_rc_hdmi.spin2', 'isp_hdmi_debug.spin2', 'p2textdrv.spin2'];
-    let filteredFiles = files.filter((file) => !(file.includes('BLDC-Motor-drv/') && staleBldcGolds.includes(path.basename(file))));
+    // BLDC-Motor-drv's three stale GOLDs and the whole TOF suite were excluded
+    // here because their GOLDs predated the v55 regeneration. Both sets were
+    // regenerated on Windows 2026-09-17 and now run: the regen changed exactly
+    // the 3 BLDC and 5 TOF basenames that were named, and left every other GOLD
+    // in both suites byte-identical. Punch list item 6.4 closed.
+    const filteredFiles = files;
     // MultSrvo: these are known to fail but are good (runs too long)
     // filteredFiles = filteredFiles.filter((file) => !file.includes('MultSrvo'));
-    // TOF: five of its .obj.GOLD files predate the v55 GOLD regeneration, so their
-    // bytecode values differ from current output (Test-Suite Punch List item 6.4)
-    filteredFiles = filteredFiles.filter((file) => !file.includes('TOF/'));
     filteredFiles.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     files = filteredFiles;
   }

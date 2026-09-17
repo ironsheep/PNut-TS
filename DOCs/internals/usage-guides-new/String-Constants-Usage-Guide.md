@@ -79,6 +79,41 @@ Value:   'H'  'e'  'l'  'l'  'o'  0
 Hex:     $48  $65  $6C  $6C  $6F  $00
 ```
 
+### Characters Outside ASCII
+
+A string literal stores the **bytes your source file holds**, not characters. The
+compiler does not re-encode them, and the P2 has no notion of a character set —
+so what you save is what the byte array contains.
+
+This matters the moment you type anything outside plain ASCII, because your
+editor almost certainly saves it as UTF-8, where one visible character occupies
+more than one byte:
+
+```spin2
+DAT
+  ascii       byte  "180 deg", 0         ' 8 bytes: 7 characters + terminator
+  degrees     byte  "180°", 0            ' 6 bytes, not 5 — "°" is two bytes
+```
+
+Memory layout of `"180°"`:
+```
+Offset:  0    1    2    3    4    5
+Value:   '1'  '8'  '0'  <-- ° -->  0
+Hex:     $31  $38  $30  $C2  $B0  $00
+```
+
+Three consequences worth knowing before you rely on them:
+
+- **`strsize()` counts bytes, not characters.** `strsize(@degrees)` returns 5.
+- **Fixed-width fields need the byte count.** A label sized for eight characters
+  holds fewer than eight if any of them are non-ASCII.
+- **A terminal or display driver prints bytes.** Unless it decodes UTF-8 itself,
+  `°` arrives as two bytes and may render as two characters.
+
+When a string must be exactly N bytes wide — a fixed-width screen title, a
+protocol field — either keep it ASCII, or count the bytes rather than the
+characters.
+
 ### LSTRING() - Length-Prefixed Strings
 
 Creates strings with a leading length byte:
@@ -442,6 +477,27 @@ DAT
 ```
 
 ## Anti-Patterns
+
+### Sizing a Fixed-Width Field by Eye
+
+```spin2
+' WRONG: the field is declared 8 wide, but "180°" is 5 bytes plus the
+' terminator, so the string overruns the space reserved for it
+DAT
+  reading     byte  "180°", 0            ' 6 bytes, not 5
+  next_field  byte  "OK", 0
+
+' CORRECT: keep fixed-width fields ASCII
+DAT
+  reading     byte  "180 deg", 0         ' 8 bytes, one per character
+  next_field  byte  "OK", 0
+```
+
+Counting characters instead of bytes is what goes wrong here. The `°` is stored
+as the two bytes your editor saved it as (`$C2 $B0` in a UTF-8 file), so a
+literal that *looks* four characters wide occupies five. Everything the compiler
+places after it moves accordingly. When a field has to be an exact width, count
+bytes — or stay in ASCII, where the two counts agree.
 
 ### Forgetting Zero Terminator
 

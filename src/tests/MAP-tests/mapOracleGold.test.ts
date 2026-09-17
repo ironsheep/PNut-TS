@@ -63,10 +63,11 @@ const corpora: Corpus[] = [
   { dir: 'LARGE-tests/MultSrvo', debug: (b) => b.startsWith('demo_quad') },
   { dir: 'LARGE-tests/OctoSerial', debug: (b) => b.startsWith('demo_octo') },
   {
+    // knownByteDivergence held these five until 2026-09-17: their GOLDs had
+    // missed the v55 regeneration. Regenerated on Windows, they now match.
     dir: 'LARGE-tests/TOF',
     debug: (basename) => basename.startsWith('demo_180'),
-    blobs: ['vl53l5cx_mm1_1_fw.dat', 'p2font16'],
-    knownByteDivergence: ['demo_180degrFOV', 'isp_180degrFOV_TOFsensor', 'isp_hdmi_debug', 'isp_vl53l5cx', 'p2textdrv']
+    blobs: ['vl53l5cx_mm1_1_fw.dat', 'p2font16']
   },
   {
     dir: 'WUMMI-tests',

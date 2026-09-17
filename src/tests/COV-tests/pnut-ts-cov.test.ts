@@ -101,7 +101,7 @@ function compileAndCompare(file: string, isDebugGroup: boolean) {
 // Fixtures committed ahead of their Windows GOLD regeneration. Named, not
 // inferred from a missing GOLD: any other fixture without GOLDs must fail, so a
 // lost GOLD cannot pass silently. Remove a name once its GOLDs are committed.
-const PENDING_WINDOWS_GOLDS: string[] = ['coverage_qlog_qexp'];
+const PENDING_WINDOWS_GOLDS: string[] = [];
 
 function testOrPending(file: string): jest.It {
   const basename = path.basename(file, '.spin2');

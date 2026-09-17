@@ -43,7 +43,7 @@
 [039] 0xFFFFFFFF, 0x00000000, op_qlog            = 0xFFFFFFFF
 [040] 0x00000000, 0x00000000, op_qexp            = 0x00000001
 [041] 0x87654321, 0x00000000, op_qexp            = 0x0001E5E0
-[042] 0xEDCBA987, 0x00000000, op_qexp            = 0x34DF5948
+[042] 0xEDCBA987, 0x00000000, op_qexp            = 0x34DF5949
 [043] 0x0000ABCD, 0x00000008, op_shr             = 0x000000AB
 [044] 0xFFFFFFFF, 0xFFFFFFFF, op_shr             = 0x00000001
 [045] 0xFFFFFFFF, 0xFFFFFFFF, op_shl             = 0x80000000

@@ -409,27 +409,29 @@ export class Spin2Parser {
       if (isPasmMode) {
         lines.push(`\n\nHub bytes: ${objString}\n\n`);
       } else {
-        // Report both early deduplication and distiller savings
-        const totalSavings = this.earlyDeduplicationSavings + distillerSavings;
-        if (totalSavings > 0) {
+        // Report the DISTILLER's savings only, in PNut's single-line form.
+        //
+        // `earlyDeduplicationSavings` is deliberately NOT reported here. It
+        // carries `memoryStats.memoryBytesSaved` (compiler.ts), which counts
+        // bytes we avoided RECOMPILING — a cache hit, or a child object
+        // compiled once and reused. That is a compile-time figure and removes
+        // nothing from the object image, so adding it to a line labelled
+        // "Redundant OBJ bytes removed" overstated the number against PNut's,
+        // and the three-line "Early deduplication / Distiller optimization /
+        // Total" variant had no counterpart in PNut at all — PNut prints one
+        // line here and never three (punch list §21). The compile-time figure
+        // is still logged at the outline level (compiler.ts).
+        //
+        // ⚠ KNOWN, UNRESOLVED: our distiller's own figure can still disagree
+        // with PNut's. LARGE-tests/TOF/isp_180degrFOV_TOFsensor reports 1_676
+        // here while PNut prints no line at all, yet both emit
+        // `OBJ bytes: 117_824` — so the images agree and only the accounting
+        // differs. `compareListingFiles` (testUtils) filters these lines, which
+        // is why no test sees it. Not diagnosed.
+        if (distillerSavings > 0) {
+          const distillerString: string = this.rightAlignedDecimalValue(distillerSavings, 11);
           lines.push(`\n`);
-          if (this.earlyDeduplicationSavings > 0 && distillerSavings > 0) {
-            // Both optimizations saved bytes - show individual and total
-            const earlyString: string = this.rightAlignedDecimalValue(this.earlyDeduplicationSavings, 11);
-            const distillerString: string = this.rightAlignedDecimalValue(distillerSavings, 11);
-            const totalString: string = this.rightAlignedDecimalValue(totalSavings, 11);
-            lines.push(`\nEarly deduplication bytes saved:    ${earlyString}\n`);
-            lines.push(`Distiller optimization bytes saved: ${distillerString}\n`);
-            lines.push(`Total redundant OBJ bytes removed:  ${totalString}\n`);
-          } else if (this.earlyDeduplicationSavings > 0) {
-            // Only early deduplication saved bytes
-            const earlyString: string = this.rightAlignedDecimalValue(this.earlyDeduplicationSavings, 11);
-            lines.push(`\nRedundant OBJ bytes removed: ${earlyString}\n`);
-          } else {
-            // Only distiller saved bytes
-            const distillerString: string = this.rightAlignedDecimalValue(distillerSavings, 11);
-            lines.push(`\nRedundant OBJ bytes removed: ${distillerString}\n`);
-          }
+          lines.push(`\nRedundant OBJ bytes removed: ${distillerString}\n`);
         } else {
           lines.push(`\n`);
         }

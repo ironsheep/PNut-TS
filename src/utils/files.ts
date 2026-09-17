@@ -220,17 +220,30 @@ export function loadFileAsString(fspec: string): string {
     // ctx.logger.log(`TRC: loadFileAsString() attempt load of [${fspec}]`);
     // See: https://nodejs.org/api/buffer.html#buffers-and-character-encodings
     try {
-      fileContent = fs.readFileSync(fspec, 'utf-8');
-      //fileContent = fs.readFileSync(fspec, 'ascii');
-      // SPCIAL @Wummi is putting german chars in strings. These
-      //   are not well constructed utf-8 files.  So when we have a decode issue
-      //   let's reload as the more forgiving 'latin1' encoding.
-      if (fileContent.includes('\uFFFD')) {
-        fileContent = fs.readFileSync(fspec, 'latin1');
-      }
-      // if we still see unusual characters, try utf16le
-      if (fileContent.includes('\x00') || fileContent.includes('\xC0')) {
-        fileContent = fs.readFileSync(fspec, 'utf16le');
+      // PNut is byte-oriented \u2014 it has no Unicode model. A source byte >= $80
+      // inside a string literal must reach the object image as that same byte.
+      // Latin-1 maps every byte 1:1 onto a character of the same value, which
+      // is exactly PNut's behaviour, and is byte-for-byte identical to UTF-8
+      // for pure-ASCII source (which is nearly all of it).
+      //
+      // Decoding UTF-8 instead silently loses a byte per non-ASCII character:
+      // "-- 180<deg> ..." holds `c2 b0` on disk, UTF-8 collapses it to one
+      // character, and we emitted 38 bytes where PNut emits 39 \u2014 shifting every
+      // method offset and DAT address after it. Found 2026-09-17 via the fresh
+      // v55 GOLDs for LARGE-tests/TOF (punch list \u00A723).
+      //
+      // The old code reached latin1 only as a FALLBACK, when the UTF-8 decode
+      // produced U+FFFD. That is why WUMMI's German sources were always right
+      // (malformed UTF-8, so they fell through to latin1) while well-formed
+      // UTF-8 sources were wrong \u2014 the correctness depended on the source file
+      // being invalid.
+      const buffer = fs.readFileSync(fspec);
+      fileContent = buffer.toString('latin1');
+      // UTF-16 source: embedded NULs are the reliable tell. (The old heuristic
+      // also re-read on a `\xC0` character, which under byte-faithful decoding
+      // fires on any file containing that ordinary byte.)
+      if (fileContent.includes('\x00')) {
+        fileContent = buffer.toString('utf16le');
       }
     } catch (err) {
       // ctx.logger.log(`TRC: loadFileAsString() EXCEPTION: err=[${err}]`);
