@@ -38,23 +38,23 @@ function Invoke-RebuildGold {
     )
 
     # ---- Resolve PNut binary -----------------------------------------------
-    # We need the HEADLESS PNut: PNut_shell.exe (no version suffix) inside the
+    # We need the HEADLESS PNut: PNut_shell.bat (no version suffix) inside the
     # versioned install dir PNut_v${N}\. NOT the GUI editor (PNut_v${N}.exe),
     # which is interactive and ignores -c/-cd. Version selection happens by
-    # which install directory we invoke PNut_shell.exe from.
+    # which install directory we invoke PNut_shell.bat from.
 
     if (-not $PNutBinary) {
-        $shellPath = Join-Path $PNutInstallRoot "PNut_v${PNutVersion}\PNut_shell.exe"
+        $shellPath = Join-Path $PNutInstallRoot "PNut_v${PNutVersion}\PNut_shell.bat"
         if (Test-Path $shellPath) {
             $PNutBinary = $shellPath
-        } elseif (Get-Command "PNut_shell" -ErrorAction SilentlyContinue) {
-            $PNutBinary = "PNut_shell"
+        } elseif (Get-Command "PNut_shell.bat" -ErrorAction SilentlyContinue) {
+                        $PNutBinary = "PNut_shell.bat"
         } else {
             Write-Error @"
-PNut_shell.exe (v${PNutVersion}) not found.
+PNut_shell.bat (v${PNutVersion}) not found.
   Looked at: $shellPath
-  Also tried on PATH: PNut_shell
-NOTE: We need the headless variant (PNut_shell.exe inside the PNut_v${PNutVersion}\
+  Also tried on PATH: PNut_shell.bat
+NOTE: We need the headless variant (PNut_shell.bat inside the PNut_v${PNutVersion}\
       install dir), not the GUI editor (PNut_v${PNutVersion}.exe). The GUI does
       not produce .lst/.obj/.bin output from the command line.
 "@

@@ -60,13 +60,13 @@ cd regold-bundle-v55
 powershell -ExecutionPolicy Bypass -File scripts\gold\rebuild-gold-all.ps1
 ```
 
-The script auto-finds the HEADLESS CLI `PNut_shell.exe` inside the v55
+The script auto-finds the HEADLESS CLI `PNut_shell.bat` inside the v55
 install directory:
-`C:\Program Files (x86)\Parallax Inc\PNut_v55\PNut_shell.exe`
+`C:\Program Files (x86)\Parallax Inc\PNut_v55\PNut_shell.bat`
 
 The binary itself has no version suffix — version is selected by which
 install directory the script invokes it from. It also falls back to bare
-`PNut_shell` on PATH if the standard path isn't present. The GUI editor
+`PNut_shell.bat` on PATH if the standard path isn't present. The GUI editor
 (`PNut_v55.exe`) is *not* used — it's interactive and doesn't produce
 `.lst`/`.obj`/`.bin` from the command line.
 

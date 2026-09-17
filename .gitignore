@@ -305,3 +305,7 @@ TEST/MAP-tests/test1-simple/simple_top.map
 DOCs/internals/usage-guides/.vscode/settings.json
 .vscode/settings.json
 /REF-P2-Industr-BUG
+
+# GOLD-regen transfer staging (scripts/gold/prep-windows-jobs.sh).
+# Zips of test sources + returned GOLD sets. Never committed.
+/GoldPrep/

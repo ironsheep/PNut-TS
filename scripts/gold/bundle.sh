@@ -105,8 +105,16 @@ BUNDLE_NAME="regold-bundle-v${PNUT_VERSION}"
 BUNDLE_DIR="$STAGING/$BUNDLE_NAME"
 mkdir -p "$BUNDLE_DIR"
 
-# Copy each suite: only .spin2 sources + the rebuild-gold.ps1
+# Copy each suite: .spin2 sources + FILE-directive blobs + the rebuild-gold.ps1
 # (Skip .GOLD, .lst, .obj, .bin, .flash, .elem, .errout, __pre.spin2)
+#
+# The blob copy is NOT optional. Spin2's FILE directive pulls binary payloads in
+# at compile time (TOF's p2font16 and vl53l5cx_mm1_1_fw.dat, BLDC's p2font16,
+# WUMMI's Type1.bin/Type2.bin). Shipping only .spin2 makes those fixtures fail
+# on Windows, and the round trip is what pays for the discovery. Copying by
+# extension cannot work either: WUMMI's payloads are named .bin, which is also a
+# compiler OUTPUT extension — so we copy exactly the names the FILE directives
+# use. Same rule as scripts/gold/prep-jobs.sh; keep the two in step.
 for suite_dir in "${SUITE_DIRS[@]}"; do
     target="$BUNDLE_DIR/$suite_dir"
     mkdir -p "$target"
@@ -114,6 +122,18 @@ for suite_dir in "${SUITE_DIRS[@]}"; do
     find "$suite_dir" -maxdepth 1 -name '*.spin2' \
         ! -name '*__pre.spin2' ! -name '*-pre.spin2' \
         -exec cp {} "$target/" \;
+    # Copy every file named by a FILE directive in those sources
+    while IFS= read -r blob; do
+        [[ -z "$blob" ]] && continue
+        if [[ -f "$suite_dir/$blob" ]]; then
+            cp "$suite_dir/$blob" "$target/"
+        else
+            echo "  WARNING: $suite_dir: FILE \"$blob\" not found in suite dir" >&2
+        fi
+    done < <(find "$suite_dir" -maxdepth 1 -name '*.spin2' \
+                  ! -name '*-pre.spin2' ! -name '*__pre.spin2' -print0 \
+             | xargs -0 -r grep -hoiE '\bfile[[:space:]]+"[^"]+"' 2>/dev/null \
+             | sed -E 's/.*"([^"]+)".*/\1/' | sort -u)
     cp "$suite_dir/rebuild-gold.ps1" "$target/"
 done
 
@@ -146,18 +166,18 @@ WHAT THIS IS
 ------------
 This bundle contains everything needed to regenerate the .lst.GOLD,
 .obj.GOLD, .bin.GOLD (and .flash.GOLD where applicable) reference files
-on Windows, using PNut_shell.exe (the HEADLESS CLI) from the v${PNUT_VERSION}
+on Windows, using PNut_shell.bat (the HEADLESS CLI) from the v${PNUT_VERSION}
 install directory.
 
 PREREQUISITES
 -------------
 - PNut v${PNUT_VERSION} installed; the headless CLI must be available as:
-    C:\\Program Files (x86)\\Parallax Inc\\PNut_v${PNUT_VERSION}\\PNut_shell.exe
+    C:\\Program Files (x86)\\Parallax Inc\\PNut_v${PNUT_VERSION}\\PNut_shell.bat
   (or as PNut_shell on PATH — though that won't distinguish versions, so
   prefer the versioned install path)
 - NOTE: PNut_v${PNUT_VERSION}.exe is the GUI editor; it is interactive and does
   NOT produce .lst/.obj/.bin output from the command line. We need the
-  PNut_shell.exe variant inside the versioned install dir.
+  PNut_shell.bat variant inside the versioned install dir.
 - PowerShell 5.1+ (default on all modern Windows)
 
 USAGE
