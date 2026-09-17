@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -147,32 +147,32 @@ jobs:
           done
 
       - name: Upload Windows/Linux packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: packages-zip
           path: pnut-ts-*.zip
           retention-days: 5
 
       - name: Upload macOS x64 package directory
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: macos-x64-pkg
           path: packages/pnut-ts-macos-x64-*/
-          retention-days: 1
+          retention-days: 5
 
       - name: Upload macOS arm64 package directory
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: macos-arm64-pkg
           path: packages/pnut-ts-macos-arm64-*/
-          retention-days: 1
+          retention-days: 5
 
       - name: Upload version info
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: version-info
           path: package.json
-          retention-days: 1
+          retention-days: 5
 
   # Sign macOS binaries and create DMGs
   macos-sign:
@@ -181,22 +181,22 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download macOS x64 package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: macos-x64-pkg
           path: packages/
 
       - name: Download macOS arm64 package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: macos-arm64-pkg
           path: packages/
 
       - name: Download version info
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: version-info
           path: .
@@ -597,7 +597,7 @@ jobs:
           done
 
       - name: Upload macOS ZIPs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: packages-macos-zip
           path: pnut-ts-macos-*.zip
@@ -611,22 +611,22 @@ jobs:
     if: ${{ !inputs.dry_run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download ZIP packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: packages-zip
           path: release/
 
       - name: Download macOS ZIP packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: packages-macos-zip
           path: release/
 
       - name: Download version info
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: version-info
           path: .
@@ -762,7 +762,7 @@ jobs:
           cat release_body.md
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ steps.release_type.outputs.RELEASE_NAME }}
           draft: false
