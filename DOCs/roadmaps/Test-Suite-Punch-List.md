@@ -17,8 +17,7 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 4 | Dead flash/RAM download code | no | open |
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
 | 6 | GOLD-regen workflow cleanup | no | open — 6.1/6.3/6.5/6.6 closed 2026-09-17; 6.2/6.4 await a Windows session |
-| 10 | Language-spec extraction pipeline | no | open — Stephen's decision |
-| 13 | Documentation residue (13a, 13d) | no | open |
+| 10 | Language-spec extraction pipeline | no | open — measured 2026-09-17, Stephen's decision (repair vs retire) |
 | 14 | Test-harness items | no | **in sprint: Map-Instance-Correctness** |
 | 16 | MAP tests lack STRUCTs | no | **in sprint: Map-Instance-Correctness** |
 | 19 | Coverage gate unmeetable | no | open |
@@ -299,6 +298,45 @@ hand-audited), and consider dropping raw enum ordinals from the emitted JSON.
 **Scope decision is Stephen's**: repair sprint, retire the tree, or leave as
 historical reference with a staleness banner.
 
+**Re-measured 2026-09-17 (Map-Instance-Correctness sprint, task «#73»), still
+stopped at measurement — nothing above needed correction, and one new finding:**
+
+- **No consumer found, in-repo or external.** Grepped the whole tree for any
+  reference to `language-specification`, the three `databases/*.json` files, or
+  `ide-integration/*` outside `DOCs/language-specification/` itself: nothing.
+  No npm script wires any of the 4 `extraction-scripts/*.ts` or the 4
+  `scripts/*.js` patch scripts; nothing in `src/` or `.claude/` reads the
+  databases. `.claude/skill-conventions.md`'s `SPEC_DOC` points only at
+  `README.md` itself, not the generated JSON. This whole subtree appears to be
+  a standalone package built for a hypothetical external IDE consumer that
+  never materialized.
+- **Confirmed the committed `PASM2-Instruction-Database.json` is the patched
+  output**, not a script's direct output: its `metadata.generatedAt` is
+  `2025-12-13T22:54:11.597Z`, matching the punch-item's "generated 2025-12-13"
+  and consistent with `extract-pasm2-database-corrected.ts` → the four
+  `scripts/*.js` patches (each mutates the DB file in place; running them
+  again on today's file would very likely double-apply corrections rather than
+  reproduce it).
+- **Effort estimate for a full repair, staying inside this task's ~2-hour
+  ceiling:** the two import-path fixes and the one output-path fix are each
+  one line, a few minutes total. Reconciling `extract-pasm2-database.ts`
+  (comment-based, broken) vs `-corrected.ts` (parses `spinResolver.ts`) vs the
+  four order-dependent `scripts/*.js` patches into one documented,
+  idempotent, re-runnable flow — verifying the reconciled flow reproduces (or
+  intentionally changes, with reasons) the 616KB committed database — is
+  design work, not a mechanical fix, and was judged to exceed the 2-hour
+  ceiling on inspection alone. Regenerating outputs for a subtree with zero
+  identified consumers also runs against this sprint's "do not regenerate
+  outputs whose consumers you cannot identify" guardrail.
+- **Recommendation (Stephen decides):** given zero identified consumers,
+  **retire with a staleness banner** is the lower-risk option — add a banner
+  to `DOCs/language-specification/README.md` stating the pipeline is
+  unmaintained/non-authoritative and pointing here, without spending repair
+  effort on outputs nothing reads. A **repair sprint** is the alternative if
+  an external consumer is expected to appear (e.g. a planned VS Code
+  extension) — that sprint should budget for the reconciliation work above,
+  not just the two-line import fix.
+
 ---
 
 ## Cross-cutting note: regression tests against "us-vs-us" GOLDs
@@ -323,50 +361,6 @@ regenerate-recipe header in the test file itself — see
 A general principle worth adopting: any GOLD that PNut (Pascal) cannot
 produce must come with a documented "how to refresh this" recipe in the
 test file's header, or it doesn't belong in the suite.
-
-## 13. Documentation residue from the 1.55.4 release sweep (added 2026-08-24)
-
-> **Compiled output: no** — documentation. 13b/c/e/f archived 2026-09-14.
-
-Found by a documentation survey run against the v1.55.4 tag. Each item below was
-**deliberately not fixed at tag time** — none blocks the release, and each is
-recorded here rather than left to be rediscovered.
-
-### 13a. `SPIN2-BIN-Format.md` inline line citations are drifted
-
-The 1.55.4 synchronous-write change added comment blocks to
-`src/classes/spin2Parser.ts`, shifting later definitions by two to three lines.
-The citations naming a **function definition** were re-verified and corrected at
-tag time. The **inline range citations** — patch-point offsets, condition lines —
-were not, and spot-checks found several now landing on a closing brace
-(`spin2Parser.ts:561`, `:540`, `:966` among them). The document carries a caution
-at its head saying which half to trust.
-
-**Fix:** audit all 43 `spin2Parser.ts:NNN` citations against source, and prefer
-citing a symbol name over a line number wherever the line adds nothing — a symbol
-does not drift. Then remove the caution note and stamp `verified`.
-
-### 13d. `Regression-Test-Coverage-Report.md` is marked generated but has no generator
-
-**Sharpened 2026-08-30.** The original entry said it needs "a tooling
-regeneration, not a hand edit." Searched for that tooling: **nothing in
-`scripts/` or `package.json` produces this file.** It is classed `generated`
-with a do-not-hand-edit note, and no mechanism can refresh it — so it has sat at
-v1.51.7 (357 files, 18 categories) while the suite reached 426 tests across 26
-suites, 267 of them individual `.spin2` compiles.
-
-That is the defect. The stale numbers are the symptom, and they will recur after
-any hand fix.
-
-**Done meanwhile:** a banner at the head of the document says every number in it
-is stale, gives the measured current figures, states that no generator exists,
-and points at `npx jest --runInBand --verbose -c smm.jestconfig.js` for the real
-count. A banner is safe against a future regeneration in a way that editing the
-body is not.
-
-**Fix:** either write the generator and wire it to an npm script, or reclassify
-the document as hand-maintained and own it. Leaving it `generated` with no
-generator is the one option that keeps lying.
 
 ## 14. Test-harness items from the 1.55.4 closeout audit (added 2026-08-24)
 

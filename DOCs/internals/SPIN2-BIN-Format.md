@@ -1,21 +1,16 @@
 # SPIN2/PASM2 Binary File Format (.bin) Documentation
 
-
-> **Line citations — read this first.** The `spin2Parser.ts:NNN` references below
-> drift whenever that file changes, and v1.55.4 moved them: the synchronous-write
-> fix added comment blocks that shifted later definitions by two to three lines.
-> The citations naming a **function definition** were re-verified against source
-> on 2026-08-24 and are correct. The **inline range citations** inside each
-> section (patch-point offsets, condition lines) were *not* re-verified, and
-> spot-checks found several now landing on a closing brace. Trust the function
-> names; verify a range before relying on it. A full citation audit is tracked in
-> `DOCs/roadmaps/Test-Suite-Punch-List.md`.
-
-Verified against source 2026-08-09 (build 1.55.3, v55-era interpreter files).
-Line numbers cite the source as of that date; the patch-point offsets quoted
-below track the interpreter/debugger/loader binaries and move when those
-binaries are revised — always trust the constants in `spin2Parser.ts` over
-any number printed here.
+Verified against source 2026-09-17 (build 1.55.8-in-progress, v55-era
+interpreter files). This document cites source by **symbol/routine name only**
+— never a line number. A prior revision cited `spin2Parser.ts:NNN` line
+numbers throughout; the v1.55.4 synchronous-write change shifted many of
+them by two to three lines, and by 2026-09-17 the file had moved further
+still (comment-block additions, the object-cache plumbing). Line numbers in
+a fast-moving source file rot; a symbol name does not. Where a byte offset
+matters (an interpreter patch point, a header field), it is a **structural
+constant** quoted from the source, not a line reference, and it was
+confirmed against a real compiled `.bin` (see "Verified against a real
+compile" below).
 
 ## Overview
 
@@ -30,15 +25,15 @@ The PNut-TS compiler generates .bin files through a multi-stage process:
 
 1. **Object Image Generation** - Core binary content created by `ObjectImage` class
 2. **Child Object Assembly** - Multiple objects combined by `ChildObjectsImage` class
-3. **Binary File Output** - Final .bin file written by `writeBinaryFile()` (`spin2Parser.ts:575`)
+3. **Binary File Output** - Final .bin file written by `Spin2Parser.writeBinaryFile()`
 
 ## Binary Format Variants
 
 The components present depend on compilation mode, and the combinations are
-**mutually exclusive** in ways the mode flags force (`ComposeRam()`,
-`spin2Parser.ts:523`): the clock setter requires PASM mode *and* no debug
-(`spin2Parser.ts:561`), so it never coexists with the debugger or the
-interpreter. The real layouts are:
+**mutually exclusive** in ways the mode flags force (`Spin2Parser.ComposeRam()`):
+the clock setter requires PASM mode *and* no debug (checked inline in
+`ComposeRam()`), so it never coexists with the debugger or the interpreter.
+The real layouts are:
 
 | Mode | Layout |
 |---|---|
@@ -50,78 +45,87 @@ interpreter. The real layouts are:
 A **`.flash` file** (see Flash File Generation below) additionally prepends a
 144-byte flash-loader subset to whichever of the above was produced.
 
-> **Historical note:** an older `--flash`/`.binf` path
-> (`P2InsertFlashLoader()`, `spin2Parser.ts:876`) still exists in source but
-> is **dormant — never called** (`spin2Parser.ts:527-531`). The live flash
-> path is `--flashfile` → `P2MakeFlashFile()` (`spin2Parser.ts:570-571`).
-> Earlier revisions of this document described the dormant path's layout
-> (1KB loader, app at 0x0400, checksum at 0x3FC); none of that describes
-> what the compiler emits today.
+> **Historical note:** an older `--flash`/`.binf` path (`Spin2Parser.P2InsertFlashLoader()`)
+> still exists in source but is **dormant — never called** from `ComposeRam()`.
+> The live flash path is `--flashfile` → `Spin2Parser.P2MakeFlashFile()` →
+> `P2MakeFlashFileImage()`. Earlier revisions of this document described the
+> dormant path's layout (1KB loader, app at 0x0400, checksum at 0x3FC); none
+> of that describes what the compiler emits today.
 
 ## Component Details
 
-### 1. SPIN2 Interpreter (`P2InsertInterpreter()`, `spin2Parser.ts:590`)
+### 1. SPIN2 Interpreter (`Spin2Parser.P2InsertInterpreter()`)
 
-**When included**: always, in Spin2 mode (`spin2Parser.ts:540-542`).
-**Source file**: `Spin2_interpreter.obj` (v55, 2026.05.07; 6,280 bytes —
-see External File Dependencies).
+**When included**: always, in Spin2 mode (`ComposeRam()` calls it only when
+`isPasmMode == false`).
+**Source file**: `Spin2_interpreter.obj` (v55, 2026.05.07; 6,280 bytes on
+disk — see External File Dependencies).
 
 Insertion: the user object is moved upward, the interpreter placed at offset
-0x0000, and these interpreter locations patched (constants at
-`spin2Parser.ts:600-606`; offsets are per-interpreter-revision):
+0x0000, and these interpreter locations patched (constants declared at the
+top of `P2InsertInterpreter()`; offsets are per-interpreter-revision):
 
 - `pbase_init` (0x30): interpreter length (start of object)
 - `vbase_init` (0x34): interpreter + object length (start of variables)
 - `dbase_init` (0x38): initial data/stack base
 - `var_longs` (0x3C): `((variableSize + 0x400) >> 2) - 1` — variable space
-  plus 0x400 stack, in longs, minus one (`spin2Parser.ts:671`)
+  plus 0x400 stack, in longs, minus one
 - `clkmode_hub` (0x40): clock mode
 - `clkfreq_hub` (0x44): clock frequency
-- `_debugnop_` (0xF78 for the v55 interpreter — the source comment at
-  `spin2Parser.ts:606` records the drift v52a: 0xF2C → v52: 0xF34 → v55:
-  0xF78): three longs zeroed (NOPed) when not in debug mode
-  (`spin2Parser.ts:679-683`); in debug mode the debug-pin-receive value is
-  OR'd in instead (`spin2Parser.ts:684-695`)
+- `_debugnop_` (0xF78 for the v55 interpreter — a source comment on the
+  constant's declaration records the drift v52a: 0xF2C → v52: 0xF34 → v55:
+  0xF78): three longs zeroed (NOPed) when not in debug mode; in debug mode
+  the debug-pin-receive value is OR'd into those same three longs instead
 
-### 2. Clock Setter (`P2InsertClockSetter()`, `spin2Parser.ts:928`)
+**Verified against a real compile** (2026-09-17, a trivial one-method
+`.spin2` program, no VAR section): `pbase_init` = 0x1888 = 6280 (the
+interpreter length exactly); `vbase_init` = 0x1898 = 6296 = 6280 + 16 (a
+16-byte application); `dbase_init` = 0x189C = `vbase_init` + 4; `var_longs`
+= 0x100 = 256, which is `((4 + 0x400) >> 2) - 1` — confirming the formula
+with `variableSize` = 4 (the method has no declared VAR block, so this is
+whatever fixed slop the resolver books for it, not a bug in the formula).
 
-**When included**: PASM2 mode, not debug, `clockMode != 0`
-(`spin2Parser.ts:561`), and `_AUTOCLK` not defined or non-zero
-(`checkClockSetterInsert()`, `spin2Parser.ts:914-928`).
+### 2. Clock Setter (`Spin2Parser.P2InsertClockSetter()`)
+
+**When included**: PASM2 mode, not debug, `clockMode != 0` (checked inline in
+`ComposeRam()`), and `_AUTOCLK` not defined or non-zero
+(`Spin2Parser.checkClockSetterInsert()`).
 **Source file**: `clock_setter.obj` (64 bytes).
 
-Patch points (`spin2Parser.ts:940-942`):
+Patch points (constants declared at the top of `P2InsertClockSetter()`):
 
 - `_clkmode1_` (0x34): clock mode & 0xFFFFFFFC
 - `_clkmode2_` (0x38): full clock mode
 - `_appblocks_` (0x3C): number of 512-long (2KB) blocks in the application —
-  `(objImage.offset >> (9 + 2)) + 1` (`spin2Parser.ts:966`)
+  `(objImage.offset >> (9 + 2)) + 1`
 
 Unused instructions are NOPed by mode: RC_SLOW (clkmode 0b01) NOPs the three
-external-clock setup longs, any other mode NOPs the RC-slow long
-(`spin2Parser.ts:953-960`).
+external-clock setup longs, any other mode NOPs the RC-slow long.
 
-### 3. Debugger (`P2InsertDebugger()`, `spin2Parser.ts:713`)
+### 3. Debugger (`Spin2Parser.P2InsertDebugger()`)
 
-**When included**: debug mode (`-d`) (`spin2Parser.ts:557-559`).
+**When included**: debug mode (`-d`) (`ComposeRam()` calls it when debug mode
+is enabled).
 **Requirements**: crystal/external clocking (clock-mode bit 1 set) and clock
-frequency ≥ 10 MHz (`spin2Parser.ts:718-721`).
+frequency ≥ 10 MHz (checked at the top of `P2InsertDebugger()`).
 **Source file**: `Spin2_debugger.obj` (v51, 2025.04.02; 2,932 bytes on
-disk — the **16KB (0x4000) figure is the hub-memory reservation** for the
-debugger region (`spin2Parser.ts:546`), not the file size).
+disk — the **16KB (0x4000) figure `ComposeRam()` adds to the hub-size check
+is the hub-memory reservation** for the debugger region, not the file size).
 
-Insertion: content moves up by debugger + debug-data length
-(`spin2Parser.ts:746`), debugger at 0x0000, debug data appended immediately
-after it (`spin2Parser.ts:752`). Patch points (`spin2Parser.ts:727-736`):
-`_clkfreq_` (0xD4), `_clkmode1_` (0xD8), `_clkmode2_` (0xDC), `_delay_`
-(0xE0), `_appsize_` (0xE4), `_hubset_` (0xE8), `_brkcond_` (0x11C),
-`_txpin_` (0x140), `_rxpin_` (0x144), `_baud_` (0x148).
+Insertion: content moves up by debugger + debug-data length, debugger at
+0x0000, debug data appended immediately after it. Patch points (constants
+declared at the top of `P2InsertDebugger()`): `_clkfreq_` (0xD4),
+`_clkmode1_` (0xD8), `_clkmode2_` (0xDC), `_delay_` (0xE0), `_appsize_`
+(0xE4), `_hubset_` (0xE8), `_brkcond_` (0x11C), `_txpin_` (0x140), `_rxpin_`
+(0x144), `_baud_` (0x148).
 
-### 4. Flash File Generation (`P2MakeFlashFileImage()`, `spin2Parser.ts:823`)
+### 4. Flash File Generation (`Spin2Parser.P2MakeFlashFileImage()`)
 
-**When run**: `--flashfile` only (`spin2Parser.ts:570-571`), against the
-pre-loader copy of the image (`nonLoaderObjImage`, `spin2Parser.ts:563`).
-Produces the `.flash` output alongside the normal `.bin`.
+**When run**: `--flashfile` only (`ComposeRam()` calls `P2MakeFlashFile()`
+when `writeFlashImageFile` is set), against the pre-loader copy of the image
+(`nonLoaderObjImage`, snapshotted in `ComposeRam()` via `ObjectImage.copyFrom()`
+before the `.bin` is written). Produces the `.flash` output alongside the
+normal `.bin`.
 
 **The image is written with a single synchronous call.** Before v1.55.4 this
 output went through a write stream that was closed but never awaited, so the
@@ -133,18 +137,14 @@ the same defect and were converted at the same time. Any new output file should
 follow the same synchronous pattern.
 
 - **Loader subset**: bytes 0x160-0x1F0 of `flash_loader.obj` — 0x90 (144)
-  bytes (`spin2Parser.ts:829-830, 849`)
+  bytes (constants at the top of `P2MakeFlashFileImage()`)
 - **Application start**: offset 0x90, immediately after the subset
-  (`spin2Parser.ts:845`)
-- **Patch points**, derived from the subset size (`spin2Parser.ts:832-835`):
-  `_appLongs_` (0x80), `_appLongs2_` (0x84), `_appSum_` (0x88),
-  `_loaderSum_` (0x8C)
+- **Patch points**, derived from the subset size: `_appLongs_` (0x80),
+  `_appLongs2_` (0x84), `_appSum_` (0x88), `_loaderSum_` (0x8C)
 - **Dual checksums, long-wise negative sums**: application checksum over the
-  application longs into `_appSum_` (`spin2Parser.ts:855-861`); loader
-  checksum over the first 0x400 bytes into `_loaderSum_`
-  (`spin2Parser.ts:863-869`)
+  application longs into `_appSum_`; loader checksum over the first 0x400
+  bytes into `_loaderSum_`
 - The image is padded up to a 0x400-byte minimum if shorter
-  (`spin2Parser.ts:871-876`)
 
 ## Object Format (the application object)
 
@@ -155,83 +155,97 @@ the emitted .bin.
 
 ### 1. Application Header (8 bytes)
 
-Injected by `compile_final()` (`spinResolver.ts:5472-5489`):
+Injected by `SpinResolver.compile_final()`, guarded by `if (this.pasmMode ==
+false)` — **PASM2 top-level compiles never get this header**, consistent with
+the "PASM2 | `[Application]`" layout above:
 
 - **varsize** (LONG at 0x0000): total variable memory required
 - **pgmsize** (LONG at 0x0004): program-section length (up to the symbol
   table)
 
-Both must be LONG-aligned; the reader errors on a misaligned child object
-(`spinResolver.ts:4823-4831`).
+Both must be LONG-aligned; the reader (`SpinResolver.compile_obj_symbols()`)
+errors on a misaligned child object (checks `vsize & 0b11` and `psize & 0b11`).
 
 ### 2. Object Table (starts at pbase = 0x0008)
 
-Format comment in source: `spinResolver.ts:4746-4770`.
+Format comment in source: the `OBJ structure:` block above
+`SpinResolver.compile_obj_symbols()`.
 
 - **Child object entries**: `LONG obj_offset` (bit 31 clear — that is the
-  discriminator vs. method entries), then `LONG obj_var_offset`
-  (`spinResolver.ts:4699-4700`, patched `spinResolver.ts:5002-5004`)
+  discriminator vs. method entries), then `LONG obj_var_offset` — staged as
+  `[fileIndex, 0]` placeholders in `SpinResolver.compile_obj_blocks_id()`,
+  patched to real offsets in `SpinResolver.compile_obj_blocks()`
 - **Method entries** (PUB and PRI identical):
-  `LONG ($8000_0000 | parameters<<24 | results<<20 | method_offset)`
-  (`spinResolver.ts:3308-3309`, offset OR'd in at `spinResolver.ts:3677`)
-  - `parameters`: **0-127** (7 bits; `method_params_limit = 127`,
-    `spinResolver.ts:217`)
-  - `results`: 0-15 (`method_results_limit = 15`, `spinResolver.ts:216`)
+  `LONG ($8000_0000 | parameters<<24 | results<<20 | method_offset)` —
+  the placeholder (without `method_offset`) is appended in
+  `SpinResolver.compilePubPriBlocksId()`-equivalent method-table pass; the
+  `method_offset` is OR'd into it once the *next* method's start (or, for the
+  last method, the end of the object) is known, in `SpinResolver.compilePubPriBlocks()`
+  / `SpinResolver.compile_sub_blocks()`
+  - `parameters`: **0-127** (7 bits; `method_params_limit = 127`)
+  - `results`: 0-15 (`method_results_limit = 15`)
 - **End marker**: `LONG objsize` (bit 31 clear), pointing past the last
-  method (`spinResolver.ts:3497-3501`)
+  method — written by the same "patch the previous entry with the current
+  offset" mechanism in `SpinResolver.compile_sub_blocks()`, applied once more
+  after the last PUB/PRI
 
 ### 3. Code and Data Section
 
-Build order in `compile2()` (`spinResolver.ts:529-533`): DAT data, then PUB
-method bytecode, then PRI method bytecode.
+Build order in `SpinResolver.compile2()`: DAT data
+(`compile_dat_blocks()`), then PUB method bytecode, then PRI method bytecode
+(both via `compile_sub_blocks()`, which compiles PUB before PRI).
 
 ### 4. Child Objects Section
 
-LONG-aligned (`pad_obj_long()`, `spinResolver.ts:5037-5042`); complete child
-object images appended recursively in the same format
-(`spinResolver.ts:4973-4977`). Only `psize` bytes of a child are embedded —
-its checksum-and-symbols tail is stripped (`spinResolver.ts:4971`).
+LONG-aligned (`SpinResolver.pad_obj_long()`); complete child object images
+appended recursively in the same format, in `SpinResolver.compile_obj_blocks()`.
+Only the child's `psize` field worth of bytes is copied — the copy loop reads
+the child's own `psize` long out of `ChildObjectsImage` and copies exactly
+that many bytes — so a child's checksum-and-symbols tail (which sits past
+`psize` in the stored child image) is never embedded in the parent.
 
 ### 5. Symbol Table Section (object/.obj format only)
 
-Appended by `compile_final()` after the program: one **checksum byte first**,
-then the exported symbol records (`spinResolver.ts:5458-5471`). A consumer
-locates the records at `objOffset + 8 + psize + 1`
-(`spinResolver.ts:4834`).
+Appended by `SpinResolver.compile_final()` after the program: one **checksum
+byte first**, then the exported symbol records. A consumer
+(`SpinResolver.compile_obj_symbols()`) locates the records at
+`objOffset + 8 + psize + 1`.
 
 **This section does not reach the emitted .bin.** In Spin2 mode
-`P2InsertInterpreter()` truncates the image to interpreter + executable size
-(`spin2Parser.ts:698`) before `writeBinaryFile()`; in PASM mode the section
-is never appended at all (`spinResolver.ts:5456`). It exists in .obj files
-and in the in-memory object handed between compiler stages.
+`Spin2Parser.P2InsertInterpreter()` truncates the image to interpreter +
+executable size (`objImage.setOffsetTo(interpreterLength + executableSize)`)
+before `writeBinaryFile()`; in PASM mode the section is never appended at all
+(the whole symbol-table block in `compile_final()` is behind the
+`pasmMode == false` guard). It exists in .obj files and in the in-memory
+object handed between compiler stages.
 
-**Record format (v45+, extended by v54)** — spec comment at
-`objectSymbols.ts:25-52`:
+**Record format (v45+, extended by v54)** — spec comment above
+`ObjectSymbols.objx_con_int` et al. in `objectSymbols.ts`:
 
 - Leading tag byte `tttlllll`: type in the top 3 bits (`con_int` 1,
   `con_float` 2, `con_struct` 3, `pub` 4), name length 0-31 in the low 5
 - Symbol name bytes
 - Then per type:
-  - **PUB** (`writePubMethod`, `objectSymbols.ts:121-129`): BYTE parameter
-    count, BYTE result count
-  - **CON int/float** (`writePubConstant`, `objectSymbols.ts:131-138`):
-    LONG value (int vs float is in the tag, not a trailing type byte)
-  - **STRUCT** (`writePubStructure`, `objectSymbols.ts:140-149`, emitted at
-    `spinResolver.ts:5275`): the raw structure record — WORD record size,
-    LONG memory size, then member records
-    (`objectStructures.ts:25-42`). v54 extended the member stream with a
+  - **PUB** (`ObjectSymbols.writePubMethod()`): BYTE parameter count, BYTE
+    result count
+  - **CON int/float** (`ObjectSymbols.writePubConstant()`): LONG value (int
+    vs float is in the tag, not a trailing type byte)
+  - **STRUCT** (`ObjectSymbols.writePubStructure()`, emitted from
+    `SpinResolver` during CON-block compilation): the raw structure record —
+    WORD record size, LONG memory size, then member records
+    (`ObjectStructures` writer). v54 extended the member stream with a
     tri-valued continuation byte (0 = end, 1 = member follows, 2 = bitfield
-    descriptor follows) and nameless single-BWL members
-    (`objectStructures.ts:255-257`, reader
-    `objectStructureRecord.ts:98-107`)
+    descriptor follows) and nameless single-BWL members (`ObjectStructures`
+    writer, reader in `ObjectStructureRecord`)
 
 Records are type-tagged and order-independent; in the current pipeline
 CON/STRUCT records are written during the CON passes, before PUB records,
-and the reader accepts any interleaving (`spinResolver.ts:4857-4931`).
+and the reader (`SpinResolver.compile_obj_symbols()`) accepts any
+interleaving.
 
 ### Checksum Algorithm
 
-Negative byte-sum (`objectImage.ts:133-143`):
+Negative byte-sum (`ObjectImage.calculateChecksum()`):
 
 ```typescript
 let checkSum = 0;
@@ -242,17 +256,19 @@ checkSum = checkSum & 0xFF;
 ```
 
 The checksum byte is written so the whole object — including the checksum
-byte itself — sums to zero; the parent validates exactly that when absorbing
-a child (`spinResolver.ts:4818`).
+byte itself — sums to zero; `SpinResolver.compile_obj_symbols()` validates
+exactly that when absorbing a child.
 
 ## Object Image Implementation
 
 ### ObjectImage Class (`src/classes/objectImage.ts`)
 
 - **Dynamic memory**: starts at 1.5MB and grows in 1.5MB chunks
-  (`OBJ_LIMIT / 16`) up to the 24MB `OBJ_LIMIT` (0x1800000,
-  `spinResolver.ts:202`, growth loop `objectImage.ts:86-96`)
-- **Little-endian** throughout (`objectImage.ts:185-191, 228-244`)
+  (`OBJ_LIMIT / 16`, `ALLOC_SIZE_IN_BYTES`) up to the 24MB `OBJ_LIMIT`
+  (0x1800000, exported from `spinResolver.ts`), growth handled by
+  `ObjectImage.ensureCapacity()`
+- **Little-endian** throughout (`appendWord()`/`appendByte()`,
+  `readWord()`/`readLong()`)
 - **Append**: `appendByte()`, `appendWord()`, `appendLong()`
 - **Random access**: `read()`, `readWord()`, `readLong()`
 - **Replacement** (for patching): `replaceByte()`, `replaceWord()`,
@@ -261,37 +277,35 @@ a child (`spinResolver.ts:4818`).
 ### ChildObjectsImage Class (`src/classes/childObjectsImage.ts`)
 
 - **File tracking**: offset and length per child
-  (`childObjectsImage.ts:207-235`)
-- **Duplicate detection**: `findDuplicateChild()`
-  (`childObjectsImage.ts:166-195`), used by early object deduplication
-  (`compiler.ts:273, 531`)
+  (`recordLengthOffsetForFile()` / `getOffsetAndLengthForFile()`)
+- **Duplicate detection**: `findDuplicateChild()`, used by early object
+  deduplication in `Compiler` (both the cache-hit and cache-miss child-store
+  paths call it)
 - **Sequential access**: `nextByte()`, `nextWord()`, `nextLong()`
-- **Checksum**: negative byte-sum over a region
-  (`childObjectsImage.ts:197-205`)
+- **Checksum**: negative byte-sum over a region (`checksum()`)
 
-## Assembly Sequence (`ComposeRam()`, `spin2Parser.ts:523`)
+## Assembly Sequence (`Spin2Parser.ComposeRam()`)
 
 1. Application compilation (core object)
-2. Interpreter insertion — Spin2 mode only (`spin2Parser.ts:540-542`)
-3. Hub memory check (`spin2Parser.ts:544-555`):
-   `objSize = executableSize + (debug ? 0x4000 : 0) + (spin2 ?
-   interpreterLength + variableSize + 0x400 : 0)` against the 512KB
-   `HubLimit` (`spin2Parser.ts:38`)
-4. Debugger insertion — debug mode only
-5. Clock setter insertion — PASM2 non-debug, conditional
-6. `nonLoaderObjImage` snapshot (`spin2Parser.ts:563`), `.bin` written via
-   `writeBinaryFile()` (`spin2Parser.ts:567`)
+2. Interpreter insertion — Spin2 mode only (`P2InsertInterpreter()`)
+3. Hub memory check: `objSize = executableSize + (debug ? 0x4000 : 0) +
+   (spin2 ? interpreterLength + variableSize + 0x400 : 0)` against the
+   512KB `HubLimit` constant
+4. Debugger insertion — debug mode only (`P2InsertDebugger()`)
+5. Clock setter insertion — PASM2 non-debug, conditional (`P2InsertClockSetter()`)
+6. `nonLoaderObjImage` snapshot (`ObjectImage.copyFrom()`), `.bin` written via
+   `writeBinaryFile()`
 7. `.flash` generation from the snapshot — `--flashfile` only
-   (`spin2Parser.ts:572-573`)
+   (`P2MakeFlashFile()`)
 
 ## External File Dependencies
 
-Loaded by the `ExternalFiles` class (`src/classes/externalFiles.ts:11`,
-loader `loadFiles()` at `:67`) from the **`ext/` folder** beside the built
-compiler (`dist/ext/`; sources in `src/ext/` — resolution in
-`context.ts:218-222`). Loading is unconditional; no version-selection flag
-exists (a former v44-variant block is commented out,
-`externalFiles.ts:80-98`).
+Loaded by the `ExternalFiles` class (`src/classes/externalFiles.ts`,
+`loadFiles()`) from the **`ext/` folder** beside the built compiler
+(`dist/ext/`; sources in `src/ext/` — resolution in `Context`'s constructor,
+which tries `<dirname>/../ext` then falls back to `<dirname>/ext`). Loading
+is unconditional; no version-selection flag exists (a former v44-variant
+block is commented out in `loadFiles()`).
 
 | File | Content | Size on disk |
 |---|---|---|
@@ -300,8 +314,10 @@ exists (a former v44-variant block is commented out,
 | `clock_setter.obj` | Clock configuration stub | 64 bytes |
 | `flash_loader.obj` | Flash programming support | 496 bytes |
 
-(The `externalFiles.ts` log strings still say "v43"; they are log-only and
-stale — the `.spin2` sources in `src/ext/` carry the real versions.)
+(Re-confirmed on disk 2026-09-17: `src/ext/*.obj` and `dist/ext/*.obj` sizes
+match exactly. The `externalFiles.ts` log strings still say "v43"; they are
+log-only and stale — the `.spin2` sources in `src/ext/` carry the real
+versions.)
 
 ## Memory Organization at Runtime
 
@@ -323,9 +339,8 @@ to discard at load time.)
 - `src/classes/childObjectsImage.ts` — multi-object assembly
 - `src/classes/spin2Parser.ts` — binary generation coordination (`ComposeRam()`)
 - `src/classes/spinResolver.ts` — object composition
-  (`compile_obj_blocks_id` :4640, `compile_obj_symbols` :4772,
-  `compile_obj_blocks` :4943, `compile_final` :5447; format comment
-  :4746-4770)
+  (`compile_obj_blocks_id`, `compile_obj_symbols`, `compile_obj_blocks`,
+  `compile_final`; format comment above `compile_obj_symbols`)
 - `src/classes/objectSymbols.ts` — exported symbol records
 - `src/classes/objectStructures.ts` / `objectStructureRecord.ts` — v54
   structure records
