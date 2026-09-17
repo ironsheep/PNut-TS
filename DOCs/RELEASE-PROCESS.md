@@ -22,6 +22,19 @@ npm run build && npm test
 
 Ensure coverage has not regressed from the baseline.
 
+> **Cadence — Stephen, 2026-09-17. This step is NOT a per-release blocker, and a
+> release is not held for it.** Coverage is refreshed **with each PNut parity
+> release**, and separately it is sometimes run as an *instrument* — to find
+> where the regression suite is thin and then extend it, which is its own piece
+> of work rather than a release gate.
+>
+> So: an **interim coverage update is owed** after v1.55.8, on its own schedule.
+> Do not re-open the question at each release, and do not block a release on the
+> percentages below.
+>
+> The thresholds in this section are also **not currently meetable** — see punch
+> list §19. Read them as the standing target, not as a gate that passed.
+
 - [ ] Run coverage setup: `npm run cov-setup`
 - [ ] Run coverage: `npm run coverage`
 - [ ] Verify coverage meets or exceeds baseline:

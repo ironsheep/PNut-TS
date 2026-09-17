@@ -17,7 +17,7 @@ Work to appear in upcoming releases:
 
 ## v1.55.8 (2026-09-17)
 
-The `.map` file is rewritten around images and instances, compile-time float and CORDIC math match PNut bit for bit, and every text output the compiler writes is complete when it exits.
+The `.map` file is rewritten around images and instances, compile-time math and string literals match PNut exactly, and every text output the compiler writes is complete when it exits.
 
 ### Breaking Changes
 
@@ -48,6 +48,9 @@ The `.map` file is rewritten around images and instances, compile-time float and
 
 ### Bug Fixes
 
+- **A string literal containing a non-ASCII character, such as `°`, no longer
+  compiles a byte short.** UTF-8 sources were affected, shifting every address
+  after the literal; pure-ASCII sources were unaffected.
 - **Float literals and compile-time float math match PNut bit for bit.** About
   a quarter of float literals parsed one bit off (`3.14159` differed in its
   last mantissa bit), and `POW`, `LOG`, `EXP` and the float operators and
