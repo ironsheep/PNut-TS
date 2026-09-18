@@ -177,7 +177,14 @@ jobs:
   # Sign macOS binaries and create DMGs
   macos-sign:
     name: Sign & Package macOS
-    runs-on: macos-latest
+    # PINNED, not macos-latest. A release must be reproducible, and the runner
+    # image is the one input nobody versions: `macos-latest` rolled onto
+    # macos-26-arm64 between v1.55.7 (which signed and published) and v1.55.8
+    # (which did not), carrying a new Xcode, codesign and Finder scripting with
+    # it. Nothing in this file changed across those two releases. Move this
+    # forward deliberately -- run a release on the new major on purpose, see it
+    # sign, then bump the pin -- never by rotation.
+    runs-on: macos-15
     needs: build
     steps:
       - name: Checkout
