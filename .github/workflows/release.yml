@@ -238,6 +238,23 @@ jobs:
             fi
           done
 
+      - name: Record the signing toolchain
+        run: |
+          # The signing path in this file has not changed since v1.55.7, the
+          # last release that published -- so when a run that worked stops
+          # working, the variable is the runner image, which nobody versions.
+          # Record what this run was handed, so the next comparison is reading,
+          # not archaeology. Never fails the job.
+          echo "== macOS =="
+          sw_vers || true
+          echo "== Xcode =="
+          xcodebuild -version 2>/dev/null || echo "xcodebuild unavailable"
+          echo "== tools =="
+          echo "codesign: $(xcrun --find codesign 2>/dev/null || echo 'not found')"
+          echo "notarytool: $(xcrun --find notarytool 2>/dev/null || echo 'not found')"
+          xcrun notarytool --version 2>&1 | head -2 || true
+          exit 0
+
       - name: Import signing certificate
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
