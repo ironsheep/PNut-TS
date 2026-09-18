@@ -266,7 +266,33 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PWD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-          echo "Certificate imported successfully"
+          # `security import` reports success for a p12 that carries no private
+          # key, and the failure then surfaces several steps later inside
+          # codesign, naming neither the keychain nor the reason. Prove here
+          # that the import produced a usable codesigning identity.
+          #
+          # The listing itself is not echoed: this repository is public, so the
+          # job log is public, and the identity string carries the team ID. The
+          # count and the certificate class are what diagnose this, and neither
+          # of those is secret.
+          IDENTITIES=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>&1 || true)
+          IDENTITY_COUNT=$(printf '%s\n' "$IDENTITIES" | sed -n 's/^ *\([0-9][0-9]*\) valid identities found.*/\1/p' | tail -1)
+          printf '%s\n' "$IDENTITIES" | sed -n 's/.*"\([^:"]*\):.*/  identity class: \1/p' | sort -u
+
+          if [ -z "$IDENTITY_COUNT" ] || [ "$IDENTITY_COUNT" -eq 0 ]; then
+            echo "ERROR: the certificate imported, but the keychain holds no codesigning identity." >&2
+            echo "  MACOS_CERTIFICATE must be base64 of a .p12 exported WITH ITS PRIVATE KEY," >&2
+            echo "  MACOS_CERTIFICATE_PWD must be that p12's own password, and the certificate" >&2
+            echo "  must not have expired. Signing cannot proceed." >&2
+            exit 1
+          fi
+
+          if ! printf '%s\n' "$IDENTITIES" | grep -q "Developer ID Application"; then
+            echo "WARNING: no 'Developer ID Application' identity is present. A Development or" >&2
+            echo "  Distribution certificate can sign, but Apple will not notarize what it signs." >&2
+          fi
+
+          echo "Certificate imported: ${IDENTITY_COUNT} codesigning identity(ies) available"
 
       - name: Create entitlements.plist
         run: |
