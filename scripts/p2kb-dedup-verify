@@ -96,15 +96,18 @@ function compile(top, extraFlags) {
   return { ok: true, text, map: parseMap(text) };
 }
 
-/** Compile with -b and return the .bin bytes, or throw naming the failure. */
+/** Compile and return the .bin bytes, or throw naming the failure. */
 function compileBin(top) {
-  execSync(`node ${JSON.stringify(PNUT)} -b ${JSON.stringify(top)}`, {
+  // A plain compile already writes <top>.bin; there is no flag to ask for one.
+  // This used to pass -b, which PNut-TS never defined -- harmless while unknown
+  // options were ignored, fatal once they became an error.
+  execSync(`node ${JSON.stringify(PNUT)} ${JSON.stringify(top)}`, {
     cwd: WORK,
     stdio: 'pipe'
   });
   const binFile = path.join(WORK, top.replace(/\.spin2$/, '.bin'));
   if (!fs.existsSync(binFile)) {
-    throw new Error(`${top}: -b did not produce a .bin`);
+    throw new Error(`${top}: the compile produced no .bin`);
   }
   return fs.readFileSync(binFile);
 }

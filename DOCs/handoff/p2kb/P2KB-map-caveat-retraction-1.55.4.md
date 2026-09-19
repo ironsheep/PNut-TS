@@ -5,10 +5,11 @@
 original `map_caveat` verbatim. P2KB is an external corpus, edited by Stephen;
 this document is the proposal for him to apply, not an edit to P2KB itself.
 
-**Re-measured 2026-09-17 against the Map-Instance-Correctness sprint build
-(pre-1.55.8, `npm run p2kb-verify` — `scripts/p2kb-dedup-verify`, 15/15 cases
-matched).** That sprint fixed the shapes the caveat was written about:
-identical-copy and nested VAR bases, OBJ arrays, an OBJ declared after an
+**Re-measured 2026-09-17 against the Map-Instance-Correctness sprint build,
+and again 2026-09-19 against shipped 1.55.8 (`npm run p2kb-verify` —
+`scripts/p2kb-dedup-verify`, 15/15 cases matched both times).** That sprint
+fixed the shapes the caveat was written about: identical-copy and nested VAR
+bases, OBJ arrays, an OBJ declared after an
 array, and DAT-layout forks. This replaces the 1.55.4/1.55.7 drafts below,
 which said the multi-instance `.map` was correct except for a residual
 `SYMBOL INDEX`-only limitation — that residual limitation is closed too, and

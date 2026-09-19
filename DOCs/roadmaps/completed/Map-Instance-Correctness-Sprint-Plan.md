@@ -1,5 +1,20 @@
 # Map-Instance-Correctness Sprint Plan
 
+> **STATUS: CLOSED — 2026-09-19.** All eleven sections certified SHIPPED against
+> current code. Two items audited short of SHIPPED at closeout and were fixed
+> before closing: «#74»'s gating of the resolver test, and a defect this
+> closeout's own audit found in §8 («#84» — `p2kb-verify` compiled with a `-b`
+> flag PNut-TS never defined, so it scored 14/15 while the P2KB draft claimed
+> 15/15). Shipped in build **1.55.8**, tag `v1.55.8` on `main`.
+> Closeout audit: [`2026-09-19-Map-Instance-Correctness-CLOSEOUT.md`](2026-09-19-Map-Instance-Correctness-CLOSEOUT.md)
+> — read it for per-section evidence, the exit baseline (47 suites / 1011 tests,
+> from 26 / 432 at entry), the eighteen tasks that shipped outside this plan, and
+> what remains open.
+>
+> Two citations in this plan went stale as the sprint ran and are corrected in
+> the closeout, not here: `CACHE_FORMAT_VERSION` became 10, not 9, and three §9
+> line numbers no longer point at the text they name.
+
 **Status:** STARTED 2026-09-14. **Outgoing build: `1.55.8`** (agreed with Stephen
 at sprint start).
 
