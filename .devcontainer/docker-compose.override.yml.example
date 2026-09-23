@@ -11,10 +11,10 @@ services:
   dev:
     volumes:
       # Claude Code configuration (authentication, settings, history)
-      # - /path/to/your/.claude:/home/vscode/.claude
+      # - /path/to/your/.claude:/home/node/.claude
       # Container tools (MCP servers: todo-mcp, p2kb-mcp, image-tools-mcp)
       # - /path/to/container-tools:/opt/container-tools
       # Git configuration (user identity, aliases, credential helpers)
-      # - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
+      # - ${HOME}/.gitconfig:/home/node/.gitconfig:ro
       # SSH keys for git operations inside the container
       # - ${HOME}/.ssh:/tmp/.ssh:ro

@@ -3,7 +3,7 @@ services:
     image: mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
     volumes:
       - ..:/workspaces/PNut-TS:cached
-      - todo-mcp-data:/home/vscode/.local/share/todo-mcp
+      - todo-mcp-data:/home/node/.local/share/todo-mcp
     ports:
       - "5001:5001"
       - "9125:8123"
