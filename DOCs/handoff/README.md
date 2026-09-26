@@ -52,11 +52,9 @@ this project — see `.claude/doctrine-overlay.md` §1.
 
 ## Currently outstanding
 
-| Document | State |
-|---|---|
-| `p2kb/P2KB-abort-trap-amendment.md` | ready — hardware-confirmed 69/69, not applied |
-| `p2kb/P2KB-map-caveat-retraction-1.55.4.md` | ready — current to 1.55.8, not applied |
+**Nothing.** The last two — the abort-trap amendment and the `map_caveat`
+retraction — were confirmed live in P2KB on 2026-09-26 and moved to
+`p2kb/archive/`.
 
-⚠ The `map_caveat` retraction is the urgent one: verified live on 2026-09-17,
-`p2kbSpin2ObjectImageDedup` still tells readers not to trust the `.map`
-instance-name and source-name columns. That became wrong when 1.55.8 shipped.
+Before reporting anything here as owed, re-fetch the live entry: this table was
+once left saying "not applied" for nine days after both had landed.

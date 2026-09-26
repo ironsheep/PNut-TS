@@ -684,6 +684,9 @@
     "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-CLOSEOUT.md": {
       "class": "historical"
     },
+    "DOCs/roadmaps/completed/2026-09-19-Map-Instance-Correctness-Retrospective.md": {
+      "class": "historical"
+    },
     "DOCs/roadmaps/completed/2026-08-24-Object-Cache-Transitive-Invalidation-Retrospective.md": {
       "class": "historical"
     },
@@ -694,14 +697,6 @@
     "DOCs/roadmaps/completed/2026-08-24-Punch-List-Archive.md": {
       "class": "historical",
       "note": "Dated punch-list sweep archive; never re-edited (punch-list-maintenance rule)"
-    },
-    "DOCs/handoff/p2kb/P2KB-abort-trap-amendment.md": {
-      "class": "historical",
-      "note": "Outstanding handoff to the P2KB maintainer agent; moves to the untracked archive/ once confirmed applied (DOCs/handoff/README.md)"
-    },
-    "DOCs/handoff/p2kb/P2KB-map-caveat-retraction-1.55.4.md": {
-      "class": "historical",
-      "note": "Outstanding handoff to the P2KB maintainer agent; moves to the untracked archive/ once confirmed applied (DOCs/handoff/README.md)"
     },
     "DOCs/roadmaps/Compiler-Subsystem-Extraction-Roadmap.md": {
       "class": "historical"
