@@ -2,18 +2,7 @@
 
 All notable changes to the "Pnut - A reimplementation in TypeScript" are documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for reminders on how to structure this file. Also, note that our version numbering adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [FutureVersions]
-
-Work to appear in upcoming releases:
-
-- Work on getting essential coverage completed (all code generation, less exception testing)
-- Fix any bugs reported by users
-- Add user-requested enhancements
-- Keep up with PNut changes soon after they are released.
-
-## [Unreleased]
+Versions are numbered `Major.PNutVersion.Patch`: the middle number is the PNut language version a release tracks (1.55.x tracks PNut v55), and the last number is ours, reset to 0 when PNut advances. New features can arrive in a patch release.
 
 ## v1.55.8 (2026-09-17)
 
@@ -21,74 +10,71 @@ The `.map` file is rewritten around images and instances, compile-time math and 
 
 ### Breaking Changes
 
-- **BREAKING**: The `.map` file format changed again — new section names
-  (`SUMMARY`, `OBJECT TREE`, `MEMORY LAYOUT`, `OBJECT DETAILS`, `ADDRESS INDEX`,
-  `SYMBOL INDEX`), new columns, and a row model built around images (`#1`,
-  `#2`, …) and instance paths (`A`, `A.LEAF`, `D[1]`). Anything that parses
-  `.map` needs updating; see `DOCs/internals/MAP-File-Format.md` for the
-  grammar and a worked example.
-- **BREAKING**: Any existing object cache is discarded on upgrade. The on-disk
-  format changed again; the first compile after upgrading rebuilds every
-  cached object, and nothing from an older cache is reused.
-- **BREAKING**: An unknown or mistyped command-line option (such as `--bogus`)
-  no longer prints "unknown option" and compiles anyway — it aborts with a
-  non-zero exit and writes no output files. `--help` and `--version` are
-  unaffected.
-- **BREAKING**: `-D` and `-U` reject `SYM=value` and any name that is not a
-  legal symbol (a leading digit, a character other than letter/digit/
-  underscore, or an empty name), with an error and a non-zero exit, instead of
-  silently registering a symbol that `#ifdef` can never match. Both remain
-  presence-only; there is no command-line form of `#define SYMBOL value`.
-- **BREAKING**: `#if` and `#elseif` are errors, reported on the line that
-  wrote them, naming the supported spelling (`#ifdef`/`#ifndef`,
-  `#elseifdef`/`#elseifndef`). A source using either used to be silently
-  misread: `#if` was absorbed as the start of a `CON` enumeration, and
-  `#elseif` was treated as a bare `#else`, discarding its condition with no
-  diagnostic.
+- **BREAKING**: The `.map` format changed: new section names and columns, and a
+  row for each image (`#1`) and each instance path (`A.LEAF`, `D[1]`).
+  **Action:** update any script that parses `.map`, using
+  [MAP-File-Format.md](https://github.com/ironsheep/PNut-TS/blob/main/DOCs/internals/MAP-File-Format.md).
+- **BREAKING**: Upgrading discards any existing object cache; the first `--cache`
+  build afterwards recompiles every object.
+- **BREAKING**: An unknown or mistyped option such as `--bogus` stops with an
+  error and a non-zero exit, writing nothing; it used to warn and compile
+  anyway. `--help` and `--version` are unaffected.
+- **BREAKING**: `-D` and `-U` reject `SYM=value` and illegal symbol names with an
+  error. Such a symbol could never match `#ifdef`, so builds using one were
+  already compiling the wrong branches. Both remain presence-only.
+- **BREAKING**: `#if` and `#elseif` are errors, reported on their own line and
+  naming `#ifdef`/`#ifndef` or `#elseifdef`/`#elseifndef`. Sources using them
+  were already misread: `#if` began a `CON` enumeration and `#elseif` acted as
+  `#else`.
 
-### Bug Fixes
+### Fixes that change compiled output
 
-- **A string literal containing a non-ASCII character, such as `°`, no longer
-  compiles a byte short.** UTF-8 sources were affected, shifting every address
-  after the literal; pure-ASCII sources were unaffected.
-- **Float literals and compile-time float math match PNut bit for bit.** About
-  a quarter of float literals parsed one bit off (`3.14159` differed in its
-  last mantissa bit), and `POW`, `LOG`, `EXP` and the float operators and
-  comparisons diverged from PNut for many inputs.
-- **`QLOG` and `QEXP` in constant expressions match PNut bit for bit.** Many
-  inputs were off by a low bit, and `QLOG($FFFFFFFF)` folded to 0 instead of
-  `$FFFFFFFF`.
-- **Constant expressions comparing a negative number with `>` or `>=` fold as
-  signed compares**, as PNut does — `-1 > 0` folded to true.
-- **A malformed float literal such as `1.5e` is an error**, instead of
-  silently compiling as an integer followed by a stray symbol.
-- **A `CON` enumeration whose first name starts with `else` or `endif`**, such
-  as `ELSEWHERE`, compiles instead of failing with `Must be preceeded by
-  #IFDEF or #IFNDEF`.
-- **`.map` gives every element of an `OBJ` array its own row and VAR
-  address**, and an `OBJ` declared after an array in the same object no
-  longer inherits the array's address.
-- **`.map` VAR bases are correct for identical copies of an object and for
-  objects nested inside them**, and forks whose overrides change `DAT`
-  layout, VAR size or code show their own addresses rather than another
-  instance's.
-- **A warm cached build's `.map` matches an uncached build's**, including
-  when the cache was filled by an earlier build that did not request a map.
-- **`-O` writes the `.obj` file even without `-l`.** It used to report
-  success and write nothing.
-- **The `.lst` listing, the `-i` preprocessed-source file, and `--regression`
-  reports are complete when the compiler exits, and an unwritable output
-  directory is a clean error** — no stack trace, and no "Wrote" line for a
-  file that was not written.
-- **Using an exported preprocessor symbol (`#pragma exportdef`) where a
-  filename belongs** gets an error naming the cause, instead of `Invalid
-  filename, use "FilenameInQuotes"`.
+- **A non-ASCII character in a string literal, such as `°`,** compiled one byte
+  short, shifting every later address; every source byte is emitted, as PNut
+  does. Pure-ASCII sources were unaffected.
+- **Float literals and compile-time float math** match PNut bit for bit. About a
+  quarter of literals differed in their last bit, as did many `POW`,
+  `LOG`, `EXP` and operator results.
+- **`QLOG` and `QEXP` in constant expressions** match PNut bit for bit; many
+  inputs were off in the low bits, and `QLOG($FFFFFFFF)` folded to 0.
+- **A constant expression comparing a negative number with `>` or `>=`** folds as
+  a signed compare, as PNut does; `-1 > 0` folded to true.
+- **`-O` without `-l`** reported success but wrote no `.obj`; the `.obj` is now
+  written.
+
+### Fixes to errors and warnings
+
+- **A malformed float literal such as `1.5e`** is an error; it compiled silently
+  as an integer followed by a stray symbol.
+- **A `CON` enumeration whose first name starts with `else` or `endif`**, such as
+  `ELSEWHERE`, compiles instead of failing with
+  `Must be preceeded by #IFDEF or #IFNDEF`.
+- **An exported preprocessor symbol (`#pragma exportdef`) written where a
+  filename belongs** gets an error naming the cause, instead of
+  `Invalid filename, use "FilenameInQuotes"`.
+- **An unwritable output directory** is reported as an error with a non-zero
+  exit, not a stack trace, and no "Wrote" line appears for a file that was not
+  written.
+
+### Fixes to reports and listings
+
+- **`.map` for a program with an `OBJ` array** gives every element its own row
+  and VAR address; an `OBJ` declared after an array no longer inherits the
+  array's address.
+- **`.map` for identical copies of an object, objects nested in them, and forks
+  whose overrides change layout** shows each instance's own VAR base and
+  addresses.
+- **`.map` from a warm `--cache` build** matches an uncached build's, including
+  when an earlier build without `--map` filled the cache.
+- **The `.lst` listing, the `-i` preprocessed source and `--regression` reports**
+  are complete when the compiler exits; a script reading one immediately could
+  see it partial.
 
 ## v1.55.7 (2026-09-13)
 
 `#include` in the file you compile builds that file.
 
-### Fixed
+### Fixes that change compiled output
 
 - **`#include` in the file you compile** no longer builds the included file
   instead: silently if it has a `PUB`, otherwise as `No PUB method or DAT block
@@ -98,536 +84,415 @@ The `.map` file is rewritten around images and instances, compile-time math and 
 
 Explicit `AUGS` and `AUGD` instructions assemble correctly whatever the operand value.
 
-### Fixed
+### Fixes that change compiled output
 
-- **`AUGS #value` and `AUGD #value` with bit 31 of `value` set** no longer
-  assemble as an unconditional `AUGD`, silently. Operands below `$8000_0000`,
-  and `##` immediates, were unaffected.
+- **`AUGS #value` and `AUGD #value` with bit 31 of `value` set** assembled as an
+  unconditional `AUGD`, silently. Operands below `$8000_0000`, and `##`
+  immediates, were unaffected.
 
 ## v1.55.5 (2026-08-30)
 
 Cached builds with `-d` now reproduce an uncached build exactly, whichever program filled the cache first.
 
-### Fixed
+### Fixes that change compiled output
 
-- **A cached object could lose a nested object's DEBUG data.** When one
-  program's build had already put an object's debug records in place, compiling
-  a *different* program that reached that object more deeply reused a cached
-  subtree and emitted a binary missing those records. Reported against a 29-file
-  driver tree, where the affected program came out 221 bytes short.
-- **A cached object could aim a nested object's `debug()` at the wrong record.**
-  On a cache hit the parent's own debug references were corrected but its
-  children's were not, so a nested `debug()` printed another object's message,
-  or garbage. The binary was the **right size** in this case, which is why it
-  went unnoticed alongside the defect above.
+- **A `--cache -d` build reusing a subtree another program had cached more
+  deeply** dropped that subtree's DEBUG data, shrinking the binary. Old cache
+  entries are discarded automatically on upgrade.
+- **A `--cache -d` hit corrected the parent's own debug references but not a
+  child's**, so a nested `debug()` printed another object's message. The binary
+  stayed the same size.
 
-  Both produced a working-looking build that exited 0. Because either one
-  renumbers the debug table, the emitted code of unrelated objects changed too.
+### Fixes to reports and listings
 
-  **Rebuild once after upgrading.** Cache entries written by earlier versions
-  are discarded automatically, so the first build after the upgrade recompiles.
-
-### Changed
-
-- **`--cache-verify` now says how two binaries differ when they are the same
-  size.** It reported `cached 9585 bytes, uncached 9585 bytes` — the same number
-  twice, which reads like a broken check rather than a finding. It now reports
-  the shared size and the first differing byte, numbered from 1 so it lines up
-  with `cmp`. Equal-size mismatches are exactly what the defects above produce,
-  so this is the message most likely to be read when it matters.
+- **`--cache-verify` on a size-equal mismatch** printed the same byte count
+  twice. It now reports the shared size and the first differing byte, numbered
+  from 1 to match `cmp`.
 
 ## v1.55.4 (2026-08-24)
 
 Cached builds now detect a change anywhere in the object tree, and `.map` files are correct when an object is used more than once.
 
+### Breaking Changes
+
+- **BREAKING**: Upgrading discards any existing object cache, since its on-disk
+  format changed; the first `--cache` build afterwards recompiles everything.
+  Some projects will also see fewer cache hits going forward — those hits were
+  returning stale objects.
+- **BREAKING**: A cached object is now tied to the resolution root (the
+  top-level file's directory) and the active `-I` list, so two applications
+  using the same library object each build and cache their own copy. This is
+  what stops their `FILE` data from being swapped.
+- **BREAKING**: Moving or renaming a source tree empties its cache — each
+  entry records the resolved path of the files it was built from.
+- **BREAKING**: `.map`'s `ADDRESS INDEX` and `SYMBOL INDEX` gain an `Instance`
+  column, built per object instance rather than per source file; identical rows
+  collapse into one, marked `SHARED+N`. `OBJECT DETAILS` entries change from
+  `Entry $XXXXX` to `Entry +$XXXXX ($YYYYY)`. **Action:** update any `.map`
+  parser — see
+  [MAP-File-Format.md](https://github.com/ironsheep/PNut-TS/blob/main/DOCs/internals/MAP-File-Format.md).
+
 ### New Features
 
-- **`--cache-verify`**: compiles your project twice, once with the cache and once
-  without, and fails the build if the results differ. The uncached reference runs
-  as a separate process, so nothing about the cached build can influence it.
-  Implies `--cache`. Use it when you suspect a cached build, or in CI on a
-  project layout your own tests do not cover.
+- **`--cache-verify`**: compiles twice — with and without the cache, the
+  uncached reference run as a separate process — and fails the build if they
+  differ. Implies `--cache`.
+- **Duplicate-source warning**: names both paths when a build reaches
+  byte-identical source through two different resolved paths. Declaring one
+  object several times is unaffected.
 
-- **Duplicate-source warning**: when one build reaches byte-identical source
-  through two different resolved paths, the compiler names both files. The build
-  still succeeds and is still correct — this is a structural smell, not an
-  error. Declaring one object several times is ordinary Spin2 and does not warn.
+### Fixes that change compiled output
 
-### Bug Fixes
+- **`--cache` builds ignored an edit two or more levels down the object
+  tree**, keeping stale code above it. Builds without `--cache` were always
+  correct.
+- **A `DAT` singleton reached both directly and through another cached
+  object** could become two independent copies — separate lock, separate
+  state, separate cog handle. Nothing reported it.
+- **Editing a file embedded with `DAT ... FILE`, without touching the
+  `.spin2` that names it,** produced a binary still carrying the old file
+  contents.
+- **Two applications sharing a library object that embeds a `DAT ... FILE`**
+  could swap each other's embedded data on a cache hit; whichever compiled
+  second received the other's binary.
+- **`-F` under load** could write a zero-byte `.flash` file, so a rebuild
+  appeared to fix a failure that was really intermittent.
+- **A script reading `.bin`, `.obj` or `.map` right after a build** could see
+  the previous run's contents or a partial file; all three are now complete
+  when the compiler exits.
 
-- **A change two or more levels down is no longer ignored.** With `--cache`,
-  editing an object used by an object you use left every level above it cached,
-  so the build kept the old code. Compiling without `--cache` was always correct.
-  The damaging form was silent: a driver reached both directly and through
-  another object could have one copy rebuilt and the other left stale, and
-  because identical objects are merged by comparing compiled contents, a `DAT`
-  singleton became **two** independent copies — separate lock, separate state,
-  separate cog handle. Nothing reported it.
+### Fixes to reports and listings
 
-- **Editing a file embedded with `DAT ... FILE` now rebuilds.** Changing the
-  embedded file alone, without touching the `.spin2` that names it, produced a
-  binary still carrying the old contents.
+- **`.map` for an object declared more than once** listed only one copy, could
+  attach a name to the wrong file, and could print `object_12` or drop a
+  nested level entirely.
+- **A `.map` `DAT` symbol** could be listed at one address in the symbol index
+  and a different one — sometimes outside the object, in VAR space — in the
+  object details.
+- **`.map` `ADDRESS INDEX`, `SYMBOL INDEX` and `OBJECT DETAILS`** printed a
+  method's slot number in the object header, not its bytecode's hub address —
+  methods appeared one byte apart.
+- **`SYMBOL INDEX` and `ADDRESS INDEX` for an object used more than once**
+  each listed only the first copy's address, so other copies appeared nowhere.
+  Both now list every instance, naming shared addresses.
+- **`.map`'s `MEMORY LAYOUT` `Overrides` column** was always empty; an object
+  used three times with three different `| CONST = N` overrides printed three
+  identical rows.
+- **`--cache --map` for an object below one that was cached** dropped its
+  method listings, and a level of the hierarchy could go missing.
 
-- **Two applications sharing a library object no longer swap each other's
-  `FILE` data.** A `FILE` name resolves against the directory of the top-level
-  file being compiled, so a shared object embeds different data for each
-  application that uses it. Both applications keyed to one cache entry, and
-  whichever compiled second was handed the other's binary. Two applications in
-  one project, `-C`, and the default cache directory was enough to hit it, at no
-  severity.
+## v1.55.3 (2026-08-09)
 
-- **`.map` names objects and instances correctly when one is used more than
-  once.** Declaring the same object twice listed only one of them, names could
-  attach to the wrong file, objects could appear as `object_12`, and nested
-  levels could go missing entirely.
-
-- **`.map` symbol addresses agree with the rest of the file.** A `DAT` symbol
-  could be listed at one address in the symbol index and a different one in the
-  object details — sometimes outside the object, in VAR space.
-
-- **`.map` method entries are real hub addresses.** `ADDRESS INDEX`,
-  `SYMBOL INDEX` and `OBJECT DETAILS` printed a method's slot number in the
-  object header rather than where its bytecode begins, so methods appeared one
-  byte apart.
-
-- **`.map` index sections account for every copy of an object.** `SYMBOL INDEX`
-  listed each symbol once at the first copy's address and `ADDRESS INDEX` listed
-  each method once, so the other copies' addresses appeared nowhere. Both sections
-  are now built per instance, and where several instances genuinely share one
-  address the row names them rather than silently reporting one.
-
-- **`.map` shows the overrides each instance was declared with.** The
-  `MEMORY LAYOUT` `Overrides` column was always empty, so an object used three
-  times with three different `| CONST = N` overrides printed three
-  identical-looking rows.
-
-- **`.map` output from a cached build matches an uncached one.** With
-  `--cache --map`, objects below a cached one lost their method listings and a
-  level of the hierarchy could go missing.
-
-- **`.flash` output could be written empty.** Under load, `-F` could produce a
-  zero-byte `.flash` file, so a rebuild appeared to fix it.
-
-- **Output files are complete when the compiler exits.** The `.bin`, `.obj` and
-  `.map` were written through a stream that was closed but not awaited, so a
-  script reading one immediately after a build could see the previous run's
-  contents or a partial file. This is the same hazard behind the empty `.flash`.
+Preprocessor symbol handling is corrected: `#undef` removes a symbol
+completely, a `#define` value is the whole rest of the line, and function-like
+defines are rejected rather than silently ignored.
 
 ### Breaking Changes
 
-- **Any existing cache is discarded on upgrade.** The on-disk format changed, so
-  the first compile after upgrading recompiles everything. Entries written by
-  earlier versions can be stale in ways those versions had no way to detect, so
-  they are not reused.
+- **BREAKING**: A function-like `#define`, such as `SQ(x) ((x)*(x))`, is now an
+  error — `#define does not support arguments`. It previously compiled and
+  never expanded, so every use site kept the literal text. A parenthesized
+  value like `MASK (1<<3)` is unaffected.
+- **BREAKING**: A multi-word `#define` value now substitutes in full — `#define
+  MSG hello there world` expands to all three words, matching C and FlexSpin.
+  It previously kept only the first word, silently. Output changes only where a
+  source relied on that truncation.
 
-- **Some builds that used to hit the cache will now miss.** That is the fix
-  working — those hits were returning stale objects. If you measured a speed-up
-  on a multi-level project, the new, lower figure is the honest one.
+### New Features
 
-- **Applications in one project no longer share cached objects with each other.**
-  A cached object is tied to the directory of the top-level file it was built for
-  and the `-I` list in force, so two applications in separate directories each
-  build their own copy of a shared library object. This is what keeps their
-  `FILE` data from being swapped.
+- **`__VERSION__`** is available to the preprocessor, substituting the bare
+  version string (e.g. `1.55.3`) in the top file, includes, and child objects.
 
-- **Moving or renaming a source tree empties its cache.** Entries record the
-  resolved path of every file they were built from; after a move those paths no
-  longer match and the affected objects recompile.
+### Improvements
 
-- **Anything that parses `.map` needs updating.** `ADDRESS INDEX` and
-  `SYMBOL INDEX` gained an `Instance` column, and both are now built from object
-  *instances* rather than from source files, so a program that uses an object more
-  than once no longer hides the extra copies. Rows carrying identical content then
-  collapse into one, whose `Instance` cell names the shortest instance path and
-  appends a count of the others sharing it — `SHARED+3` means that row covers four
-  instances. It stays a single whitespace-delimited token, so a row can still be
-  split on whitespace. `OBJECT DETAILS` method entries changed from
-  `Entry $XXXXX` to `Entry +$XXXXX  ($YYYYY)` — offset within the object, then
-  absolute address. Instance names are now paths: a child declared as `leaf`
-  beneath `a` prints as `A.LEAF`.
+- **`#ifdef __PNUT_TS__`** is the correct test for this compiler — note the
+  underscore between `PNUT` and `TS`; `__PNUTTS__` is not defined.
 
-## [1.55.3] 2026-08-09
+### Fixes that change compiled output
 
-Preprocessor symbol handling is corrected across the board: `#undef` now
-removes a symbol completely, a `#define` value is the whole rest of the line,
-function-like defines are rejected rather than silently ignored, and
-`__VERSION__` is available to the preprocessor.
+- **`#undef` of a symbol defined with text** stopped `#ifdef` from seeing it,
+  but left the text substitution active, so a later use still expanded to the
+  old value.
+- **`#undef __P2__`** and other predefined `__*__` symbols used to succeed
+  silently, so every later `#ifdef __P2__` took the wrong branch. They now
+  stay defined; `-D` symbols are still removable.
 
-### ⚠️ Behavior change — `#define` is stricter and more capable
-
-- **A function-like define is now an error.** `#define SQ(x) ((x)*(x))` stops
-  the build with `#define does not support arguments — only simple symbol
-  definitions`. It previously compiled, and the macro never expanded — every
-  use site kept the literal text. Only the symbol is inspected, so a
-  parenthesized value such as `#define MASK (1<<3)` is unaffected. A source
-  that starts failing here was carrying a macro that never expanded.
-- **A multi-word `#define` value now substitutes whole.** `#define MSG hello
-  there world` expands to all three words; previously only `hello` was kept,
-  silently. The value is everything after the symbol name, with interior
-  spacing preserved and a trailing comment excluded — matching C and
-  FlexSpin. Output changes where a source relied on the truncation.
-
-### Fixed
-
-- **`#undef` now clears text substitution as well as symbol presence.** After
-  `#define UF hello` / `#undef UF`, `#ifdef UF` reported the symbol gone while
-  `UF` in the text kept expanding to `hello`, and a later `#define` could not
-  install a new value.
-- **Predefined `__*__` symbols can no longer be removed by `#undef`.**
-  `#undef __P2__` used to succeed silently, breaking every later
-  `#ifdef __P2__`. The symbol now stays defined, the build continues, and
-  `cannot undefine built-in symbol [__P2__]` is reported as a warning.
-  Symbols defined with `-D` are unaffected and can still be removed.
-- **`__VERSION__` is now available to the preprocessor.** It was previously
-  defined too late for any source to reference it. It substitutes the bare
-  version string (e.g. `1.55.3`) in the top file, in includes, and in child
-  objects. Use it inside a quoted string or with `#ifdef` — the bare dotted
-  form is not a legal Spin2 expression.
-- **`#ifdef __PNUT_TS__` is the correct test for this compiler.** Note the
-  underscore between `PNUT` and `TS`; `__PNUTTS__` is not defined and never
-  has been.
-
-## [1.55.2] 2026-08-08
+## v1.55.2 (2026-08-08)
 
 Preprocessor problems are now reported instead of silently tolerated, errors are
 emitted once as plain text on stderr, and a failed build no longer leaves output
 files behind.
 
-### ⚠️ Behavior change — some sources that build today will start failing
+### Breaking Changes
 
-Malformed preprocessor directives used to be recorded and then discarded. They
-are now errors that stop the build: a stray `#endif`, an `#ifdef` never closed, a
-directive missing its symbol, an unknown directive, or a `{Spin2_vNN}` naming a
-version this compiler does not support.
+- **BREAKING**: Malformed preprocessor directives — a stray `#endif`, an
+  unclosed `#ifdef`, a directive missing its symbol, an unknown directive, or an
+  unsupported `{Spin2_vNN}` — now stop the build as errors. They were recorded
+  and silently discarded before, so the build succeeded on the wrong lines.
 
-This is a newly *visible* restriction, not a new one. A broken conditional nest
-never produced an error you would notice — it produced a clean, successful build
-of the wrong lines. If a source of yours starts failing here, it very likely was
-not compiling what you thought it was.
+### New Features
 
-### Added
+- **Preprocessor errors and warnings** print to stderr as
+  `<filespec>:<line>:error:<message>`, matching compile errors. Every error in a
+  file is reported from one build.
+- **An unclosed `#ifdef`/`#ifndef`** reports `Expected #ENDIF` against the line
+  that opened it, instead of silently ending at EOF.
+- **A bare `#define`, `#ifdef`, `#include` or similar directive** with no
+  argument is now caught, instead of being read as a `CON` enumeration start.
+- **A failed build** removes the `.lst`, `.map`, `.flash`, `.obj` and binary it
+  would have produced, instead of leaving the previous run's stale output.
+- **`Preprocessor.md` and `CommandLine.md`** now ship in every platform
+  package, alongside `README.md`, `LICENSE` and this changelog.
 
-- **Preprocessor diagnostics are visible.** Errors and warnings go to stderr as
-  `<filespec>:<line>:error:<message>` (or `:warning:`), in source order, matching
-  the format compile errors already use. Every preprocessor error in a file is
-  reported from a single build.
-- **Unterminated conditionals are detected.** An `#ifdef`/`#ifndef` never closed
-  by `#endif` reports `Expected #ENDIF` against the line that opened it, instead
-  of quietly ending at EOF with the rest of the file's inclusion decided by a
-  block the author never finished.
-- **Directives written with no argument are caught.** Bare `#define`, `#ifdef`,
-  `#include` and friends used to be swallowed by the CON enumeration-start
-  syntax, which also begins with `#`. Valid enumeration starts are unaffected.
-- **Failed builds delete their output.** A build that fails removes the `.lst`,
-  `.map`, `.flash`, `.obj` and binary it would have produced. Previously the
-  *previous* run's binary survived with its old timestamp, so a scripted flash
-  would load stale code and you would debug a binary that did not match your
-  source. The `-i` `*__pre.spin2` dump is kept — it is diagnostic output, and
-  most useful right after a failure.
-- **The download now includes the preprocessor and command-line references.**
-  Every platform package previously carried only `README.md`, `LICENSE` and this
-  changelog; `Preprocessor.md` and `CommandLine.md` now ship alongside them, so
-  the reference material is in the folder with the binary rather than only on
-  GitHub. Both were brought current for this release: `Preprocessor.md` gains a
-  Diagnostics section describing the behavior above, and `CommandLine.md`'s help
-  transcript was regenerated — it had been missing `-m`/`--map`, `-C`/`--cache`,
-  `--cache-dir` and `--cache-clear` entirely.
+### Improvements
 
-### Fixed
+- **Preprocessor diagnostics** use PNut's exact wording — `Expected a
+  preprocessor symbol`, `Must be preceeded by #IFDEF or #IFNDEF` — so logs
+  match across compilers.
+- PNut caps preprocessor conditional nesting at 8 levels; PNut-TS deliberately
+  does not adopt that limit. Source nested deeper builds here, not under PNut.
 
-- **`#error` and `#warn` fired from conditional branches that were not taken.**
-  Neither was guarded by the branch test every other content-bearing directive
-  uses, so the documented idiom — an `#error` in the fall-through `#else` of a
-  board-selection chain — fired on *every* build regardless of which board was
-  selected.
-- **`#warn` and `#error` messages lost their first character.** `#warn hello`
-  reported `ello`, and leading indentation shifted the text further. Surrounding
-  quotes are now stripped, as the documentation always implied.
-- **An illegal `{Spin2_vNN}` compiled anyway**, silently falling back to the
-  default language level — so a source declaring a version this compiler does not
-  support was built against a different one. It is now an error, and it cites the
-  correct source line.
-- **`#include` argument errors were replaced by a vaguer message.** The specific
-  complaint — unsupported filetype, or a filename that could not be read because
-  the quotes are missing — was overwritten by a generic "Filename missing from
-  #include statement".
-- **`#pragma` with a missing symbol** reported an unsupported pragma rather than
-  naming the missing symbol.
-- **Compile errors were printed twice**, once to stdout and once to stderr. Only
-  the stderr copy is emitted now.
-- **Diagnostics no longer contain ANSI color codes.** Colorizing at the source
-  prevented editors, build wrappers and `grep` from filtering or recoloring the
-  output; that decision belongs to whatever displays the text.
+### Fixes to errors and warnings
 
-### Changed
+- **`#error`/`#warn` inside an untaken `#else` branch** fired regardless of
+  which branch was selected, so the documented board-selection idiom broke on
+  every build.
+- **`#warn`/`#error` messages** lost their first character, more with leading
+  indentation; surrounding quotes are now stripped as documented.
+- **An unsupported `{Spin2_vNN}`** compiled anyway, silently falling back to
+  the default language level. It is now an error, citing the source line.
+- **A bad `#include` argument** — unsupported filetype, or unreadable due to
+  missing quotes — reported a generic `Filename missing from #include
+  statement` instead of the specific cause.
+- **`#pragma` with a missing symbol** reported an unsupported-pragma error
+  instead of naming the missing symbol.
+- **`#undef` of a symbol that was never defined** is now a warning, not an
+  error — C specifies it as a no-op. The build continues and outputs are
+  written.
 
-- Diagnostics for directives the original PNut also has now use PNut's exact
-  wording — `Expected a preprocessor symbol`, `Must be preceeded by #IFDEF or
-  #IFNDEF`, `Expected #ENDIF` — so build logs from either compiler match the same
-  search. (The misspelling in the second is PNut's, reproduced deliberately.)
-  `#error`, `#warn`, `#include` and `#pragma` are PNut-TS extensions and keep
-  wording of their own.
-- `#undef` of a symbol that was never defined is now a **warning**, not an error
-  — C specifies it as a no-op. The build continues and artifacts are written.
-- PNut caps conditional nesting at 8 levels; PNut-TS deliberately does not adopt
-  that limit. Source nested deeper builds here and will not build under PNut —
-  see the portability note in the Preprocessor Usage Guide.
+### Fixes to reports and listings
 
-## [1.55.1] 2026-07-12
+- **Compile errors** printed twice, once to stdout and once to stderr. Only the
+  stderr copy is emitted now.
+- **Diagnostics** no longer contain ANSI color codes; colorizing at the source
+  prevented editors and `grep` from filtering the output.
+
+## v1.55.1 (2026-07-12)
 
 A debug-output fix: defining both debug pins silenced debug entirely.
 
-### Fixed
+### Fixes that change compiled output
 
-- **`DEBUG_PIN_RX` overwrote the debug transmit pin.** Because `DEBUG_PIN_RX` is
-  evaluated after `DEBUG_PIN_TX`, defining both — as production debug builds do —
-  left the compiler emitting `_txpin_ = 63` with the documented defaults
-  (`DEBUG_PIN_TX = 62`, `DEBUG_PIN_RX = 63`). The P2 transmitted on the wrong pin
-  and the host saw nothing; the known workaround was to swap the two pin values.
-  That workaround is no longer needed and should be removed. This also restores
-  the ability to set the debug RX pin at all — it was previously stuck at 63. The
-  v55 documentation was correct throughout; this was a porting error on our side.
+- **Defining both `DEBUG_PIN_TX` and `DEBUG_PIN_RX`** made the P2 transmit
+  debug output on the `DEBUG_PIN_RX` pin, so the host saw nothing; the RX pin
+  was stuck at 63. **Action:** remove any workaround that
+  swapped the two pin values.
 
-## [1.55.0] 2026-05-13
+## v1.55.0 (2026-05-13)
 
-PNut v55 support. Optimization-only at the source level — every `.spin2` file
-that compiled under v54a compiles unchanged under v55 and produces functionally
-identical output. The gain is smaller binaries: the compiler emits tighter
-bytecode for two common patterns, multi-step `++`/`--` on pointer types and
-read/write of a bitfield.
+PNut v55 support: existing `.spin2` sources compile unchanged and produce functionally identical output, with smaller binaries from two tighter bytecode patterns.
 
-### ⚠️ Breaking — interpreter ABI
+### Breaking Changes
 
-v55 bytecodes are **not compatible** with v54a/v53/v52 interpreters. Binaries
-compiled under v1.55.0 require the v55 interpreter image that ships in this
-release. Mixed-version code on the same P2 — for example dynamically downloaded
-objects — is not supported across the v54a/v55 boundary.
+- **BREAKING**: v55 bytecode is not compatible with v54a/v53/v52 interpreters.
+  A binary compiled under v1.55.0 requires the v55 interpreter image shipped in
+  this release; mixing v54a and v55 code on one P2 — for example dynamically
+  downloaded objects — is not supported.
 
-### Added
+### New Features
 
-- `{Spin2_v55}` accepted as a version directive. It admits the same source
-  surface as `{Spin2_v54}`; v55 introduces no new level-gated symbols.
+- **`{Spin2_v55}`** is accepted as a version directive, admitting the same
+  source surface as `{Spin2_v54}`; v55 introduces no new level-gated symbols.
 
-### Changed
+### Improvements
 
-- **Pointer inc/dec is one byte smaller** for step values in `[2, 33]`. Step 1 is
-  unchanged, and steps of 34 or more use the previous encoding.
-- **Bitfield reads and writes are one byte smaller.** Emission is now
-  operation-aware, so a bitfield access no longer needs a trailing read/write
-  byte. Compound assignments (`+=`, `~~`, and friends) are unchanged from v54a.
-- **The interpreter image was rebuilt for v55** and grew by 68 bytes to make room
-  for the expanded dispatch table.
-- **A structure-member error message got more specific:** "Structure does not
-  contain this BYTE/WORD/LONG/STRUCT name", replacing the generic "Structure does
-  not contain this name". This follows the v54 addition of struct-typed struct
-  members.
+- **Pointer `++`/`--` with a step in `[2, 33]`** encodes one byte smaller. Step
+  1 is unchanged; steps of 34 or more keep the previous encoding.
+- **Direct bitfield reads and writes are one byte smaller;** emission is now
+  operation-aware. Compound assignments (`+=`, `~~`) are unchanged.
+- **The v55 interpreter image** grew by 68 bytes over v54a's, for the expanded
+  dispatch table.
+- **A struct-member error** now names which field type is missing
+  (`BYTE`/`WORD`/`LONG`/`STRUCT`), instead of a generic "does not contain this
+  name" message.
 
-## [1.54.7] 2026-05-09
+## v1.54.7 (2026-05-09)
 
-The real fix for the object-cache failures seen in the SD FAT32 driver suite —
-the one v1.54.5 and v1.54.6 did not deliver. If you have seen `Invalid object
-image found for file: <name>`, run `--cache-clear` once after upgrading.
+Cached `-d` builds no longer fail with `Invalid object image found` or lose nested objects' debug records.
 
-### Fixed
+### Fixes that change compiled output
 
-- **A cached object could be patched with stale debug references, corrupting the
-  binary.** When the compiler recompiles a Spin block to settle its length, the
-  debug-reference bookkeeping from the discarded attempts was never dropped. On a
-  later cache hit those obsolete references rewrote the wrong bytes in the cached
-  binary, and the parent's compile rejected the result as `Invalid object image
-  found for file: <child>`.
-- **A cached object could lose its grandchildren's debug records.** Only records
-  the child itself referenced were saved. Records contributed by objects *it*
-  pulled in were not, so a cache hit produced a top-level binary 100–200 bytes
-  shorter than a fresh compile — the compile succeeded, but the debug data was
-  incomplete.
+- **A `-d` build with `--cache` reusing an object whose children contribute
+  `debug()` records** came out 100–200 bytes short of a fresh compile, missing
+  those records. Builds without `--cache` were unaffected.
 
-Both fixes affect what is stored in cache entries, not the on-disk format.
-Entries written by v1.54.6 remain readable and are upgraded the first time they
-are rewritten, but a one-time `--cache-clear` is the fastest way past an existing
-`Invalid object image` failure.
+### Fixes to errors and warnings
 
-### A note on v1.54.5 and v1.54.6
+- **A `-d` build with `--cache` reusing an object that contains `debug()`** could
+  fail with `Invalid object image found for file: <name>`. Builds without
+  `--cache` were unaffected. **Action:** run `pnut-ts --cache-clear` once after
+  upgrading.
 
-Those two releases fixed real defects, but neither was the cause of the SD FAT32
-failures — that suite does not use the `#pragma exportdef` propagation they
-addressed. If you upgraded twice chasing this bug and it persisted, that is why.
-The v1.54.5 and v1.54.6 fixes are kept: the problems they solve are genuine for
-projects that do lean on propagated `#pragma exportdef`.
+## v1.54.6 (2026-05-09)
 
-## [1.54.6] 2026-05-09
+A `--cache` build could fail with `Invalid object image found` when a cached
+object's descendants exported `#pragma exportdef` symbols.
 
-Third fix in the object-cache series: symbols exported by a cached object's own
-dependencies stopped reaching the objects compiled after it.
+### Fixes to errors and warnings
 
-### Fixed
+- **A `--cache` build reusing an object whose descendants export `#pragma
+  exportdef`** could fail with `Invalid object image found`. Builds without
+  `--cache` were unaffected; cached entries from earlier versions are
+  invalidated automatically.
 
-- **A cache hit could drop `#pragma exportdef` symbols contributed deeper in the
-  tree.** When a cached object is reused, the objects beneath it are never
-  preprocessed, so any symbol they would have exported never lands. The next
-  object compiled then preprocesses against an incomplete symbol set and comes
-  out structurally different from a cold build. In the SD FAT32 driver suite this
-  surfaced as `Invalid object image found for file: isp_rt_utilities.spin2` on 9
-  of 24 harnesses — specifically the ones that ran *after* the cache was
-  populated. Cache entries now carry the symbols their subtree exported and
-  replay them on a hit. Entries from earlier versions are invalidated
+## v1.54.5 (2026-05-08)
+
+A `--cache` build could fail with `Invalid object image found` when two
+objects exported different `#pragma exportdef` symbols to a shared child.
+
+### Fixes to errors and warnings
+
+- **Two objects using `--cache` that exported different `#pragma exportdef`
+  symbols to a shared child** could fail with `Invalid object image found`.
+  Builds without `--cache` were unaffected; cached entries from earlier
+  versions are invalidated automatically.
+
+## v1.54.4 (2026-05-08)
+
+A `-d` build with `--cache` reusing a `debug()`-calling child compiled under a
+different parent could print the wrong text at runtime.
+
+### Fixes that change compiled output
+
+- **A `-d` build with `--cache` reusing a `debug()`-calling child under a
+  different parent** printed the wrong `debug()` text at runtime. Same-parent
+  recompiles were unaffected; earlier cache entries are invalidated
   automatically.
 
-## [1.54.5] 2026-05-08
+## v1.54.3 (2026-05-08)
 
-Second fix in the object-cache series: two parents exporting different symbols
-could share one cache entry.
+A `-d` build with `--cache` reusing an object containing `debug()` calls could
+print the wrong text at runtime.
 
-### Fixed
+### Fixes that change compiled output
 
-- **The cache did not distinguish builds that differed only by propagated
-  `#pragma exportdef` symbols.** If the immediate child's own source did not test
-  those symbols, its cache key was identical in both contexts — but objects
-  *below* that child did test them, and compiled to different bytes. The cache
-  handed one parent's object into the other parent's build, with silently wrong
-  code embedded inside it. In the SD FAT32 driver suite this appeared as `Invalid
-  object image found for file: isp_stack_check.spin2`. Symbols reaching a build
-  from `-D` flags *and* from an ancestor's `#pragma exportdef` are now part of the
-  cache key. Entries from earlier versions are invalidated automatically.
+- **A `-d` build with `--cache` reusing an object containing `debug()`
+  calls** printed the wrong `debug()` text. Builds without `--cache` were
+  unaffected; entries from earlier versions are invalidated automatically.
 
-## [1.54.4] 2026-05-08
+## v1.54.2 (2026-05-06)
 
-Second attempt at the garbled-`debug()`-from-cache problem: v1.54.3's fix held
-only while the same parent rebuilt the object.
+A `--cache` build mixing `--debug` and non-debug compiles could return a
+binary that would not run, and `--map` showed cached objects without their
+symbols.
 
-### Fixed
+### Fixes that change compiled output
 
-- **`debug()` output from a cached object was still garbled when a different
-  parent compiled it.** Restored debug records landed at new positions, but the
-  references baked into the cached binary still pointed at the old ones, so
-  `debug()` calls printed whichever format string happened to occupy the slot.
-  This showed up once several test harnesses shared a warm cache. Debug
-  references inside a cached binary are now rewritten to match wherever the
-  records actually land, and the object's checksum is recomputed so the loader
-  still accepts the image. Entries from earlier versions are invalidated
-  automatically.
+- **A `--cache` build mixing `--debug` and non-debug compiles** could hand
+  back a binary that would not run. Single-mode builds were unaffected;
+  entries from earlier versions are invalidated automatically.
 
-## [1.54.3] 2026-05-08
+### Fixes to reports and listings
 
-First attempt at garbled `debug()` output from cached objects.
+- **`--map` on a build with a `--cache` hit** showed a reused object without
+  its methods, DAT or VAR layout. A cold build's map was unaffected.
 
-### Fixed
+## v1.54.1 (2026-05-05)
 
-- **`debug()` output from a cached object printed the wrong text.** Every
-  `debug()` call compiles to a reference into a table the compiler rebuilds from
-  scratch each run. v1.54.2 stopped debug and non-debug binaries from aliasing,
-  but the table contents themselves were never saved, so a reused object's
-  references pointed at unrelated entries — format strings printing the wrong
-  values, loop counters appearing under the wrong label. Cache entries now carry
-  the records the object contributed, and a cache hit reproduces a binary
-  identical to a fresh compile. A cache entry missing that data during a
-  `--debug` build is now a clear error rather than a silently broken binary.
-  Entries from earlier versions are invalidated automatically.
+`--cache-clear` now works and reports what it cleared when run without a
+source file to compile.
 
-## [1.54.2] 2026-05-06
+### Fixes to reports and listings
 
-### Fixed
+- **`pnut-ts --cache-clear` without a source file**, with or without
+  `--cache-dir`, cleared nothing and printed nothing. `--cache-clear` given
+  alongside a source file was unaffected.
+- **`--cache-clear`** no longer clears silently; it prints `Cleared object
+  cache: <path>`.
 
-- **Mixing `--debug` and non-debug builds against one cache could produce a
-  binary that would not run.** The cache did not distinguish the two, so a
-  stripped object could be returned into a debug build or vice versa. Entries
-  from earlier versions are invalidated automatically.
+## v1.54.0 (2026-04-23)
 
-### Added
+PNut v54 language support: STRUCT members can carry named bitfields, a
+nameless single bitfield member, and `{Spin2_v54}` as a version directive.
 
-- **`--map` now describes cached objects properly.** Cache entries carry the
-  object's symbols, so a reused object appears in the map with its methods, DAT
-  and VAR layout intact instead of coming up bare. Builds that do not request a
-  map pay nothing for this.
+### New Features
 
-## [1.54.1] 2026-05-05
+- **Named bitfields on STRUCT `BYTE`/`WORD`/`LONG` members**:
+  `STRUCT s(LONG flags.ready[0].count[15..8])`, used as `v.flags.ready := 1`,
+  as in PNut v54.
+- **Nameless single `BYTE`/`WORD`/`LONG` STRUCT member**:
+  `STRUCT t(LONG.ready[0])`, allowing direct bitfield access as
+  `v.ready := 1`.
+- **`{Spin2_v54}`** is accepted as a version directive; like PNut v54, it is
+  accepted unconditionally rather than gating any syntax.
 
-### Fixed
+## v1.53.4 (2026-04-03)
 
-- `--cache-clear` now works when no source file is given — `pnut-ts --cache-clear`
-  and `pnut-ts --cache-clear --cache-dir <dir>` previously did nothing at all,
-  because the clear was skipped whenever compilation did not start.
-- `--cache-clear` now reports what it cleared: `Cleared object cache: <abs-path>`.
+The object cache can live in a directory of your choosing.
 
-## [1.54.0] 2026-04-23
-
-PNut v54 language support: STRUCT members can now carry named bitfields.
-
-### Added
-
-- **Named bitfields on STRUCT `BYTE`/`WORD`/`LONG` members** —
-  `STRUCT s(LONG flags.ready[0].count[15..8])`, used as `v.flags.ready := 1`
-  (PNut v54 parity).
-- **Nameless single `BYTE`/`WORD`/`LONG` STRUCT member** — `STRUCT t(LONG.ready[0])`,
-  allowing direct bitfield access as `v.ready := 1`.
-- `{Spin2_v54}` accepted as a version directive. Like PNut v54, it is accepted
-  unconditionally rather than gating any syntax.
-
-## [1.53.4] 2026-04-03
-
-### Added
+### New Features
 
 - **`--cache-dir <dir>`** places the object cache somewhere other than
-  `.pnut-cache` in the current directory. Pointing every build at one shared
-  cache folder maximizes hits when you compile from several source directories —
-  most noticeable across a multi-suite test run.
+  `.pnut-cache` in the current directory; one shared folder maximizes hits when
+  you compile from several source directories.
 
-## [1.53.3] 2026-04-03
+## v1.53.3 (2026-04-03)
 
-### Added
+A persistent object cache skips recompiling unchanged child objects, and `-d` listings show how much DEBUG capacity a program uses.
 
-- **Persistent object cache** (`--cache`, `--cache-clear`) skips recompiling
-  child objects whose inputs have not changed. Entries are keyed on the
-  preprocessed source, parameter overrides and compiler version, so a stale
-  result is never reused. The payoff is largest on big projects and test suites
-  where many parents share the same children.
-- **Listing files now show DEBUG capacity usage** when compiling with `-d`:
-  record count against the 255 maximum and data bytes against the 15872 maximum,
-  each with a percentage — so you can see how close you are to the limit before
-  you hit it.
+### New Features
 
-## [1.53.2] 2026-03-20
+- **`--cache` and `--cache-clear`**: a persistent object cache skips
+  recompiling child objects whose preprocessed source, parameter overrides and
+  compiler version are unchanged.
+- **DEBUG capacity in `-d` listings**: record count against the 255 maximum
+  and data bytes against the 15872 maximum, each as a percentage.
 
-### Fixed
+## v1.53.2 (2026-03-20)
 
-- **The compiler could exit with status 0 after failing.** Compilation errors,
-  missing files and bad options all had paths that reported success, which
-  quietly broke CI pipelines and build scripts. Every error path now exits
+A failed compile exits with a non-zero status and leaves no stray `.obj` behind.
+
+### Fixes to errors and warnings
+
+- **A compile error, a missing file or a bad option** could still exit with
+  status 0, so build scripts and CI saw success. Every error path now exits
   non-zero.
-- A 53-byte `.obj` file was written when compilation failed, even without `-O`.
+- **A failed compile without `-O`** wrote a 53-byte `.obj` file anyway.
 
-## [1.53.1] 2026-03-19
+## v1.53.1 (2026-03-19)
 
-### Fixed
+`-I` accepts an absolute include path.
 
-- **`-I` with an absolute path** (for example `-I /home/user/projects/library`)
+### Fixes to errors and warnings
+
+- **`-I` with an absolute path**, such as `-I /home/user/projects/library`,
   failed to find `.spin2` files there.
 
-## [1.53.0] 2026-03-11
+## v1.53.0 (2026-03-11)
 
-PNut v53 support. Compatible with PNut_v53.exe.
+PNut v53 support, compatible with PNut_v53.exe, adding `OFFSETOF` and extensionless filenames on the command line.
 
-### Added
+### New Features
 
-- **`OFFSETOF(struct.member)`** — compile-time function returning a member's byte
-  offset within a structure definition (PNut v53 parity).
-- `{Spin2_v53}` accepted as a version directive.
-- **A filename may be given without its `.spin2` extension**, resolving to the
-  `.spin2` file if one exists in the current directory.
+- **`OFFSETOF(struct.member)`**: a compile-time function returning a member's
+  byte offset within a structure definition, as in PNut v53.
+- **`{Spin2_v53}`** is accepted as a version directive.
+- **A filename without its `.spin2` extension** resolves to the `.spin2` file
+  if one exists in the current directory.
 
-### Fixed
+### Fixes to errors and warnings
 
-- **`{Spin2_v##}` went undetected when a blank line separated it from the header
-  comments**, silently defaulting the file to v41 — so `STRUCT`, `SIZEOF` and
-  other later keywords came back as unrecognized in a file that plainly declared
-  its version.
-- **An inline `{...}` comment ate the first character after its closing brace**,
-  so `long {old_value}$FF0000` produced a cryptic "Undefined symbol" error.
-- **A version-gated keyword used without the required version** now reports
-  `"STRUCT" requires {Spin2_v45} or later` instead of the misleading
+- **A `{Spin2_v##}` separated from the header comments by a blank line** went
+  undetected, so the file defaulted to v41 and `STRUCT`, `SIZEOF` and other
+  later keywords were rejected as unrecognized.
+- **An inline `{...}` comment directly followed by a value**, as in
+  `long {old_value}$FF0000`, lost the value's first character and failed with
+  "Undefined symbol".
+- **A version-gated keyword used without the required version** reports
+  `"STRUCT" requires {Spin2_v45} or later` instead of
   `Expected "=" "[" "," or end of line`.
-- CASE block parsing now validates the colon token rather than accepting any
-  element in its place.
+- **A `CASE` block with something other than a colon after a match value** is
+  rejected; any element used to be accepted in the colon's place.
 
 ## [1.52.2] 2026-02-26
 
