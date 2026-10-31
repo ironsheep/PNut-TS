@@ -536,47 +536,26 @@ export class SpinDocument {
       let insertTextLines: TextLine[] = [];
       let currLine = this.rawLines[lineIdx];
       this.logMessage(`SpinPP: currLine[${lineIdx}]: [${currLine}](${currLine.length})`);
-      if (/^\s*'/.test(currLine)) {
+      if (this.inNonDocComment) {
+        // continuing a '{..' non-doc comment opened on an earlier line. Tested before the
+        // tick test: inside a brace comment a leading tick is comment text, not a line
+        // comment, so a '}' after it still closes (PNut p2com.asm @@bcom3).
+        if (/^\s*'/.test(currLine)) {
+          this.recordComment(currLine, lineIdx);
+        }
+        const [tmpLine, depth, enteredDocComment] = this.blankNonDocComments(currLine, this.nonDocNestCount);
+        this.nonDocNestCount = depth;
+        this.inNonDocComment = depth > 0;
+        this.inDocComment = enteredDocComment;
+        // whatever follows the closing '}' is source, as in PNut -- emit it
+        currLine = tmpLine.trimEnd();
+        if (currLine.trim().length == 0) {
+          this.logMessage(`SpinPP: IN-{: Line is comment [${this.rawLines[lineIdx]}]`);
+          skipThisline = true; // is comment but let's skip emitting it
+        }
+      } else if (/^\s*'/.test(currLine)) {
         // have single line non-doc (') or doc ('') comment
         this.recordComment(currLine, lineIdx);
-        // check for nonDoc comments (generally looking for '} patterns) in single line comment (only if already in nonDoc Comment)
-        if (this.inNonDocComment) {
-          const openCt: number = currLine.split('{').length - 1;
-          const closeCt: number = currLine.split('}').length - 1;
-          const nbrCloses = closeCt - openCt;
-          this.nonDocNestCount -= nbrCloses;
-          // if we clsoed nonDoc the clear inNonDoc state
-          this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-          this.logMessage(`SpinPP: ': depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`);
-        }
-      } else if (this.inNonDocComment) {
-        // handle  {..\n{\n..}\n..}
-        const tmpLine = this.removeNonDocComments(currLine);
-        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
-        const openCt: number = tmpLine.split('{').length - 1;
-        if (openCt > 0) {
-          this.nonDocNestCount += openCt;
-        }
-        const closeCt: number = tmpLine.split('}').length - 1;
-        if (closeCt > 0) {
-          this.nonDocNestCount -= closeCt;
-        }
-        const wasInNonDocComment: boolean = this.inNonDocComment;
-        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-        this.logMessage(
-          `SpinPP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
-        );
-        if (wasInNonDocComment) {
-          // entire line is within open but no close...
-          this.logMessage(`SpinPP: IN-{: Line is comment [${currLine}]`);
-          skipThisline = true; // is comment but let's skip emitting it
-        } else {
-          this.logMessage(`SpinPP: IN-{: comment ended [${currLine}]`);
-          currLine = tmpLine.trimEnd();
-          if (currLine.length == 0) {
-            skipThisline = true;
-          }
-        }
       } else if (this.inDocComment) {
         // handle {{..}}
         const docClosePosn: number = currLine.indexOf('}}');
@@ -907,32 +886,21 @@ export class SpinDocument {
         // starting a line with a non-doc comment, could be one of many cases...
         // if we are positioned at the start of a '{.{..}.}' non-doc comment then skip lines until
         // NOTE: handle case where {..}{..} (the nondoc-comments are back to back with/without spaces in-between)
-        const tmpLine = this.removeNonDocComments(currLine);
-        // once this runs... we only have "{...[{...]" or "...}[...}], etc."
-        const openCt: number = tmpLine.split('{').length - 1;
-        if (openCt > 0) {
-          this.nonDocNestCount += openCt;
-        }
-        const closeCt: number = tmpLine.split('}').length - 1;
-        if (closeCt > 0) {
-          this.nonDocNestCount -= closeCt;
-        }
-        this.inNonDocComment = this.nonDocNestCount == 0 ? false : true;
-        this.logMessage(
-          `SpinPP: SRT-{: tmpLine=[${tmpLine}], openCt=(${openCt}), closeCt=(${closeCt}), depth=(${this.nonDocNestCount}), isNonDocCmt=(${this.inNonDocComment})`
-        );
+        const [tmpLine, depth, enteredDocComment] = this.blankNonDocComments(currLine, 0);
+        this.nonDocNestCount = depth;
+        this.inNonDocComment = depth > 0;
+        this.inDocComment = enteredDocComment;
         if (this.gatheringHeaderComment) {
           this.logMessage(`SpinPP: hdrCmt++[${currLine}]`);
           this.headerComments.push(new TextLine(this.fileId, currLine, lineIdx));
         }
-        if (this.inNonDocComment) {
-          // entire line is within open but no close...
-          this.logMessage(`SpinPP: STRT-{: Line is comment [${currLine}]`);
-          skipThisline = true; // is comment but let's skip emitting it
-        } else {
-          this.logMessage(`SpinPP: STRT-{: comment ended with } [${currLine}]`);
-          currLine = tmpLine.trimEnd();
-          if (currLine.length == 0) {
+        // source outside the comment(s) is emitted, even when a comment stays open past EOL
+        currLine = tmpLine.trimEnd();
+        if (currLine.trim().length == 0) {
+          if (this.inNonDocComment) {
+            this.logMessage(`SpinPP: STRT-{: Line is comment [${this.rawLines[lineIdx]}]`);
+            skipThisline = true; // is comment but let's skip emitting it
+          } else {
             continue;
           }
         }
@@ -1003,6 +971,16 @@ export class SpinDocument {
         // logs across both compilers gets the same hits.
         this.reportError(`Expected #ENDIF`, unclosedLevel.openingLineIndex, eDiagnosticSeverity.DS_FATAL);
       }
+    }
+
+    // A '{' comment still open at EOF swallowed every line after it. PNut stops here
+    // with 'Expected "}"' at the END OF FILE (REF-V52A/p2com.asm @@error_bcom2 ->
+    // error_erb, pointer left at EOF; Windows GOLD pperr_unterminated_brace_comment).
+    // This pass skips comment lines, so the elementizer never reaches EOF inside the
+    // comment to say so -- report it here. The last rawLines entry is PNut's EOF line:
+    // the empty entry after a trailing newline, else the final line itself.
+    if (this.inNonDocComment) {
+      this.reportError(`Expected "}"`, this.rawLines.length - 1, eDiagnosticSeverity.DS_FATAL);
     }
 
     // Every diagnostic has already been written to stderr as it was detected, so
@@ -1090,90 +1068,63 @@ export class SpinDocument {
     return substitutedLine;
   }
 
-  private removeNonDocComments(currLine: string): string {
-    // Replace any inline non-doc comments with spaces, ignoring { and } inside double-quoted strings
-    let nonCommentLine = currLine;
-    // eslint-disable-next-line prefer-const
-    let bShouldLog = false; // true when testing
-
-    if (currLine.length > 1 && currLine.includes('{')) {
-      this.logMessage(`SpinPP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
-      this.logMessageConditional(bShouldLog, `SpinPP: rmvNDC() currLine [${currLine}](${currLine.length}) - ENTRY`);
-
-      let loopCt = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        //bShouldLog = loopCt < 20; // uncomment when testing
-
-        // Stack to track positions of `{` and `}`
-        const stack: number[] = [];
-        let deepestOpenPosn = -1;
-        let matchingClosePosn = -1;
-        let insideString = false; // Track whether we are inside a double-quoted string
-
-        // Iterate through the line to find the innermost `{}` pair
-        for (let i = 0; i < nonCommentLine.length; i++) {
-          const char = nonCommentLine[i];
-
-          // Toggle insideString flag when encountering a double quote
-          if (char === '"' && (i === 0 || nonCommentLine[i - 1] !== '\\')) {
-            insideString = !insideString;
-          }
-
-          // Skip processing if inside a double-quoted string
-          if (insideString) {
-            continue;
-          }
-
-          if (char === '{') {
-            stack.push(i); // Push the position of `{` onto the stack
-          } else if (char === '}') {
-            if (stack.length > 0) {
-              // Pop the last `{` position from the stack
-              deepestOpenPosn = stack.pop()!;
-              matchingClosePosn = i;
-            }
-          }
+  private blankNonDocComments(line: string, depthIn: number): [string, number, boolean] {
+    // Blank every '{..}' non-doc comment character on this line, starting at nesting depth
+    // depthIn (> 0 when the line begins inside a comment opened on an earlier line).
+    // Returns [blanked line, depth at end of line, entered a doc comment].
+    //
+    // The rules are PNut's own elementizer (REF-V52A/p2com.asm:8450-8582), the same ones
+    // spinElementizer applies -- this scan must agree with it or lines go missing:
+    //  - inside a non-doc comment ONLY '{' and '}' matter: they nest, and every other
+    //    character -- a tick, a quote -- is comment text.
+    //  - outside a comment a tick starts a line comment: the rest of the line is NOT
+    //    scanned, so braces after it ('  ' $2f: += {[') open and close nothing.
+    //  - outside a comment a double-quoted string runs to the next '"' (no escapes), and
+    //    braces inside it are string text.
+    //  - an unmatched '}' outside a comment is left in place: the elementizer reports it
+    //    with PNut's wording. Depth never goes negative.
+    //  - '{{' outside a comment opens a doc comment, closed by the first '}}' (no nesting).
+    //    Closed on this line, it is blanked; left open, the text is kept for the
+    //    elementizer, which handles a multi-line doc comment itself.
+    let depth: number = depthIn;
+    let enteredDocComment: boolean = false;
+    let insideString: boolean = false;
+    const chars: string[] = line.split('');
+    for (let i = 0; i < chars.length; i++) {
+      const char: string = chars[i];
+      if (depth > 0) {
+        if (char === '{') {
+          depth++;
+        } else if (char === '}') {
+          depth--;
         }
-
-        this.logMessageConditional(
-          bShouldLog,
-          `SpinPP: rmvNDC() loop (#${++loopCt}) deepestOpen=(${deepestOpenPosn}), matchingClose=(${matchingClosePosn})`
-        );
-
-        // Break if no more `{}` pairs are found
-        if (deepestOpenPosn === -1 || matchingClosePosn === -1) {
+        chars[i] = ' ';
+      } else if (insideString) {
+        insideString = char !== '"';
+      } else if (char === '"') {
+        insideString = true;
+      } else if (char === "'") {
+        break; // line comment: the rest of the line is comment text
+      } else if (char === '{' && chars[i + 1] === '{') {
+        const docClosePosn: number = line.indexOf('}}', i + 2);
+        if (docClosePosn === -1) {
+          enteredDocComment = true;
           break;
         }
-
-        // Replace the innermost comment block with spaces
-        nonCommentLine = this.replaceSubstringWithSpaces(nonCommentLine, deepestOpenPosn, matchingClosePosn + 1);
-      }
-
-      if (currLine !== nonCommentLine) {
-        this.logMessage(`SpinPP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
-        this.logMessage(`SpinPP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
-        this.logMessageConditional(bShouldLog, `SpinPP: rmvNDC()       currLine [${currLine}](${currLine.length})`);
-        this.logMessageConditional(bShouldLog, `SpinPP: rmvNDC() nonCommentLine [${nonCommentLine}](${nonCommentLine.length})`);
+        for (let j = i; j < docClosePosn + 2; j++) {
+          chars[j] = ' ';
+        }
+        i = docClosePosn + 1;
+      } else if (char === '{') {
+        depth = 1;
+        chars[i] = ' ';
       }
     }
-
-    return nonCommentLine;
-  }
-
-  private replaceSubstringWithSpaces(line: string, startIdx: number, endIdx: number): string {
-    let spacedLine = line;
-    const bShoudLog: boolean = false; // TRUE when testing
-    const badText: string = line.substring(startIdx, endIdx);
-    const replaceText: string = ''.padEnd(badText.length, ' ');
-    this.logMessage(`SpinPP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})[${badText}]`);
-    this.logMessageConditional(bShoudLog, `SpinPP: REPL string [${line}](${line.length}) - (s:${startIdx}-e:${endIdx})[${badText}]`);
-    if (badText.length > 0 && badText.length <= line.length) {
-      spacedLine = line.replace(badText, replaceText);
-      this.logMessage(`SpinPP: REPL    new [${spacedLine}](${spacedLine.length})`);
-      this.logMessageConditional(bShoudLog, `SpinPP: REPL    new [${spacedLine}](${spacedLine.length})`);
+    const blankedLine: string = chars.join('');
+    if (blankedLine !== line) {
+      this.logMessage(`SpinPP: blankNDC() depth (${depthIn})->(${depth}) [${line}] -> [${blankedLine}]`);
     }
-    return spacedLine;
+    return [blankedLine, depth, enteredDocComment];
   }
 
   private commentOut(line: string): string {

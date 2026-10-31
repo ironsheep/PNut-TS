@@ -1,0 +1,44 @@
+'' Braces inside a ' line comment open and close nothing -- PNut stops scanning the
+'' line at the tick (REF-V52A/p2com.asm @@com2). Reported against v1.55.8 with a
+'' keyboard table whose trailing comments named the {[ and }] keys: every line that
+'' began with a {..} comment and carried a brace after its tick was miscounted, and
+'' the rows between were silently dropped from the image.
+''
+'' Every word below must reach the image; $EEEE is the end marker.
+
+DAT
+                org
+
+kbd_table ' Index is the key scan code
+{$20} word $2333, $2434, $2535, $5E36, $2637, $2A38, $2839, $2930     ' $27: #3 $4 %5 ^6 &7 *8 (9 )0
+{$28} word $0D0D, $1B1B, $0808, $0909, $2020, $5F2D, $2B3D, $7B5B     ' $2f: Enter Esc BkSpc Tab Spc _- += {[
+{$30} word $7D5D, $7C5C, $7E23, $3A3B, $2227, $7E60, $3C2C, $3E2E     ' $37: }] |\ ~# :; "' ~` <, >.
+{$38} word $3F2F, $3939, $3A3A, $3B3B, $3C3C, $3D3D, $3E3E, $3F3F     ' $3f: ?/ CapsLock F1 F2 F3 F4 F5 F6
+
+' a lone open brace after the tick
+{a1}            word    $A111   ' {
+                word    $A222
+
+' a lone close brace after the tick
+{b1}            word    $B111   ' }
+                word    $B222
+
+' doc-comment braces after the tick
+{c1} {c2}       word    $C111   ' {{ }
+                word    $C222
+
+' braces inside a string are string text, not a comment
+{d1}            byte    "{", 0  ' }
+                byte    "}", 0
+
+' code after the brace that closes a multi-line comment is source
+{ a comment
+  over two lines } word $E111
+                word    $E222
+
+' inside a brace comment a tick is comment text, so the brace after it still closes
+{ a comment
+' } word $F111
+                word    $F222
+
+                word    $EEEE

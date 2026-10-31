@@ -1,0 +1,6 @@
+'' a '{' comment never closed is an error at end of file (as PNut reports it), never a silently empty image
+CON
+  VALUE = 1
+{ this comment is never closed
+PUB main()
+  repeat

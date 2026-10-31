@@ -119,7 +119,7 @@
       "covers": [
         "cli"
       ],
-      "verified": "1.55.8"
+      "verified": "1.55.9"
     },
     "CHANGELOG.md": {
       "class": "shipped",
@@ -132,7 +132,7 @@
       "covers": [
         "cli"
       ],
-      "verified": "1.55.8",
+      "verified": "1.55.9",
       "note": "Help transcript is pasted from the shipping build \u2014 regenerate, do not hand-edit"
     },
     "Preprocessor.md": {
@@ -141,7 +141,7 @@
         "preprocessor",
         "diagnostics"
       ],
-      "verified": "1.55.8"
+      "verified": "1.55.9"
     },
     "BUILD-RUN.md": {
       "class": "process",

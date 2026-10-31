@@ -4,6 +4,25 @@ All notable changes to the "Pnut - A reimplementation in TypeScript" are documen
 
 Versions are numbered `Major.PNutVersion.Patch`: the middle number is the PNut language version a release tracks (1.55.x tracks PNut v55), and the last number is ours, reset to 0 when PNut advances. New features can arrive in a patch release.
 
+## v1.55.9 (2026-10-31)
+
+Braces inside comments and strings are read as PNut reads them, so no source line is lost from the build.
+
+### Fixes that change compiled output
+
+- **`{` or `}` in a `'` comment or string, on a line starting with `{…}` in
+  column 1,** dropped source lines, or raised a spurious
+  `"}" must be preceeded by "{"`. Other lines were unaffected.
+- **Source after the `}` closing a multi-line `{…}` comment begun in column 1**
+  was left out of the build; PNut compiles it. Comments ending their line were
+  unaffected.
+
+### Fixes to errors and warnings
+
+- **An unclosed `{` comment opened in column 1** built an empty or truncated
+  image or gave an unrelated error, instead of PNut's `Expected "}"` at end of
+  file.
+
 ## v1.55.8 (2026-09-17)
 
 The `.map` file is rewritten around images and instances, compile-time math and string literals match PNut exactly, and every text output the compiler writes is complete when it exits.
