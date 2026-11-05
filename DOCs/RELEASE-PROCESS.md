@@ -18,44 +18,31 @@ Complete all items before packaging a release.
 npm run build && npm test
 ```
 
-### 2. Code Coverage Verification
+### 2. Code Coverage (maintainer step, not a release gate)
 
-Ensure coverage has not regressed from the baseline.
+Coverage is a maintainer tool. It is **not a release blocker**, and no release is held for it (Stephen, 2026-09-17).
 
-> **Cadence — Stephen, 2026-09-17. This step is NOT a per-release blocker, and a
-> release is not held for it.** Coverage is refreshed **with each PNut parity
-> release**, and separately it is sometimes run as an *instrument* — to find
-> where the regression suite is thin and then extend it, which is its own piece
-> of work rather than a release gate.
->
-> So: an **interim coverage update is owed** after v1.55.8, on its own schedule.
-> Do not re-open the question at each release, and do not block a release on the
-> percentages below.
->
-> The thresholds in this section are also **not currently meetable** — see punch
-> list §19. Read them as the standing target, not as a gate that passed.
+Run it:
+- at each PNut-parity release, and
+- when you are looking for thin spots in the regression suite, so you can extend it.
 
-- [ ] Run coverage setup: `npm run cov-setup`
-- [ ] Run coverage: `npm run coverage`
-- [ ] Verify coverage meets or exceeds baseline:
-  - Statements: >= 88%
-  - Branches: >= 84%
-  - Functions: >= 86%
-- [ ] Run coverage teardown: `npm run cov-teardown`
+- [ ] At a PNut-parity release, run `npm run coverage`, then `npm run coverage -- --check`.
 
 ```bash
-npm run cov-setup
-npm run coverage
-# Review coverage report in jest-coverage/lcov-report/index.html
-npm run cov-teardown
+npm run coverage              # builds, then measures the gated suite (about 40 minutes)
+npm run coverage -- --check   # exit 0 when every unexecuted line is on the review list
 ```
 
-**Coverage Baseline (v1.51.x):**
-| Metric | Baseline | Current |
-|--------|----------|---------|
-| Statements | 88.1% | ____% |
-| Branches | 84.06% | ____% |
-| Functions | 86.8% | ____% |
+Read the `--check` exit code as follows:
+
+| Exit | Meaning |
+|---|---|
+| 0 | Clean. Every unexecuted compiler line is on the local review list. |
+| 1 | At least one unexecuted line is not on the review list. Review it, or add a test that executes it. |
+| 2 | Not evaluable. The local review list is absent. Expected on a checkout without it, and not a failure. |
+| 3 | Hard error: a failing test, a changed build, or an unreadable dump. Fix the cause and measure again. |
+
+The measurement is written to `PROCESS/coverage/Regression-Coverage-Baseline.md`. That report is the record. This document carries no coverage percentages.
 
 ### 3. Error Code Audit
 

@@ -18,7 +18,6 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
 | 6 | GOLD-regen workflow cleanup | no | open — only 6.2 (EXCEPT errout format) left; 6.4 closed by the Windows regen and archived 2026-09-19 |
 | 10 | Language-spec extraction pipeline | no | open — measured 2026-09-17, Stephen's decision (repair vs retire) |
-| 19 | Coverage gate unmeetable | no | open |
 
 ---
 
@@ -318,44 +317,6 @@ A general principle worth adopting: any GOLD that PNut (Pascal) cannot
 produce must come with a documented "how to refresh this" recipe in the
 test file's header, or it doesn't belong in the suite.
 
-## 19. `RELEASE-PROCESS.md` coverage gate cannot be met (added 2026-09-13)
-
-> **Compiled output: no** — release-process gate. Its one failure
-> (`coverage_003_v44` under the coverage-mode `ALLCODE-tests` harness) was
-> §6.6, a stale-test-list defect, **fixed 2026-09-17** (not a GOLD or
-> compiler problem). The threshold-vs-current-numbers gap below is
-> unaffected by that fix and is still open — it needs Stephen's decision
-> (see the dispatch report options), not code.
-
-§2 of the release checklist requires Statements >= 88%, Branches >= 84%,
-Functions >= 86% — a baseline labelled v1.51.x. No 1.55.x release has met it:
-the committed report (`jest-coverage/`, last refreshed at v1.55.0) reads
-84.08 / 75.55 / 80.87, and the v1.55.6 run measured 83.76 / 76.29 / 80.66 — the
-same level. A gate every release passes by being ignored is not a gate.
-`RELEASE-PROCESS.md` therefore stays `verified: 1.55.5` in the manifest.
-
-`ALLCODE-tests` `coverage_003_v44.spin2` (listing, object and binary
-mismatch) — the version-forced file of §6.6 — was the coverage run's one
-*test* failure; it is now fixed (§6, above) and does not bear on the
-percentage gap below.
-
-**Fix:** re-baseline the table from a current run (or state the rule as "no
-worse than the last release's committed report"). §6.6 no longer blocks
-this — Stephen still needs to choose which form the rule takes; see the
-options in the dispatch report for task «#72».
-
-> **Partly answered, Stephen 2026-09-17 — the CADENCE half is settled, the
-> THRESHOLD half is still open.** Coverage is refreshed with each PNut parity
-> release, and is separately run as an instrument when the goal is to find thin
-> spots and extend the regression suite. It is **not a per-release blocker and
-> no release is held for it**; `RELEASE-PROCESS.md` §2 now says so. An interim
-> coverage update is owed after v1.55.8, on its own schedule.
->
-> What still needs his ruling is only the *form of the rule* — re-baseline the
-> table to a current run, or restate it as "no worse than the last release's
-> committed report". Raise it with the next coverage update rather than at a
-> release.
-
 ---
 
 ## Closed and archived
@@ -368,5 +329,6 @@ Item numbers are never reused, so references elsewhere stay valid.
 | 5b, 5e, 5f, and three unnumbered `.map` items (all closed in 1.55.4) | `completed/2026-08-24-Punch-List-Archive.md` |
 | 3, 8, 12, 13b, 13c, 13e, 13f, 17, 18 | `completed/2026-09-14-Punch-List-Archive.md` |
 | 6.4, 14 (14a, 14b), 16, 20, 21, 22, 23 (all closed in 1.55.8) | `completed/2026-09-19-Punch-List-Archive.md` |
+| 19 (closed 2026-11-05: the coverage rule is a maintainer step, `npm run coverage -- --check`, with no percentage gate; the old Coverage Mode is retired) | No archive file; closed in place by `PROCESS/Test-Hardening-Sprint-Plan.md` §14 and `DOCs/RELEASE-PROCESS.md` §2 |
 
 ---

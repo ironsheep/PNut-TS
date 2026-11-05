@@ -215,12 +215,9 @@ pkgs*/
 exceptions-list.ts.txt
 TEST/emptySpinFile.binf
 /RESULTS
-/jest-config/coverage
 *.elemold
 /out-jest
 *.HOLD
-/TEST/ALLCODE-tests
-src/tests/ALLCODE-tests/pnut-ts-allcode.test.ts.ORIG
 *.errout
 *-pre.spin2
 
@@ -244,8 +241,6 @@ Error.txt
 *.flash
 *.HOLD
 *__pre.spin2
-jest-config/jest-coverage-configOLD.json
-jest-config/jest-coverage-configBAD.json
 scripts-pkg/cs_fixUploadNames.sh
 /TEST/WUMMI-tests
 *.heapprofile

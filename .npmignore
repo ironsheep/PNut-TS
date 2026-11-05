@@ -16,7 +16,6 @@ PKG-STUDY.md
 jest*.json
 tsconfig.json
 babel.config.js
-jest.config.ts
 CLAUDE.md
 old.*
 smm.*
