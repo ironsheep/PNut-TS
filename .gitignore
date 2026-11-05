@@ -306,6 +306,10 @@ DOCs/internals/usage-guides/.vscode/settings.json
 # Zips of test sources + returned GOLD sets. Never committed.
 /GoldPrep/
 
+# Per-run output of the Windows GOLD run (scripts/gold/rebuild-gold-all.ps1),
+# copied back by scripts/gold/apply.sh. Never committed.
+/TEST/gold-run-summary.txt
+
 # P2KB/doc-agent handoff archive — applied amendments, kept locally only.
 # A doc moves here once confirmed applied to the external corpus; the corpus
 # is the system of record from then on, so the repo stops carrying it.

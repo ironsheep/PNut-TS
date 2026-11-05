@@ -72,6 +72,7 @@
     "perf": "npm run build && node dist/tests/PERF/perf-benchmark.js",
     "perf-compare": "node dist/tests/PERF/perf-compare.js",
     "bld-dist": "npm run build && npm run esbuild && npx @yao-pkg/pkg . -t node22-linux-x64 -o pkgs/p2-pnut-ts-linux-x64 && npx @yao-pkg/pkg . -t node22-linux-arm64 -o pkgs/p2-pnut-ts-linux-arm64",
+    "gen-rebuild-scripts": "node scripts/gold/gen-rebuild-scripts.js",
     "gen-regold-tarball": "./scripts/gold/bundle.sh",
     "apply-regold-tarball": "./scripts/gold/apply.sh",
     "p2kb-verify": "npm run build && ./scripts/p2kb-dedup-verify",

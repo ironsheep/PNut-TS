@@ -3,10 +3,20 @@
     Regenerate GOLDs for LOADER-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/LOADER-tests/pnut-ts-loader.test.ts
-      - Glob:    *.spin2
-      - Default: -c (no debug — LOADER tests explicitly omit -d per the test header)
-      - No per-file overrides
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/LOADER-tests/pnut-ts-loader.test.ts (glob *.spin2).
+    Default -c: LOADER tests explicitly omit -d per the test header.
 #>
 param(
     [int]$PNutVersion = 55,

@@ -3,16 +3,19 @@
     Regenerate GOLDs for OBJ-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/OBJ-tests/pnut-ts-obj.test.ts
-      - Glob:    *.spin2
-      - Default: -c (no debug)
-      - No per-file overrides
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
 
-.EXAMPLE
-    .\rebuild-gold.ps1                 # uses PNut_v55.exe (standard install)
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
 
-.EXAMPLE
-    .\rebuild-gold.ps1 -PNutVersion 52 # round-trip check against v52 GOLDs
+    Sourced from: src/tests/OBJ-tests/pnut-ts-obj.test.ts (glob *.spin2).
 #>
 param(
     [int]$PNutVersion = 55,

@@ -3,13 +3,21 @@
     Regenerate GOLDs for LANG-VER-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/LANG-VER-tests/pnut-ts-langVer.test.ts
-      - Glob:    *.spin2 (filters out *__pre.spin2)
-      - Rule:    most files use -cd (the .test.ts default)
-                 EXCEPT the noDebugFiles list -> -c
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
 
-    Per-file overrides (the noDebugFiles list from the .test.ts):
-      - spin_builtin_math_v51.spin2 -> -c
+    Rules:
+      - Default flag: -cd
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     spin_builtin_math_v51.spin2 -> -c
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/LANG-VER-tests/pnut-ts-langVer.test.ts (glob
+    *.spin2, filters out *__pre.spin2). Default -cd is the .test.ts default;
+    the per-file -c entries are its noDebugFiles list.
 #>
 param(
     [int]$PNutVersion = 55,

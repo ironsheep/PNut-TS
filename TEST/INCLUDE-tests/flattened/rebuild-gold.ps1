@@ -3,12 +3,21 @@
     Regenerate GOLDs for INCLUDE-tests/flattened using Windows PNut.
 
 .DESCRIPTION
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
     Windows PNut has no #include. Each file here is the hand-flattened twin of
     a #include test in ..\ ; the GOLDs made here are compared against what
     PNut-TS produces from the #include version.
-      - Glob:    *.spin2
-      - Default: -c (no debug)
-      - No per-file overrides
 #>
 param(
     [int]$PNutVersion = 55,

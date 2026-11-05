@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
 #
-# apply.sh — Take a Windows-produced regold output tarball and lay the new
-# .GOLD files back into TEST/, with a diff summary before committing.
+# apply.sh — Take what a Windows GOLD run returned (the WINDOWS-RUN/ folder,
+# or a tarball of it) and lay the new or changed .GOLD files, plus
+# TEST/gold-run-summary.txt, back into TEST/.
+#
+# Every returned GOLD is checked first: the .spin2 beside it in the returned
+# folder must exist and be byte-identical to the tree's TEST/<suite>/<base>.spin2.
+# If any GOLD fails that check, nothing at all is copied (exit 1): the run was
+# made from different sources and its GOLDs cannot be trusted.
+#
+# Only GOLDs that are new or differ from the tree are copied. Nothing in TEST/
+# is ever deleted.
 #
 # Usage:
+#   ./scripts/gold/apply.sh WINDOWS-RUN
 #   ./scripts/gold/apply.sh regold-output-v55.tar.gz
-#       Stages the bundle into a temp dir, prints a per-suite diff summary,
+#       Prints the summary (unchanged / changed / new / missing / refused),
 #       prompts for confirmation, then copies into TEST/.
 #
-#   ./scripts/gold/apply.sh regold-output-v55.tar.gz --yes
+#   ./scripts/gold/apply.sh WINDOWS-RUN --yes
 #       Skip the confirmation prompt.
 #
-#   ./scripts/gold/apply.sh regold-output-v55.tar.gz --dry-run
-#       Show the diff summary only; don't copy anything.
+#   ./scripts/gold/apply.sh WINDOWS-RUN --dry-run
+#       Show the summary only; don't copy anything.
 
 set -euo pipefail
 
@@ -36,14 +46,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$INPUT" ]]; then
-    echo "Usage: $0 <regold-output.tar.gz> [--yes] [--dry-run]" >&2
+    echo "Usage: $0 <WINDOWS-RUN folder | regold-output.tar.gz> [--yes] [--dry-run]" >&2
     exit 1
 fi
 
-if [[ ! -f "$INPUT" ]]; then
+if [[ ! -e "$INPUT" ]]; then
     echo "ERROR: Input not found: $INPUT" >&2
     exit 1
 fi
+INPUT="$(cd "$(dirname "$INPUT")" && pwd)/$(basename "$INPUT")"
 
 # ---- Locate repo root -------------------------------------------------------
 
@@ -51,23 +62,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
-# ---- Stage the bundle -------------------------------------------------------
+# ---- Find the returned TEST/ ------------------------------------------------
 
-STAGING="$(mktemp -d -t regold-apply.XXXXXX)"
-trap 'rm -rf "$STAGING"' EXIT
-
-tar -xzf "$INPUT" -C "$STAGING"
-
-# Locate the TEST/ inside the staging dir (handles bundles with or without a
-# top-level wrapper directory)
-NEW_TEST=""
-if [[ -d "$STAGING/TEST" ]]; then
-    NEW_TEST="$STAGING/TEST"
+if [[ -d "$INPUT" ]]; then
+    SEARCH="$INPUT"
 else
-    # Look for first subdir containing TEST/
-    for d in "$STAGING"/*/; do
+    STAGING="$(mktemp -d -t regold-apply.XXXXXX)"
+    trap 'rm -rf "$STAGING"' EXIT
+    tar -xzf "$INPUT" -C "$STAGING"
+    SEARCH="$STAGING"
+fi
+
+# Handles a TEST/ at the top or one level down (a wrapper directory)
+NEW_TEST=""
+if [[ -d "$SEARCH/TEST" ]]; then
+    NEW_TEST="$SEARCH/TEST"
+else
+    for d in "$SEARCH"/*/; do
         if [[ -d "$d/TEST" ]]; then
-            NEW_TEST="$d/TEST"
+            NEW_TEST="${d%/}/TEST"
             break
         fi
     done
@@ -77,122 +90,173 @@ if [[ -z "$NEW_TEST" ]]; then
     echo "ERROR: No TEST/ directory found inside $INPUT" >&2
     exit 1
 fi
+if [[ "$(cd "$NEW_TEST" && pwd)" == "$REPO_ROOT/TEST" ]]; then
+    echo "ERROR: $INPUT is the repository itself" >&2
+    exit 1
+fi
 
-# ---- Compare and summarize --------------------------------------------------
+# An errout GOLD keeps the absolute path of the machine that made it; two that
+# differ only in that path or in line endings read the same to the EXCEPT harness.
+errout_text() {
+    tr '\r' '\n' < "$1" | sed -E '/^[[:space:]]*$/d; s#^.*[/\\]([^/\\]+\.spin2:[0-9]+:)#\1#; s/[[:space:]]+$//'
+}
 
-mapfile -t NEW_GOLDS < <(find "$NEW_TEST" -name '*.GOLD' | sort)
+# ---- Compare, check sources, summarize --------------------------------------
+
+mapfile -t NEW_GOLDS < <(find "$NEW_TEST" -type f -name '*.GOLD' | sort)
 
 UNCHANGED=0
-CHANGED=0
-NEW=0
-MISSING_COUNT=0
 declare -a CHANGED_FILES=()
+declare -a COSMETIC_FILES=()
 declare -a NEW_FILES=()
+declare -a REFUSED=()
+declare -a TO_COPY=()
 
 for new in "${NEW_GOLDS[@]}"; do
-    rel="${new#$NEW_TEST/}"
+    rel="${new#"$NEW_TEST"/}"
+    dir="$(dirname "$rel")"
+    name="$(basename "$rel")"
+    base="${name%.*.GOLD}"
+    src_new="$NEW_TEST/$dir/$base.spin2"
+    src_tree="TEST/$dir/$base.spin2"
+    if [[ ! -f "$src_tree" ]]; then
+        REFUSED+=("$rel: TEST/$dir/$base.spin2 does not exist in the tree")
+        continue
+    fi
+    if [[ ! -f "$src_new" ]]; then
+        REFUSED+=("$rel: no $base.spin2 beside it in the returned folder")
+        continue
+    fi
+    if ! cmp -s "$src_new" "$src_tree"; then
+        REFUSED+=("$rel: $base.spin2 differs from the tree's (the run used other sources)")
+        continue
+    fi
     existing="TEST/$rel"
     if [[ -f "$existing" ]]; then
         if cmp -s "$new" "$existing"; then
             UNCHANGED=$((UNCHANGED + 1))
+            continue
+        fi
+        if [[ "$name" == *.errout.GOLD ]] && cmp -s <(errout_text "$new") <(errout_text "$existing"); then
+            COSMETIC_FILES+=("$rel")
         else
-            CHANGED=$((CHANGED + 1))
             CHANGED_FILES+=("$rel")
         fi
     else
-        NEW=$((NEW + 1))
         NEW_FILES+=("$rel")
     fi
+    TO_COPY+=("$rel")
 done
 
-# Detect missing GOLDs (existed before, not produced this run)
-mapfile -t EXISTING_GOLDS < <(find TEST -name '*.GOLD' \
-    -not -path '*-rebuild-v*' \
-    | sort)
+SUMMARY_FILE="$NEW_TEST/gold-run-summary.txt"
+HAVE_SUMMARY=0
+[[ -f "$SUMMARY_FILE" ]] && HAVE_SUMMARY=1
+
+# Missing: a GOLD the tree has for a fixture the run compiled, which came back
+# without it. With a summary, "compiled" means listed there and not SKIPPED; a
+# run limited to a few files (the dry run) then reports only those. Without one,
+# every fixture of a suite with a rebuild-gold.ps1 counts.
+declare -A OUTCOME=()
+if [[ $HAVE_SUMMARY -eq 1 ]]; then
+    while read -r outcome where _; do
+        [[ "$where" == *.spin2 ]] || continue
+        where="${where//\\//}"
+        OUTCOME["${where%.spin2}"]="$outcome"
+    done < <(tr -d '\r' < "$SUMMARY_FILE" | sed '1s/^\xEF\xBB\xBF//')
+fi
+
+mapfile -t EXISTING_GOLDS < <(find TEST -name '*.GOLD' -not -path '*-rebuild-v*' | sort)
 declare -a MISSING_FILES=()
 for old in "${EXISTING_GOLDS[@]}"; do
     rel="${old#TEST/}"
-    if [[ ! -f "$NEW_TEST/$rel" ]]; then
-        # Only count as "missing from regen" if the suite was in scope (had a rebuild-gold.ps1)
-        suite_dir="TEST/$(echo "$rel" | cut -d/ -f1)"
-        # For LARGE-tests/<sub>/...  use the subdir
-        if [[ "$rel" == LARGE-tests/* ]]; then
-            suite_dir="TEST/LARGE-tests/$(echo "$rel" | cut -d/ -f2)"
+    [[ -f "$NEW_TEST/$rel" ]] && continue
+    dir="$(dirname "$rel")"
+    name="$(basename "$rel")"
+    key="$dir/${name%.*.GOLD}"
+    if [[ $HAVE_SUMMARY -eq 1 ]]; then
+        if [[ -n "${OUTCOME[$key]+set}" && "${OUTCOME[$key]}" != "SKIPPED" ]]; then
+            MISSING_FILES+=("$rel  (${OUTCOME[$key]})")
         fi
-        if [[ -f "$suite_dir/rebuild-gold.ps1" ]]; then
-            MISSING_COUNT=$((MISSING_COUNT + 1))
-            MISSING_FILES+=("$rel")
-        fi
+    elif [[ -f "TEST/$dir/rebuild-gold.ps1" ]]; then
+        MISSING_FILES+=("$rel")
     fi
 done
 
 # ---- Report -----------------------------------------------------------------
 
+list() {  # list <title> <limit> items...
+    local title="$1" limit="$2"; shift 2
+    [[ $# -eq 0 ]] && return 0
+    echo "$title"
+    local n=0
+    for f in "$@"; do
+        n=$((n + 1))
+        if [[ $n -gt $limit ]]; then echo "  ... ($(( $# - limit )) more)"; break; fi
+        echo "  $f"
+    done
+    echo ""
+}
+
 echo ""
 echo "=========================================="
 echo "Regold apply summary"
 echo "=========================================="
-echo "Source bundle:     $INPUT"
+echo "Returned from:     $INPUT"
 echo "GOLDs unchanged:   $UNCHANGED"
-echo "GOLDs changed:     $CHANGED"
-echo "GOLDs new:         $NEW"
-echo "GOLDs missing:     $MISSING_COUNT  (existed before; regen did not produce)"
+echo "GOLDs changed:     ${#CHANGED_FILES[@]}"
+echo "GOLDs path/EOL:    ${#COSMETIC_FILES[@]}  (errout GOLDs differing only in the machine path or line endings)"
+echo "GOLDs new:         ${#NEW_FILES[@]}"
+echo "GOLDs missing:     ${#MISSING_FILES[@]}  (the tree has one; the run compiled the fixture but returned none)"
+echo "GOLDs refused:     ${#REFUSED[@]}"
+if [[ $HAVE_SUMMARY -eq 1 ]]; then
+    echo "Run summary:       $(tail -n 1 "$SUMMARY_FILE" | tr -d '\r')"
+else
+    echo "Run summary:       (none returned)"
+fi
 echo ""
 
-if [[ $CHANGED -gt 0 && $CHANGED -le 50 ]]; then
-    echo "Changed GOLDs:"
-    for f in "${CHANGED_FILES[@]}"; do echo "  ~ $f"; done
-    echo ""
-elif [[ $CHANGED -gt 50 ]]; then
-    echo "Changed GOLDs (first 50 of $CHANGED):"
-    for f in "${CHANGED_FILES[@]:0:50}"; do echo "  ~ $f"; done
-    echo "  ... ($((CHANGED - 50)) more)"
-    echo ""
-fi
+list "Changed GOLDs:" 50 "${CHANGED_FILES[@]}"
+list "Path/EOL-only errout GOLDs:" 50 "${COSMETIC_FILES[@]}"
+list "New GOLDs:" 50 "${NEW_FILES[@]}"
+list "WARNING: GOLDs not regenerated (see the run summary for why):" 50 "${MISSING_FILES[@]}"
 
-if [[ $NEW -gt 0 ]]; then
-    echo "New GOLDs (first-time regen for these files):"
-    for f in "${NEW_FILES[@]:0:20}"; do echo "  + $f"; done
-    [[ $NEW -gt 20 ]] && echo "  ... ($((NEW - 20)) more)"
-    echo ""
-fi
-
-if [[ $MISSING_COUNT -gt 0 ]]; then
-    echo "WARNING: GOLDs that existed but were NOT regenerated (compile failure on Windows?):"
-    for f in "${MISSING_FILES[@]:0:20}"; do echo "  - $f"; done
-    [[ $MISSING_COUNT -gt 20 ]] && echo "  ... ($((MISSING_COUNT - 20)) more)"
-    echo ""
+if [[ ${#REFUSED[@]} -gt 0 ]]; then
+    list "REFUSED (source beside the GOLD is not the tree's):" 1000 "${REFUSED[@]}"
+    echo "Nothing copied: rebuild the folder from the current tree and rerun on Windows."
+    exit 1
 fi
 
 # ---- Apply or stop ----------------------------------------------------------
 
 if [[ $DRY_RUN -eq 1 ]]; then
     echo "Dry run — no files copied."
-    echo "Staging dir (kept for inspection): $STAGING"
-    trap - EXIT
+    exit 0
+fi
+
+if [[ ${#TO_COPY[@]} -eq 0 && $HAVE_SUMMARY -eq 0 ]]; then
+    echo "Nothing to copy."
     exit 0
 fi
 
 if [[ $YES -eq 0 ]]; then
-    echo "Proceed and copy $((UNCHANGED + CHANGED + NEW)) GOLDs into TEST/? [y/N] "
+    echo "Copy ${#TO_COPY[@]} GOLD(s) and the run summary into TEST/? [y/N] "
     read -r CONFIRM
     if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-        echo "Aborted. Staging dir kept for inspection: $STAGING"
-        trap - EXIT
+        echo "Aborted. Nothing copied."
         exit 0
     fi
 fi
 
-# Copy each GOLD into place (preserving directory structure)
-for new in "${NEW_GOLDS[@]}"; do
-    rel="${new#$NEW_TEST/}"
-    target="TEST/$rel"
-    mkdir -p "$(dirname "$target")"
-    cp "$new" "$target"
+for rel in "${TO_COPY[@]}"; do
+    mkdir -p "$(dirname "TEST/$rel")"
+    cp "$NEW_TEST/$rel" "TEST/$rel"
 done
+if [[ $HAVE_SUMMARY -eq 1 ]]; then
+    cp "$SUMMARY_FILE" TEST/gold-run-summary.txt
+fi
 
 echo ""
-echo "Copied $((UNCHANGED + CHANGED + NEW)) GOLDs into TEST/."
+echo "Copied ${#TO_COPY[@]} GOLD(s) into TEST/$( [[ $HAVE_SUMMARY -eq 1 ]] && echo ', and TEST/gold-run-summary.txt' )."
 echo ""
 echo "Run 'git status' and 'git diff --stat' to review."
 git status -- TEST/ | head -30

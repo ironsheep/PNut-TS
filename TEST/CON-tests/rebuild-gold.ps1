@@ -3,10 +3,19 @@
     Regenerate GOLDs for CON-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/CON-tests/pnut-ts-con.test.ts
-      - Glob:    *.spin2
-      - Default: -c (no debug)
-      - No per-file overrides
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/CON-tests/pnut-ts-con.test.ts (glob *.spin2).
 
     NOTE: CON-tests/symbol_length_test.errout.GOLD is an orphan artifact
     (no test reads it; pnut-ts produces no matching content). Not regenerated

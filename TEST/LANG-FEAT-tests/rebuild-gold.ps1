@@ -3,11 +3,23 @@
     Regenerate GOLDs for LANG-FEAT-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/LANG-FEAT-tests/pnut-ts-langfeat.test.ts
-      - Glob:    *.spin2 (filters out *__pre.spin2 — handled by lib)
-      - Default: -c (no debug — test header explicitly notes "no -d flag")
-      - No per-file overrides
-      - Test groups files by prefix (field_*, struct_*) but applies same flag to all
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/LANG-FEAT-tests/pnut-ts-langfeat.test.ts (glob
+    *.spin2; *__pre.spin2 is handled by the lib).
+    Default -c: the test header explicitly notes "no -d flag".
+    The test groups files by prefix (field_*, struct_*) but applies the same
+    flag to all.
 #>
 param(
     [int]$PNutVersion = 55,

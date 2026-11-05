@@ -1,43 +1,71 @@
 #!/usr/bin/env bash
 #
-# bundle.sh — Package up everything Windows needs to regenerate GOLD files.
+# bundle.sh — Build the folder Windows needs to regenerate GOLD files.
 #
-# Output: regold-bundle-v<NN>.tar.gz containing:
+# First regenerates every TEST/<suite>/rebuild-gold.ps1
+# (scripts/gold/gen-rebuild-scripts.js), then writes the output folder
+# (default WINDOWS-RUN/, local, never committed) containing:
 #   - TEST/<suite>/*.spin2          (source files for every Windows-regen suite)
-#   - TEST/<suite>/rebuild-gold.ps1 (per-suite driver)
+#   - TEST/<suite>/<FILE blobs>     (files the sources pull in with FILE "...")
+#   - TEST/<suite>/gen_*.d/         (aux files of generated fixtures)
+#   - TEST/<suite>/rebuild-gold.ps1 (per-suite driver, generated)
 #   - scripts/gold/rebuild-gold-lib.ps1   (shared engine)
 #   - scripts/gold/rebuild-gold-all.ps1   (top-level driver)
-#   - manifest.json                  (declares pnut_version + suite list)
-#   - README.txt                     (Windows-side workflow instructions)
+#   - run.ps1                        (step 1: 3-fixture EXCEPT dry run; step 2,
+#                                     only if step 1 passes: the full run)
+#   - README.txt                     (3 lines: copy over, run, copy back)
 #
-# Excluded from bundle:
+# Copy the whole folder to Windows, run run.ps1, copy the whole folder back,
+# then: npm run apply-regold-tarball -- WINDOWS-RUN
+#
+# Excluded from the folder:
 #   - existing .GOLD files (regen produces them fresh)
 #   - .lst, .obj, .bin, .flash, .elem, .errout intermediates
 #   - __pre.spin2 outputs
 #   - legacy <SUITE>-rebuild-v52/ scaffolding
-#   - dirs without rebuild-gold.ps1 (PREPROC, EXCEPT, FULL/, SHORT/, INCLUDE, CACHE, ALLCODE, MAP)
+#   - dirs without rebuild-gold.ps1 (PREPROC, FULL/, SHORT/, INCLUDE, CACHE, ALLCODE, MAP)
 #
 # Usage:
 #   ./scripts/gold/bundle.sh
-#       PNut version inferred from package.json (Major.PNutVersion.Patch).
+#       Writes WINDOWS-RUN/. PNut version inferred from package.json
+#       (Major.PNutVersion.Patch).
+#
+#   ./scripts/gold/bundle.sh --out-dir DIR
+#       Write DIR/ instead.
+#
+#   ./scripts/gold/bundle.sh --replace
+#       The output folder may already exist: it is removed and rebuilt, but
+#       only if every .GOLD file in it is byte-identical to the tree's (that
+#       is, nothing returned from Windows is waiting to be applied).
+#
+#   ./scripts/gold/bundle.sh -o /tmp/my-bundle.tar.gz
+#       Also pack the folder into that tarball.
 #
 #   ./scripts/gold/bundle.sh --pnut-version 54
 #       Override (rare — for cross-version sanity checks).
-#
-#   ./scripts/gold/bundle.sh -o /tmp/my-bundle.tar.gz
-#       Custom output path.
 
 set -euo pipefail
+
+# The step-1 dry run: three EXCEPT-tests fixtures, each expected to fail.
+#   fvars_too_big       its committed .errout.GOLD came from Windows PNut
+#                       (05a42ba), so the dry run's must compare equal to it
+#   debug_empty_str     compiled -cd (the debug_* pattern)
+#   pperr_stray_endif   a preprocessor error both compilers have
+DRY_RUN_FILES=(fvars_too_big.spin2 debug_empty_str.spin2 pperr_stray_endif.spin2)
 
 # ---- Parse args -------------------------------------------------------------
 
 PNUT_VERSION=""
 OUTPUT=""
+OUT_DIR=""
+REPLACE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --pnut-version) PNUT_VERSION="$2"; shift 2 ;;
         -o|--output)    OUTPUT="$2"; shift 2 ;;
+        --out-dir)      OUT_DIR="$2"; shift 2 ;;
+        --replace)      REPLACE=1; shift ;;
         -h|--help)
             sed -n '/^#/p' "$0" | sed 's/^# \?//'
             exit 0
@@ -63,16 +91,72 @@ if [[ -z "$PNUT_VERSION" ]]; then
         exit 1
     fi
     PNUT_VERSION="$(echo "$PKG_VERSION" | cut -d. -f2)"
-    if [[ ! "$PNUT_VERSION" =~ ^[0-9]+$ ]]; then
-        echo "ERROR: Could not parse PNut version from package.json '$PKG_VERSION'" >&2
-        echo "       Pass --pnut-version explicitly." >&2
+fi
+if [[ ! "$PNUT_VERSION" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: PNut version '$PNUT_VERSION' is not a number" >&2
+    echo "       Pass --pnut-version explicitly." >&2
+    exit 1
+fi
+
+if [[ -z "$OUT_DIR" ]]; then
+    OUT_DIR="WINDOWS-RUN"
+fi
+mkdir -p "$(dirname "$OUT_DIR")"
+OUT_DIR="$(cd "$(dirname "$OUT_DIR")" && pwd)/$(basename "$OUT_DIR")"
+if [[ -n "$OUTPUT" ]]; then
+    mkdir -p "$(dirname "$OUTPUT")"
+    OUTPUT="$(cd "$(dirname "$OUTPUT")" && pwd)/$(basename "$OUTPUT")"
+fi
+
+# ---- The output folder must not hold unapplied results ----------------------
+
+case "$OUT_DIR/" in
+    "$REPO_ROOT/"|"$REPO_ROOT/TEST/"*|"$REPO_ROOT/scripts/"*|"$REPO_ROOT/src/"*|"$REPO_ROOT/.git/"*)
+        echo "ERROR: --out-dir $OUT_DIR is inside the source tree; it is removed and rebuilt, so it must be a folder of its own" >&2
+        exit 1 ;;
+esac
+if [[ "$REPO_ROOT/" == "$OUT_DIR/"* ]]; then
+    echo "ERROR: --out-dir $OUT_DIR contains the repository" >&2
+    exit 1
+fi
+
+if [[ -e "$OUT_DIR" ]]; then
+    if [[ -n "$(ls -A "$OUT_DIR" 2>/dev/null)" && $REPLACE -eq 0 ]]; then
+        echo "ERROR: $OUT_DIR already exists and is not empty." >&2
+        echo "       Pass --replace to rebuild it, or --out-dir to write elsewhere." >&2
+        exit 1
+    fi
+    UNAPPLIED=()
+    while IFS= read -r -d '' gold; do
+        rel="${gold#"$OUT_DIR"/}"
+        rel="${rel#TEST/}"
+        if ! cmp -s "$gold" "TEST/$rel"; then
+            UNAPPLIED+=("$rel")
+        fi
+    done < <(find "$OUT_DIR" -type f -name '*.GOLD' -print0)
+    if [[ ${#UNAPPLIED[@]} -gt 0 ]]; then
+        echo "ERROR: $OUT_DIR holds ${#UNAPPLIED[@]} .GOLD file(s) that differ from TEST/ (not applied yet):" >&2
+        for f in "${UNAPPLIED[@]:0:20}"; do echo "  $f" >&2; done
+        echo "       Apply them (npm run apply-regold-tarball -- $OUT_DIR) or move the folder away." >&2
         exit 1
     fi
 fi
 
-if [[ -z "$OUTPUT" ]]; then
-    OUTPUT="regold-bundle-v${PNUT_VERSION}.tar.gz"
-fi
+# ---- Regenerate the per-suite scripts ---------------------------------------
+
+node scripts/gold/gen-rebuild-scripts.js
+
+for f in "${DRY_RUN_FILES[@]}"; do
+    if [[ ! -f "TEST/EXCEPT-tests/$f" ]]; then
+        echo "ERROR: dry-run fixture TEST/EXCEPT-tests/$f does not exist" >&2
+        exit 1
+    fi
+    if ! sed -n '/-ExpectFail @(/,/^        )/p' TEST/EXCEPT-tests/rebuild-gold.ps1 \
+         | grep -qx "            \"$f\""; then
+        echo "ERROR: dry-run fixture $f is not in TEST/EXCEPT-tests/rebuild-gold.ps1 -ExpectFail" >&2
+        exit 1
+    fi
+done
 
 # ---- Discover suites that have rebuild-gold.ps1 -----------------------------
 
@@ -80,7 +164,6 @@ mapfile -t SUITE_SCRIPTS < <(find TEST -name rebuild-gold.ps1 -not -path '*-rebu
 
 if [[ ${#SUITE_SCRIPTS[@]} -eq 0 ]]; then
     echo "ERROR: No TEST/*/rebuild-gold.ps1 files found." >&2
-    echo "       (Per-suite scripts must exist before bundling.)" >&2
     exit 1
 fi
 
@@ -90,20 +173,16 @@ for script in "${SUITE_SCRIPTS[@]}"; do
     SUITE_DIRS+=("$(dirname "$script")")
 done
 
-echo "Bundle target:      $OUTPUT"
+echo "Output folder:      $OUT_DIR"
 echo "PNut version:       $PNUT_VERSION"
 echo "Suites discovered:  ${#SUITE_DIRS[@]}"
 for d in "${SUITE_DIRS[@]}"; do echo "  - $d"; done
 echo ""
 
-# ---- Build staging tree -----------------------------------------------------
+# ---- Build the folder -------------------------------------------------------
 
-STAGING="$(mktemp -d -t regold-bundle.XXXXXX)"
-trap 'rm -rf "$STAGING"' EXIT
-
-BUNDLE_NAME="regold-bundle-v${PNUT_VERSION}"
-BUNDLE_DIR="$STAGING/$BUNDLE_NAME"
-mkdir -p "$BUNDLE_DIR"
+rm -rf "$OUT_DIR"
+mkdir -p "$OUT_DIR"
 
 # Copy each suite: .spin2 sources + FILE-directive blobs + the rebuild-gold.ps1
 # (Skip .GOLD, .lst, .obj, .bin, .flash, .elem, .errout, __pre.spin2)
@@ -116,7 +195,7 @@ mkdir -p "$BUNDLE_DIR"
 # compiler OUTPUT extension — so we copy exactly the names the FILE directives
 # use. Same rule as scripts/gold/prep-jobs.sh; keep the two in step.
 for suite_dir in "${SUITE_DIRS[@]}"; do
-    target="$BUNDLE_DIR/$suite_dir"
+    target="$OUT_DIR/$suite_dir"
     mkdir -p "$target"
     # Copy .spin2 sources, excluding __pre.spin2 / -pre.spin2
     find "$suite_dir" -maxdepth 1 -name '*.spin2' \
@@ -134,98 +213,85 @@ for suite_dir in "${SUITE_DIRS[@]}"; do
                   ! -name '*-pre.spin2' ! -name '*__pre.spin2' -print0 \
              | xargs -0 -r grep -hoiE '\bfile[[:space:]]+"[^"]+"' 2>/dev/null \
              | sed -E 's/.*"([^"]+)".*/\1/' | sort -u)
+    # Generated fixtures keep their aux files in gen_<id>.d/
+    find "$suite_dir" -mindepth 1 -maxdepth 1 -type d -name 'gen_*.d' \
+        -exec cp -r {} "$target/" \;
     cp "$suite_dir/rebuild-gold.ps1" "$target/"
 done
 
 # Copy shared engine + driver
-mkdir -p "$BUNDLE_DIR/scripts/gold"
-cp scripts/gold/rebuild-gold-lib.ps1 "$BUNDLE_DIR/scripts/gold/"
-cp scripts/gold/rebuild-gold-all.ps1 "$BUNDLE_DIR/scripts/gold/"
+mkdir -p "$OUT_DIR/scripts/gold"
+cp scripts/gold/rebuild-gold-lib.ps1 "$OUT_DIR/scripts/gold/"
+cp scripts/gold/rebuild-gold-all.ps1 "$OUT_DIR/scripts/gold/"
 
-# Manifest
-cat > "$BUNDLE_DIR/manifest.json" <<EOF
-{
-  "pnut_version": $PNUT_VERSION,
-  "bundle_name": "$BUNDLE_NAME",
-  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "suite_count": ${#SUITE_DIRS[@]},
-  "suites": [
-$(for d in "${SUITE_DIRS[@]}"; do echo "    \"$d\","; done | sed '$ s/,$//')
-  ]
+# ---- run.ps1: dry run, then (only if it passed) the full run ---------------
+
+DRY_RUN_PS="$(printf '"%s", ' "${DRY_RUN_FILES[@]}")"
+DRY_RUN_PS="${DRY_RUN_PS%, }"
+
+sed -e "s/@PNUT_VERSION@/$PNUT_VERSION/" -e "s/@DRY_RUN_FILES@/$DRY_RUN_PS/" \
+    > "$OUT_DIR/run.ps1" <<'EOF'
+<#
+.SYNOPSIS
+    The Windows GOLD visit: a three-fixture EXCEPT-tests dry run, then the
+    full run of every suite.
+
+.DESCRIPTION
+    Step 1 compiles three EXCEPT-tests fixtures, each expected to fail, so
+    each must leave an .errout.GOLD made from PNut's Error.txt. Step 2 starts
+    only when step 1 ends VERDICT: PASS. Each step writes
+    TEST\gold-run-summary.txt, which therefore holds the last step that ran.
+
+    Run from anywhere:
+        powershell -ExecutionPolicy Bypass -File .\run.ps1
+#>
+param(
+    [int]$PNutVersion = @PNUT_VERSION@,
+    [string]$PNutInstallRoot = "C:\Program Files (x86)\Parallax Inc",
+    [string]$PNutBinary = "",
+    [int]$CompileTimeoutSeconds = 60
+)
+
+$all = Join-Path $PSScriptRoot "scripts\gold\rebuild-gold-all.ps1"
+$dryRun = @(@DRY_RUN_FILES@)
+
+Write-Output "STEP 1 of 2: dry run, EXCEPT-tests: $($dryRun -join ', ')"
+& $all -PNutVersion $PNutVersion -PNutInstallRoot $PNutInstallRoot -PNutBinary $PNutBinary `
+    -Suites EXCEPT-tests -Files $dryRun -CompileTimeoutSeconds $CompileTimeoutSeconds
+if ($LASTEXITCODE -ne 0) {
+    Write-Output ""
+    Write-Output "STEP 1 FAILED: the full run was not started. Copy this folder back as it is."
+    exit 1
 }
+
+Write-Output ""
+Write-Output "STEP 2 of 2: full run, every suite"
+& $all -PNutVersion $PNutVersion -PNutInstallRoot $PNutInstallRoot -PNutBinary $PNutBinary `
+    -CompileTimeoutSeconds $CompileTimeoutSeconds
+$code = $LASTEXITCODE
+Write-Output ""
+Write-Output "Done. Copy this whole folder back; TEST\gold-run-summary.txt has the result."
+exit $code
 EOF
 
-# README for the Windows side
-cat > "$BUNDLE_DIR/README.txt" <<EOF
-PNut-TS GOLD Regeneration Bundle
-=================================
-Version: v${PNUT_VERSION}
-Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-WHAT THIS IS
-------------
-This bundle contains everything needed to regenerate the .lst.GOLD,
-.obj.GOLD, .bin.GOLD (and .flash.GOLD where applicable) reference files
-on Windows, using PNut_shell.bat (the HEADLESS CLI) from the v${PNUT_VERSION}
-install directory.
-
-PREREQUISITES
--------------
-- PNut v${PNUT_VERSION} installed; the headless CLI must be available as:
-    C:\\Program Files (x86)\\Parallax Inc\\PNut_v${PNUT_VERSION}\\PNut_shell.bat
-  (or as PNut_shell on PATH — though that won't distinguish versions, so
-  prefer the versioned install path)
-- NOTE: PNut_v${PNUT_VERSION}.exe is the GUI editor; it is interactive and does
-  NOT produce .lst/.obj/.bin output from the command line. We need the
-  PNut_shell.bat variant inside the versioned install dir.
-- PowerShell 5.1+ (default on all modern Windows)
-
-USAGE
------
-1. Extract this tarball anywhere on Windows:
-     tar xf ${BUNDLE_NAME}.tar.gz
-     cd ${BUNDLE_NAME}
-
-2. Run the top-level driver (regenerates ALL suites):
-     powershell -ExecutionPolicy Bypass -File scripts\\gold\\rebuild-gold-all.ps1
-
-   Or regenerate a single suite (faster for debugging):
-     cd TEST\\OBJ-tests
-     powershell -ExecutionPolicy Bypass -File rebuild-gold.ps1
-
-   Or a subset of suites:
-     powershell -ExecutionPolicy Bypass -File scripts\\gold\\rebuild-gold-all.ps1 \\
-         -Suites OBJ-tests,DBG-tests
-
-3. Pack the result for return:
-     tar czf regold-output-v${PNUT_VERSION}.tar.gz TEST/
-
-4. Transfer regold-output-v${PNUT_VERSION}.tar.gz back to the PNut-TS repo and
-   run on the container side:
-     npm run apply-regold-tarball -- regold-output-v${PNUT_VERSION}.tar.gz
-
-ROUND-TRIP SANITY CHECK
------------------------
-Before trusting v${PNUT_VERSION} GOLDs, regenerate v52 GOLDs and verify they
-match the existing checked-in GOLDs byte-for-byte:
-
-     powershell -ExecutionPolicy Bypass -File scripts\\gold\\rebuild-gold-all.ps1 \\
-         -PNutVersion 52
-
-(Assumes you have PNut v52 installed alongside v${PNUT_VERSION}.)
+cat > "$OUT_DIR/README.txt" <<'EOF'
+1. Copy this whole folder to Windows (Windows PNut installed; PowerShell 5.1 is enough).
+2. In it run:  powershell -ExecutionPolicy Bypass -File .\run.ps1
+3. Copy the whole folder back; TEST\gold-run-summary.txt should end with VERDICT: PASS.
 EOF
 
-# ---- Tar it up --------------------------------------------------------------
+COUNT=$(find "$OUT_DIR" -type f | wc -l)
+echo "Folder ready: $OUT_DIR ($COUNT files)"
 
-tar -C "$STAGING" -czf "$OUTPUT" "$BUNDLE_NAME"
+# ---- Optional tarball -------------------------------------------------------
 
-SIZE=$(du -h "$OUTPUT" | cut -f1)
-COUNT=$(find "$BUNDLE_DIR" -type f | wc -l)
-echo "Bundle ready: $OUTPUT ($SIZE, $COUNT files)"
+if [[ -n "$OUTPUT" ]]; then
+    tar -C "$(dirname "$OUT_DIR")" -czf "$OUTPUT" "$(basename "$OUT_DIR")"
+    echo "Tarball ready: $OUTPUT ($(du -h "$OUTPUT" | cut -f1))"
+fi
+
 echo ""
 echo "Next steps:"
-echo "  1. Transfer $OUTPUT to your Windows box."
-echo "  2. tar xf $(basename "$OUTPUT") && cd $BUNDLE_NAME"
-echo "  3. powershell -ExecutionPolicy Bypass -File scripts\\gold\\rebuild-gold-all.ps1"
-echo "  4. tar czf regold-output-v${PNUT_VERSION}.tar.gz TEST/"
-echo "  5. Transfer back, then: npm run apply-regold-tarball -- regold-output-v${PNUT_VERSION}.tar.gz"
+echo "  1. Copy $OUT_DIR to Windows, whole."
+echo "  2. In it: powershell -ExecutionPolicy Bypass -File .\\run.ps1"
+echo "  3. Copy the whole folder back, then: npm run apply-regold-tarball -- $OUT_DIR"

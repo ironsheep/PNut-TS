@@ -3,10 +3,20 @@
     Regenerate GOLDs for LARGE-tests/MultSrvo using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (MultSrvo subset)
-      - Glob:    *.spin2 in this subdir
-      - Default: -c
-      - Pattern: demo_quad* -> -cd (matches legacy LARGE-MultSrvo-rebuild-v52)
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     demo_quad* -> -cd
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (MultSrvo subset;
+    glob *.spin2 in this subdir). Matches legacy LARGE-MultSrvo-rebuild-v52.
 #>
 param(
     [int]$PNutVersion = 55,

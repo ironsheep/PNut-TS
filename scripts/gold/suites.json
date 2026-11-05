@@ -1,0 +1,286 @@
+{
+  "schema": 1,
+  "doc": "The one owner of every Windows PNut compile rule: per suite directory (relative to TEST/), the default PNut flag, the outputs captured as GOLD, per-pattern and per-file flag overrides, hand skips, and header notes. scripts/gold/gen-rebuild-scripts.js writes TEST/<dir>/rebuild-gold.ps1 from it; scripts/fixtures/generate.js reads each suite's default flag from it. Field meanings are documented at the top of gen-rebuild-scripts.js.",
+  "pnutDirectives": ["DEFINE", "UNDEF", "IFDEF", "IFNDEF", "ELSEIFDEF", "ELSEIFNDEF", "ELSE", "ENDIF"],
+  "suites": {
+    "COL-tests": {
+      "defaultFlag": "-cd",
+      "notes": ["Sourced from: src/tests/COL-tests/pnut-ts-col.test.ts (glob *.spin2)."]
+    },
+    "CON-tests": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/CON-tests/pnut-ts-con.test.ts (glob *.spin2).",
+        "",
+        "NOTE: CON-tests/symbol_length_test.errout.GOLD is an orphan artifact",
+        "(no test reads it; pnut-ts produces no matching content). Not regenerated",
+        "here. Safe to delete separately as cleanup."
+      ]
+    },
+    "COV-tests": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "debug_*": "-cd",
+        "isp_*": "-cd",
+        "coverage_debug_*": "-cd"
+      },
+      "perFileFlag": {
+        "coverage_clock_003.spin2": "-cd"
+      },
+      "notes": [
+        "Sourced from: src/tests/COV-tests/pnut-ts-cov.test.ts (glob *.spin2, filters",
+        "out *__pre.spin2). The pattern overrides are the test's",
+        "{debug_,isp_,coverage_debug_}* rule. coverage_clock_003.spin2 uses debug()",
+        "but does not match the prefix pattern (from the existing v52 .ps1).",
+        "",
+        "NOTE: coverage_003_v44.spin2 does NOT get -cd here (it has no debug() call",
+        "and does not match any -cd pattern above, so it falls through to the",
+        "-DefaultFlag \"-c\"). Its committed v55 GOLD (153de2f) was built -c: no DEBUG",
+        "data/records section, 332 OBJ bytes. The .test.ts previously passed pnut-ts",
+        "flag -44 (force compile-as-v44) for this file; that flag has never existed",
+        "in pnut-ts (version forcing is source-tag-only, via {Spin2_vNN}, which this",
+        "file has never carried) and was removed as dead test code 2026-09-17. See",
+        "Test-Suite-Punch-List.md §6.6."
+      ]
+    },
+    "DAT-PASM-tests": {
+      "defaultFlag": "-c",
+      "notes": ["Sourced from: src/tests/DAT-PASM-tests/pnut-ts-datpasm.test.ts (glob *.spin2)."]
+    },
+    "DBG-CROP-tests": {
+      "defaultFlag": "-cd",
+      "notes": ["Sourced from: src/tests/DBG-CROP-tests/pnut-ts-dbg-crop.test.ts (glob *.spin2)."]
+    },
+    "DBG-tests": {
+      "defaultFlag": "-cd",
+      "notes": [
+        "Sourced from: src/tests/DBG-tests/pnut-ts-dbg.test.ts (glob *.spin2).",
+        "Default -cd: all DBG-tests files contain debug() calls."
+      ]
+    },
+    "ENCODING-tests": {
+      "defaultFlag": "-c",
+      "notes": ["Sourced from: src/tests/ENCODING-tests/pnut-ts-encoding.test.ts (glob *.spin2)."]
+    },
+    "EXCEPT-tests": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "debug_*": "-cd",
+        "isp_*": "-cd",
+        "coverage_debug_*": "-cd"
+      },
+      "expectFailWhenErroutGold": true,
+      "classifyDirectives": true,
+      "notes": [
+        "Sourced from: src/tests/EXCEPT-tests/pnut-ts-except.test.ts. The test compiles",
+        "{debug_,isp_,coverage_debug_}*.spin2 with -d and every other file without;",
+        "the pattern overrides are that rule.",
+        "",
+        "Expected to fail: every fixture with a fixtures.json reject row, and every",
+        "hand-written fixture that has an .errout.GOLD. PNut's Error.txt for it is",
+        "renamed to <base>.errout.GOLD.",
+        "",
+        "Kept (in -Skip, never compiled, GOLD left in place): fixtures whose",
+        "goldSource is pnut-ts. A hand-written fixture is pnut-ts when it uses a",
+        "preprocessor directive outside PNut's eight (suites.json pnutDirectives,",
+        "REF-V52A/p2com.asm:20094-20101), i.e. #include, #error, #warn, #pragma."
+      ]
+    },
+    "EXT-tests": {
+      "defaultFlag": "-c",
+      "produces": ["lst", "obj"],
+      "notes": [
+        "Sourced from: src/tests/EXT-tests/pnut-ts-ext.test.ts (glob *.spin2; the",
+        "test filters out *v44*, which are pnut-ts-only).",
+        "Produces lst and obj only: interpreter sources do not produce a .bin.",
+        "",
+        "NOTE: EXT-tests includes Spin2_interpreter.spin2 and Spin2_debugger.spin2 —",
+        "re-compiling these under v55 verifies the v55 interpreter source itself",
+        "round-trips through the v55 compiler. High-value canary for ABI releases."
+      ]
+    },
+    "FLASH-tests": {
+      "defaultFlag": "-ci",
+      "produces": ["lst", "obj", "bin", "flash"],
+      "notes": ["Sourced from: src/tests/FLASH-tests/pnut-ts-flash.test.ts (glob *.spin2)."]
+    },
+    "INCLUDE-tests/flattened": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Windows PNut has no #include. Each file here is the hand-flattened twin of",
+        "a #include test in ..\\ ; the GOLDs made here are compared against what",
+        "PNut-TS produces from the #include version."
+      ]
+    },
+    "LANG-FEAT-tests": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/LANG-FEAT-tests/pnut-ts-langfeat.test.ts (glob",
+        "*.spin2; *__pre.spin2 is handled by the lib).",
+        "Default -c: the test header explicitly notes \"no -d flag\".",
+        "The test groups files by prefix (field_*, struct_*) but applies the same",
+        "flag to all."
+      ]
+    },
+    "LANG-VER-tests": {
+      "defaultFlag": "-cd",
+      "perFileFlag": {
+        "spin_builtin_math_v51.spin2": "-c"
+      },
+      "notes": [
+        "Sourced from: src/tests/LANG-VER-tests/pnut-ts-langVer.test.ts (glob",
+        "*.spin2, filters out *__pre.spin2). Default -cd is the .test.ts default;",
+        "the per-file -c entries are its noDebugFiles list."
+      ]
+    },
+    "LARGE-tests/BLDC-Motor-drv": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (BLDC-Motor-drv",
+        "subset; glob *.spin2 in this subdir). Default -c: legacy compBLDC.bat used",
+        "-c uniformly.",
+        "",
+        "NOTE: First-time Windows regen for this subdir as a rebuild-gold convention",
+        "(the old compBLDC.bat used a literal \"demo_\" prefix that matched nothing)."
+      ]
+    },
+    "LARGE-tests/eInk": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (eInk subset; glob",
+        "*.spin2 in this subdir). Matches legacy LARGE-eInk-rebuild-v52."
+      ]
+    },
+    "LARGE-tests/Flash-FS": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "flash_fs_demo*": "-cd"
+      },
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (Flash-FS subset;",
+        "glob *.spin2 in this subdir). Matches legacy LARGE-Flash-FS-rebuild-v52."
+      ]
+    },
+    "LARGE-tests/HUB75": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (HUB75 subset;",
+        "glob *.spin2 in this subdir). Matches legacy LARGE-HUB75-rebuild-v52."
+      ]
+    },
+    "LARGE-tests/iOTgw": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "demo_p2gw*": "-cd"
+      },
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (iOTgw subset;",
+        "glob *.spin2 in this subdir). The pattern is the .test.ts debug-files",
+        "prefix list.",
+        "",
+        "NOTE: First-time Windows regen for this subdir as a rebuild-gold convention",
+        "(the old compIotGW.bat used a literal \"demo_\" prefix that matched nothing)."
+      ]
+    },
+    "LARGE-tests/MultSrvo": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "demo_quad*": "-cd"
+      },
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (MultSrvo subset;",
+        "glob *.spin2 in this subdir). Matches legacy LARGE-MultSrvo-rebuild-v52."
+      ]
+    },
+    "LARGE-tests/OctoSerial": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "demo_octo*": "-cd"
+      },
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (OctoSerial subset;",
+        "glob *.spin2 in this subdir). Matches legacy LARGE-OctoSerial-rebuild-v52."
+      ]
+    },
+    "LARGE-tests/PnlLtMeas": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (PnlLtMeas subset;",
+        "glob *.spin2 in this subdir). Matches legacy LARGE-PnlLtMeas-rebuild-v52."
+      ]
+    },
+    "LARGE-tests/TOF": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "demo_180*": "-cd"
+      },
+      "notes": [
+        "Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (TOF subset; glob",
+        "*.spin2 in this subdir). The pattern is the .test.ts debug-files prefix list.",
+        "",
+        "NOTE: First-time Windows regen for this subdir as a rebuild-gold convention.",
+        "The legacy comp180.bat used a literal \"demo_\" prefix that didn't match",
+        "\"demo_180degrFOV.spin2\" — so existing v52 demo_180 GOLDs were probably",
+        "generated some other way. Worth verifying first regen output.",
+        "",
+        "NOTE: Two TOF GOLD files are explicitly gitignored",
+        "(.gitignore:232-237 lists isp_180degrFOV_TOFsensorSmall.* and isp_hdmi_debug.*).",
+        "Reason for the exclusion is unclear — flag if these GOLDs reappear after regen."
+      ]
+    },
+    "LOADER-tests": {
+      "defaultFlag": "-c",
+      "notes": [
+        "Sourced from: src/tests/LOADER-tests/pnut-ts-loader.test.ts (glob *.spin2).",
+        "Default -c: LOADER tests explicitly omit -d per the test header."
+      ]
+    },
+    "OBJ-tests": {
+      "defaultFlag": "-c",
+      "notes": ["Sourced from: src/tests/OBJ-tests/pnut-ts-obj.test.ts (glob *.spin2)."]
+    },
+    "SPIN-tests": {
+      "defaultFlag": "-c",
+      "notes": ["Sourced from: src/tests/SPIN-tests/pnut-ts-spin.test.ts (glob *.spin2)."]
+    },
+    "V52A-tests": {
+      "defaultFlag": "-c",
+      "perFilePatternFlag": {
+        "*debug*": "-cd"
+      },
+      "patternNote": [
+        "PowerShell -like is case-insensitive, so one entry covers",
+        "'debug', 'Debug', 'DEBUG', etc. (PS hashtable keys are also",
+        "case-insensitive — multiple casings would parse-error.)"
+      ],
+      "notes": [
+        "Sourced from: src/tests/V52A-tests/pnut-ts-v52a.test.ts (glob *.spin2,",
+        "filters out *__pre.spin2). The pattern is the test's rule: files whose name",
+        "contains \"debug\" (case-insensitive substring) get -cd.",
+        "",
+        "NOTE on drift: the legacy V52A-rebuild-v52/rebuild-gold.ps1 used -cd for",
+        "every file. The .test.ts substring rule (which the user has designated as",
+        "the source of truth) excludes 14 of 17 files from debug. If the existing",
+        "GOLDs were generated with -cd everywhere, regenerating under this rule",
+        "will produce different output for those 14 files. That diff is expected",
+        "and corrects the prior drift."
+      ]
+    },
+    "VAR-tests": {
+      "defaultFlag": "-c",
+      "notes": ["Sourced from: src/tests/VAR-tests/pnut-ts-var.test.ts (glob *.spin2)."]
+    },
+    "WUMMI-tests": {
+      "defaultFlag": "-cd",
+      "notes": [
+        "Sourced from: src/tests/WUMMI-tests/pnut-ts-wummi.test.ts (glob *.spin2).",
+        "Default -cd: the pnut-ts options include -d.",
+        "",
+        "NOTE: First-time Windows regen for this suite (no prior v52 .ps1 existed)."
+      ]
+    }
+  },
+  "excluded": {
+    "PREPROC-tests": "PNut cannot produce this suite's GOLDs: every fixture's .pre.GOLD is PNut-TS -i output (PNut has no preprocessed-source output), the test passes per-file -D/-U/-I options PNut has no command-line form of, and its .errout.GOLDs come from #warn, which PNut does not have."
+  }
+}

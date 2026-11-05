@@ -3,10 +3,21 @@
     Regenerate GOLDs for V52A-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/V52A-tests/pnut-ts-v52a.test.ts
-      - Glob:    *.spin2 (filters out *__pre.spin2)
-      - Rule:    files containing "debug" (case-insensitive substring) -> -cd
-                 all others -> -c
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     *debug* -> -cd
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/V52A-tests/pnut-ts-v52a.test.ts (glob *.spin2,
+    filters out *__pre.spin2). The pattern is the test's rule: files whose name
+    contains "debug" (case-insensitive substring) get -cd.
 
     NOTE on drift: the legacy V52A-rebuild-v52/rebuild-gold.ps1 used -cd for
     every file. The .test.ts substring rule (which the user has designated as

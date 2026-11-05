@@ -3,10 +3,19 @@
     Regenerate GOLDs for VAR-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/VAR-tests/pnut-ts-var.test.ts
-      - Glob:    *.spin2
-      - Default: -c (no debug)
-      - No per-file overrides
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     (none)
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/VAR-tests/pnut-ts-var.test.ts (glob *.spin2).
 #>
 param(
     [int]$PNutVersion = 55,

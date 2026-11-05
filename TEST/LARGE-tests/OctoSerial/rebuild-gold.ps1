@@ -3,10 +3,20 @@
     Regenerate GOLDs for LARGE-tests/OctoSerial using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (OctoSerial subset)
-      - Glob:    *.spin2 in this subdir
-      - Default: -c
-      - Pattern: demo_octo* -> -cd (matches legacy LARGE-OctoSerial-rebuild-v52)
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
+
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     demo_octo* -> -cd
+      - Per-file:     (none)
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/LARGE-tests/pnut-ts-large.test.ts (OctoSerial subset;
+    glob *.spin2 in this subdir). Matches legacy LARGE-OctoSerial-rebuild-v52.
 #>
 param(
     [int]$PNutVersion = 55,

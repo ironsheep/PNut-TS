@@ -84,10 +84,13 @@
  * line instead. An adopted file has no header.
  *
  * Suites. SUITES (exported) maps each supported suite directory to its default flag
- * class and the facts a consumer needs: the Windows PNut flag from the suite's
- * rebuild-gold.ps1 (-DefaultFlag), the PNut-TS flags the jest test passes, how the
- * jest test discovers files, the GOLDs an accepted fixture carries, and the kinds
- * allowed. Suites not listed (LANG-VER, V52A, LARGE, INCLUDE, MAP, CACHE, FULL, SHORT)
+ * class and the facts a consumer needs: the Windows PNut flag (pnutFlag, read from
+ * the suite's defaultFlag in scripts/gold/suites.json, the one owner of it; the flag
+ * class follows from it: -c none, -cd debug, -ci flash), the PNut-TS flags the jest
+ * test passes, how the jest test discovers files, the GOLDs an accepted fixture
+ * carries, and the kinds allowed. PREPROC-tests has no Windows run, so it carries
+ * its own class and a null pnutFlag. Suites not listed (LANG-VER, V52A, LARGE,
+ * INCLUDE, MAP, CACHE, FULL, SHORT)
  * pick the flag from the file name, use subdirectories, or are not a flat glob, so
  * rows cannot be placed there without a per-file override.
  */
@@ -105,112 +108,88 @@ const MAX_REPEAT = 1000000;
 const ACCEPT_GOLDS = ['lst', 'obj', 'bin'];
 const GOLD_EXTS = ['lst', 'obj', 'bin', 'pre', 'errout'];
 
+// The Windows PNut rules, one owner: each suite's default PNut flag lives there,
+// and the fixture flag class is read from it.
+const WINDOWS_SUITES = JSON.parse(
+  fs.readFileSync(path.join(REPO, 'scripts', 'gold', 'suites.json'), 'utf8')
+).suites;
+const FLAG_CLASS = { '-c': 'none', '-cd': 'debug', '-ci': 'flash' };
+
 const FLAT_GLOB = 'glob TEST/<suite>/*.spin2';
 const NON_DEBUG_GLOB =
   'glob TEST/<suite>/!(debug_|isp_|coverage_debug_)*.spin2; gen_* is in this group';
 
 const SUITES = {
   'DAT-PASM-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'CON-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l --regression element',
     discovery: FLAT_GLOB
   },
   'SPIN-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'ENCODING-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'EXT-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'VAR-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'LANG-FEAT-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'OBJ-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'LOADER-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'COV-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags: '-v -l -O --regression element',
     discovery: NON_DEBUG_GLOB
   },
   'DBG-tests': {
-    flag: 'debug',
-    pnutFlag: '-cd',
     tsFlags: '-d -v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'DBG-CROP-tests': {
-    flag: 'debug',
-    pnutFlag: '-cd',
     tsFlags: '-d -v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'COL-tests': {
-    flag: 'debug',
-    pnutFlag: '-cd',
     tsFlags: '-d -v -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'WUMMI-tests': {
-    flag: 'debug',
-    pnutFlag: '-cd',
     tsFlags: '-v -d -l -O --regression element',
     discovery: FLAT_GLOB
   },
   'FLASH-tests': {
-    flag: 'flash',
-    pnutFlag: '-ci',
     tsFlags: '-v -l -O -F --regression element',
     discovery: FLAT_GLOB
   },
-  // The only suite whose test compares an .errout.GOLD. It has no rebuild-gold.ps1
-  // today, so pnutFlag is the project default, not a measured value.
+  // The only suite whose test compares an .errout.GOLD.
   'EXCEPT-tests': {
-    flag: 'none',
-    pnutFlag: '-c',
     tsFlags:
       '--regression element (no -d: only debug_/isp_/coverage_debug_ names get -d)',
     discovery: NON_DEBUG_GLOB,
     kinds: ['accept', 'reject']
   },
   // Compares .pre, .lst and .bin; its test passes -i and --regression preproc.
+  // It has no Windows run (scripts/gold/suites.json "excluded"), so it carries
+  // its flag class itself.
   'PREPROC-tests': {
     flag: 'none',
     pnutFlag: null,
@@ -220,7 +199,16 @@ const SUITES = {
     golds: ['pre', 'lst', 'bin']
   }
 };
-for (const s of Object.values(SUITES)) {
+for (const [name, s] of Object.entries(SUITES)) {
+  if (s.pnutFlag === undefined) {
+    const windows = WINDOWS_SUITES[name];
+    if (windows === undefined || !has(FLAG_CLASS, windows.defaultFlag))
+      throw new Error(
+        `scripts/gold/suites.json gives no usable defaultFlag for suite ${name}`
+      );
+    s.pnutFlag = windows.defaultFlag;
+    s.flag = FLAG_CLASS[windows.defaultFlag];
+  }
   if (s.kinds === undefined) s.kinds = ['accept'];
   if (s.golds === undefined) s.golds = ACCEPT_GOLDS;
 }

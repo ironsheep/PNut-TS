@@ -3,14 +3,22 @@
     Regenerate GOLDs for COV-tests using Windows PNut.
 
 .DESCRIPTION
-    Sourced from: src/tests/COV-tests/pnut-ts-cov.test.ts
-      - Glob:    *.spin2 (filters out *__pre.spin2)
-      - Rule:    files matching {debug_,isp_,coverage_debug_}* -> -cd
-                 all others -> -c
+    GENERATED FILE - DO NOT EDIT. Written by scripts/gold/gen-rebuild-scripts.js
+    from scripts/gold/suites.json, scripts/fixtures/fixtures.json and this
+    directory's .spin2 listing. Change those, then run: npm run gen-rebuild-scripts
 
-    Per-file extra (from existing v52 .ps1 — files that use debug() but don't
-    match the prefix pattern):
-      - coverage_clock_003.spin2  -> -cd
+    Rules:
+      - Default flag: -c
+      - Produces:     lst, obj, bin
+      - Patterns:     debug_* -> -cd; isp_* -> -cd; coverage_debug_* -> -cd
+      - Per-file:     coverage_clock_003.spin2 -> -cd
+      - Skip:         (none)
+      - Expect fail:  (none)
+
+    Sourced from: src/tests/COV-tests/pnut-ts-cov.test.ts (glob *.spin2, filters
+    out *__pre.spin2). The pattern overrides are the test's
+    {debug_,isp_,coverage_debug_}* rule. coverage_clock_003.spin2 uses debug()
+    but does not match the prefix pattern (from the existing v52 .ps1).
 
     NOTE: coverage_003_v44.spin2 does NOT get -cd here (it has no debug() call
     and does not match any -cd pattern above, so it falls through to the
