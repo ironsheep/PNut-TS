@@ -1597,7 +1597,12 @@ export class SpinResolver {
               this.wordSize = eWordSize.WS_Long_Res;
               this.enterDatSymbol(); // in pasm directive res
               const countResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
-              // NOTE: omitting the 0x400 error detection (shouldn't be needed)
+              // PNut compares the count unsigned, so a negative count also fails here;
+              // without it a large count wraps when shifted to a byte address
+              if (BigInt.asUintN(32, countResult.value) > 0x400n) {
+                // [error_cael]
+                throw new Error('Cog address exceeds limit (m114)');
+              }
               this.cogOrg = this.cogOrg + (Number(countResult.value) << 2);
               if (this.cogOrg > this.cogOrgLimit) {
                 // [error_cael]
@@ -1651,6 +1656,10 @@ export class SpinResolver {
                 if (this.checkComma()) {
                   // get our (optional) [,{limit}]] and adopt it
                   const cogLimitResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
+                  if (Number(cogAddressResult.value) > Number(cogLimitResult.value)) {
+                    // [error_cael] the start already lies beyond the limit
+                    throw new Error('Cog address exceeds limit (m115)');
+                  }
                   if (Number(cogLimitResult.value) > 0x400) {
                     // [error_caexl]
                     throw new Error('Cog address exceeds $400 limit (m121)');
@@ -1664,6 +1673,10 @@ export class SpinResolver {
               if (inLineMode) {
                 // [error_ohnawiac]
                 throw new Error('ORGH not allowed within inline assembly code');
+              }
+              if (this.dittoIsActive) {
+                // [error_ohnawads]
+                throw new Error('ORGH not allowed within a DITTO block');
               }
               this.errorIfSymbol();
               // reset hub address and limitsize_
@@ -1681,7 +1694,7 @@ export class SpinResolver {
                     throw new Error('Hub address below $400 limit');
                   }
                 }
-                if (Number(hubAddressResult.value) > this.obj_limit) {
+                if (Number(hubAddressResult.value) > this.obj_size_limit) {
                   // [error_haec]
                   throw new Error('Hub address exceeds $100000 ceiling (m360)');
                 }
@@ -1725,9 +1738,6 @@ export class SpinResolver {
               while (this.objImage.offset & (pasmDirective == eValueType.dir_alignl ? 0x03 : 0x01)) {
                 this.enterDataByte(0n);
               }
-            } else if (this.dittoIsActive) {
-              // [error_ohnawads]
-              throw new Error('ORGH not allowed within a DITTO block');
             }
             // ensure this gets to end-of-line check (throw error if not)
             if (!dittoHandledThisGet) {

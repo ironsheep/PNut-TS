@@ -2522,6 +2522,21 @@
       "source": ["DAT", "  org", "x res 1", "  djnz x,#$400"]
     },
     {
+      "id": "err_d_res_count_wrap",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m114: \"Cog address exceeds limit\" (RES count above $400, which wrapped to 0 when shifted to a byte address)",
+      "note": "D5. asm v52 p2com.asm 5099-5100 (unsigned compare, so a negative count also fails), unconfirmed until GOLD.",
+      "source": ["DAT", "  org", "x res $40000000"]
+    },
+    {
+      "id": "acc_dat_res_lut_max",
+      "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts m110/m114: RES - at limit (ORG $200 then RES $200 ends exactly at the $400 LUT limit)",
+      "note": "D5 accept limb. asm v52 p2com.asm 5099-5104, unconfirmed until GOLD.",
+      "source": ["DAT", "  org $200", "x res $200", "", "PUB main()", "  return"]
+    },
+    {
       "id": "err_d_cmbf0t255",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 4,
