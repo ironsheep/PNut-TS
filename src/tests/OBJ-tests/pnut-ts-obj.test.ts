@@ -34,6 +34,8 @@ describe('PNut_ts builds our OBJ test files correctly', () => {
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
+  // children of generated fixtures (gen_<id>__<name>) are compiled through their parent
+  files = files.filter((f) => !/^gen_.*__/.test(path.basename(f)));
   if (files.length > 1) {
     files.sort();
   }
