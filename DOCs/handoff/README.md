@@ -52,9 +52,12 @@ this project — see `.claude/doctrine-overlay.md` §1.
 
 ## Currently outstanding
 
-**Nothing.** The last two — the abort-trap amendment and the `map_caveat`
-retraction — were confirmed live in P2KB on 2026-09-26 and moved to
-`p2kb/archive/`.
+| Document | Asks for | Drafted |
+|---|---|---|
+| `p2kb/RFVAR-RFVARS-reference.md` | the format, ranges and usage in the `RFVAR`/`RFVARS` entries; a new `FVAR`/`FVARS` DAT-directive entry; Spin2-extension hover text | 2026-11-04 |
+
+The previous two — the abort-trap amendment and the `map_caveat` retraction —
+were confirmed live in P2KB on 2026-09-26 and moved to `p2kb/archive/`.
 
 Before reporting anything here as owed, re-fetch the live entry: this table was
 once left saying "not applied" for nine days after both had landed.

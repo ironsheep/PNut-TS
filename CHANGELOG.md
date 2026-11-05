@@ -4,6 +4,16 @@ All notable changes to the "Pnut - A reimplementation in TypeScript" are documen
 
 Versions are numbered `Major.PNutVersion.Patch`: the middle number is the PNut language version a release tracks (1.55.x tracks PNut v55), and the last number is ours, reset to 0 when PNut advances. New features can arrive in a patch release.
 
+## v1.55.10 (2026-11-04)
+
+`FVARS` accepts zero and positive values, and encodes every value byte for byte as PNut does.
+
+### Fixes to errors and warnings
+
+- **`FVARS` values of zero or more in a DAT section** were refused with
+  `FVAR/FVARS data is too big`. PNut accepts `-$1000_0000` to `$0FFF_FFFF`, as
+  PNut-TS now does. Negative values and `FVAR` were unaffected.
+
 ## v1.55.9 (2026-10-31)
 
 Braces inside comments and strings are read as PNut reads them, so no source line is lost from the build.

@@ -119,7 +119,7 @@
       "covers": [
         "cli"
       ],
-      "verified": "1.55.9"
+      "verified": "1.55.10"
     },
     "CHANGELOG.md": {
       "class": "shipped",
@@ -132,7 +132,7 @@
       "covers": [
         "cli"
       ],
-      "verified": "1.55.9",
+      "verified": "1.55.10",
       "note": "Help transcript is pasted from the shipping build \u2014 regenerate, do not hand-edit"
     },
     "Preprocessor.md": {
@@ -141,7 +141,7 @@
         "preprocessor",
         "diagnostics"
       ],
-      "verified": "1.55.9"
+      "verified": "1.55.10"
     },
     "BUILD-RUN.md": {
       "class": "process",
@@ -797,6 +797,10 @@
     "DOCs/handoff/README.md": {
       "class": "process",
       "note": "Index + convention for external-agent handoff folders; lists what is currently outstanding"
+    },
+    "DOCs/handoff/p2kb/RFVAR-RFVARS-reference.md": {
+      "class": "historical",
+      "note": "P2KB / Spin2-extension handoff (2026-11-04); outstanding until applied, then archived. Pending signal is carried by DOCs/handoff/README.md"
     },
     "DOCs/roadmaps/completed/Map-Instance-Correctness-Sprint-Plan.md": {
       "class": "historical"

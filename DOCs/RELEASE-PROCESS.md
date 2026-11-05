@@ -267,6 +267,9 @@ Error codes follow the pattern `(mGGI)` where:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.55.10 | 2026-11-04 | DAT `FVARS` — zero and positive values were refused with `FVAR/FVARS data is too big`; now accepted and encoded byte for byte as PNut v55 does |
+| 1.55.9 | 2026-10-31 | Preprocessor — `{`/`}` in a comment or string on a line starting with a column-1 `{…}` comment dropped source lines; unclosed `{` now gives PNut's `Expected "}"` |
+| 1.55.8 | 2026-09-17 | `.map` rewritten around images and instances; float and non-ASCII string literals match PNut bit for bit; unknown options, `-D SYM=value` and `#if`/`#elseif` are errors |
 | 1.55.7 | 2026-09-13 | Preprocessor — `#include` in the compiled file built the included file instead (an error if it had no `PUB`, silently otherwise) |
 | 1.55.6 | 2026-09-13 | PASM — explicit `AUGS #`/`AUGD #` with bit 31 of the operand set assembled as an unconditional `AUGD` |
 | 1.55.5 | 2026-08-30 | Object cache — a cached object could lose a nested object's DEBUG data or aim a nested `debug()` at the wrong record; cache format 9, so the first build after upgrading recompiles |

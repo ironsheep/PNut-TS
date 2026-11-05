@@ -1,0 +1,212 @@
+'' RFVAR / RFVARS hardware check for DOCs/handoff/p2kb/RFVAR-RFVARS-reference.md
+'' Compile with DEBUG enabled and run from RAM. Every check prints a PASS or FAIL
+'' line; every negative control prints REFUTED (the hardware disproved a wrong
+'' answer) or NOT REFUTED. The run is valid only if it ends with:
+''     RESULT: 105 of 105 checks passed, 0 failed (expected 105 checks)
+''     RESULT: 9 of 9 negative controls refuted
+''     VERDICT: PASS
+''
+'' Compiler: PNut, or PNut-TS 1.55.10 or later. PNut-TS 1.55.9 and earlier reject
+'' every non-negative FVARS value ("FVAR/FVARS data is too big" at the svals table),
+'' which is the defect 1.55.10 fixes.
+''
+'' T1  RFVARS on every signed length boundary: value, C (= sign), Z (= zero),
+''     and GETPTR = address of the next unread byte                 (doc §2, §4, §5.3)
+'' T2  RFVAR on every unsigned length boundary: value, C (= 0), Z    (doc §2, §3)
+'' T3  Spin2 decoders decode_fvars / decode_fvar on the same bytes    (doc §8.3)
+'' T4  the cog example: sum of a delta table = -68_753               (doc §8.1)
+'' T5  the inline-PASM example: 300 and 70_000                       (doc §8.2)
+'' T6  negative controls: plausible wrong answers (mis-sized encoding, wrong
+''     sign extension, wrong GETPTR advance, wrong C, 7-bit 4th byte, cog never
+''     ran) are each disproved; plus a comparator self-test       (doc §2-§6)
+
+CON
+  _clkfreq = 200_000_000
+  NS = 16                                       ' signed boundary values
+  NU = 8                                        ' unsigned boundary values
+  SENTINEL = $DEAD_BEEF
+  N_CHECKS = 105                                ' T1 65 + T2 32 (+T3 inside both) + T4 1 + T5 2 + T6 5
+  N_REFUTES = 9                                 ' T6 negative controls
+
+VAR
+  long params[2]
+  long checks, passes, fails, refuted
+
+PUB main() | i, p, pstart, v, c, z, t, first, second
+
+  ' T1 -- RFVARS
+  p := @svals
+  repeat i from 0 to NS - 1
+    pstart := p
+    v, c, z, p := hw_rfvars(p)
+    check(1, i, sexp[i], v)
+    check(1, 100 + i, sexp[i] < 0 ? 1 : 0, c)
+    check(1, 200 + i, sexp[i] == 0 ? 1 : 0, z)
+    check(3, i, sexp[i], decode_fvars(pstart))
+  check(1, 999, @uvals, p)                      ' GETPTR walked exactly to the next table
+
+  ' T2 -- RFVAR
+  p := @uvals
+  repeat i from 0 to NU - 1
+    pstart := p
+    v, c, z, p := hw_rfvar(p)
+    check(2, i, uexp[i], v)
+    check(2, 100 + i, 0, c)
+    check(2, 200 + i, uexp[i] == 0 ? 1 : 0, z)
+    check(3, 100 + i, uexp[i], decode_fvar(pstart))
+
+  ' T4 -- cog example (doc 8.1, with the result written back to hub)
+  params[0] := @deltas
+  params[1] := SENTINEL
+  coginit(COGEXEC_NEW, @sum_deltas, @params)
+  t := getms()
+  repeat while params[1] == SENTINEL and getms() - t < 1000
+  check(4, 0, -68_753, params[1])
+
+  ' T5 -- inline example (doc 8.2, verbatim)
+  first, second := read_lengths()
+  check(5, 0, 300, first)
+  check(5, 1, 70_000, second)
+
+  ' T6 -- negative controls: each wrong answer must be disproved by the hardware
+  v, c, z, p := hw_rfvars(@neg_old)             ' 1.55.9's 1-byte FVARS 100 = $64
+  check(6, 0, -28, v)
+  refute(6, 0, 100, v)                          ' sizing matters: $64 alone is not +100
+  v, c, z, p := hw_rfvar(@neg_40)
+  check(6, 1, 64, v)
+  refute(6, 1, -64, v)                          ' RFVAR does not sign-extend
+  v, c, z, p := hw_rfvars(@neg_40)
+  check(6, 2, -64, v)
+  refute(6, 2, 64, v)                           ' RFVARS does sign-extend from bit 6
+  v, c, z, p := hw_rfvars(@neg_100)
+  check(6, 3, 2, p - @neg_100)
+  refute(6, 3, 1, p - @neg_100)                 ' +100 takes 2 bytes, GETPTR moved 2
+  refute(6, 4, 1, c)                            ' C is not set for a positive value
+  v, c, z, p := hw_rfvar(@neg_m1)
+  check(6, 5, 127, v)
+  refute(6, 5, -1, v)                           ' FVARS -1 bytes read by RFVAR are 127
+  v, c, z, p := hw_rfvar(@neg_max)
+  refute(6, 6, $0FFF_FFFF, v)                   ' 4th byte carries 8 bits, not 7
+  refute(6, 7, SENTINEL, params[1])             ' the T4 cog really ran and wrote back
+  if agree(5, 6) or not agree(7, 7)             ' the comparator itself can fail
+    debug("NOT REFUTED T6.8 comparator self-test")
+  else
+    refuted++
+    debug("REFUTED T6.8 comparator: 5 vs 6 reported different, 7 vs 7 the same")
+
+  debug("RESULT: ", udec_(passes), " of ", udec_(checks), " checks passed, ", udec_(fails), " failed (expected ", udec_(N_CHECKS), " checks)")
+  debug("RESULT: ", udec_(refuted), " of ", udec_(N_REFUTES), " negative controls refuted")
+  if passes == N_CHECKS and checks == N_CHECKS and fails == 0 and refuted == N_REFUTES
+    debug("VERDICT: PASS")
+  else
+    debug("VERDICT: FAIL")
+
+PRI agree(expected, got) : same
+  same := expected == got
+
+PRI check(tnum, item, expected, got)
+  checks++
+  if agree(expected, got)
+    passes++
+    debug("PASS T", udec_(tnum), ".", udec_(item), " got ", sdec_(got), " ($", uhex_long_(got), ")")
+  else
+    fails++
+    debug("FAIL T", udec_(tnum), ".", udec_(item), " expected ", sdec_(expected), " ($", uhex_long_(expected), ") got ", sdec_(got), " ($", uhex_long_(got), ")")
+
+PRI refute(tnum, item, wrong, got)
+  if agree(wrong, got)
+    debug("NOT REFUTED T", udec_(tnum), ".", udec_(item), " got the wrong answer ", sdec_(wrong), " ($", uhex_long_(wrong), ")")
+  else
+    refuted++
+    debug("REFUTED T", udec_(tnum), ".", udec_(item), " got ", sdec_(got), ", not ", sdec_(wrong))
+
+PRI hw_rfvars(p) : v, c, z, pnext
+  org
+                rdfast  #0, p
+                rfvars  v               wcz
+                wrc     c
+                wrz     z
+                getptr  pnext
+  end
+
+PRI hw_rfvar(p) : v, c, z, pnext
+  org
+                rdfast  #0, p
+                rfvar   v               wcz
+                wrc     c
+                wrz     z
+                getptr  pnext
+  end
+
+' ---- the document's code, verbatim except where noted ----
+
+PUB read_lengths() : first, second | p
+  p := @lengths                         ' Spin2 @ gives the absolute hub address
+  org
+                rdfast  #0, p           ' point FIFO at the table (waiting form)
+                rfvar   first           ' 300
+                rfvar   second          ' 70_000
+  end
+
+PUB decode_fvar(p_bytes) : value | b, shift
+'' Decode one FVAR (RFVAR-form) value from hub bytes at p_bytes
+  repeat 3
+    b := byte[p_bytes++]
+    value |= (b & $7F) << shift
+    if b & $80 == 0
+      return
+    shift += 7
+  value |= byte[p_bytes] << 21                  ' 4th byte: all 8 bits
+
+PUB decode_fvars(p_bytes) : value | b, shift
+'' Decode one FVARS (RFVARS-form) value: same bytes, then sign-extend
+  repeat 3
+    b := byte[p_bytes++]
+    value |= (b & $7F) << shift
+    shift += 7
+    if b & $80 == 0
+      return value signx (shift - 1)            ' sign bit is bit 6, 13 or 20
+  value |= byte[p_bytes] << 21
+  return value signx 28                         ' sign bit is bit 28
+
+DAT
+svals   byte    FVARS 0, FVARS 63, FVARS 64, FVARS -64, FVARS -65, FVARS 100
+        byte    FVARS 8191, FVARS 8192, FVARS -8192, FVARS -8193
+        byte    FVARS $F_FFFF, FVARS $10_0000, FVARS -$10_0000, FVARS -$10_0001
+        byte    FVARS $0FFF_FFFF, FVARS -$1000_0000
+uvals   byte    FVAR 0, FVAR 127, FVAR 128, FVAR $3FFF, FVAR $4000
+        byte    FVAR $1F_FFFF, FVAR $20_0000, FVAR $1FFF_FFFF
+
+        alignl
+sexp    long    0, 63, 64, -64, -65, 100, 8191, 8192, -8192, -8193
+        long    $F_FFFF, $10_0000, -$10_0000, -$10_0001, $0FFF_FFFF, -$1000_0000
+uexp    long    0, 127, 128, $3FFF, $4000, $1F_FFFF, $20_0000, $1FFF_FFFF
+
+deltas          byte    FVARS 1000, FVARS -3, FVARS 250, FVARS -70_000, FVARS 0
+lengths         byte    FVAR 300, FVAR 70_000
+
+' T6 negative-control bytes
+neg_old         byte    $64                     ' what 1.55.9 emitted for FVARS 100
+neg_40          byte    $40
+neg_100         byte    FVARS 100               ' $E4 $00
+neg_m1          byte    FVARS -1                ' $7F
+neg_max         byte    FVAR $1FFF_FFFF         ' $FF $FF $FF $FF
+
+' doc 8.1 cog code; PTRA -> params, so the table address is read from
+' params[0] and the sum written to params[1] (the doc's version just stops)
+DAT             org
+sum_deltas      rdlong  addr, ptra
+                rdfast  #0, addr                ' FIFO -> table
+                mov     acc, #0
+                mov     n, #5
+.loop           rfvars  d                       ' next signed delta, 1..4 bytes
+                add     acc, d
+                djnz    n, #.loop
+                wrlong  acc, ptra[1]
+                cogid   n
+                cogstop n
+
+addr            res     1
+acc             res     1
+n               res     1
+d               res     1
