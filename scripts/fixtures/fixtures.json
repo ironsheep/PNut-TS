@@ -974,8 +974,19 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 18,
-      "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message)",
+      "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message). asm v52 p2com.asm 11810-11811 tests bnest_ptr against block_nest_limit (16, line 64) before each push. Pushes come from IF/IFNOT (11107), CASE (11181), CASE_FAST (11316), REPEAT (11588) and LOOKUP/LOOKDOWN (14078); compile_top_block (11006) resets the pointer without a push, so the method body is not counted. 17 nested REPEAT = PNut limit + 1.",
+      "note": "asm v52 p2com.asm, unconfirmed until GOLD.",
       "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  repeat", "                   x := 1"]
+    },
+    {
+      "id": "err_b_bnso",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 17,
+      "covers": "PNut error_bnso \"Blocknest stack overflow\" (no PNut-TS message). asm v52 p2com.asm 11820-11822: after a push, bstack_ptr (in dwords) must not exceed block_stack_limit (1000h = 4096, line 65). An IF/IFNOT reserves if_limit/16+1 times 16 = 272 dwords (11106; if_limit 256, line 66). 16 nested IF = 4352 > 4096. Only 16 blocks are pushed, so error_loxnbe (11811) is not reached.",
+      "note": "asm v52 p2com.asm, unconfirmed until GOLD. Under PNut-TS (current dist) this row did not finish compiling within 300 s (D15 class: nested IF).",
+      "source": ["PUB main() | x", "  if x", "   if x", "    if x", "     if x", "      if x", "       if x", "        if x", "         if x", "          if x", "           if x", "            if x", "             if x", "              if x", "               if x", "                if x", "                 if x", "                  x := 1"]
     },
     {
       "id": "err_b_loxudfe",
@@ -992,10 +1003,10 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 24,
-      "note": "expectLine is estimated from the structure record size; the Windows GOLD gives the true line.",
-      "covers": "PNut error_dsdle \"Data structure-definitions limit exceeded\" (no PNut-TS message)",
-      "source": { "template": ["{Spin2_v52}\nCON\n  STRUCT big(long member_name_padding_000", { "repeat": 199, "from": 1, "text": ", long member_name_padding_${i:3}" }, ")\n", { "repeat": 60, "text": "  STRUCT c${i:3} = big\n" }, "PUB main()\n  return\n"] }
+      "expectLine": 4098,
+      "note": "The record size is taken from the acc_struct_defs_max note (6+4+1+1+name+1 bytes, asm 6805-6819), not re-derived here. 4095 records of 32 bytes plus one of 33 (a 20-character member name) make 131073 bytes, one over struct_def_limit 20000h = 131072. asm v52, unconfirmed until GOLD.",
+      "covers": "PNut error_dsdle \"Data structure-definitions limit exceeded\" (no PNut-TS message). asm v52 p2com.asm 4504-4508: the record end must not pass struct_def_limit 20000h (line 59). Record copy at 4507 is 'ja', so the buffer may fill exactly; one byte over is the error. Struct ids stay below struct_id_limit 1000h (4096).",
+      "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4095, "text": "  STRUCT s${i:4}(long member_name_padding)\n" }, "  STRUCT s4095(long member_name_paddingx)\n", "PUB main()\n  return\n"] }
     },
     {
       "id": "err_c_tocbufa_m610",
@@ -1106,6 +1117,17 @@
       "expectLine": 2,
       "covers": "src/classes/debugData.ts m150: \"DEBUG data is too long\" (PNut-TS adds \": record exceeds 255 bytes\")",
       "source": { "template": ["PUB main()\n  debug(\"", { "repeat": 300, "text": "a" }, "\")\n"] }
+    },
+    {
+      "id": "err_c_dditl_size_limit_plus1",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 43,
+      "note": "expectLine is the last DEBUG line. PNut raises error_dditl in collapse_debug_data after the whole compile, so the Windows GOLD gives the true line. Table 2*(42+1) = 86 bytes, plus 41 records of 255 bytes and one of 211 would be 10752; this row's last record is 212 bytes, so the total is 10753. Record length = characters + 4 (from the acc_dbg_size_limit_10752 note) is not re-derived here. asm v52, unconfirmed until GOLD.",
+      "covers": "PNut error_dditl at p2com.asm 6969-6970: after collapse_debug_data the debug table plus data must not exceed debug_size_limit 2A00h = 10752 (line 86). The collapsed table is 2*(n+1) bytes (6946-6962). 42 distinct DEBUG records = limit + 1 byte. No PNut-TS message at this size (debugData.ts m151 is the 16384 limit).",
+      "source": { "template": ["PUB main()\n", { "repeat": 41, "from": 0, "text": "  debug(\"${i:3}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n" }, "  debug(\"041aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n"] }
     },
     {
       "id": "err_c_dditl_m151",
@@ -1995,8 +2017,18 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 2,
-      "covers": "PNut error_eitc \"Expression is too complex\" (constant-expression stack of 16; no PNut-TS message)",
-      "source": { "template": ["CON\n  a = ", { "repeat": 20, "text": "1 + (" }, "1", { "repeat": 20, "text": ")" }, "\nPUB main()\n  return\n"] }
+      "covers": "PNut error_eitc \"Expression is too complex\" (no PNut-TS message). asm v52 p2com.asm 9626-9627: perform_push errors when the math stack is full; matsize = 10h = 16 (line 10118). A constant pushes once (9312), '(' recurses into resolve_exp (9321) without a push, and the binary operator runs after its right operand, so each '1 + (' leaves one value pending. 16 levels = 17 pushes, and the 17th errors.",
+      "note": "asm v52 p2com.asm, unconfirmed until GOLD.",
+      "source": { "template": ["CON\n  a = ", { "repeat": 16, "text": "1 + (" }, "1", { "repeat": 16, "text": ")" }, "\nPUB main()\n  return\n"] }
+    },
+    {
+      "id": "acc_con_eitc_15",
+      "suite": "CON-tests",
+      "kind": "accept",
+      "goldSource": "pnut",
+      "covers": "PNut error_eitc \"Expression is too complex\" - at limit (15 levels: 16 pushes fill the math stack of 16; asm v52 p2com.asm 9626-9627, 10118)",
+      "note": "Unconfirmed until GOLD.",
+      "source": { "template": ["CON\n  a = ", { "repeat": 15, "text": "1 + (" }, "1", { "repeat": 15, "text": ")" }, "\nPUB main()\n  return\n"] }
     },
     {
       "id": "err_c_os",
@@ -3201,9 +3233,16 @@
     {
       "id": "acc_spin_nest_blocks_16",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
-      "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message) - at limit (16 nested REPEAT blocks)",
+      "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message) - at limit (16 nested REPEAT blocks). Counting as in err_b_loxnbe: asm v52 p2com.asm 11810-11811 and the pushes at 11107, 11181, 11316, 11588, 14078; the method body is not counted (11006).",
       "note": "asm v52 block_nest_limit = 16 (p2com.asm 64), unconfirmed until GOLD.",
       "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  x := 1"]
+    },
+    {
+      "id": "acc_spin_bnso_4096",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "PNut error_bnso \"Blocknest stack overflow\" (no PNut-TS message) - at limit (15 nested IF = 15 x 272 = 4080 dwords, then 1 nested REPEAT = 16, total 4096 = block_stack_limit; asm v52 p2com.asm 11820-11822, 11106, 11587)",
+      "note": "asm v52 block_stack_limit = 1000h (p2com.asm 65), if_limit 256 (66). The check is 'ja', so exactly 4096 is accepted. Unconfirmed until GOLD. Under PNut-TS (current dist) this row did not finish compiling within 300 s (D15 class: nested IF).",
+      "source": ["PUB main() | x", "  if x", "   if x", "    if x", "     if x", "      if x", "       if x", "        if x", "         if x", "          if x", "           if x", "            if x", "             if x", "              if x", "               if x", "                if x", "                 repeat", "                  x := 1"]
     },
     {
       "id": "acc_spin_quit_next_levels",
@@ -3323,6 +3362,13 @@
       "covers": "src/classes/debugData.ts m150: \"DEBUG data is too long\" (record exceeds 255 bytes) - at limit (a 255-byte record: a 251-character string)",
       "note": "asm v52 p2com.asm 13349-13356 (the record length is a byte, so 255 is the most). Record length = characters + 4, measured: 251 characters accepted, 252 rejected. Unconfirmed until GOLD.",
       "source": { "template": ["PUB main()\n  debug(\"", { "repeat": 251, "text": "a" }, "\")\n"] }
+    },
+    {
+      "id": "acc_dbg_size_limit_10752",
+      "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
+      "covers": "PNut error_dditl at p2com.asm 6969-6970 - at limit: debug table plus data after collapse = 2*(42+1) + 41 x 255 + 211 = 10752 = debug_size_limit 2A00h (line 86)",
+      "note": "42 distinct DEBUG records (distinct prefixes, so no record is shared; 2*(n+1) collapsed table per 6946-6962). Record length = characters + 4 is taken from the acc_dbg_* row note at the 255-byte record, not re-derived. Unconfirmed until GOLD; the one-byte-over row is err_c_dditl_size_limit_plus1.",
+      "source": { "template": ["PUB main()\n", { "repeat": 41, "from": 0, "text": "  debug(\"${i:3}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n" }, "  debug(\"041aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n"] }
     },
     {
       "id": "acc_dbg_total_size",
