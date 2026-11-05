@@ -2789,6 +2789,103 @@
       "covers": "src/classes/objectImage.ts m491: \"Program exceeds 24576KB\" (25 distinct children of about 960 KB each plus 960 KB of the parent's own DAT data)",
       "source": { "template": ["OBJ\n", { "repeat": 25, "text": "  o${i:2} : \"gen_err_f_image_m491__c${i:2}\"\n" }, "DAT\n  byte 0[$F0000]\nPUB main()\n  return"] },
       "aux": [{ "name": "c${i:2}.spin2", "sibling": true, "count": 25, "source": { "template": ["DAT\n  byte ${i}\n  byte 0[$F0000]\nPUB go()\n  return\n"] } }]
+    },
+    {
+      "id": "err_g_bare_undef",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for a bare #undef (the bare-directive branch)",
+      "source": ["#undef", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_bare_ifdef",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for a bare #ifdef at top level (the bare-directive branch)",
+      "source": ["#ifdef", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_bare_ifndef",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for a bare #ifndef (the bare-directive branch)",
+      "source": ["#ifndef", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_bare_elseifdef",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for a bare #elseifdef inside an open #ifdef (the bare-directive branch)",
+      "source": ["#ifdef NOT_DEFINED_SYMBOL", "#elseifdef", "#endif", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_bare_elseifndef",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for a bare #elseifndef inside an open #ifdef (the bare-directive branch)",
+      "source": ["#ifdef NOT_DEFINED_SYMBOL", "#elseifndef", "#endif", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_define_blank",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for #define followed only by a space (the #define branch, not the bare-directive branch)",
+      "note": "Line 1 of the source ends in one trailing space; it is what routes the line to the #define branch.",
+      "source": ["#define ", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_undef_blank",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for #undef followed only by a space (the #undef branch, not the bare-directive branch)",
+      "note": "Line 1 of the source ends in one trailing space; it is what routes the line to the #undef branch.",
+      "source": ["#undef ", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_ifdef_blank",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for #ifdef followed only by a space (the #ifdef branch, not the bare-directive branch)",
+      "note": "Line 1 of the source ends in one trailing space; it is what routes the line to the #ifdef branch.",
+      "source": ["#ifdef ", "PUB main()", "  return", "#endif"]
+    },
+    {
+      "id": "err_g_ifndef_blank",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for #ifndef followed only by a space (the #ifndef branch, not the bare-directive branch)",
+      "note": "Line 1 of the source ends in one trailing space; it is what routes the line to the #ifndef branch.",
+      "source": ["#ifndef ", "PUB main()", "  return", "#endif"]
+    },
+    {
+      "id": "err_g_stray_elseifndef",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Must be preceeded by #IFDEF or #IFNDEF\" for a #elseifndef with no conditional open",
+      "source": ["#elseifndef SOME_SYMBOL", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_if_unsupported",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"#if is not a supported preprocessor directive — use #ifdef or #ifndef\" (PNut-TS-only message; PNut leaves the line to the Spin2 parser)",
+      "source": ["#if FOO", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_elseif_unsupported",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 2,
+      "covers": "src/classes/spinDocument.ts: \"#elseif is not a supported preprocessor directive — use #elseifdef or #elseifndef\" (PNut-TS-only message; PNut leaves the line to the Spin2 parser)",
+      "source": ["#ifdef NOT_DEFINED_SYMBOL", "#elseif FOO", "#endif", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_g_ifdef_in_include",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: \"Expected a preprocessor symbol\" for a bare #ifdef reached inside an #included file (the top-level form is err_g_bare_ifdef)",
+      "note": "The error is reported in the sibling gen_err_g_ifdef_in_include__inc.spin2 at its line 1 (a sibling carries no header line); expectLine is the #include line of this file that pulls it in. #include is a PNut-TS directive, so the GOLD is PNut-TS's own.",
+      "source": ["#include \"gen_err_g_ifdef_in_include__inc.spin2\"", "PUB main()", "  return"],
+      "aux": [{ "name": "inc.spin2", "sibling": true, "source": ["#ifdef", "PUB go()", "  return"] }]
     }
   ]
 }
