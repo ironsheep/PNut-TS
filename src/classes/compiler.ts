@@ -183,6 +183,12 @@ export class Compiler {
         // thinking: pass context:fileIndex instead of fileName??
         this.compileRecursively(0, this.srcFile);
 
+        // --pass elementize / con-block: compilation ends after that pass, so
+        // there is no object image to list, map or compose into a binary.
+        if (this.context.passOptions.afterElementize || this.context.passOptions.afterConBlock) {
+          return;
+        }
+
         // Validate index mapping after all child objects are processed
         if (this.globalChildObjectIndexMap.size > 0) {
           this.validateIndexMapping();

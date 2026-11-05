@@ -293,10 +293,6 @@ export class PNutInTypeScript {
       }
     }
 
-    if (this.context.runEnvironment.developerModeEnabled) {
-      this.context.logger.verboseMsg('PNUT_DEVELOP_MODE is enabled');
-    }
-
     //this.context.logger.progressMsg(`** RUN WITH ARGV=[${combinedArgs.join(', ')}]`);
     if (!foundJest && runningCoverageTesting) {
       this.context.reportOptions.coverageTesting = true;
@@ -325,6 +321,10 @@ export class PNutInTypeScript {
 
     if (this.options.verbose) {
       this.context.logger.enabledVerbose();
+    }
+    // reported here, once -v has switched verbose output on
+    if (this.context.runEnvironment.developerModeEnabled) {
+      this.context.logger.verboseMsg('PNUT_DEVELOP_MODE is enabled');
     }
     if (this.options.intermediate) {
       this.context.preProcessorOptions.writeIntermediateSpin2 = true;
@@ -409,6 +409,15 @@ export class PNutInTypeScript {
         commandLine = `pnut_ts ${combinedArgs.slice(2).join(' ')}`;
       }
       this.context.logger.infoMsg(`* ${commandLine}`);
+    }
+
+    // One source file per run: a second positional filename is refused rather
+    // than letting the loop below silently compile only the last one named.
+    // (Empty arguments are not filenames -- see the override just below.)
+    const positionalFilenames: string[] = this.program.args.filter((argument) => argument.length > 0);
+    if (positionalFilenames.length > 1) {
+      this.context.logger.errorMsg('Compiling more than one .spin2 files at a time, not supported!');
+      return Promise.resolve(1);
     }
 
     // OVERRIDE mech to allow args of ['', 'filename.spin2'] - spin2 extension does this!!!

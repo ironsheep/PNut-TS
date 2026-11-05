@@ -7,8 +7,9 @@ import { spawnSync } from 'child_process';
 
 // Command-line behaviour that a .spin2 fixture row cannot select, because the
 // fixture suites pass one fixed option string: the -I include-directory search for
-// DAT FILE data, extensionless filenames, the --log and --pass option lists, and a
-// run with no filename at all.
+// DAT FILE data, extensionless filenames, the --log and --pass option lists, more
+// than one source filename, the PNUT_DEVELOP_MODE notice, and a run with no
+// filename at all.
 //
 // Every compile runs in an OS temp directory, as its own process, with that
 // directory as its working directory (-I and the extensionless lookup are
@@ -36,11 +37,12 @@ describe('PNut_ts command-line options and environment', () => {
     fs.rmSync(workDir, { recursive: true, force: true });
   });
 
-  function runCompiler(args: string[]): iRunResult {
+  function runCompiler(args: string[], extraEnv: NodeJS.ProcessEnv = {}): iRunResult {
     const result = spawnSync(process.execPath, [toolPath, ...args], {
       cwd: workDir,
       encoding: 'utf8',
-      maxBuffer: 1 << 28
+      maxBuffer: 1 << 28,
+      env: { ...process.env, ...extraEnv }
     });
     return { status: result.status, output: `${result.stdout}${result.stderr}` };
   }
@@ -106,6 +108,46 @@ describe('PNut_ts command-line options and environment', () => {
     fs.writeFileSync(path.join(workDir, 'passed.spin2'), MINIMAL_SOURCE);
     const result = runCompiler(['-v', 'passed.spin2', '--pass', 'elementize']);
     expect(result.output).toContain(' Elementizer');
+  });
+
+  test.each(['preprocess', 'elementize', 'con-block'])('--pass %s stops cleanly: exit 0 and no output files', (passName: string) => {
+    fs.writeFileSync(path.join(workDir, 'passed.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['-q', '-l', 'passed.spin2', '--pass', passName]);
+    expect(result.status).toBe(0);
+    expect(result.output).not.toContain('error');
+    expect(fs.existsSync(path.join(workDir, 'passed.bin'))).toBe(false);
+    expect(fs.existsSync(path.join(workDir, 'passed.lst'))).toBe(false);
+  });
+
+  test('two source filenames are refused and nothing is written', () => {
+    fs.writeFileSync(path.join(workDir, 'first.spin2'), MINIMAL_SOURCE);
+    fs.writeFileSync(path.join(workDir, 'second.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['-q', 'first.spin2', 'second.spin2']);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain('Compiling more than one .spin2 files at a time, not supported!');
+    expect(fs.existsSync(path.join(workDir, 'first.bin'))).toBe(false);
+    expect(fs.existsSync(path.join(workDir, 'second.bin'))).toBe(false);
+  });
+
+  test('a single source filename still compiles', () => {
+    fs.writeFileSync(path.join(workDir, 'only.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['-q', 'only.spin2']);
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(path.join(workDir, 'only.bin'))).toBe(true);
+  });
+
+  test('-v reports PNUT_DEVELOP_MODE when it is set', () => {
+    fs.writeFileSync(path.join(workDir, 'dev.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['-v', 'dev.spin2'], { PNUT_DEVELOP_MODE: '1' });
+    expect(result.status).toBe(0);
+    expect(result.output).toContain('PNUT_DEVELOP_MODE is enabled');
+  });
+
+  test('without -v the PNUT_DEVELOP_MODE notice is not printed', () => {
+    fs.writeFileSync(path.join(workDir, 'dev.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['dev.spin2'], { PNUT_DEVELOP_MODE: '1' });
+    expect(result.status).toBe(0);
+    expect(result.output).not.toContain('PNUT_DEVELOP_MODE is enabled');
   });
 
   test('a .json filename is not taken as a source file', () => {
