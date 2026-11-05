@@ -1,0 +1,8 @@
+{Spin2_v55}
+'' gen_cor_spin_ptr_postdec_index: generated from scripts/fixtures/fixtures.json row "cor_spin_ptr_postdec_index"; edit the row, not this file. Covers: src/classes/spinResolver.ts checkVariable: a pointer variable indexed by post-decrement, a constant and an expression (pl[--], pl[3], pl[i + 1]); spin2Parser.ts P2List: the pointer VAR symbol type in the listing
+VAR
+  ^long pl
+PUB main() | i
+  i := pl[--]
+  i := pl[3]
+  i := pl[i + 1]

@@ -1,0 +1,4 @@
+'' gen_acc_dat_file_hub_limit: generated from scripts/fixtures/fixtures.json row "acc_dat_file_hub_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts m371: "Hub address exceeds limit" - FILE data ending exactly at the ORGH limit
+DAT
+  orgh $400,$500
+  f file "gen_acc_dat_file_hub_limit__d.bin"

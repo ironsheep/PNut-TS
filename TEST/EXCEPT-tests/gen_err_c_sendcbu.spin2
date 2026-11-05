@@ -1,0 +1,3 @@
+'' gen_err_c_sendcbu: generated from scripts/fixtures/fixtures.json row "err_c_sendcbu"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "SEND() can be used only as an instruction and \\SEND() is not allowed"
+PUB main() | x
+  x := send(1)

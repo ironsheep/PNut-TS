@@ -1,0 +1,5 @@
+'' gen_err_c_epound: generated from scripts/fixtures/fixtures.json row "err_c_epound"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \"#\""
+DAT
+  org
+x res 1
+  getbyte x, x, 5

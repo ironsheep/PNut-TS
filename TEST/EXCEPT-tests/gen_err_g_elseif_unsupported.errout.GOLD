@@ -1,0 +1,1 @@
+gen_err_g_elseif_unsupported.spin2:3:error:#elseif is not a supported preprocessor directive — use #elseifdef or #elseifndef

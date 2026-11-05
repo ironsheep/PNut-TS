@@ -1,0 +1,12 @@
+{Spin2_v55}
+'' gen_cor_spin_quit_next_levels: generated from scripts/fixtures/fixtures.json row "cor_spin_quit_next_levels"; edit the row, not this file. Covers: src/classes/spinResolver.ts ci_next_quit: QUIT 1 out of a plain REPEAT, NEXT 1 out of a counted REPEAT and out of a REPEAT FROM loop (level skipping and the pop count of a count loop)
+PUB main() | i, j
+  repeat
+    repeat
+      quit 1
+  repeat 3
+    repeat 2
+      next 1
+  repeat i from 0 to 3
+    repeat j from 0 to 3
+      next 1

@@ -1,0 +1,3 @@
+'' gen_err_a_eatq: generated from scripts/fixtures/fixtures.json row "err_a_eatq"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Expected a terminating quote"
+PUB main() | x
+  x := "abc

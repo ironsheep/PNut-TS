@@ -45,7 +45,7 @@ describe('PNut_ts resolves OBJ files via -I with absolute path', () => {
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`, { stdio: 'pipe' });
     } catch (error) {
-      fail(`Compilation failed for ${basename}.spin2 with absolute -I path: ${error}`);
+      throw new Error(`Compilation failed for ${basename}.spin2 with absolute -I path: ${error}`);
     }
 
     expect(fs.existsSync(binFSpec)).toBe(true);
@@ -76,7 +76,7 @@ describe('PNut_ts compiles the top-level file of an #include correctly', () => {
     try {
       execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`, { stdio: 'pipe' });
     } catch (error) {
-      fail(`Compilation failed for ${basename}.spin2: ${error}`);
+      throw new Error(`Compilation failed for ${basename}.spin2: ${error}`);
     }
 
     let whatFailed: string = '';

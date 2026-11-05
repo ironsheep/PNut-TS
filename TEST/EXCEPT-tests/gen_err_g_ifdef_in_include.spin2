@@ -1,0 +1,4 @@
+'' gen_err_g_ifdef_in_include: generated from scripts/fixtures/fixtures.json row "err_g_ifdef_in_include"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Expected a preprocessor symbol" for a bare #ifdef reached inside an #included file (the top-level form is err_g_bare_ifdef)
+#include "gen_err_g_ifdef_in_include__inc.spin2"
+PUB main()
+  return

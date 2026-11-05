@@ -1,0 +1,3 @@
+'' gen_err_c_eeol_m280: generated from scripts/fixtures/fixtures.json row "err_c_eeol_m280"; edit the row, not this file. Covers: src/classes/spinResolver.ts m280: "Expected end of line" (RETURN value in a method with no result)
+PUB main()
+  return 1

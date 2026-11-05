@@ -1,0 +1,3 @@
+'' gen_err_d_hael_m370: generated from scripts/fixtures/fixtures.json row "err_d_hael_m370"; edit the row, not this file. Covers: src/classes/spinResolver.ts m370: "Hub address exceeds limit" (ORGH limit below its address; the data-emit site m372 is EXCEPT-tests/exception_test_006)
+DAT
+  orgh $500,$400

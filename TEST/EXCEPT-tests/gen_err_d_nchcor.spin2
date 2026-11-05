@@ -1,0 +1,5 @@
+'' gen_err_d_nchcor: generated from scripts/fixtures/fixtures.json row "err_d_nchcor"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "NOP cannot have a condition or _RET_"
+DAT
+  org
+x res 1
+  if_z nop

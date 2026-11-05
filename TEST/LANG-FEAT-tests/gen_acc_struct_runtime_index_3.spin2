@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_acc_struct_runtime_index_3: generated from scripts/fixtures/fixtures.json row "acc_struct_runtime_index_3"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Limit of 3 runtime structure index expressions exceeded" - at limit (3 runtime indexes)
+CON
+  STRUCT s1(long x[2])
+  STRUCT s2(s1 a[2])
+  STRUCT s3(s2 b[2])
+VAR
+  s3 v[2]
+PUB main() | i, x
+  x := v[i].b[i].a[i].x[1]

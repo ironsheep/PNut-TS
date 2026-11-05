@@ -1,0 +1,7 @@
+'' gen_err_d_rbeiooa: generated from scripts/fixtures/fixtures.json row "err_d_rbeiooa"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "REP block end is out of alignment" (hub label at an odd address)
+DAT
+  orgh $400
+  rep @x,#1
+  nop
+  byte 0
+x nop

@@ -1,0 +1,4 @@
+'' gen_acc_dat_loc_addr_max: generated from scripts/fixtures/fixtures.json row "acc_dat_loc_addr_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m000: "Address must not exceed $FFFFF" (LOC) - at limit ($FFFFF, an address operand)
+DAT
+  org
+  loc pa,#\$FFFFF

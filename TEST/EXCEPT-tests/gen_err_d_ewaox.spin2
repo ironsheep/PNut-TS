@@ -1,0 +1,5 @@
+'' gen_err_d_ewaox: generated from scripts/fixtures/fixtures.json row "err_d_ewaox"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected WC, WZ, ANDC, ANDZ, ORC, ORZ, XORC, or XORZ"
+DAT
+  org
+x res 1
+  testp x

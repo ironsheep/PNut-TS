@@ -1,0 +1,5 @@
+'' gen_err_d_smb0t3_m560: generated from scripts/fixtures/fixtures.json row "err_d_smb0t3_m560"; edit the row, not this file. Covers: src/classes/spinResolver.ts m560: "Selector must be 0 to 3" (SETBYTE)
+DAT
+  org
+x res 1
+  setbyte x,x,#4

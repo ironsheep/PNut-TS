@@ -1,0 +1,8 @@
+{Spin2_v52}
+'' gen_acc_struct_var_indexed_size_max: generated from scripts/fixtures/fixtures.json row "acc_struct_var_indexed_size_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m401: "Indexed structures cannot exceed $FFFF bytes in size" (variable index) - at limit (a $FFFF-byte structure indexed)
+CON
+  STRUCT w(byte b[$FFFF])
+VAR
+  w v
+PUB main() | x
+  x := v[1].b[0]

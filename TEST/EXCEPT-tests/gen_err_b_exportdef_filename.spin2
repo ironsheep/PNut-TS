@@ -1,0 +1,6 @@
+'' gen_err_b_exportdef_filename: generated from scripts/fixtures/fixtures.json row "err_b_exportdef_filename"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Invalid filename: <id> is a preprocessor symbol (from -D or #pragma exportdef)" (PNut-TS-only message)
+#pragma exportdef FNAME
+OBJ
+  a : "gen_err_b_exportdef_filename__c"
+PUB main()
+  return

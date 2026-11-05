@@ -1,0 +1,7 @@
+'' gen_acc_con_clkfreq_min: generated from scripts/fixtures/fixtures.json row "acc_con_clkfreq_min"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "_CLKFREQ must be from 3_333_333 to 500_000_000" - at limit (3_333_333)
+CON
+  _xinfreq = 3_333_333
+  _clkfreq = 3_333_333
+
+PUB main()
+  return

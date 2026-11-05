@@ -1,0 +1,7 @@
+{Spin2_v52}
+'' gen_err_d_edend_m261: generated from scripts/fixtures/fixtures.json row "err_d_edend_m261"; edit the row, not this file. Covers: src/classes/spinResolver.ts m261: "Expected DITTO END" (inline assembly ends inside a DITTO block)
+PUB main()
+  org
+  ditto 2
+  nop
+  end

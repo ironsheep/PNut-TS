@@ -1,0 +1,4 @@
+'' gen_acc_spin_string_chars: generated from scripts/fixtures/fixtures.json row "acc_spin_string_chars"; edit the row, not this file. Covers: src/classes/spinResolver.ts m510, m511, m512: "STRING characters must range from 1 to 255" - at limit (both ends: 1 and 255)
+PUB main() | x
+  x := @"a"
+  x := string(1, 255)

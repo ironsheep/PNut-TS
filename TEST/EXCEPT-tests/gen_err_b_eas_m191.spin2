@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_eas_m191: generated from scripts/fixtures/fixtures.json row "err_b_eas_m191"; edit the row, not this file. Covers: src/classes/spinResolver.ts m191: "Expected a symbol" (STRUCT member)
+CON
+  STRUCT s(long a, long)

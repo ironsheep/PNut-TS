@@ -1,0 +1,4 @@
+'' gen_err_b_siad_m540: generated from scripts/fixtures/fixtures.json row "err_b_siad_m540"; edit the row, not this file. Covers: src/classes/spinResolver.ts m540: "Symbol is already defined" (DAT)
+DAT
+  x long 0
+  x long 1

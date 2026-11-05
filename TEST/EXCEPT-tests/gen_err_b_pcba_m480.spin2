@@ -1,0 +1,5 @@
+'' gen_err_b_pcba_m480: generated from scripts/fixtures/fixtures.json row "err_b_pcba_m480"; edit the row, not this file. Covers: src/classes/spinResolver.ts m480: "Pointers cannot be arrays" (VAR)
+VAR
+  ^long p[2]
+PUB main()
+  return

@@ -1,0 +1,6 @@
+'' gen_err_d_drmbpppp_m161: generated from scripts/fixtures/fixtures.json row "err_d_drmbpppp_m161"; edit the row, not this file. Covers: src/classes/spinResolver.ts m161: "D register must be PA/PB/PTRA/PTRB" (CALLD, hub mode, relative target out of range)
+DAT
+  orgh $400
+  calld $100,#lbl
+  long 0[$200]
+lbl nop

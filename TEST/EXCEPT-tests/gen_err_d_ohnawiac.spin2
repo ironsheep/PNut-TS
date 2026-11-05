@@ -1,0 +1,5 @@
+'' gen_err_d_ohnawiac: generated from scripts/fixtures/fixtures.json row "err_d_ohnawiac"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "ORGH not allowed within inline assembly code"
+PUB main()
+  org
+  orgh
+  end

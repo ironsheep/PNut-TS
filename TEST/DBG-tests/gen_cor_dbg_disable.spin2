@@ -1,0 +1,7 @@
+{Spin2_v55}
+'' gen_cor_dbg_disable: generated from scripts/fixtures/fixtures.json row "cor_dbg_disable"; edit the row, not this file. Covers: src/classes/spinResolver.ts determine_debug_enables: DEBUG_DISABLE set under -d, so the DEBUG statements are dropped
+CON
+  _CLKFREQ = 160_000_000
+  DEBUG_DISABLE = 1
+PUB main()
+  debug("dropped")

@@ -1,0 +1,5 @@
+'' gen_err_d_drmbpppp_m164: generated from scripts/fixtures/fixtures.json row "err_d_drmbpppp_m164"; edit the row, not this file. Covers: src/classes/spinResolver.ts m164: "D register must be PA/PB/PTRA/PTRB" (LOC)
+DAT
+  org
+x res 1
+  loc x,#0

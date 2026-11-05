@@ -1,0 +1,3 @@
+'' gen_err_c_eaet_m171: generated from scripts/fixtures/fixtures.json row "err_c_eaet_m171"; edit the row, not this file. Covers: src/classes/spinResolver.ts m171: "Expected an expression term" (single-parameter DEBUG command)
+PUB main() | x
+  debug(udec_())

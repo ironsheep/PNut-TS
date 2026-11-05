@@ -1,0 +1,3 @@
+'' gen_acc_dat_bytefit_range: generated from scripts/fixtures/fixtures.json row "acc_dat_bytefit_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "BYTEFIT values must range from -$80 to $FF" - at limit (both ends: -$80 and $FF)
+DAT
+  bytefit -$80, $FF

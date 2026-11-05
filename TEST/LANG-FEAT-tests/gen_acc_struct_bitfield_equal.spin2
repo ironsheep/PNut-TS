@@ -1,0 +1,6 @@
+{Spin2_v54}
+'' gen_acc_struct_bitfield_equal: generated from scripts/fixtures/fixtures.json row "acc_struct_bitfield_equal"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Lower bit number cannot exceed upper bit number" - at limit (equal bit numbers)
+CON
+  STRUCT s(long y.f[5..5])
+PUB main()
+  return

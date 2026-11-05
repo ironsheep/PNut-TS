@@ -1,0 +1,3 @@
+'' gen_err_c_ainafbf: generated from scripts/fixtures/fixtures.json row "err_c_ainafbf"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "@ is not allowed for bitfields, use ^@ to get field pointer"
+PUB main() | x, y
+  x := @y.[3]

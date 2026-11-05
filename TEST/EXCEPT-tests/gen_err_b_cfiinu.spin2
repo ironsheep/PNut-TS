@@ -1,0 +1,5 @@
+'' gen_err_b_cfiinu: generated from scripts/fixtures/fixtures.json row "err_b_cfiinu"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "CASE_FAST index is not unique"
+PUB main() | x, y
+  case_fast x
+    1: x := 2
+    1: x := 3

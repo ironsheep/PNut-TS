@@ -1,0 +1,7 @@
+'' gen_err_c_enope: generated from scripts/fixtures/fixtures.json row "err_c_enope"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected number of parameters exceeded"
+PUB main()
+  f(g())
+PUB f(a)
+  return
+PUB g() : a, b
+  return 1, 2

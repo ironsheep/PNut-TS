@@ -1,0 +1,10 @@
+{Spin2_v50}
+'' gen_acc_dat_ditto_zero: generated from scripts/fixtures/fixtures.json row "acc_dat_ditto_zero"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DITTO count must be a positive integer or zero" - at limit (0, and 1)
+DAT
+  org
+  ditto 0
+  long 1
+  ditto end
+  ditto 1
+  long 2
+  ditto end

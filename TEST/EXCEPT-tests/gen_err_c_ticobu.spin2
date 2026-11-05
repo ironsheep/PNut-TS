@@ -1,0 +1,3 @@
+'' gen_err_c_ticobu: generated from scripts/fixtures/fixtures.json row "err_c_ticobu"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "This instruction can only be used as an expression term, since it returns results"
+PUB main()
+  getct()

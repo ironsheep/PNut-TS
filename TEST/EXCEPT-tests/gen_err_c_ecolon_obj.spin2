@@ -1,0 +1,5 @@
+'' gen_err_c_ecolon_obj: generated from scripts/fixtures/fixtures.json row "err_c_ecolon_obj"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \":\"" (OBJ declaration)
+OBJ
+  a "gen_err_c_ecolon_obj__c"
+PUB main()
+  return

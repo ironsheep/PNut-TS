@@ -1,0 +1,3 @@
+'' gen_err_c_scmrf_m512: generated from scripts/fixtures/fixtures.json row "err_c_scmrf_m512"; edit the row, not this file. Covers: src/classes/spinResolver.ts m512: "STRING characters must range from 1 to 255" (STRING())
+PUB main() | x
+  x := string(0)

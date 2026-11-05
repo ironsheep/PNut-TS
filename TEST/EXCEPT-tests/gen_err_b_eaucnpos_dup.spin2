@@ -1,0 +1,7 @@
+'' gen_err_b_eaucnpos_dup: generated from scripts/fixtures/fixtures.json row "err_b_eaucnpos_dup"; edit the row, not this file. Covers: src/classes/spinResolver.ts m211: "Expected a unique constant name, \"#\", or STRUCT" (duplicate CON name)
+CON
+  a = 1
+  a = 2
+
+PUB main()
+  return

@@ -1,0 +1,3 @@
+'' gen_err_c_eassign: generated from scripts/fixtures/fixtures.json row "err_c_eassign"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \":=\""
+PUB main() | x, y
+  x, y = 5

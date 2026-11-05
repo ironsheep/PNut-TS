@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_c_fpcmbp_log_zero: generated from scripts/fixtures/fixtures.json row "err_c_fpcmbp_log_zero"; edit the row, not this file. Covers: src/utils/pnutFloat.ts fp_logx zero operand: "Floating-point constant must be positive"
+CON
+  a = log 0.0

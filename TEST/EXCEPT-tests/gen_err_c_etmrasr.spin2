@@ -1,0 +1,3 @@
+'' gen_err_c_etmrasr: generated from scripts/fixtures/fixtures.json row "err_c_etmrasr"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expression terms must return a single result"
+PUB main() | x
+  x := pinl(1)

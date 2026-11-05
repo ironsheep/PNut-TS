@@ -1,0 +1,6 @@
+'' gen_acc_dat_orgh_min: generated from scripts/fixtures/fixtures.json row "acc_dat_orgh_min"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Hub address below $400 limit" - at limit (ORGH $400 in a Spin file)
+DAT
+  orgh $400
+
+PUB main()
+  return

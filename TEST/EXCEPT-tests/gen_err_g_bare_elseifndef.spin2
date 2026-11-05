@@ -1,0 +1,6 @@
+'' gen_err_g_bare_elseifndef: generated from scripts/fixtures/fixtures.json row "err_g_bare_elseifndef"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Expected a preprocessor symbol" for a bare #elseifndef inside an open #ifdef (the bare-directive branch)
+#ifdef NOT_DEFINED_SYMBOL
+#elseifndef
+#endif
+PUB main()
+  return

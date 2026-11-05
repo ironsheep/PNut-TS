@@ -1,0 +1,6 @@
+'' gen_err_e_debugcog: generated from scripts/fixtures/fixtures.json row "err_e_debugcog"; edit the row, not this file. Covers: src/classes/spin2Parser.ts: "DEBUG_COGS can only be defined as an integer constant" (checked only in a DEBUG compile)
+CON
+  debug_cogs = 1.5
+
+PUB main()
+  return

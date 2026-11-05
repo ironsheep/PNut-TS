@@ -1,0 +1,3 @@
+'' gen_err_d_caexl_m120: generated from scripts/fixtures/fixtures.json row "err_d_caexl_m120"; edit the row, not this file. Covers: src/classes/spinResolver.ts m120: "Cog address exceeds $400 limit" (ORG start)
+DAT
+  org $401

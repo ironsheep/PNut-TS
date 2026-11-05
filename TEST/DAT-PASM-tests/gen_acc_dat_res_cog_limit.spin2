@@ -1,0 +1,4 @@
+'' gen_acc_dat_res_cog_limit: generated from scripts/fixtures/fixtures.json row "acc_dat_res_cog_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts m110: "Cog address exceeds limit" - RES up to exactly the default $1F8 limit
+DAT
+  org
+  res $1F8

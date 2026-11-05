@@ -1,0 +1,4 @@
+'' gen_err_d_fvar_m351: generated from scripts/fixtures/fixtures.json row "err_d_fvar_m351"; edit the row, not this file. Covers: src/classes/spinResolver.ts m351: "FVAR/FVARS data is too big" (FVAR past $1FFF_FFFF; the FVARS site m350 is the row fvars_too_big)
+DAT
+  org
+  byte FVAR $2000_0000

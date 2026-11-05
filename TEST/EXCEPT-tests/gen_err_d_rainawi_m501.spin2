@@ -1,0 +1,4 @@
+'' gen_err_d_rainawi_m501: generated from scripts/fixtures/fixtures.json row "err_d_rainawi_m501"; edit the row, not this file. Covers: src/classes/spinResolver.ts m501: "Relative address is not aligned with instruction" (# form, hub mode)
+DAT
+  orgh $400
+  djnz $100,#$401

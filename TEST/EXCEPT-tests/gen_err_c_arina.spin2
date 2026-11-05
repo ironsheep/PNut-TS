@@ -1,0 +1,3 @@
+'' gen_err_c_arina: generated from scripts/fixtures/fixtures.json row "err_c_arina"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "@register is not allowed, use ^@ to get field pointer"
+PUB main() | x
+  x := @reg[5]

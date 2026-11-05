@@ -1,0 +1,5 @@
+'' gen_err_c_ecomma: generated from scripts/fixtures/fixtures.json row "err_c_ecomma"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \",\""
+PUB f(a, b)
+  return
+PUB main()
+  f(1)

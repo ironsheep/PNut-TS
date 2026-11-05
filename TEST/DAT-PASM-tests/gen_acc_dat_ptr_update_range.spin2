@@ -1,0 +1,6 @@
+'' gen_acc_dat_ptr_update_range: generated from scripts/fixtures/fixtures.json row "acc_dat_ptr_update_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "PTRA/PTRB index constant must range from 1 to 16" (updating pointer form) - at limit (both ends: 1 and 16)
+DAT
+  org
+x res 1
+  rdlong x,ptra++[1]
+  rdlong x,ptra++[16]

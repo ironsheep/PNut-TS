@@ -1,0 +1,4 @@
+'' gen_err_c_esoeol: generated from scripts/fixtures/fixtures.json row "err_c_esoeol"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected STEP or end of line"
+PUB main() | x
+  repeat x from 1 to 5 foo
+    x := 1

@@ -1,0 +1,3 @@
+'' gen_err_c_erightb_m311: generated from scripts/fixtures/fixtures.json row "err_c_erightb_m311"; edit the row, not this file. Covers: src/classes/spinResolver.ts m311: "Expected \"]\""
+PUB main() | x, y
+  x := y[1

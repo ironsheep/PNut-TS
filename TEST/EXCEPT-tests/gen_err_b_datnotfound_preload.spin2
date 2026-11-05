@@ -1,0 +1,5 @@
+'' gen_err_b_datnotfound_preload: generated from scripts/fixtures/fixtures.json row "err_b_datnotfound_preload"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DAT file not found [<name>] (preload)"
+DAT
+  x file "nosuch.bin"
+PUB main()
+  return

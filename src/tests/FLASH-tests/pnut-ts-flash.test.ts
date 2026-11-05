@@ -63,7 +63,7 @@ describe('PNut_ts compiles .spin2 w/o debug() correctly', () => {
         execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
       } catch (error) {
         console.error(`ERROR: running PNut-ts: ${error}`);
-        fail(`Execution failed for ${file}`);
+        throw new Error(`Execution failed for ${file}: ${error}`);
       }
 
       // append any failure messages from compares, if not empty at end, we have FAILs

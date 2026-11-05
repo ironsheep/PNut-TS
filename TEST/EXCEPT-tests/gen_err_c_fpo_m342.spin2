@@ -1,0 +1,3 @@
+'' gen_err_c_fpo_m342: generated from scripts/fixtures/fixtures.json row "err_c_fpo_m342"; edit the row, not this file. Covers: src/classes/spinResolver.ts m342: "Floating-point overflow"
+CON
+  a = 1.0e30 *. 1.0e30

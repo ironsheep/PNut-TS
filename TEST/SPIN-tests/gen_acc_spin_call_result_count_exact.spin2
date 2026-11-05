@@ -1,0 +1,9 @@
+'' gen_acc_spin_call_result_count_exact: generated from scripts/fixtures/fixtures.json row "acc_spin_call_result_count_exact"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected number of parameters exceeded" - at limit (a single-result method supplying a single parameter)
+PUB main()
+  f(g())
+
+PUB f(a)
+  return
+
+PUB g() : a
+  return 1

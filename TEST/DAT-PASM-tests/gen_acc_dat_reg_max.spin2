@@ -1,0 +1,6 @@
+'' gen_acc_dat_reg_max: generated from scripts/fixtures/fixtures.json row "acc_dat_reg_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Register cannot exceed $1FF" - at limit (register $1FF)
+DAT
+  org
+x res 1
+  mov x,#$1FF
+  mov $1FF,x

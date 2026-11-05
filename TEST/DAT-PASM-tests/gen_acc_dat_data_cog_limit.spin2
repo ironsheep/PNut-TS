@@ -1,0 +1,4 @@
+'' gen_acc_dat_data_cog_limit: generated from scripts/fixtures/fixtures.json row "acc_dat_data_cog_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts m113: "Cog address exceeds limit" - data ending exactly at the ORG limit
+DAT
+  org $100,$102
+  long 0,0

@@ -1,0 +1,15 @@
+{Spin2_v55}
+'' gen_cor_con_float_corners: generated from scripts/fixtures/fixtures.json row "cor_con_float_corners"; edit the row, not this file. Covers: src/utils/pnutFloat.ts fp_pack, fp_add, fp_float, fp_rt, get_float: a denormal result, an addition with an exponent gap over 24, float(0), float(-5), round and trunc at .3 and .5, round(-2.5), a 13-digit literal and a denormal quotient
+CON
+  a = 1.0e10 +. 1.0
+  b = 1.0e-30 *. 1.0e-10
+  c = float(0)
+  d = float(-5)
+  e = round(0.3)
+  f = round(0.5)
+  g = trunc(0.5)
+  h = round(-2.5)
+  i = 1234567890123.0
+  j = 1.0e-30 /. 1.0e10
+PUB main() | x
+  x := a

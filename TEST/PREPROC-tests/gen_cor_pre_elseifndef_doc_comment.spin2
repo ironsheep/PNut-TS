@@ -1,0 +1,15 @@
+{Spin2_v55}
+'' gen_cor_pre_elseifndef_doc_comment: generated from scripts/fixtures/fixtures.json row "cor_pre_elseifndef_doc_comment"; edit the row, not this file. Covers: src/classes/spinDocument.ts isPreprocessorDirective, blankNonDocComments: an #elseifndef line that is kept, and a brace comment followed by a doc comment that closes on the same line and on a later line
+#pragma exportdef FOO
+#pragma exportdef BAR
+#define GUARD_A 1
+#ifndef GUARD_A
+#define SIDE_ONE 1
+#elseifndef GUARD_B
+#define SIDE_TWO 2
+#endif
+{ lead }{{ inline doc }}
+{ lead }{{ doc opens here
+ doc closes here }}
+PUB main() | i
+  i := 1

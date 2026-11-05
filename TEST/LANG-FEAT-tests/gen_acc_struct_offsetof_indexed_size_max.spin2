@@ -1,0 +1,7 @@
+{Spin2_v53}
+'' gen_acc_struct_offsetof_indexed_size_max: generated from scripts/fixtures/fixtures.json row "acc_struct_offsetof_indexed_size_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m402: "Indexed structures cannot exceed $FFFF bytes in size" (OFFSETOF index) - at limit (a $FFFC-byte structure indexed)
+CON
+  STRUCT a(long x[$3FFF])
+  STRUCT b(a p)
+PUB main() | x
+  x := offsetof(b[1])

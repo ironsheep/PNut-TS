@@ -1,0 +1,3 @@
+'' gen_err_a_fpcmbw: generated from scripts/fixtures/fixtures.json row "err_a_fpcmbw"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Floating-point constant must be within +/- 3.4e+38"
+PUB main() | x
+  x := 1e39

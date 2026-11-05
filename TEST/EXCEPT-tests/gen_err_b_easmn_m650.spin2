@@ -1,0 +1,6 @@
+{Spin2_v53}
+'' gen_err_b_easmn_m650: generated from scripts/fixtures/fixtures.json row "err_b_easmn_m650"; edit the row, not this file. Covers: src/classes/spinResolver.ts m650: "Expected a structure member name" (OFFSETOF operand)
+CON
+  STRUCT pt(long a)
+PUB main() | x
+  x := offsetof(pt.5)

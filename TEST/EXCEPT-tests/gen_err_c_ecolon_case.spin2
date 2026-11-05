@@ -1,0 +1,4 @@
+'' gen_err_c_ecolon_case: generated from scripts/fixtures/fixtures.json row "err_c_ecolon_case"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \":\"" (CASE arm)
+PUB main() | x
+  case x
+    1 x := 2

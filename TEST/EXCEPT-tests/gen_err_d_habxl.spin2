@@ -1,0 +1,6 @@
+'' gen_err_d_habxl: generated from scripts/fixtures/fixtures.json row "err_d_habxl"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Hub address below $400 limit"
+DAT
+  orgh $100
+
+PUB main()
+  return

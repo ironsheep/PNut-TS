@@ -1,0 +1,4 @@
+'' gen_err_g_undef_blank: generated from scripts/fixtures/fixtures.json row "err_g_undef_blank"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Expected a preprocessor symbol" for #undef followed only by a space (the #undef branch, not the bare-directive branch)
+#undef 
+PUB main()
+  return

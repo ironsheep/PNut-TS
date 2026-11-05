@@ -1,0 +1,5 @@
+'' gen_err_d_eaaeoeol: generated from scripts/fixtures/fixtures.json row "err_d_eaaeoeol"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected an assembly effect or end of line"
+DAT
+  org
+x res 1
+  mov x,x 5

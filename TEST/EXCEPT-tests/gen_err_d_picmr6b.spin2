@@ -1,0 +1,5 @@
+'' gen_err_d_picmr6b: generated from scripts/fixtures/fixtures.json row "err_d_picmr6b"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "PTRA/PTRB index constant must range from -32 to 31"
+DAT
+  org
+x res 1
+  rdlong x,ptra[32]

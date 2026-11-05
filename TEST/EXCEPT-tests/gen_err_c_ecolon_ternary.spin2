@@ -1,0 +1,3 @@
+'' gen_err_c_ecolon_ternary: generated from scripts/fixtures/fixtures.json row "err_c_ecolon_ternary"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \":\"" (ternary operator)
+PUB main() | x, y
+  x := y ? 1 2

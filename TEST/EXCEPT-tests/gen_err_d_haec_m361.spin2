@@ -1,0 +1,6 @@
+'' gen_err_d_haec_m361: generated from scripts/fixtures/fixtures.json row "err_d_haec_m361"; edit the row, not this file. Covers: src/classes/spinResolver.ts m361: "Hub address exceeds $100000 ceiling" (ORGH limit operand)
+DAT
+  orgh $400,$100001
+
+PUB main()
+  return

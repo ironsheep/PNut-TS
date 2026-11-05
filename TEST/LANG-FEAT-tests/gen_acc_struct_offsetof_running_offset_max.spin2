@@ -1,0 +1,7 @@
+{Spin2_v53}
+'' gen_acc_struct_offsetof_running_offset_max: generated from scripts/fixtures/fixtures.json row "acc_struct_offsetof_running_offset_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m535: "Structure exceeds hub range of $FFFFF" (OFFSETOF running offset) - at limit (a running offset of $F04B1)
+CON
+  STRUCT inner(byte b[$FFFF])
+  STRUCT outer(long pad[300], inner i)
+PUB main() | x
+  x := offsetof(outer.i[15])

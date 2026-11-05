@@ -1,0 +1,5 @@
+{Spin2_v55}
+'' gen_cor_dat_file_after_org: generated from scripts/fixtures/fixtures.json row "cor_dat_file_after_org"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_dat_blocks: FILE after ORG, so the cog origin advances by the file length
+DAT
+  org
+  file "gen_cor_dat_file_after_org__data.bin"

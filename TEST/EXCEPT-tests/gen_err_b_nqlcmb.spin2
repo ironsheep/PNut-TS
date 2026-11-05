@@ -1,0 +1,4 @@
+'' gen_err_b_nqlcmb: generated from scripts/fixtures/fixtures.json row "err_b_nqlcmb"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "NEXT/QUIT level must be from 1 to 15"
+PUB main() | x, y
+  repeat
+    quit 16

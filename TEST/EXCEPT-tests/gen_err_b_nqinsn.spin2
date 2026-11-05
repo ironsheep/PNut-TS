@@ -1,0 +1,3 @@
+'' gen_err_b_nqinsn: generated from scripts/fixtures/fixtures.json row "err_b_nqinsn"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "NEXT/QUIT is not sufficiently nested within REPEAT block(s)"
+PUB main() | x, y
+  quit

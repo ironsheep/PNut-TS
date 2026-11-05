@@ -1,0 +1,5 @@
+'' gen_acc_con_eitc_15: generated from scripts/fixtures/fixtures.json row "acc_con_eitc_15"; edit the row, not this file. Covers: PNut error_eitc "Expression is too complex" - at limit (15 levels: 16 pushes fill the math stack of 16; asm v52 p2com.asm 9626-9627, 10118)
+CON
+  a = 1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1)))))))))))))))
+PUB main()
+  return

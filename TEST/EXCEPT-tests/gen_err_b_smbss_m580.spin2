@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_err_b_smbss_m580: generated from scripts/fixtures/fixtures.json row "err_b_smbss_m580"; edit the row, not this file. Covers: src/classes/spinResolver.ts m580: "Structures must be same size" (structure compare)
+CON
+  STRUCT p2(long a, long b)
+  STRUCT p3(long a, long b, long c)
+VAR
+  p2 u
+  p3 w
+PUB main() | x
+  x := u == w

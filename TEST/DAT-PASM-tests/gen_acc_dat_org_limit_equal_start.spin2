@@ -1,0 +1,3 @@
+'' gen_acc_dat_org_limit_equal_start: generated from scripts/fixtures/fixtures.json row "acc_dat_org_limit_equal_start"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Cog address exceeds limit" (ORG start above its limit) - at limit (start equal to limit)
+DAT
+  org $100,$100

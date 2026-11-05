@@ -1,0 +1,3 @@
+'' gen_err_a_bmbpbb: generated from scripts/fixtures/fixtures.json row "err_a_bmbpbb"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "\"}\" must be preceeded by \"{\" to form a comment"
+PUB main()
+  }

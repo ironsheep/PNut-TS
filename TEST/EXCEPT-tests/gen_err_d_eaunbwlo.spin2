@@ -1,0 +1,3 @@
+'' gen_err_d_eaunbwlo: generated from scripts/fixtures/fixtures.json row "err_d_eaunbwlo"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a unique name, BYTE, WORD, LONG, or assembly instruction"
+DAT
+  5

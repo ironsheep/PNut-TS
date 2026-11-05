@@ -1,0 +1,5 @@
+'' gen_err_d_smb0t1_m551: generated from scripts/fixtures/fixtures.json row "err_d_smb0t1_m551"; edit the row, not this file. Covers: src/classes/spinResolver.ts m551: "Selector must be 0 to 1" (GETWORD)
+DAT
+  org
+x res 1
+  getword x,x,#2

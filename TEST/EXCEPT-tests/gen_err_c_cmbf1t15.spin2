@@ -1,0 +1,3 @@
+'' gen_err_c_cmbf1t15: generated from scripts/fixtures/fixtures.json row "err_c_cmbf1t15"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Constant must be from 1 to 15"
+PUB main() | x, y
+  x, _[0] := y

@@ -1,0 +1,5 @@
+DAT
+  byte 24
+  byte 0[$F0000]
+PUB go()
+  return

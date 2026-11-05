@@ -1,0 +1,4 @@
+'' gen_err_c_rpcx: generated from scripts/fixtures/fixtures.json row "err_c_rpcx"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Register parameter cannot exceed $3FF"
+DAT
+  org
+  debug(udec_(1024))

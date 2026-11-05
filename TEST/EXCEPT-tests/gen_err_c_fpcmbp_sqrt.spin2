@@ -1,0 +1,3 @@
+'' gen_err_c_fpcmbp_sqrt: generated from scripts/fixtures/fixtures.json row "err_c_fpcmbp_sqrt"; edit the row, not this file. Covers: src/utils/pnutFloat.ts fp_sqrt: "Floating-point constant must be positive"
+CON
+  a = fsqrt -1.0

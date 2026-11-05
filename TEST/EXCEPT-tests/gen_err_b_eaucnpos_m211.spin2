@@ -1,0 +1,3 @@
+'' gen_err_b_eaucnpos_m211: generated from scripts/fixtures/fixtures.json row "err_b_eaucnpos_m211"; edit the row, not this file. Covers: src/classes/spinResolver.ts m211: "Expected a unique constant name, \"#\", or STRUCT" (CON entry that is not a name)
+CON
+  (5)

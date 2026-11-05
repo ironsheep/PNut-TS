@@ -1,0 +1,3 @@
+'' gen_err_b_bdmbifc: generated from scripts/fixtures/fixtures.json row "err_b_bdmbifc"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Block designator must be in first column"
+ PUB main()
+  return

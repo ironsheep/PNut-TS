@@ -1,0 +1,3 @@
+'' gen_err_b_eauvnsa_m242: generated from scripts/fixtures/fixtures.json row "err_b_eauvnsa_m242"; edit the row, not this file. Covers: src/classes/spinResolver.ts m242: "Expected a unique variable name, STRUCT name, BYTE, WORD, LONG, \"^\", ALIGNW, or ALIGNL" (duplicate local variable, second pass)
+PUB main() | a, a
+  return

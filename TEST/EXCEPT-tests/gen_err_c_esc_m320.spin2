@@ -1,0 +1,3 @@
+'' gen_err_c_esc_m320: generated from scripts/fixtures/fixtures.json row "err_c_esc_m320"; edit the row, not this file. Covers: src/classes/spinResolver.ts m320: "Expected a string character" (@\ without a string)
+PUB main() | x, y
+  x := @\y

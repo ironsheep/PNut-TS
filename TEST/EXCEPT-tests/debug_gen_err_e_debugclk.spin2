@@ -1,0 +1,6 @@
+'' gen_err_e_debugclk: generated from scripts/fixtures/fixtures.json row "err_e_debugclk"; edit the row, not this file. Covers: src/classes/spin2Parser.ts: "DEBUG requires at least 10 MHz of crystal/external clocking"
+CON
+  _xtlfreq = 5_000_000
+
+PUB main()
+  return

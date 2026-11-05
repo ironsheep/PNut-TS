@@ -1,0 +1,6 @@
+{Spin2_v52}
+'' gen_acc_struct_count_max: generated from scripts/fixtures/fixtures.json row "acc_struct_count_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Instance count cannot exceed $10000" - at limit ($10000 bytes)
+CON
+  STRUCT s(byte a[$10000])
+PUB main()
+  return

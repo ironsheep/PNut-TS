@@ -1,0 +1,3 @@
+'' gen_err_b_eaurn_m230: generated from scripts/fixtures/fixtures.json row "err_b_eaurn_m230"; edit the row, not this file. Covers: src/classes/spinResolver.ts m230: "Expected a unique result name" (first pass)
+PUB main() : 5
+  return

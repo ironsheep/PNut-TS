@@ -1,0 +1,1 @@
+gen_err_b_exportdef_filename__c.spin2:2:error:Invalid filename: "FNAME" is a preprocessor symbol (from -D or #pragma exportdef); such symbols carry presence only and cannot be used as a value here -- use a quoted filename

@@ -1,0 +1,5 @@
+'' gen_err_d_ewcwzwcz: generated from scripts/fixtures/fixtures.json row "err_d_ewcwzwcz"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected WC, WZ, or WCZ"
+DAT
+  org
+x res 1
+  getbrk x

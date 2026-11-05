@@ -1,0 +1,6 @@
+'' gen_acc_dat_orgh_limit_ceiling: generated from scripts/fixtures/fixtures.json row "acc_dat_orgh_limit_ceiling"; edit the row, not this file. Covers: src/classes/spinResolver.ts m361: "Hub address exceeds $100000 ceiling" - at limit (ORGH limit operand $100000)
+DAT
+  orgh $400,$100000
+
+PUB main()
+  return

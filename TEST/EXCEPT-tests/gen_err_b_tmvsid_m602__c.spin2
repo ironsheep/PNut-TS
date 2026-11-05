@@ -1,0 +1,4 @@
+DAT
+  orgh $400,$80001
+PUB go()
+  return

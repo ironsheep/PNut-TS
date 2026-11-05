@@ -1,0 +1,7 @@
+{Spin2_v53}
+'' gen_err_b_iscexb_m402: generated from scripts/fixtures/fixtures.json row "err_b_iscexb_m402"; edit the row, not this file. Covers: src/classes/spinResolver.ts m402: "Indexed structures cannot exceed $FFFF bytes in size" (OFFSETOF index)
+CON
+  STRUCT a(long x[$4000])
+  STRUCT b(a p, a q)
+PUB main() | x
+  x := offsetof(b[1])

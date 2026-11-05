@@ -1,0 +1,5 @@
+'' gen_err_b_eas_m190: generated from scripts/fixtures/fixtures.json row "err_b_eas_m190"; edit the row, not this file. Covers: src/classes/spinResolver.ts m190: "Expected a symbol" (OBJ parameter override name)
+OBJ
+  a : "gen_err_b_eas_m190__x" | 5 = 1
+PUB main()
+  return

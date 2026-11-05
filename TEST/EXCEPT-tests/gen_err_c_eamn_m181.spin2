@@ -1,0 +1,5 @@
+'' gen_err_c_eamn_m181: generated from scripts/fixtures/fixtures.json row "err_c_eamn_m181"; edit the row, not this file. Covers: src/classes/spinResolver.ts m181: "Expected a method name" (@ operator)
+OBJ
+  a[2] : "gen_err_c_eamn_m181__c"
+PUB main() | x
+  x := @a[1].k

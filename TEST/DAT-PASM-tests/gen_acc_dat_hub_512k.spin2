@@ -1,0 +1,3 @@
+'' gen_acc_dat_hub_512k: generated from scripts/fixtures/fixtures.json row "acc_dat_hub_512k"; edit the row, not this file. Covers: src/classes/spin2Parser.ts: "Program requirement exceeds 512KB hub RAM by N bytes" and the $FFFFF object limits - at limit (the one maximum-size row: a 524,288-byte image)
+DAT
+  byte 0[$8_0000]

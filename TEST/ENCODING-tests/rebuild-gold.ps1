@@ -12,7 +12,7 @@
       - Produces:     lst, obj, bin
       - Patterns:     (none)
       - Per-file:     (none)
-      - Skip:         (none)
+      - Skip:         1 file(s), listed in -Skip below
       - Expect fail:  (none)
 
     Sourced from: src/tests/ENCODING-tests/pnut-ts-encoding.test.ts (glob *.spin2).
@@ -31,7 +31,11 @@ try {
         -PNutVersion $PNutVersion `
         -PNutInstallRoot $PNutInstallRoot `
         -PNutBinary $PNutBinary `
-        -DefaultFlag "-c"
+        -DefaultFlag "-c" `
+        -Skip @(
+            # fixtures.json row cor_enc_utf16le_bom is goldSource pnut-ts
+            "gen_cor_enc_utf16le_bom.spin2"
+        )
 }
 finally {
     Pop-Location

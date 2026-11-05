@@ -1,0 +1,6 @@
+'' gen_acc_dat_rep_block_max: generated from scripts/fixtures/fixtures.json row "acc_dat_rep_block_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "REP block end is out of range" - at limit (a block of 511 instructions)
+DAT
+  orgh $400
+  rep @x,#1
+  long 0[$1FF]
+x nop

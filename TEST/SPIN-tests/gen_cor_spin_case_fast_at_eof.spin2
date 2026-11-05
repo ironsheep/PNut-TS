@@ -1,0 +1,8 @@
+{Spin2_v55}
+'' gen_cor_spin_case_fast_at_eof: generated from scripts/fixtures/fixtures.json row "cor_spin_case_fast_at_eof"; edit the row, not this file. Covers: src/classes/spinResolver.ts blockCaseFast: a CASE_FAST block that is the last construct before the end of the file
+PUB main() | i
+  fastc(i)
+PRI fastc(x)
+  case_fast x
+    1: x := 2
+    other: x := 3

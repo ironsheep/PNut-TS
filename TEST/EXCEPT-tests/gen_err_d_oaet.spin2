@@ -1,0 +1,6 @@
+'' gen_err_d_oaet: generated from scripts/fixtures/fixtures.json row "err_d_oaet"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Origin already exceeds target"
+DAT
+  org
+x res 1
+  long 0,0
+  orgf 1

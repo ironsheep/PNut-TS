@@ -1,0 +1,3 @@
+'' gen_err_d_ebwls: generated from scripts/fixtures/fixtures.json row "err_d_ebwls"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected BYTE, WORD, LONG, or STRUCT name" (pointer variable declaration)
+VAR
+  ^5

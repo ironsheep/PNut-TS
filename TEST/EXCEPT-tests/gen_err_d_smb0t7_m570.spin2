@@ -1,0 +1,5 @@
+'' gen_err_d_smb0t7_m570: generated from scripts/fixtures/fixtures.json row "err_d_smb0t7_m570"; edit the row, not this file. Covers: src/classes/spinResolver.ts m570: "Selector must be 0 to 7" (SETNIB)
+DAT
+  org
+x res 1
+  setnib x,x,#8

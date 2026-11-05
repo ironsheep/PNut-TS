@@ -1,0 +1,3 @@
+'' gen_err_b_ifufiq: generated from scripts/fixtures/fixtures.json row "err_b_ifufiq"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Invalid filename, use \"FilenameInQuotes\""
+DAT
+  x file nosuch

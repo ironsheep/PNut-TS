@@ -1,0 +1,6 @@
+'' gen_acc_dat_orgf_at_origin: generated from scripts/fixtures/fixtures.json row "acc_dat_orgf_at_origin"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Origin already exceeds target" - at limit (ORGF target equal to the current origin)
+DAT
+  org
+x res 1
+  long 0,0
+  orgf 3

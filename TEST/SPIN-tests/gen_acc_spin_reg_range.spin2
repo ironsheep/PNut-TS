@@ -1,0 +1,4 @@
+'' gen_acc_spin_reg_range: generated from scripts/fixtures/fixtures.json row "acc_spin_reg_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts m131: "Constant must be from 0 to 511" (REG[]) - at limit (both ends: 0 and 511)
+PUB main() | x
+  x := reg[0]
+  x := reg[511]

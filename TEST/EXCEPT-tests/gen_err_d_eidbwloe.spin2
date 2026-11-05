@@ -1,0 +1,5 @@
+'' gen_err_d_eidbwloe: generated from scripts/fixtures/fixtures.json row "err_d_eidbwloe"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected instruction, directive, BYTE/WORD/LONG, or END"
+PUB main()
+  org
+  5
+  end

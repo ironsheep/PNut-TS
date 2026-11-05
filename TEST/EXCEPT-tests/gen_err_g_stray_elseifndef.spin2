@@ -1,0 +1,4 @@
+'' gen_err_g_stray_elseifndef: generated from scripts/fixtures/fixtures.json row "err_g_stray_elseifndef"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Must be preceeded by #IFDEF or #IFNDEF" for a #elseifndef with no conditional open
+#elseifndef SOME_SYMBOL
+PUB main()
+  return

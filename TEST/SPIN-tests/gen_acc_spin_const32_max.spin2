@@ -1,0 +1,4 @@
+'' gen_acc_spin_const32_max: generated from scripts/fixtures/fixtures.json row "acc_spin_const32_max"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Constant exceeds 32 bits" - at limit ($FFFF_FFFF)
+PUB main() | x
+  x := $FFFF_FFFF
+  x := -$8000_0000

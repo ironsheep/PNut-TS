@@ -1,0 +1,4 @@
+'' gen_err_d_cael_m112: generated from scripts/fixtures/fixtures.json row "err_d_cael_m112"; edit the row, not this file. Covers: src/classes/spinResolver.ts m112: "Cog address exceeds limit" (FILE data past the cog limit)
+DAT
+  org
+  f file "gen_err_d_cael_m112__d.bin"

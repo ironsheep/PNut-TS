@@ -1,0 +1,5 @@
+'' gen_err_d_raioor: generated from scripts/fixtures/fixtures.json row "err_d_raioor"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Relative address is out of range"
+DAT
+  org
+x res 1
+  djnz x,#$180

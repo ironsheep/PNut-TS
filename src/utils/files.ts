@@ -244,6 +244,12 @@ export function loadFileAsString(fspec: string): string {
       // fires on any file containing that ordinary byte.)
       if (fileContent.includes('\x00')) {
         fileContent = buffer.toString('utf16le');
+        // The byte-order mark decodes to U+FEFF at the start of line 1, which hid
+        // a {Spin2_vNN} header (and would hide a line-1 block keyword) from the
+        // preprocessor's startsWith() checks.
+        if (fileContent.charCodeAt(0) === 0xfeff) {
+          fileContent = fileContent.substring(1);
+        }
       }
     } catch (err) {
       // ctx.logger.log(`TRC: loadFileAsString() EXCEPTION: err=[${err}]`);

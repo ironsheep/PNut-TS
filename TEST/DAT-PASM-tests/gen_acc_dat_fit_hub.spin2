@@ -1,0 +1,5 @@
+'' gen_acc_dat_fit_hub: generated from scripts/fixtures/fixtures.json row "acc_dat_fit_hub"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Hub address exceeds FIT limit" - at limit (hub address equals the FIT value)
+DAT
+  orgh $400
+  long 0,0
+  fit $408

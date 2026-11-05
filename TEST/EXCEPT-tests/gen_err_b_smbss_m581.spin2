@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_err_b_smbss_m581: generated from scripts/fixtures/fixtures.json row "err_b_smbss_m581"; edit the row, not this file. Covers: src/classes/spinResolver.ts m581: "Structures must be same size" (structure swap)
+CON
+  STRUCT p2(long a, long b)
+  STRUCT p3(long a, long b, long c)
+VAR
+  p2 u
+  p3 w
+PUB main()
+  u :=: w

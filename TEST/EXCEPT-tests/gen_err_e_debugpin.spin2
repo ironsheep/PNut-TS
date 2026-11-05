@@ -1,0 +1,6 @@
+'' gen_err_e_debugpin: generated from scripts/fixtures/fixtures.json row "err_e_debugpin"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DEBUG_PIN can only be defined as an integer constant"
+CON
+  debug_pin = 1.5
+
+PUB main()
+  return

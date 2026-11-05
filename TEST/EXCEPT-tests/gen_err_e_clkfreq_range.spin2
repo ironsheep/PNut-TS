@@ -1,0 +1,6 @@
+'' gen_err_e_clkfreq_range: generated from scripts/fixtures/fixtures.json row "err_e_clkfreq_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "_CLKFREQ must be from 3_333_333 to 500_000_000" (PNut-TS range check; REF-V52A has no such message)
+CON
+  _clkfreq = 3_000_000
+
+PUB main()
+  return

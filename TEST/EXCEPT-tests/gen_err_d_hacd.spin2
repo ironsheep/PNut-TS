@@ -1,0 +1,4 @@
+'' gen_err_d_hacd: generated from scripts/fixtures/fixtures.json row "err_d_hacd"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Hub address cannot decrease"
+DAT
+  long 0,0,0,0,0
+  orgh 4

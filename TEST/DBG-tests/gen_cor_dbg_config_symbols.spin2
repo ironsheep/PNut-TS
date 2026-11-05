@@ -1,0 +1,12 @@
+{Spin2_v55}
+'' gen_cor_dbg_config_symbols: generated from scripts/fixtures/fixtures.json row "cor_dbg_config_symbols"; edit the row, not this file. Covers: src/classes/spin2Parser.ts P2InsertDebugger: the DEBUG_COGS, DEBUG_COGINIT, DEBUG_MAIN, DEBUG_DELAY and DEBUG_TIMESTAMP configuration symbols patched into the debugger image
+CON
+  _CLKFREQ = 160_000_000
+  _XTLFREQ = 20_000_000
+  DEBUG_COGS = %0000_1111
+  DEBUG_COGINIT = 1
+  DEBUG_MAIN = 1
+  DEBUG_DELAY = 100
+  DEBUG_TIMESTAMP = 1
+PUB main()
+  debug("hello")

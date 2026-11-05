@@ -1,0 +1,5 @@
+{Spin2_v52}
+'' gen_err_b_iscexb_m400: generated from scripts/fixtures/fixtures.json row "err_b_iscexb_m400"; edit the row, not this file. Covers: src/classes/objectStructures.ts m400: "Indexed structures cannot exceed $FFFF bytes in size" (STRUCT member count)
+CON
+  STRUCT a(long x[$4000])
+  STRUCT c(a p, a q, a r[2])

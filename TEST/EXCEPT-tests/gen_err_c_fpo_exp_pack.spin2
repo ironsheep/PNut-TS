@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_c_fpo_exp_pack: generated from scripts/fixtures/fixtures.json row "err_c_fpo_exp_pack"; edit the row, not this file. Covers: src/utils/pnutFloat.ts fp_expn pack carry: "Floating-point overflow"
+CON
+  a = exp2 128.0

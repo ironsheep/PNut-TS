@@ -1,0 +1,4 @@
+'' gen_err_d_drmbpppp_m163: generated from scripts/fixtures/fixtures.json row "err_d_drmbpppp_m163"; edit the row, not this file. Covers: src/classes/spinResolver.ts m163: "D register must be PA/PB/PTRA/PTRB" (CALLD with an absolute target)
+DAT
+  org
+  calld $100,#\$190

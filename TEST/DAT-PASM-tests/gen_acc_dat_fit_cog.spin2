@@ -1,0 +1,4 @@
+'' gen_acc_dat_fit_cog: generated from scripts/fixtures/fixtures.json row "acc_dat_fit_cog"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Cog address exceeds FIT limit" - at limit (cog address equals the FIT value)
+DAT
+  org $100
+  fit $100

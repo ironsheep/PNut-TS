@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_err_b_stosmne: generated from scripts/fixtures/fixtures.json row "err_b_stosmne"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Structures transferred on the stack must not exceed 15 longs"
+CON
+  STRUCT big(long a[16])
+VAR
+  big u
+PUB main()
+  f(u)
+PUB f(x)
+  return

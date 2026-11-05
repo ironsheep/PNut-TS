@@ -1,0 +1,4 @@
+DAT
+  x file FNAME
+PUB go()
+  return

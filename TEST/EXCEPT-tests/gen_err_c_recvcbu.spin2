@@ -1,0 +1,3 @@
+'' gen_err_c_recvcbu: generated from scripts/fixtures/fixtures.json row "err_c_recvcbu"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "RECV() can be used only as a term and \\RECV() is not allowed"
+PUB main()
+  recv()

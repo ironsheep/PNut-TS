@@ -1,0 +1,5 @@
+'' gen_err_d_teinafti: generated from scripts/fixtures/fixtures.json row "err_d_teinafti"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "This effect is not allowed for this instruction"
+DAT
+  org
+x res 1
+  nop wc

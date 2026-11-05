@@ -1,0 +1,6 @@
+'' gen_acc_dat_rdlut_imm_range: generated from scripts/fixtures/fixtures.json row "acc_dat_rdlut_imm_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Constant must be from 0 to 255" (RDLUT immediate) - at limit (both ends: 0 and 255)
+DAT
+  org
+x res 1
+  rdlut x,#0
+  rdlut x,#255

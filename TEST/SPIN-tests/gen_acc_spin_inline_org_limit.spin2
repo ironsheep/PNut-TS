@@ -1,0 +1,8 @@
+'' gen_acc_spin_inline_org_limit: generated from scripts/fixtures/fixtures.json row "acc_spin_inline_org_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts m380 and m381: "Inline cog address exceeds $120 limit" - at limit (ORG start $11E, ORG limit operand $120)
+PUB main()
+  org $11E
+  nop
+  end
+  org 0,$120
+  nop
+  end

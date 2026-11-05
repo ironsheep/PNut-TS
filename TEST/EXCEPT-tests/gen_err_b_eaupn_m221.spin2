@@ -1,0 +1,3 @@
+'' gen_err_b_eaupn_m221: generated from scripts/fixtures/fixtures.json row "err_b_eaupn_m221"; edit the row, not this file. Covers: src/classes/spinResolver.ts m221: "Expected a unique parameter name" (duplicate parameter, second pass)
+PUB main(a, a)
+  return

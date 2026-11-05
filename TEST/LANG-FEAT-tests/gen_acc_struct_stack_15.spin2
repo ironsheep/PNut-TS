@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_acc_struct_stack_15: generated from scripts/fixtures/fixtures.json row "acc_struct_stack_15"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Structures transferred on the stack must not exceed 15 longs" - at limit (15 longs)
+CON
+  STRUCT big(long a[15])
+VAR
+  big u
+PUB main()
+  f(u)
+PUB f(big x)
+  return

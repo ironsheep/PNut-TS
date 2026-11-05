@@ -1,0 +1,7 @@
+'' gen_acc_dat_calld_rel9_hub: generated from scripts/fixtures/fixtures.json row "acc_dat_calld_rel9_hub"; edit the row, not this file. Covers: src/classes/spinResolver.ts m161: "D register must be PA/PB/PTRA/PTRB" (CALLD, hub mode, relative target) - at limit (both ends: +255 and -256 with an ordinary D register)
+DAT
+  orgh $400
+back calld $100,#fwd
+  long 0[254]
+  calld $100,#back
+fwd nop

@@ -1,0 +1,7 @@
+{Spin2_v53}
+'' gen_acc_struct_offsetof_index_range: generated from scripts/fixtures/fixtures.json row "acc_struct_offsetof_index_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts m670: "Structure index must be from 0 to $FFFF" (OFFSETOF index) - at limit (both ends: 0 and $FFFF)
+CON
+  STRUCT pt(long a)
+PUB main() | x
+  x := offsetof(pt[0])
+  x := offsetof(pt[$FFFF])

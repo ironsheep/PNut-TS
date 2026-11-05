@@ -1,0 +1,7 @@
+'' gen_acc_con_xinfreq_max: generated from scripts/fixtures/fixtures.json row "acc_con_xinfreq_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "_XINFREQ must be from 250_000 to 500_000_000" - at limit (500_000_000)
+CON
+  _xinfreq = 500_000_000
+  _clkfreq = 500_000_000
+
+PUB main()
+  return

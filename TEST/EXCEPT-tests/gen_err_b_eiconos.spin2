@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_eiconos: generated from scripts/fixtures/fixtures.json row "err_b_eiconos"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected integer constant or structure (for size)"
+PUB main() | mp, x
+  x := mp():nosuch

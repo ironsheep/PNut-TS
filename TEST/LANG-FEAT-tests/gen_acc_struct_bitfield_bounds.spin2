@@ -1,0 +1,6 @@
+{Spin2_v54}
+'' gen_acc_struct_bitfield_bounds: generated from scripts/fixtures/fixtures.json row "acc_struct_bitfield_bounds"; edit the row, not this file. Covers: src/classes/spinResolver.ts m680 and m681: "Bit number exceeds BYTE/WORD/LONG boundary" - at limit (both ends: bit 0 and the top bit of a long, word and byte)
+CON
+  STRUCT s(long y.f[31], long z.g[31..0], word w.h[15..0], byte b.k[7..0], long u.v[0])
+PUB main()
+  return

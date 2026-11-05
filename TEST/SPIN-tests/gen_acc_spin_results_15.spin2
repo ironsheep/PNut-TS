@@ -1,0 +1,3 @@
+'' gen_acc_spin_results_15: generated from scripts/fixtures/fixtures.json row "acc_spin_results_15"; edit the row, not this file. Covers: src/classes/spinResolver.ts m440: "Limit of 15 results exceeded" (method header) - at limit (15 results)
+PUB main() : a, b, c, d, e, f, g, h, i, j, k, l, m, n, o
+  return

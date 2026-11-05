@@ -1,0 +1,2 @@
+PUB two() : p, q
+  return 1, 2

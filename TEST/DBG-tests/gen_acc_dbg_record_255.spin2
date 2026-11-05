@@ -1,0 +1,3 @@
+'' gen_acc_dbg_record_255: generated from scripts/fixtures/fixtures.json row "acc_dbg_record_255"; edit the row, not this file. Covers: src/classes/debugData.ts m150: "DEBUG data is too long" (record exceeds 255 bytes) - at limit (a 255-byte record: a 251-character string)
+PUB main()
+  debug("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")

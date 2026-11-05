@@ -1,0 +1,3 @@
+'' gen_err_b_nce_m461: generated from scripts/fixtures/fixtures.json row "err_b_nce_m461"; edit the row, not this file. Covers: src/classes/spinResolver.ts m461: "No cases encountered" (CASE_FAST)
+PUB main() | x
+  case_fast x

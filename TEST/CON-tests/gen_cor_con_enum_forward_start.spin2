@@ -1,0 +1,7 @@
+{Spin2_v55}
+'' gen_cor_con_enum_forward_start: generated from scripts/fixtures/fixtures.json row "cor_con_enum_forward_start"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_con_blocks: an enumeration whose start value is defined after it, so the CON pass runs again
+CON
+  #x_start, e1, e2
+  x_start = 3
+PUB main() | i
+  i := e2

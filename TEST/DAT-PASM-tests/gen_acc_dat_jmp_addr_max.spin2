@@ -1,0 +1,4 @@
+'' gen_acc_dat_jmp_addr_max: generated from scripts/fixtures/fixtures.json row "acc_dat_jmp_addr_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m001: "Address must not exceed $FFFFF" (JMP/CALL) - at limit ($FFFFF, an address operand)
+DAT
+  org
+  jmp #\$FFFFF

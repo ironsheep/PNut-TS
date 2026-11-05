@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_c_fpcmbp_log_neg: generated from scripts/fixtures/fixtures.json row "err_c_fpcmbp_log_neg"; edit the row, not this file. Covers: src/utils/pnutFloat.ts fp_logx negative operand: "Floating-point constant must be positive"
+CON
+  a = log -1.0

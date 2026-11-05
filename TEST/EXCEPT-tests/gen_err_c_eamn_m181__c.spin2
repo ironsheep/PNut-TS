@@ -1,0 +1,4 @@
+CON
+  k = 1
+PUB go()
+  return

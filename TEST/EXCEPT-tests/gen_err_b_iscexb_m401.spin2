@@ -1,0 +1,9 @@
+{Spin2_v52}
+'' gen_err_b_iscexb_m401: generated from scripts/fixtures/fixtures.json row "err_b_iscexb_m401"; edit the row, not this file. Covers: src/classes/spinResolver.ts m401: "Indexed structures cannot exceed $FFFF bytes in size" (variable index)
+CON
+  STRUCT a(long x[$4000])
+  STRUCT b(a p, a q)
+VAR
+  b v
+PUB main() | x
+  x := v[1].p.x[0]

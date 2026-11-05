@@ -1,0 +1,8 @@
+{Spin2_v55}
+'' gen_cor_dbg_delay_clamp: generated from scripts/fixtures/fixtures.json row "cor_dbg_delay_clamp"; edit the row, not this file. Covers: src/classes/spin2Parser.ts P2InsertDebugger: DEBUG_DELAY large enough that the patched delay is clamped to $FFFFFFFF
+CON
+  _CLKFREQ = 160_000_000
+  _XTLFREQ = 20_000_000
+  DEBUG_DELAY = 100_000_000
+PUB main()
+  debug("hello")

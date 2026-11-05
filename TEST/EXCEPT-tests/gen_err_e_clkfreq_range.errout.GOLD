@@ -1,0 +1,1 @@
+gen_err_e_clkfreq_range.spin2:6:error:_CLKFREQ must be from 3_333_333 to 500_000_000

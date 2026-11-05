@@ -1,0 +1,4 @@
+'' gen_acc_dat_orgf_cog_limit: generated from scripts/fixtures/fixtures.json row "acc_dat_orgf_cog_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts m111: "Cog address exceeds limit" - ORGF up to exactly the default $1F8 limit
+DAT
+  org
+  orgf $1F8

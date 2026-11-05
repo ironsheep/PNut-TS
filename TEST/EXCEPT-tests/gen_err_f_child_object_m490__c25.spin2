@@ -1,0 +1,5 @@
+DAT
+  byte 25
+  byte 0[589120]
+PUB go()
+  return

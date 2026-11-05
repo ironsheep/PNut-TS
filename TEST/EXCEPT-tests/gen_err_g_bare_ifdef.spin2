@@ -1,0 +1,4 @@
+'' gen_err_g_bare_ifdef: generated from scripts/fixtures/fixtures.json row "err_g_bare_ifdef"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Expected a preprocessor symbol" for a bare #ifdef at top level (the bare-directive branch)
+#ifdef
+PUB main()
+  return

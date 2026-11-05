@@ -1,0 +1,4 @@
+'' gen_err_d_wmbft: generated from scripts/fixtures/fixtures.json row "err_d_wmbft"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "WORDFIT values must range from -$8000 to $FFFF"
+DAT
+  wordfit 70000
+  word 70000

@@ -1,0 +1,7 @@
+{Spin2_v55}
+'' gen_cor_spin_register_address_constant: generated from scripts/fixtures/fixtures.json row "cor_spin_register_address_constant"; edit the row, not this file. Covers: src/classes/spinResolver.ts getConstant: #PA, a register address used as a constant in a method
+PUB main() | i
+  i := #PA
+DAT
+  org
+lbl nop

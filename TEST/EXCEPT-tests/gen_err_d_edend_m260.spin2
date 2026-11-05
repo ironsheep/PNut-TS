@@ -1,0 +1,5 @@
+{Spin2_v52}
+'' gen_err_d_edend_m260: generated from scripts/fixtures/fixtures.json row "err_d_edend_m260"; edit the row, not this file. Covers: src/classes/spinResolver.ts m260: "Expected DITTO END" (DITTO block open at end of file)
+DAT
+  ditto 2
+  long 0

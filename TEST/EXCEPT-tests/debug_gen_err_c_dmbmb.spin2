@@ -1,0 +1,3 @@
+'' gen_err_c_dmbmb: generated from scripts/fixtures/fixtures.json row "err_c_dmbmb"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DEBUG mask bit-number must be 0..31"
+PUB main() | x
+  debug[40](x)

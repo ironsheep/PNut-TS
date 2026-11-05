@@ -1,0 +1,7 @@
+'' gen_acc_con_pll_multiplier_max: generated from scripts/fixtures/fixtures.json row "acc_con_pll_multiplier_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "PLL settings could not be achieved per _CLKFREQ" - at limit (a multiplier of 1024 from a 250 kHz input)
+CON
+  _xinfreq = 250_000
+  _clkfreq = 256_000_000
+
+PUB main()
+  return

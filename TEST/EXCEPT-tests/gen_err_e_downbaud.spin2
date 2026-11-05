@@ -1,0 +1,6 @@
+'' gen_err_e_downbaud: generated from scripts/fixtures/fixtures.json row "err_e_downbaud"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DOWNLOAD_BAUD can only be defined as an integer constant"
+CON
+  download_baud = 1.5
+
+PUB main()
+  return

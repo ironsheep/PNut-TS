@@ -1,0 +1,6 @@
+{Spin2_v52}
+'' gen_acc_struct_total_max: generated from scripts/fixtures/fixtures.json row "acc_struct_total_max"; edit the row, not this file. Covers: src/classes/objectStructures.ts m531: "Structure exceeds hub range of $FFFFF" (cumulative members) - at limit (a structure of exactly $FFFFF bytes)
+CON
+  STRUCT big(byte m00[$10000], byte m01[$10000], byte m02[$10000], byte m03[$10000], byte m04[$10000], byte m05[$10000], byte m06[$10000], byte m07[$10000], byte m08[$10000], byte m09[$10000], byte m10[$10000], byte m11[$10000], byte m12[$10000], byte m13[$10000], byte m14[$10000], byte z[$FFFF])
+PUB main()
+  return

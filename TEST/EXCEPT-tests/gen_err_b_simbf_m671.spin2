@@ -1,0 +1,8 @@
+{Spin2_v52}
+'' gen_err_b_simbf_m671: generated from scripts/fixtures/fixtures.json row "err_b_simbf_m671"; edit the row, not this file. Covers: src/classes/spinResolver.ts m671: "Structure index must be from 0 to $FFFF" (variable index)
+CON
+  STRUCT s(long a)
+VAR
+  s v
+PUB main() | x
+  x := v[70000].a

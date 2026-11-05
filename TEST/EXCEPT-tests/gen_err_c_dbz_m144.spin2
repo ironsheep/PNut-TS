@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_c_dbz_m144: generated from scripts/fixtures/fixtures.json row "err_c_dbz_m144"; edit the row, not this file. Covers: src/classes/spinResolver.ts m144: "Divide by zero" (FRAC)
+CON
+  a = 5 frac 0

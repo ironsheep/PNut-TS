@@ -1,0 +1,10 @@
+'' gen_acc_spin_write_skip_range: generated from scripts/fixtures/fixtures.json row "acc_spin_write_skip_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Constant must be from 1 to 15" (the _[n] skip count) - at limit (both ends: 1 and 15)
+PUB main() | x
+  x, _[1] := two()
+  x, _[15] := 1, fifteen()
+
+PUB two() : a, b
+  return 1, 2
+
+PUB fifteen() : a, b, c, d, e, f, g, h, i, j, k, l, m, n, o
+  return 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15

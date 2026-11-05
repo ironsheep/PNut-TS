@@ -1,0 +1,5 @@
+{Spin2_v54}
+'' gen_err_b2_bfaoa: generated from scripts/fixtures/fixtures.json row "err_b2_bfaoa"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Bitfields are only allowed for BYTE/WORD/LONG members"
+CON
+  STRUCT a(long x)
+  STRUCT s(a y.f[3])

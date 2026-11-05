@@ -1,0 +1,4 @@
+'' gen_acc_dat_org_max: generated from scripts/fixtures/fixtures.json row "acc_dat_org_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m120 and m121: "Cog address exceeds $400 limit" - at limit (ORG start $400, ORG limit operand $400)
+DAT
+  org $400
+  org 0,$400

@@ -162,6 +162,19 @@ export function compareExceptionFiles(reportFSpec: string, goldenFSpec: string):
       return normalized;
     };
 
+    // Two GOLD shapes carry no message to compare. PNut's command line writes
+    // `serial_error` when an exception escapes ComposeRAM (REF-V52A/EditorUnit.pas:512),
+    // and an empty message for errors raised outside the compiler (a file not found).
+    // PNut still rejected the source, so these GOLDs assert only that we reject it too.
+    const goldenNormalized = goldenContentLines.map((line) => normalizeErrorLine(line));
+    if (goldenNormalized.length == 1 && (goldenNormalized[0] === 'serial_error' || /\.spin2:\d+:error:$/.test(goldenNormalized[0]))) {
+      filesMatchStatus = reportContentLines.some((line) => /:error:/.test(line));
+      if (!filesMatchStatus) {
+        console.log(`compareExceptionFiles: PNut rejected this source (GOLD [${goldenNormalized[0]}]); the report shows no error`);
+      }
+      return filesMatchStatus;
+    }
+
     // Only log details when there's a problem
     const debugComparison = false; // Set to true for debugging
 

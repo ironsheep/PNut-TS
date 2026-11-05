@@ -1,0 +1,5 @@
+'' gen_err_d_racc: generated from scripts/fixtures/fixtures.json row "err_d_racc"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Relative addresses cannot cross between cog and hub domains"
+DAT
+  org
+x res 1
+  djnz x,#$400

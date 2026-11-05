@@ -1,0 +1,5 @@
+'' gen_err_g_ifdef_blank: generated from scripts/fixtures/fixtures.json row "err_g_ifdef_blank"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Expected a preprocessor symbol" for #ifdef followed only by a space (the #ifdef branch, not the bare-directive branch)
+#ifdef 
+PUB main()
+  return
+#endif

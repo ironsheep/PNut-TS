@@ -1,0 +1,17 @@
+' Report for regression testing
+' Run: 11/05/2026
+#
+' ---------------------------------------
+[000] 2: '' gen_cor_pre_elseifndef_doc_comment: generated from scripts/fixtures/fixtures.json row "cor_pre_elseifndef_doc_comment"; edit the row, not this file. Covers: src/classes/spinDocument.ts isPreprocessorDirective, blankNonDocComments: an #elseifndef line that is kept, and a brace comment followed by a doc comment that closes on the same line and on a later line
+[001] 3: ' #pragma exportdef FOO
+[002] 4: ' #pragma exportdef BAR
+[003] 5: ' #define GUARD_A 1
+[004] 8: ' #elseifndef GUARD_B
+[005] 9: ' #define SIDE_TWO 2
+[006] 10: ' #endif
+[007] 12:         {{ doc opens here
+[008] 13:  doc closes here }}
+[009] 14: PUB main() | i
+[010] 15:   i := 1
+[011] 16: 
+' ---------------------------------------

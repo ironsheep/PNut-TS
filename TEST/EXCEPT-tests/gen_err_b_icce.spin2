@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_icce: generated from scripts/fixtures/fixtures.json row "err_b_icce"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Instance count cannot exceed $10000"
+CON
+  STRUCT s(byte a[$10001])

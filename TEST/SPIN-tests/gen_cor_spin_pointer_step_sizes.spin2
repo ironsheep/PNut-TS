@@ -1,0 +1,19 @@
+{Spin2_v55}
+'' gen_cor_spin_pointer_step_sizes: generated from scripts/fixtures/fixtures.json row "cor_spin_pointer_step_sizes"; edit the row, not this file. Covers: src/classes/spinResolver.ts compileVariable, checkVariable: pre and post increment and decrement of BYTE, WORD and struct pointers, a size override with an index on a LONG pointer, and a struct pointer whose STRUCT has bitfields
+CON
+  STRUCT sIo(LONG.ready[0].mode[3..2])
+VAR
+  byte buf[64]
+  sIo vio[4]
+PUB main() | i
+  ptrs(@i, @buf, @buf, @vio)
+PRI ptrs(^long pLong, ^byte pByte, ^word pWord, ^sIo pIo) : r
+  r := pByte[++] + [--]pWord + pByte[--] + [++]pByte + pWord[++]
+  r := pLong.byte[2]
+  pLong.word[1] := 3
+  r := pLong.long[1]
+  r := pIo.ready
+  r := pIo[++].mode
+  r := [++]pIo.mode
+  r := [--]pIo.ready
+  r := pIo[--].ready

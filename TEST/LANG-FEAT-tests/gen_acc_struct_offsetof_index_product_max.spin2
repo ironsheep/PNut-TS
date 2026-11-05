@@ -1,0 +1,6 @@
+{Spin2_v53}
+'' gen_acc_struct_offsetof_index_product_max: generated from scripts/fixtures/fixtures.json row "acc_struct_offsetof_index_product_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m534: "Structure exceeds hub range of $FFFFF" (OFFSETOF index times size) - at limit (index 16 of a $FFFF-byte structure, product $FFFF0)
+CON
+  STRUCT s(byte b[$FFFF])
+PUB main() | x
+  x := offsetof(s[16])

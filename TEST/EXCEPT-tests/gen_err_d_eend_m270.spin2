@@ -1,0 +1,4 @@
+'' gen_err_d_eend_m270: generated from scripts/fixtures/fixtures.json row "err_d_eend_m270"; edit the row, not this file. Covers: src/classes/spinResolver.ts m270: "Expected END" (inline assembly open at end of file)
+PUB main()
+  org
+  nop

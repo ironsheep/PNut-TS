@@ -1,0 +1,8 @@
+{Spin2_v52}
+'' gen_err_b_oaocbats: generated from scripts/fixtures/fixtures.json row "err_b_oaocbats"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Only @ operator can be applied to a structure"
+CON
+  STRUCT p2(long a, long b)
+VAR
+  p2 u
+PUB main() | x
+  x := ++u

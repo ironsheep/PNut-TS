@@ -1,0 +1,1 @@
+gen_err_b_requires_version.spin2:4:error:"OFFSETOF" requires {Spin2_v53} or later

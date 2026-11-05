@@ -1,0 +1,3 @@
+'' gen_err_c_dioa: generated from scripts/fixtures/fixtures.json row "err_c_dioa"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "\"$\" (DAT origin) is only allowed in DAT blocks"
+CON
+  a = $

@@ -1,0 +1,3 @@
+'' gen_err_c_eright_m300: generated from scripts/fixtures/fixtures.json row "err_c_eright_m300"; edit the row, not this file. Covers: src/classes/spinResolver.ts m300: "Expected \")\"" (scan to the closing parenthesis)
+PUB main() | mp
+  send(mp(1

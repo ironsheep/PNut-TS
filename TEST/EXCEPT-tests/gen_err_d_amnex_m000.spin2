@@ -1,0 +1,5 @@
+'' gen_err_d_amnex_m000: generated from scripts/fixtures/fixtures.json row "err_d_amnex_m000"; edit the row, not this file. Covers: src/classes/spinResolver.ts m000: "Address must not exceed $FFFFF" (LOC)
+DAT
+  org
+x res 1
+  loc pa,#\$100000

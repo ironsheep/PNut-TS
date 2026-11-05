@@ -1,0 +1,9 @@
+'' gen_acc_obj_instances_1024: generated from scripts/fixtures/fixtures.json row "acc_obj_instances_1024"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Limit of 1024 OBJ instances exceeded" - at limit (1,024 instances)
+OBJ
+  a[255] : "gen_acc_obj_instances_1024__x"
+  b[255] : "gen_acc_obj_instances_1024__x"
+  c[255] : "gen_acc_obj_instances_1024__x"
+  d[255] : "gen_acc_obj_instances_1024__x"
+  e[4] : "gen_acc_obj_instances_1024__x"
+PUB main()
+  return

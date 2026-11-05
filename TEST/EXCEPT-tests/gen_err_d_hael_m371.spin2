@@ -1,0 +1,4 @@
+'' gen_err_d_hael_m371: generated from scripts/fixtures/fixtures.json row "err_d_hael_m371"; edit the row, not this file. Covers: src/classes/spinResolver.ts m371: "Hub address exceeds limit" (FILE data past an ORGH limit)
+DAT
+  orgh $400,$500
+  f file "gen_err_d_hael_m371__d.bin"

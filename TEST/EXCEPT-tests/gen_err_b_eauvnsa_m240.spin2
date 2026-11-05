@@ -1,0 +1,5 @@
+'' gen_err_b_eauvnsa_m240: generated from scripts/fixtures/fixtures.json row "err_b_eauvnsa_m240"; edit the row, not this file. Covers: src/classes/spinResolver.ts m240: "Expected a unique variable name, STRUCT name, BYTE, WORD, LONG, \"^\", ALIGNW, or ALIGNL" (VAR)
+VAR
+  5
+PUB main()
+  return

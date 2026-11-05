@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_eloe: generated from scripts/fixtures/fixtures.json row "err_b_eloe"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \"(\" or \"=\""
+CON
+  STRUCT s x

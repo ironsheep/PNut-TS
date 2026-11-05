@@ -1,0 +1,3 @@
+'' gen_err_c_mpmblv: generated from scripts/fixtures/fixtures.json row "err_c_mpmblv"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Method pointers must be long variables without bitfields"
+PUB main() | byte b
+  b()

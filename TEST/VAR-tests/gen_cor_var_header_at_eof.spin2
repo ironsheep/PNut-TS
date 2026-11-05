@@ -1,0 +1,5 @@
+{Spin2_v55}
+'' gen_cor_var_header_at_eof: generated from scripts/fixtures/fixtures.json row "cor_var_header_at_eof"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_var_blocks: a VAR block header that is the last line of the file, so the block ends at the end of file
+PUB main()
+  return
+VAR

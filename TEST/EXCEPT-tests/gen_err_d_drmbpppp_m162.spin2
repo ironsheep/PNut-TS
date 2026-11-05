@@ -1,0 +1,4 @@
+'' gen_err_d_drmbpppp_m162: generated from scripts/fixtures/fixtures.json row "err_d_drmbpppp_m162"; edit the row, not this file. Covers: src/classes/spinResolver.ts m162: "D register must be PA/PB/PTRA/PTRB" (CALLD, cog mode, relative target out of range)
+DAT
+  org
+  calld $100,#$190

@@ -1,0 +1,3 @@
+'' gen_err_c_fpo_scaled_product: generated from scripts/fixtures/fixtures.json row "err_c_fpo_scaled_product"; edit the row, not this file. Covers: src/utils/pnutFloat.ts get_float: a float constant whose mantissa scaled by its power of ten overflows, "Floating-point constant must be within +/- 3.4e+38"
+CON
+  a = 9.0e38

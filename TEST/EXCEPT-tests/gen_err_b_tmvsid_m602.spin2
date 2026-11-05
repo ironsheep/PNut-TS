@@ -1,0 +1,7 @@
+'' gen_err_b_tmvsid_m602: generated from scripts/fixtures/fixtures.json row "err_b_tmvsid_m602"; edit the row, not this file. Covers: src/classes/spinResolver.ts m602: "Too much variable space is declared" (alignment past an ORGH limit)
+OBJ
+  a : "gen_err_b_tmvsid_m602__c"
+VAR
+  byte pad[$7FFFD]
+PUB main()
+  return

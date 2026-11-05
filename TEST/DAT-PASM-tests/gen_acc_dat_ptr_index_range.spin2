@@ -1,0 +1,6 @@
+'' gen_acc_dat_ptr_index_range: generated from scripts/fixtures/fixtures.json row "acc_dat_ptr_index_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "PTRA/PTRB index constant must range from -32 to 31" - at limit (both ends: -32 and 31)
+DAT
+  org
+x res 1
+  rdlong x,ptra[-32]
+  rdlong x,ptra[31]

@@ -1,0 +1,7 @@
+{Spin2_v52}
+'' gen_err_d_onawads: generated from scripts/fixtures/fixtures.json row "err_d_onawads"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "ORG not allowed within a DITTO block"
+DAT
+  ditto 2
+  org
+  long 0
+  ditto end

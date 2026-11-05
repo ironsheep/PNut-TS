@@ -60,7 +60,7 @@ describe('PNut_ts builds our OBJ test files correctly', () => {
         execSync(`node ${toolPath}/pnut-ts.js ${options} ${file}`);
       } catch (error) {
         console.error(`ERROR: running PNut-ts: ${error}`);
-        fail(`Execution failed for ${file}`);
+        throw new Error(`Execution failed for ${file}: ${error}`);
       }
 
       // count the number of matching outputs, should be 3!

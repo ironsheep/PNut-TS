@@ -1,0 +1,3 @@
+'' gen_err_c_eptrid: generated from scripts/fixtures/fixtures.json row "err_c_eptrid"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected pointer variable, \"++\", or \"--\""
+PUB main() | x, y
+  x := [y]

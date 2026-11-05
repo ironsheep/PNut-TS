@@ -1,0 +1,9 @@
+{Spin2_v52}
+'' gen_acc_struct_var_index_range: generated from scripts/fixtures/fixtures.json row "acc_struct_var_index_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts m671: "Structure index must be from 0 to $FFFF" (variable index) - at limit (both ends: 0 and $FFFF)
+CON
+  STRUCT s(long a)
+VAR
+  s v
+PUB main() | x
+  x := v[0].a
+  x := v[$FFFF].a

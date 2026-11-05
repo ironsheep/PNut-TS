@@ -1,0 +1,5 @@
+'' gen_err_c_ecoeol: generated from scripts/fixtures/fixtures.json row "err_c_ecoeol"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected \",\" or end of line"
+VAR
+  long a b
+PUB main()
+  return

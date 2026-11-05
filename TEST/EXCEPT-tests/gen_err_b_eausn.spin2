@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_eausn: generated from scripts/fixtures/fixtures.json row "err_b_eausn"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a unique STRUCT name"
+CON
+  STRUCT 5

@@ -1,0 +1,5 @@
+'' gen_err_d_picmr116: generated from scripts/fixtures/fixtures.json row "err_d_picmr116"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "PTRA/PTRB index constant must range from 1 to 16" (updating pointer form)
+DAT
+  org
+x res 1
+  rdlong x,ptra++[17]

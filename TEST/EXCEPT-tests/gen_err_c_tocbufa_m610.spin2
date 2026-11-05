@@ -1,0 +1,3 @@
+'' gen_err_c_tocbufa_m610: generated from scripts/fixtures/fixtures.json row "err_c_tocbufa_m610"; edit the row, not this file. Covers: src/classes/spinResolver.ts m610: "This operator cannot be used for assignment" (unary in an expression)
+PUB main() | x
+  x := fabs = 5

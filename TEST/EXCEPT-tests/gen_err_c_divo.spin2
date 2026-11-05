@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_c_divo: generated from scripts/fixtures/fixtures.json row "err_c_divo"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Division overflow"
+CON
+  a = 5 frac 3

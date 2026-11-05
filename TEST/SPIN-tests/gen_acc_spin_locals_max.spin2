@@ -1,0 +1,3 @@
+'' gen_acc_spin_locals_max: generated from scripts/fixtures/fixtures.json row "acc_spin_locals_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Limit of 64KB of local variables exceeded" - at limit ($10237 bytes of locals)
+PUB main() | byte a[$10237]
+  a[0] := 1

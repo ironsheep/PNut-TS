@@ -1,0 +1,3 @@
+'' gen_acc_dat_wordfit_range: generated from scripts/fixtures/fixtures.json row "acc_dat_wordfit_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "WORDFIT values must range from -$8000 to $FFFF" - at limit (both ends: -$8000 and $FFFF)
+DAT
+  wordfit -$8000, $FFFF

@@ -1,0 +1,6 @@
+{Spin2_v52}
+'' gen_acc_struct_long_count_max: generated from scripts/fixtures/fixtures.json row "acc_struct_long_count_max"; edit the row, not this file. Covers: src/classes/objectStructures.ts m530: "Structure exceeds hub range of $FFFFF" (one member) - at limit ($10000 longs = $40000 bytes, well inside $FFFFF)
+CON
+  STRUCT s(long a[$10000])
+PUB main()
+  return

@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_iccbl: generated from scripts/fixtures/fixtures.json row "err_b_iccbl"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Instance count cannot be less than 1"
+CON
+  STRUCT s(long a[0])

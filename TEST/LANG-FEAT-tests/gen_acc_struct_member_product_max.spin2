@@ -1,0 +1,7 @@
+{Spin2_v52}
+'' gen_acc_struct_member_product_max: generated from scripts/fixtures/fixtures.json row "acc_struct_member_product_max"; edit the row, not this file. Covers: src/classes/objectStructures.ts m530: "Structure exceeds hub range of $FFFFF" (one member) - at limit (a 16-byte member with count $FFFF, product $FFFF0)
+CON
+  STRUCT a(long x[4])
+  STRUCT s(a y[$FFFF])
+PUB main()
+  return

@@ -1,0 +1,7 @@
+'' gen_acc_dat_rel_range: generated from scripts/fixtures/fixtures.json row "acc_dat_rel_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Relative address is out of range" - at limit (both ends: forward +255 and backward -256 instructions)
+DAT
+  org
+back jmp #fwd
+  long 0[254]
+  jmp #back
+fwd nop

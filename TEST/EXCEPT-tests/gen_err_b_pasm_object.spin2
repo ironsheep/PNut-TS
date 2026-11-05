@@ -1,0 +1,5 @@
+'' gen_err_b_pasm_object: generated from scripts/fixtures/fixtures.json row "err_b_pasm_object"; edit the row, not this file. Covers: src/classes/compiler.ts: "<file> is a PASM file and cannot be used as a Spin2 object" (PNut-TS-only message)
+OBJ
+  a : "gen_err_b_pasm_object__c"
+PUB main()
+  return

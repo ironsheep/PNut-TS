@@ -72,7 +72,7 @@ function compileAndCompare(file: string, isDebugGroup: boolean) {
     execSync(`node ${toolPath}/pnut-ts.js ${args.join(' ')} ${file}`);
   } catch (error) {
     console.error(`ERROR: running PNut-ts: ${error}`);
-    fail(`Execution failed for ${file}`);
+    throw new Error(`Execution failed for ${file}: ${error}`);
   }
 
   let whatFailed: string = '';

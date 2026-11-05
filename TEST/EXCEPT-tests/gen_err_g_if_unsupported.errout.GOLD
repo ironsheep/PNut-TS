@@ -1,0 +1,1 @@
+gen_err_g_if_unsupported.spin2:2:error:#if is not a supported preprocessor directive — use #ifdef or #ifndef

@@ -1,0 +1,6 @@
+'' gen_err_e_debugbaud: generated from scripts/fixtures/fixtures.json row "err_e_debugbaud"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DEBUG_BAUD can only be defined as an integer constant"
+CON
+  debug_baud = 1.5
+
+PUB main()
+  return

@@ -1,0 +1,3 @@
+'' gen_err_b_ifc: generated from scripts/fixtures/fixtures.json row "err_b_ifc"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Invalid filename character"
+DAT
+  x file "a|b"

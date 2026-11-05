@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_acc_spin_lstring_chars: generated from scripts/fixtures/fixtures.json row "acc_spin_lstring_chars"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "LSTRING characters must range from 0 to 255" - at limit (both ends: 0 and 255)
+PUB main() | x
+  x := lstring(0, 255)

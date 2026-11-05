@@ -1,0 +1,5 @@
+'' gen_err_d_isil: generated from scripts/fixtures/fixtures.json row "err_d_isil"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "ORGH inline block exceeds $FFFF longs (including the added RET instruction)"
+PUB main()
+  orgh
+  long 0[$10000]
+  end

@@ -1,0 +1,3 @@
+'' gen_err_c_iec_m391: generated from scripts/fixtures/fixtures.json row "err_c_iec_m391"; edit the row, not this file. Covers: src/classes/spinResolver.ts m391: "Invalid escape character" (second hex digit)
+PUB main() | x
+  x := @\"\x1g"

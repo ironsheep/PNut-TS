@@ -1,0 +1,5 @@
+'' gen_err_b_tmvsid_m601: generated from scripts/fixtures/fixtures.json row "err_b_tmvsid_m601"; edit the row, not this file. Covers: src/classes/spinResolver.ts m601: "Too much variable space is declared" (running total)
+VAR
+  long a[$100000]
+PUB main()
+  return

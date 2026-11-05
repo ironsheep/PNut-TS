@@ -1,0 +1,5 @@
+'' gen_err_b_cfvmbw: generated from scripts/fixtures/fixtures.json row "err_b_cfvmbw"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "CASE_FAST values must be within 255 of each other"
+PUB main() | x, y
+  case_fast x
+    1: x := 2
+    300: x := 3

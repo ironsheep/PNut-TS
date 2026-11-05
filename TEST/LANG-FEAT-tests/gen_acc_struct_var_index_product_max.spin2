@@ -1,0 +1,8 @@
+{Spin2_v52}
+'' gen_acc_struct_var_index_product_max: generated from scripts/fixtures/fixtures.json row "acc_struct_var_index_product_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m532 and m533: "Structure exceeds hub range of $FFFFF" (variable index times size, plus base) - at limit (index $FFFF of a 16-byte structure, offset $FFFF0 plus the variable base)
+CON
+  STRUCT s(byte b[$10])
+VAR
+  s v
+PUB main() | x
+  x := v[$FFFF].b[0]

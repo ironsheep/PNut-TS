@@ -1,0 +1,3 @@
+'' gen_err_c_fpo_exp_digits: generated from scripts/fixtures/fixtures.json row "err_c_fpo_exp_digits"; edit the row, not this file. Covers: src/utils/pnutFloat.ts get_float: a float constant whose exponent digits overflow, "Floating-point constant must be within +/- 3.4e+38"
+CON
+  a = 1.0e999

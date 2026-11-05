@@ -1,0 +1,7 @@
+{Spin2_v53}
+'' gen_err_b_sehr_m535: generated from scripts/fixtures/fixtures.json row "err_b_sehr_m535"; edit the row, not this file. Covers: src/classes/spinResolver.ts m535: "Structure exceeds hub range of $FFFFF" (OFFSETOF running offset)
+CON
+  STRUCT inner(byte b[$FFFF])
+  STRUCT outer(long pad[300], inner i)
+PUB main() | x
+  x := offsetof(outer.i[16])

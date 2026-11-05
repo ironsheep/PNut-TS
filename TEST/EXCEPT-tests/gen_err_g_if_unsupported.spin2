@@ -1,0 +1,4 @@
+'' gen_err_g_if_unsupported: generated from scripts/fixtures/fixtures.json row "err_g_if_unsupported"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "#if is not a supported preprocessor directive — use #ifdef or #ifndef" (PNut-TS-only message; PNut leaves the line to the Spin2 parser)
+#if FOO
+PUB main()
+  return

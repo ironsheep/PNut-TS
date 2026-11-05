@@ -1,0 +1,48 @@
+{Spin2_v55}
+'' gen_cor_var_struct_defs_40: generated from scripts/fixtures/fixtures.json row "cor_var_struct_defs_40"; edit the row, not this file. Covers: src/classes/objectStructures.ts ensureCapacity: more than 1024 bytes of STRUCT definitions (40 definitions of four longs), so the definition buffer grows once
+CON
+  STRUCT st01(long a, long b, long c, long d)
+  STRUCT st02(long a, long b, long c, long d)
+  STRUCT st03(long a, long b, long c, long d)
+  STRUCT st04(long a, long b, long c, long d)
+  STRUCT st05(long a, long b, long c, long d)
+  STRUCT st06(long a, long b, long c, long d)
+  STRUCT st07(long a, long b, long c, long d)
+  STRUCT st08(long a, long b, long c, long d)
+  STRUCT st09(long a, long b, long c, long d)
+  STRUCT st10(long a, long b, long c, long d)
+  STRUCT st11(long a, long b, long c, long d)
+  STRUCT st12(long a, long b, long c, long d)
+  STRUCT st13(long a, long b, long c, long d)
+  STRUCT st14(long a, long b, long c, long d)
+  STRUCT st15(long a, long b, long c, long d)
+  STRUCT st16(long a, long b, long c, long d)
+  STRUCT st17(long a, long b, long c, long d)
+  STRUCT st18(long a, long b, long c, long d)
+  STRUCT st19(long a, long b, long c, long d)
+  STRUCT st20(long a, long b, long c, long d)
+  STRUCT st21(long a, long b, long c, long d)
+  STRUCT st22(long a, long b, long c, long d)
+  STRUCT st23(long a, long b, long c, long d)
+  STRUCT st24(long a, long b, long c, long d)
+  STRUCT st25(long a, long b, long c, long d)
+  STRUCT st26(long a, long b, long c, long d)
+  STRUCT st27(long a, long b, long c, long d)
+  STRUCT st28(long a, long b, long c, long d)
+  STRUCT st29(long a, long b, long c, long d)
+  STRUCT st30(long a, long b, long c, long d)
+  STRUCT st31(long a, long b, long c, long d)
+  STRUCT st32(long a, long b, long c, long d)
+  STRUCT st33(long a, long b, long c, long d)
+  STRUCT st34(long a, long b, long c, long d)
+  STRUCT st35(long a, long b, long c, long d)
+  STRUCT st36(long a, long b, long c, long d)
+  STRUCT st37(long a, long b, long c, long d)
+  STRUCT st38(long a, long b, long c, long d)
+  STRUCT st39(long a, long b, long c, long d)
+  STRUCT st40(long a, long b, long c, long d)
+VAR
+  st01 v1
+  st40 v40
+PUB main() | i
+  i := v1.a + v40.d

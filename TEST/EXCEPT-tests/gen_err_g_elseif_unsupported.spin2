@@ -1,0 +1,6 @@
+'' gen_err_g_elseif_unsupported: generated from scripts/fixtures/fixtures.json row "err_g_elseif_unsupported"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "#elseif is not a supported preprocessor directive — use #elseifdef or #elseifndef" (PNut-TS-only message; PNut leaves the line to the Spin2 parser)
+#ifdef NOT_DEFINED_SYMBOL
+#elseif FOO
+#endif
+PUB main()
+  return

@@ -1,0 +1,6 @@
+'' gen_acc_obj_count_range: generated from scripts/fixtures/fixtures.json row "acc_obj_count_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Object count must be from 1 to 255" - at limit (both ends: 1 and 255)
+OBJ
+  a[1] : "gen_acc_obj_count_range__x"
+  b[255] : "gen_acc_obj_count_range__x"
+PUB main()
+  return

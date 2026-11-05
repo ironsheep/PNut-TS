@@ -1,0 +1,5 @@
+{Spin2_v55}
+'' gen_cor_obj_include_sibling: generated from scripts/fixtures/fixtures.json row "cor_obj_include_sibling"; edit the row, not this file. Covers: src/utils/files.ts locateIncludeFile: #include of a .spin2 file found beside the including file
+#include "gen_cor_obj_include_sibling__incl.spin2"
+PUB main() | x
+  x := INCVAL

@@ -1,0 +1,19 @@
+'' gen_acc_spin_nest_blocks_16: generated from scripts/fixtures/fixtures.json row "acc_spin_nest_blocks_16"; edit the row, not this file. Covers: PNut error_loxnbe "Limit of 16 nested blocks exceeded" (no PNut-TS message) - at limit (16 nested REPEAT blocks). Counting as in err_b_loxnbe: asm v52 p2com.asm 11810-11811 and the pushes at 11107, 11181, 11316, 11588, 14078; the method body is not counted (11006).
+PUB main() | x
+  repeat
+   repeat
+    repeat
+     repeat
+      repeat
+       repeat
+        repeat
+         repeat
+          repeat
+           repeat
+            repeat
+             repeat
+              repeat
+               repeat
+                repeat
+                 repeat
+                  x := 1

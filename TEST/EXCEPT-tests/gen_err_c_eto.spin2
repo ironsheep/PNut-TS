@@ -1,0 +1,4 @@
+'' gen_err_c_eto: generated from scripts/fixtures/fixtures.json row "err_c_eto"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected TO"
+PUB main() | y
+  repeat y from 1 5
+    y := 1

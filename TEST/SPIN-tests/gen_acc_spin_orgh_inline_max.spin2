@@ -1,0 +1,5 @@
+'' gen_acc_spin_orgh_inline_max: generated from scripts/fixtures/fixtures.json row "acc_spin_orgh_inline_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "ORGH inline block exceeds $FFFF longs (including the added RET instruction)" - at limit ($FFFE longs plus the RET)
+PUB main()
+  orgh
+  long 0[$FFFE]
+  end

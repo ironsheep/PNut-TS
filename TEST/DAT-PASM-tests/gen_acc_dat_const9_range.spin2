@@ -1,0 +1,6 @@
+'' gen_acc_dat_const9_range: generated from scripts/fixtures/fixtures.json row "acc_dat_const9_range"; edit the row, not this file. Covers: src/classes/spinResolver.ts m130: "Constant must be from 0 to 511" (PASM) - at limit (both ends: 0 and 511)
+DAT
+  org
+x res 1
+  mov x,#0
+  mov x,#511

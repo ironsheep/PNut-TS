@@ -1,0 +1,5 @@
+'' gen_err_d_amnex_m001: generated from scripts/fixtures/fixtures.json row "err_d_amnex_m001"; edit the row, not this file. Covers: src/classes/spinResolver.ts m001: "Address must not exceed $FFFFF" (JMP/CALL immediate or relative)
+DAT
+  org
+x res 1
+  jmp #\$100000

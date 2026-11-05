@@ -154,6 +154,10 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
       }
       const compileProducesFiles: boolean = outFilesList.length > 0;
       //console.log(`TEST: compileProducesFiles=(${compileProducesFiles}), outFilesList=[${outFilesList.join(', ')}]`);
+      // a generated fixture with no GOLD at all would compare nothing and pass
+      if (/^(debug_)?gen_/.test(basename) && !compileProducesFiles) {
+        throw new Error(`${basename}: generated fixture has no GOLD to compare against`);
+      }
 
       let whatFailed: string = '';
       if (compileProducesFiles) {
@@ -359,6 +363,10 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
       }
       const compileProducesFiles: boolean = outFilesList.length > 0;
       console.log(`TEST: compileProducesFiles=(${compileProducesFiles}), outFilesList=[${outFilesList.join(', ')}]`);
+      // a generated fixture with no GOLD at all would compare nothing and pass
+      if (/^(debug_)?gen_/.test(basename) && !compileProducesFiles) {
+        throw new Error(`${basename}: generated fixture has no GOLD to compare against`);
+      }
 
       let whatFailed: string = '';
       if (compileProducesFiles) {

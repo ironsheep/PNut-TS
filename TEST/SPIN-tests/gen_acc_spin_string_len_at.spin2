@@ -1,0 +1,3 @@
+'' gen_acc_spin_string_len_at: generated from scripts/fixtures/fixtures.json row "acc_spin_string_len_at"; edit the row, not this file. Covers: src/classes/spinResolver.ts m520: "@\"string\"/STRING/LSTRING data cannot exceed 254 bytes" (@"string") - at limit (254 characters)
+PUB main() | x
+  x := @"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

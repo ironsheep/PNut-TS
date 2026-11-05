@@ -1,0 +1,6 @@
+'' gen_err_d_rbeioor: generated from scripts/fixtures/fixtures.json row "err_d_rbeioor"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "REP block end is out of range" (block longer than 512 instructions)
+DAT
+  orgh $400
+  rep @x,#1
+  long 0[$300]
+x nop

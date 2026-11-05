@@ -1,0 +1,17 @@
+{Spin2_v55}
+'' gen_cor_spin_method_pointer_in_struct: generated from scripts/fixtures/fixtures.json row "cor_spin_method_pointer_in_struct"; edit the row, not this file. Covers: src/classes/spinResolver.ts getMethodPointerVariable, scanToRightBracket, compileParameter: a method pointer held in a struct LONG member (called as a statement, in an expression, with multiple results and as a parameter) and a nested bracket in a local array size
+CON
+  STRUCT sPt(long x, long y)
+  STRUCT sTri(sPt sides[3])
+VAR
+  sPt vp
+PUB main() | i, j, a[OFFSETOF(sTri.sides[1]) / 4]
+  vp.x := @two
+  i := vp.x(3):1
+  vp.x(3)
+  i, j := vp.x(1):2
+  take(vp.x(1):2)
+  take(two(1))
+PRI two(a) : r, s
+  return a, a
+PRI take(a, b)

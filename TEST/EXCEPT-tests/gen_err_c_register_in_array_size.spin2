@@ -1,0 +1,5 @@
+'' gen_err_c_register_in_array_size: generated from scripts/fixtures/fixtures.json row "err_c_register_in_array_size"; edit the row, not this file. Covers: src/classes/spinResolver.ts getConstant: "Register is not allowed here" (a cog register as a VAR array size)
+VAR
+  long v[PA]
+PUB main()
+  return

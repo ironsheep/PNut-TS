@@ -1,0 +1,4 @@
+'' gen_err_a_erbb: generated from scripts/fixtures/fixtures.json row "err_a_erbb"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Expected \"}}\"" (unterminated doc comment)
+PUB main()
+  {{ never closed
+  return

@@ -1,0 +1,4 @@
+'' gen_acc_dbg_register_param_max: generated from scripts/fixtures/fixtures.json row "acc_dbg_register_param_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Register parameter cannot exceed $3FF" - at limit ($3FF)
+DAT
+  org
+  debug(udec_(1023))

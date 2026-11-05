@@ -1,0 +1,4 @@
+'' gen_err_d_rinaiom: generated from scripts/fixtures/fixtures.json row "err_d_rinaiom"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "RES is not allowed in ORGH mode"
+DAT
+  orgh
+  res 1

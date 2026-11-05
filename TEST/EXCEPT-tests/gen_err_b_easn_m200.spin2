@@ -1,0 +1,5 @@
+{Spin2_v52}
+'' gen_err_b_easn_m200: generated from scripts/fixtures/fixtures.json row "err_b_easn_m200"; edit the row, not this file. Covers: src/classes/spinResolver.ts m200: "Expected a structure name" (SIZEOF of a non-structure variable)
+PUB main() | x
+  x := 1
+  x := sizeof(x)

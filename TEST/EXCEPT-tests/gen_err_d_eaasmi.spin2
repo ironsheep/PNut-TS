@@ -1,0 +1,5 @@
+'' gen_err_d_eaasmi: generated from scripts/fixtures/fixtures.json row "err_d_eaasmi"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected an assembly instruction"
+DAT
+  org
+x res 1
+  if_z

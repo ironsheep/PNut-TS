@@ -1,0 +1,9 @@
+'' gen_err_b_loxoie: generated from scripts/fixtures/fixtures.json row "err_b_loxoie"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Limit of 1024 OBJ instances exceeded"
+OBJ
+  a[255] : "gen_err_b_loxoie__x"
+  b[255] : "gen_err_b_loxoie__x"
+  c[255] : "gen_err_b_loxoie__x"
+  d[255] : "gen_err_b_loxoie__x"
+  e[255] : "gen_err_b_loxoie__x"
+PUB main()
+  return

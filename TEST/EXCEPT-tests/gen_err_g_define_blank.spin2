@@ -1,0 +1,4 @@
+'' gen_err_g_define_blank: generated from scripts/fixtures/fixtures.json row "err_g_define_blank"; edit the row, not this file. Covers: src/classes/spinDocument.ts: "Expected a preprocessor symbol" for #define followed only by a space (the #define branch, not the bare-directive branch)
+#define 
+PUB main()
+  return

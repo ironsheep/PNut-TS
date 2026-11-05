@@ -1,0 +1,7 @@
+{Spin2_v52}
+'' gen_acc_struct_indexed_member_max: generated from scripts/fixtures/fixtures.json row "acc_struct_indexed_member_max"; edit the row, not this file. Covers: src/classes/objectStructures.ts m400: "Indexed structures cannot exceed $FFFF bytes in size" (STRUCT member count) - at limit (a $FFFF-byte member used with count 2)
+CON
+  STRUCT a(byte x[$FFFF])
+  STRUCT c(a p, a q, a r[2])
+PUB main()
+  return

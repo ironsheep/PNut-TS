@@ -1,0 +1,7 @@
+'' gen_err_b_siad_m541: generated from scripts/fixtures/fixtures.json row "err_b_siad_m541"; edit the row, not this file. Covers: src/classes/spinResolver.ts m541: "Symbol is already defined" (CON)
+CON
+  a = c
+  a = 5
+  c = 6
+PUB main()
+  return

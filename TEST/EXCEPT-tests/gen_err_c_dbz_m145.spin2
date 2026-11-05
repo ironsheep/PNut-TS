@@ -1,0 +1,3 @@
+'' gen_err_c_dbz_m145: generated from scripts/fixtures/fixtures.json row "err_c_dbz_m145"; edit the row, not this file. Covers: src/classes/spinResolver.ts m145: "Divide by zero" (/)
+CON
+  a = 1 / 0

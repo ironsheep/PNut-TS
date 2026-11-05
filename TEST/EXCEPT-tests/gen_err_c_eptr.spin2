@@ -1,0 +1,3 @@
+'' gen_err_c_eptr: generated from scripts/fixtures/fixtures.json row "err_c_eptr"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected pointer variable"
+PUB main() | x, y
+  x := [++]y

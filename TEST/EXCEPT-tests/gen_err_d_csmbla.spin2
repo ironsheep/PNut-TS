@@ -1,0 +1,5 @@
+'' gen_err_d_csmbla: generated from scripts/fixtures/fixtures.json row "err_d_csmbla"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Cog symbol must be long-aligned"
+DAT
+  org
+  byte 1
+x byte 2

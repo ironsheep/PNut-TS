@@ -1,0 +1,3 @@
+'' gen_err_c_spmcrmv_m592: generated from scripts/fixtures/fixtures.json row "err_c_spmcrmv_m592"; edit the row, not this file. Covers: src/classes/spinResolver.ts m592: "SEND parameter methods cannot return multiple values" (method pointer)
+PUB main() | mp
+  send(mp():2)

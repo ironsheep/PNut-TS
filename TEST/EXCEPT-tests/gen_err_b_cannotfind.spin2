@@ -1,0 +1,5 @@
+'' gen_err_b_cannotfind: generated from scripts/fixtures/fixtures.json row "err_b_cannotfind"; edit the row, not this file. Covers: src/classes/spinFiles.ts: "Cannot find <name>.spin2"
+OBJ
+  a : "nosuchfile"
+PUB main()
+  return
