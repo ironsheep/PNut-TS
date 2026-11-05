@@ -69,6 +69,2726 @@
         "                byte    FVARS $0FFF_FFFF",
         "                byte    FVARS $1000_0000"
       ]
+    },
+    {
+      "id": "err_a_bmbpbb",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinElementizer.ts: \"\\\"}\\\" must be preceeded by \\\"{\\\" to form a comment\"",
+      "source": ["PUB main()", "  }"]
+    },
+    {
+      "id": "err_a_erbb",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinElementizer.ts: \"Expected \\\"}}\\\"\" (unterminated doc comment)",
+      "source": "PUB main()\n  {{ never closed\n  return"
+    },
+    {
+      "id": "err_a_uc",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinElementizer.ts: \"Unrecognized character\"",
+      "source": ["PUB main() | x", "  x := ;"]
+    },
+    {
+      "id": "err_a_eatq",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinElementizer.ts: \"Expected a terminating quote\"",
+      "source": ["PUB main() | x", "  x := \"abc"]
+    },
+    {
+      "id": "err_a_nmt4c",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinElementizer.ts: \"Packed ascii must be 1-4 characters\" (PNut: No more than 4 characters can be packed into a long)",
+      "source": ["PUB main() | x", "  x := %\"abcde\""]
+    },
+    {
+      "id": "err_a_fpcmbw",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinElementizer.ts: \"Floating-point constant must be within +/- 3.4e+38\"",
+      "source": ["PUB main() | x", "  x := 1e39"]
+    },
+    {
+      "id": "err_a_ce32b",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinElementizer.ts: \"Constant exceeds 32 bits\"",
+      "source": ["PUB main() | x", "  x := $1_0000_0000"]
+    },
+    {
+      "id": "err_a_idbn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "PNut error_idbn \"Invalid double-binary number\" (PNut-TS has no such message; it reports Expected an expression term m172)",
+      "source": ["PUB main() | x", "  x := %%4"]
+    },
+    {
+      "id": "err_b_eaucnpos_m210",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m210: \"Expected a unique constant name, \\\"#\\\", or STRUCT\"",
+      "source": ["CON", "  123", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_eaucnpos_dup",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m211: \"Expected a unique constant name, \\\"#\\\", or STRUCT\" (duplicate CON name)",
+      "source": ["CON", "  a = 1", "  a = 2", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_siad_m541",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m541: \"Symbol is already defined\" (CON)",
+      "source": ["CON", "  a = c", "  a = 5", "  c = 6", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_siad_m540",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m540: \"Symbol is already defined\" (DAT)",
+      "source": ["DAT", "  x long 0", "  x long 1"]
+    },
+    {
+      "id": "err_b_eelcoeol",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"=\\\" \\\"[\\\" \\\",\\\" or end of line\"",
+      "source": ["CON", "  a b"]
+    },
+    {
+      "id": "err_b_eausn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Expected a unique STRUCT name\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT 5"]
+    },
+    {
+      "id": "err_b_eloe",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"(\\\" or \\\"=\\\"\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s x"]
+    },
+    {
+      "id": "err_b_eaesn_m641",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m641: \"Expected an existing STRUCT name\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s = nosuch"]
+    },
+    {
+      "id": "err_b_eas_m191",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m191: \"Expected a symbol\" (STRUCT member)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a, long)"]
+    },
+    {
+      "id": "err_b_iccbl",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Instance count cannot be less than 1\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a[0])"]
+    },
+    {
+      "id": "err_b_iccbl_neg",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "PNut error_iccbl \"Instance count cannot be less than 1\" for a negative count (PNut-TS reports Instance count cannot exceed $10000)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a[-1])"]
+    },
+    {
+      "id": "err_b_icce",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Instance count cannot exceed $10000\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte a[$10001])"]
+    },
+    {
+      "id": "err_b_ocmbf1tx",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Object count must be from 1 to 255\"",
+      "source": ["OBJ", "  a[0] : \"x\""]
+    },
+    {
+      "id": "err_b_ocmbf1tx_neg",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Object count must be from 1 to 255\" (negative count)",
+      "source": ["OBJ", "  a[-1] : \"x\""]
+    },
+    {
+      "id": "err_b_eauon",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a unique object name\"",
+      "source": ["OBJ", "  5 : \"x\""]
+    },
+    {
+      "id": "err_b_ifufiq",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Invalid filename, use \\\"FilenameInQuotes\\\"\"",
+      "source": ["DAT", "  x file nosuch"]
+    },
+    {
+      "id": "err_b_ifc",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Invalid filename character\"",
+      "source": ["DAT", "  x file \"a|b\""]
+    },
+    {
+      "id": "err_b_ftl",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Filename too long\"",
+      "source": { "template": ["DAT\n  x file \"", { "repeat": 300, "text": "a" }, ".bin\"\n"] }
+    },
+    {
+      "id": "err_b_eaucnpos_m211",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m211: \"Expected a unique constant name, \\\"#\\\", or STRUCT\" (CON entry that is not a name)",
+      "source": ["CON", "  (5)"]
+    },
+    {
+      "id": "err_b_requires_version",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut-ts",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"<SYM> requires {Spin2_vNN} or later\" (PNut-TS-only message)",
+      "source": ["{Spin2_v52}", "CON", "  offsetof 5"]
+    },
+    {
+      "id": "err_b_eaesn_m640",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts m640: \"Expected an existing STRUCT name\" (OFFSETOF operand)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT pt(long a)", "PUB main() | x", "  x := offsetof(5)"]
+    },
+    {
+      "id": "err_b_easmn_m650",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts m650: \"Expected a structure member name\" (OFFSETOF operand)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT pt(long a)", "PUB main() | x", "  x := offsetof(pt.5)"]
+    },
+    {
+      "id": "err_b_sdnctn_m660",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts m660: \"Structure does not contain this BYTE/WORD/LONG/STRUCT name\" (OFFSETOF operand)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT pt(long a)", "PUB main() | x", "  x := offsetof(pt.nosuch)"]
+    },
+    {
+      "id": "err_b_simbf_m670",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts m670: \"Structure index must be from 0 to $FFFF\" (OFFSETOF index)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT pt(long a)", "PUB main() | x", "  x := offsetof(pt[70000])"]
+    },
+    {
+      "id": "err_b_iscexb_m402",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts m402: \"Indexed structures cannot exceed $FFFF bytes in size\" (OFFSETOF index)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT a(long x[$4000])", "  STRUCT b(a p, a q)", "PUB main() | x", "  x := offsetof(b[1])"]
+    },
+    {
+      "id": "err_b_sehr_m534",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts m534: \"Structure exceeds hub range of $FFFFF\" (OFFSETOF index times size)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT s(byte b[$FFFF])", "PUB main() | x", "  x := offsetof(s[17])"]
+    },
+    {
+      "id": "err_b_sehr_m535",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts m535: \"Structure exceeds hub range of $FFFFF\" (OFFSETOF running offset)",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT inner(byte b[$FFFF])", "  STRUCT outer(long pad[300], inner i)", "PUB main() | x", "  x := offsetof(outer.i[16])"]
+    },
+    {
+      "id": "err_b_iscexb_m400",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/objectStructures.ts m400: \"Indexed structures cannot exceed $FFFF bytes in size\" (STRUCT member count)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT a(long x[$4000])", "  STRUCT c(a p, a q, a r[2])"]
+    },
+    {
+      "id": "err_b_sehr_m530",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/objectStructures.ts m530: \"Structure exceeds hub range of $FFFFF\" (one member)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a[$10000])"]
+    },
+    {
+      "id": "err_b_sehr_m531",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/objectStructures.ts m531: \"Structure exceeds hub range of $FFFFF\" (cumulative members)",
+      "source": { "template": ["{Spin2_v52}\nCON\n  STRUCT a(long x[$4000])\n  STRUCT big(", { "repeat": 385, "text": "a m${i}, " }, "long z)\n"] }
+    },
+    {
+      "id": "err_b_iscexb_m401",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 8,
+      "covers": "src/classes/spinResolver.ts m401: \"Indexed structures cannot exceed $FFFF bytes in size\" (variable index)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT a(long x[$4000])", "  STRUCT b(a p, a q)", "VAR", "  b v", "PUB main() | x", "  x := v[1].p.x[0]"]
+    },
+    {
+      "id": "err_b_simbf_m671",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts m671: \"Structure index must be from 0 to $FFFF\" (variable index)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a)", "VAR", "  s v", "PUB main() | x", "  x := v[70000].a"]
+    },
+    {
+      "id": "err_b_sehr_m532",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts m532: \"Structure exceeds hub range of $FFFFF\" (variable index times size)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte b[$1000])", "VAR", "  s v", "PUB main() | x", "  x := v[$FFFF].b[0]"]
+    },
+    {
+      "id": "err_b_sehr_m533",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 8,
+      "covers": "src/classes/spinResolver.ts m533: \"Structure exceeds hub range of $FFFFF\" (variable index plus base)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte b[$FFFF])", "VAR", "  long pad[200]", "  s v", "PUB main() | x", "  x := v[384].b[0]"]
+    },
+    {
+      "id": "err_b_loxrs",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 9,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 3 runtime structure index expressions exceeded\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s1(long x[2])", "  STRUCT s2(s1 a[2])", "  STRUCT s3(s2 b[2])", "VAR", "  s3 v[2]", "PUB main() | i, x", "  x := v[i].b[i].a[i].x[i]"]
+    },
+    {
+      "id": "err_b_sdnctn_m661",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts m661: \"Structure does not contain this BYTE/WORD/LONG/STRUCT name\" (member access)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a)", "VAR", "  s v", "PUB main() | x", "  x := v.nosuch"]
+    },
+    {
+      "id": "err_b_easmn_m651",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts m651: \"Expected a structure member name\" (member access)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a)", "VAR", "  s v", "PUB main() | x", "  x := v.5"]
+    },
+    {
+      "id": "err_b_sdnctn_m662",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts m662: \"Structure does not contain this BYTE/WORD/LONG/STRUCT name\" (bitfield name)",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[3])", "VAR", "  s v", "PUB main() | x", "  x := v.y.nosuch"]
+    },
+    {
+      "id": "err_b2_easmn_bitfield",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts: \"Expected a structure bitfield name\"",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[3])", "VAR", "  s v", "PUB main() | x", "  x := v.y.5"]
+    },
+    {
+      "id": "err_b_easn_m200",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m200: \"Expected a structure name\" (SIZEOF of a non-structure variable)",
+      "source": ["{Spin2_v52}", "PUB main() | x", "  x := 1", "  x := sizeof(x)"]
+    },
+    {
+      "id": "err_b_easn_m201",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m201: \"Expected a structure name\" (SIZEOF in a DAT constant)",
+      "source": ["{Spin2_v52}", "DAT", "  long sizeof(5)"]
+    },
+    {
+      "id": "err_b_eiconos",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Expected integer constant or structure (for size)\"",
+      "source": ["{Spin2_v52}", "PUB main() | mp, x", "  x := mp():nosuch"]
+    },
+    {
+      "id": "err_b_smbss_m581",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 9,
+      "covers": "src/classes/spinResolver.ts m581: \"Structures must be same size\" (structure swap)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT p2(long a, long b)", "  STRUCT p3(long a, long b, long c)", "VAR", "  p2 u", "  p3 w", "PUB main()", "  u :=: w"]
+    },
+    {
+      "id": "err_b_smbss_m580",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 9,
+      "covers": "src/classes/spinResolver.ts m580: \"Structures must be same size\" (structure compare)",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT p2(long a, long b)", "  STRUCT p3(long a, long b, long c)", "VAR", "  p2 u", "  p3 w", "PUB main() | x", "  x := u == w"]
+    },
+    {
+      "id": "err_b_oaocbats",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts: \"Only @ operator can be applied to a structure\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT p2(long a, long b)", "VAR", "  p2 u", "PUB main() | x", "  x := ++u"]
+    },
+    {
+      "id": "err_b_stosmne",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts: \"Structures transferred on the stack must not exceed 15 longs\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT big(long a[16])", "VAR", "  big u", "PUB main()", "  f(u)", "PUB f(x)", "  return"]
+    },
+    {
+      "id": "err_b_loxdsde_m622",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4099,
+      "covers": "src/classes/spinResolver.ts m622: \"Limit of 4096 data structure definitions exceeded\" (own STRUCT definitions)",
+      "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4097, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB main()\n  return\n"] }
+    },
+    {
+      "id": "err_b_loxdsde_m621",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 5,
+      "note": "PNut-TS reports this at the end of the file.",
+      "covers": "src/classes/spinResolver.ts m621: \"Limit of 4096 data structure definitions exceeded\" (structures imported from child objects)",
+      "source": "{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_loxdsde_m621__c1\"\nPUB main()\n  return",
+      "aux": [
+        { "name": "c1.spin2", "sibling": true, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4096, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }
+      ]
+    },
+    {
+      "id": "err_b_eas_m190",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m190: \"Expected a symbol\" (OBJ parameter override name)",
+      "source": ["OBJ", "  a : \"gen_err_b_eas_m190__x\" | 5 = 1", "PUB main()", "  return"],
+      "aux": [{ "name": "x.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_loxoie",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 1024 OBJ instances exceeded\"",
+      "source": ["OBJ", "  a[255] : \"gen_err_b_loxoie__x\"", "  b[255] : \"gen_err_b_loxoie__x\"", "  c[255] : \"gen_err_b_loxoie__x\"", "  d[255] : \"gen_err_b_loxoie__x\"", "  e[255] : \"gen_err_b_loxoie__x\"", "PUB main()", "  return"],
+      "aux": [{ "name": "x.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_tmop",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinFiles.ts: \"Too many object parameters\" (PNut: Too many object parameters; PNut-TS adds \", exceeded limit of 16\")",
+      "source": ["OBJ", "  a : \"gen_err_b_tmop__x\" | p1=1,p2=2,p3=3,p4=4,p5=5,p6=6,p7=7,p8=8,p9=9,p10=10,p11=11,p12=12,p13=13,p14=14,p15=15,p16=16,p17=17", "PUB main()", "  return"],
+      "aux": [{ "name": "x.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_loxuoe",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 257,
+      "covers": "src/classes/spinFiles.ts: \"Limit of 255 unique objects exceeded\" (PNut: Limit of 32 unique objects exceeded)",
+      "source": { "template": ["OBJ\n", { "repeat": 256, "text": "  o${i:3} : \"gen_err_b_loxuoe__c${i:3}\"\n" }, "PUB main()\n  return\n"] },
+      "aux": [{ "name": "c${i:3}.spin2", "sibling": true, "count": 256, "source": "PUB go()\n  return\n" }]
+    },
+    {
+      "id": "err_b_cannotfind",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinFiles.ts: \"Cannot find <name>.spin2\"",
+      "source": ["OBJ", "  a : \"nosuchfile\"", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_datnotfound_preload",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"DAT file not found [<name>] (preload)\"",
+      "source": ["DAT", "  x file \"nosuch.bin\"", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_exportdef_filename",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut-ts",
+      "expectLine": 3,
+      "note": "The error is reported in the sibling child gen_err_b_exportdef_filename__c.spin2 at its line 2; expectLine is the OBJ line of this file.",
+      "covers": "src/classes/spinResolver.ts: \"Invalid filename: <id> is a preprocessor symbol (from -D or #pragma exportdef)\" (PNut-TS-only message)",
+      "source": ["#pragma exportdef FNAME", "OBJ", "  a : \"gen_err_b_exportdef_filename__c\"", "PUB main()", "  return"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["DAT", "  x file FNAME", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_pasm_object",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut-ts",
+      "expectLine": 2,
+      "note": "The error is reported in the sibling child gen_err_b_pasm_object__c.spin2 at its line 4; expectLine is the OBJ line of this file.",
+      "covers": "src/classes/compiler.ts: \"<file> is a PASM file and cannot be used as a Spin2 object\" (PNut-TS-only message)",
+      "source": ["OBJ", "  a : \"gen_err_b_pasm_object__c\"", "PUB main()", "  return"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["DAT", "  org", "  nop"] }]
+    },
+    {
+      "id": "err_b_eauvnsa_m240",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m240: \"Expected a unique variable name, STRUCT name, BYTE, WORD, LONG, \\\"^\\\", ALIGNW, or ALIGNL\" (VAR)",
+      "source": ["VAR", "  5", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_eauvnsa_m241",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m241: \"Expected a unique variable name, STRUCT name, BYTE, WORD, LONG, \\\"^\\\", ALIGNW, or ALIGNL\" (local variable, first pass)",
+      "source": ["PUB main() | 5", "  return"]
+    },
+    {
+      "id": "err_b_eauvnsa_m242",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m242: \"Expected a unique variable name, STRUCT name, BYTE, WORD, LONG, \\\"^\\\", ALIGNW, or ALIGNL\" (duplicate local variable, second pass)",
+      "source": ["PUB main() | a, a", "  return"]
+    },
+    {
+      "id": "err_b_eauvn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "PNut error_eauvn \"Expected a unique variable name\" (src/classes/spinResolver.ts: the PNut-TS site is shadowed by the m240 check)",
+      "source": ["VAR", "  long 5", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_pcba_m480",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m480: \"Pointers cannot be arrays\" (VAR)",
+      "source": ["VAR", "  ^long p[2]", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_pcba_m481",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m481: \"Pointers cannot be arrays\" (local variable)",
+      "source": ["PUB main() | ^long p[2]", "  return"]
+    },
+    {
+      "id": "err_b_tmvsid_m600",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m600: \"Too much variable space is declared\" (array count)",
+      "source": ["VAR", "  byte a[$100001]", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_tmvsid_m601",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m601: \"Too much variable space is declared\" (running total)",
+      "source": ["VAR", "  long a[$100000]", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_tmvsid_m602",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 6,
+      "note": "PNut-TS reports this at the end of the file. The ORGH limit comes from the child object.",
+      "covers": "src/classes/spinResolver.ts m602: \"Too much variable space is declared\" (alignment past an ORGH limit)",
+      "source": "OBJ\n  a : \"gen_err_b_tmvsid_m602__c\"\nVAR\n  byte pad[$7FFFD]\nPUB main()\n  return",
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["DAT", "  orgh $400,$80001", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_tmvsid_m603",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "note": "PNut-TS reports this at the end of the file.",
+      "covers": "src/classes/spinResolver.ts m603: \"Too much variable space is declared\" (child object variables)",
+      "source": "OBJ\n  a[25] : \"gen_err_b_tmvsid_m603__c\"\nPUB main()\n  return",
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["VAR", "  byte pad[$FFFFC]", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_loxlve",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 64KB of local variables exceeded\"",
+      "source": ["PUB main() | long a[$10000]", "  return"]
+    },
+    {
+      "id": "err_b_eaumn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts: \"Expected a unique method name\"",
+      "source": ["PUB 5()", "  return"]
+    },
+    {
+      "id": "err_b_eaupn_m220",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m220: \"Expected a unique parameter name\" (first pass)",
+      "source": ["PUB main(5)", "  return"]
+    },
+    {
+      "id": "err_b_eaupn_m221",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m221: \"Expected a unique parameter name\" (duplicate parameter, second pass)",
+      "source": ["PUB main(a, a)", "  return"]
+    },
+    {
+      "id": "err_b_eaurn_m230",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m230: \"Expected a unique result name\" (first pass)",
+      "source": ["PUB main() : 5", "  return"]
+    },
+    {
+      "id": "err_b_eaurn_m231",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m231: \"Expected a unique result name\" (duplicate result, second pass)",
+      "source": ["PUB main() : a, a", "  return"]
+    },
+    {
+      "id": "err_b_loxpe_m430",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m430: \"Limit of 127 parameters exceeded\" (method header)",
+      "source": { "template": ["PUB main(a0", { "repeat": 127, "from": 1, "text": ",a${i}" }, ")\n  return\n"] }
+    },
+    {
+      "id": "err_b_loxpe_m431",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m431: \"Limit of 127 parameters exceeded\" (method-pointer call)",
+      "source": { "template": ["PUB main() | mp, x\n  x := mp(1", { "repeat": 127, "text": ",1" }, ")\n"] }
+    },
+    {
+      "id": "err_b_loxre_m440",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m440: \"Limit of 15 results exceeded\" (method header)",
+      "source": ["PUB main() : a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p", "  return"]
+    },
+    {
+      "id": "err_b_loxre_m441",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m441: \"Limit of 15 results exceeded\" (method-pointer call)",
+      "source": ["PUB main() | mp, x", "  x := mp():16"]
+    },
+    {
+      "id": "err_b_loxppme",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2049,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 1024 PUB/PRI methods exceeded\"",
+      "source": { "template": [{ "repeat": 1025, "text": "PUB m${i:4}()\n  return\n" }] }
+    },
+    {
+      "id": "err_b_bdmbifc",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts: \"Block designator must be in first column\"",
+      "source": [" PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_loxee",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 516,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 256 ELSEIF/ELSEIFNOTs exceeded\"",
+      "source": { "template": ["PUB main() | x\n  if x == 0\n    x := 1\n", { "repeat": 257, "from": 1, "text": "  elseif x == ${i}\n    x := 1\n" }] }
+    },
+    {
+      "id": "err_b_omblc_m470",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m470: \"OTHER must be last case\"",
+      "source": ["PUB main() | x, y", "  case x", "    other: x := 1", "    1: x := 2"]
+    },
+    {
+      "id": "err_b_omblc_m471",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m471: \"OTHER must be last case\" (CASE_FAST)",
+      "source": ["PUB main() | x, y", "  case_fast x", "    other: x := 1", "    1: x := 2"]
+    },
+    {
+      "id": "err_b_loxcase",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 258,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 256 CASE elements exceeded\"",
+      "source": { "template": ["PUB main() | x\n  case x\n", { "repeat": 257, "text": "    ${i}: x := 1\n" }] }
+    },
+    {
+      "id": "err_b_loxcasef",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 258,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 256 CASE_FAST elements exceeded\"",
+      "source": { "template": ["PUB main() | x\n  case_fast x\n", { "repeat": 257, "text": "    ${i}: x := 1\n" }] }
+    },
+    {
+      "id": "err_b_nce_m460",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m460: \"No cases encountered\"",
+      "source": "PUB main() | x\n  case x"
+    },
+    {
+      "id": "err_b_nce_m461",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m461: \"No cases encountered\" (CASE_FAST)",
+      "source": "PUB main() | x\n  case_fast x"
+    },
+    {
+      "id": "err_b_cfiinu",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"CASE_FAST index is not unique\"",
+      "source": ["PUB main() | x, y", "  case_fast x", "    1: x := 2", "    1: x := 3"]
+    },
+    {
+      "id": "err_b_cfbex",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 6003,
+      "covers": "src/classes/spinResolver.ts: \"CASE_FAST block exceeds 64KB\"",
+      "source": { "template": ["PUB main() | x, y, z\n  case_fast x\n    1:\n", { "repeat": 6000, "text": "      y := y + 1000000 + z - 1000001\n" }, "    2: x := 3\n"] }
+    },
+    {
+      "id": "err_b_cfvmbw",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"CASE_FAST values must be within 255 of each other\"",
+      "source": ["PUB main() | x, y", "  case_fast x", "    1: x := 2", "    300: x := 3"]
+    },
+    {
+      "id": "err_b_nqlcmb",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"NEXT/QUIT level must be from 1 to 15\"",
+      "source": ["PUB main() | x, y", "  repeat", "    quit 16"]
+    },
+    {
+      "id": "err_b_nqinsn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"NEXT/QUIT is not sufficiently nested within REPEAT block(s)\"",
+      "source": ["PUB main() | x, y", "  quit"]
+    },
+    {
+      "id": "err_b_loxnbe",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 18,
+      "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message)",
+      "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  repeat", "                   x := 1"]
+    },
+    {
+      "id": "err_b_loxudfe",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 257,
+      "covers": "PNut error_loxudfe \"Limit of 32 unique DAT files exceeded\" (no PNut-TS message; the PNut-TS file limit is 255)",
+      "source": { "template": ["DAT\n", { "repeat": 256, "text": "  f${i:3} file \"gen_err_b_loxudfe__d${i:3}.txt\"\n" }] },
+      "aux": [{ "name": "d${i:3}.txt", "sibling": true, "count": 256, "source": "x\n" }]
+    },
+    {
+      "id": "err_b_dsdle",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 24,
+      "note": "expectLine is estimated from the structure record size; the Windows GOLD gives the true line.",
+      "covers": "PNut error_dsdle \"Data structure-definitions limit exceeded\" (no PNut-TS message)",
+      "source": { "template": ["{Spin2_v52}\nCON\n  STRUCT big(long member_name_padding_000", { "repeat": 199, "from": 1, "text": ", long member_name_padding_${i:3}" }, ")\n", { "repeat": 60, "text": "  STRUCT c${i:3} = big\n" }, "PUB main()\n  return\n"] }
+    },
+    {
+      "id": "err_c_tocbufa_m610",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m610: \"This operator cannot be used for assignment\" (unary in an expression)",
+      "source": ["PUB main() | x", "  x := fabs = 5"]
+    },
+    {
+      "id": "err_c_tocbufa_m611",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m611: \"This operator cannot be used for assignment\" (binary after a variable)",
+      "source": ["PUB main() | x, y", "  x < = 5"]
+    },
+    {
+      "id": "err_c_tocbufa_m612",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m612: \"This operator cannot be used for assignment\" (unary instruction)",
+      "source": ["PUB main() | x", "  fabs = x"]
+    },
+    {
+      "id": "err_c_ticobu",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"This instruction can only be used as an expression term, since it returns results\"",
+      "source": ["PUB main()", "  getct()"]
+    },
+    {
+      "id": "err_c_eaiov",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected an instruction or variable\"",
+      "source": ["PUB main()", "  5"]
+    },
+    {
+      "id": "err_c_eastott",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\":=\\\", \\\":=:\\\", \\\"~\\\", or \\\"~~\\\"\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT pt(long a, long b)", "VAR", "  pt p", "PUB main() | x, y", "  p 5"]
+    },
+    {
+      "id": "err_c_vnao",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Variable needs an operator\"",
+      "source": ["PUB main() | x", "  x"]
+    },
+    {
+      "id": "err_c_eeol_m280",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m280: \"Expected end of line\" (RETURN value in a method with no result)",
+      "source": ["PUB main()", "  return 1"]
+    },
+    {
+      "id": "err_c_eeol_m281",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m281: \"Expected end of line\"",
+      "source": ["PUB main() | x, y", "  x := y 5"]
+    },
+    {
+      "id": "err_c_esendd",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected SEND data\"",
+      "source": ["PUB main()", "  send()"]
+    },
+    {
+      "id": "err_c_ebackcmd",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"?\\\", \\\".\\\", \\\"(\\\", \\\"$\\\", \\\"%\\\", \\\"#\\\", or DEBUG command\"",
+      "source": ["PUB main() | x", "  debug(`zzz `nothing x)"]
+    },
+    {
+      "id": "err_c_dditl_m150",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/debugData.ts m150: \"DEBUG data is too long\" (PNut-TS adds \": record exceeds 255 bytes\")",
+      "source": { "template": ["PUB main()\n  debug(\"", { "repeat": 300, "text": "a" }, "\")\n"] }
+    },
+    {
+      "id": "err_c_dditl_m151",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 73,
+      "covers": "src/classes/debugData.ts m151: \"DEBUG data is too long\" (PNut-TS adds \": total exceeds 16384 bytes\")",
+      "source": { "template": ["PUB main()\n", { "repeat": 90, "text": "  debug(\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb${i:3}\")\n" }] }
+    },
+    {
+      "id": "err_c_dditl_m152",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m152: \"DEBUG data is too long\" (PNut-TS adds \": too many expressions (> 31)\")",
+      "source": { "template": ["PUB main() | x\n  debug(udec_(x", { "repeat": 31, "text": ",x" }, "))\n"] }
+    },
+    {
+      "id": "err_c_dditl_m153",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 257,
+      "covers": "src/classes/debugData.ts m153: \"DEBUG data is too long\" (PNut-TS adds \": too many records: max 255\")",
+      "source": { "template": ["PUB main()\n", { "repeat": 256, "text": "  debug(\"a${i:3}\")\n" }] }
+    },
+    {
+      "id": "err_c_dmbmb",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG mask bit-number must be 0..31\"",
+      "source": ["PUB main() | x", "  debug[40](x)"]
+    },
+    {
+      "id": "err_c_dmmbd",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_MASK symbol must be defined for DEBUG[0..31] usage\"",
+      "source": ["PUB main() | x", "  debug[1](x)"]
+    },
+    {
+      "id": "err_c_eaet_m170",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m170: \"Expected an expression term\" (dual-parameter DEBUG command)",
+      "source": ["PUB main() | x", "  debug(udec_byte_array_())"]
+    },
+    {
+      "id": "err_c_eaet_m171",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m171: \"Expected an expression term\" (single-parameter DEBUG command)",
+      "source": ["PUB main() | x", "  debug(udec_())"]
+    },
+    {
+      "id": "err_c_eaenop",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected an even number of parameters\"",
+      "source": ["PUB main() | x", "  debug(udec_byte_array_(x, 1, 2))"]
+    },
+    {
+      "id": "err_c_rpcx",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Register parameter cannot exceed $3FF\"",
+      "source": ["DAT", "  org", "  debug(udec_(1024))"]
+    },
+    {
+      "id": "err_c_etmrasr",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expression terms must return a single result\"",
+      "source": ["PUB main() | x", "  x := pinl(1)"]
+    },
+    {
+      "id": "err_c_eeone",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"==\\\" or \\\"<>\\\"\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT pt(long a, long b)", "VAR", "  pt p", "PUB main() | x", "  x := 1 + p"]
+    },
+    {
+      "id": "err_c_pmbttsp",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Pins must belong to the same port\"",
+      "source": ["PUB main()", "  pinwrite(5..40, 1)"]
+    },
+    {
+      "id": "err_c_mpmblv",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Method pointers must be long variables without bitfields\"",
+      "source": ["PUB main() | byte b", "  b()"]
+    },
+    {
+      "id": "err_c_eright_m300",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m300: \"Expected \\\")\\\"\" (scan to the closing parenthesis)",
+      "source": ["PUB main() | mp", "  send(mp(1"]
+    },
+    {
+      "id": "err_c_eright_m301",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m301: \"Expected \\\")\\\"\"",
+      "source": ["PUB main() | x, y", "  x := (y"]
+    },
+    {
+      "id": "err_c_erightb_m310",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts m310: \"Expected \\\"]\\\"\" (scan to the closing bracket)",
+      "source": ["PUB main() | a[3", "  return"]
+    },
+    {
+      "id": "err_c_erightb_m311",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m311: \"Expected \\\"]\\\"\"",
+      "source": ["PUB main() | x, y", "  x := y[1"]
+    },
+    {
+      "id": "err_c_enope",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected number of parameters exceeded\"",
+      "source": ["PUB main()", "  f(g())", "PUB f(a)", "  return", "PUB g() : a, b", "  return 1, 2"]
+    },
+    {
+      "id": "err_c_oiina",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Object index is not allowed before constants and structures\"",
+      "source": ["OBJ", "  a[2] : \"gen_err_c_oiina__c\"", "PUB main() | x", "  x := f(a[1].k)", "PUB f(p) : r", "  return p"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["CON", "  k = 1", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_eamoov",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a method, object, or variable\"",
+      "source": ["PUB main()", "  \\5"]
+    },
+    {
+      "id": "err_c_eamn_m180",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m180: \"Expected a method name\" (COGSPIN)",
+      "source": ["OBJ", "  a[2] : \"gen_err_c_eamn_m180__c\"", "PUB main()", "  cogspin(1, a[1].k, 0)"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["CON", "  k = 1", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_eamn_m181",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m181: \"Expected a method name\" (@ operator)",
+      "source": ["OBJ", "  a[2] : \"gen_err_c_eamn_m181__c\"", "PUB main() | x", "  x := @a[1].k"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["CON", "  k = 1", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_eamn_m182",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m182: \"Expected a method name\" (object method call)",
+      "source": ["OBJ", "  a[2] : \"gen_err_c_eamn_m182__c\"", "PUB main()", "  a[1].k()"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["CON", "  k = 1", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_eamomp",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a method, object, or method pointer\"",
+      "source": ["PUB main()", "  cogspin(1, 5, 0)"]
+    },
+    {
+      "id": "err_c_esc_m320",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m320: \"Expected a string character\" (@\\ without a string)",
+      "source": ["PUB main() | x, y", "  x := @\\y"]
+    },
+    {
+      "id": "err_c_esc_m321",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m321: \"Expected a string character\" (escape at the end of a string)",
+      "source": ["PUB main() | x", "  x := @\\\"a\\\""]
+    },
+    {
+      "id": "err_c_easvmoo",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a string, variable, method, or object\"",
+      "source": ["PUB main() | x", "  x := @(1)"]
+    },
+    {
+      "id": "err_c_arina",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"@register is not allowed, use ^@ to get field pointer\"",
+      "source": ["PUB main() | x", "  x := @reg[5]"]
+    },
+    {
+      "id": "err_c_ainafbf",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"@ is not allowed for bitfields, use ^@ to get field pointer\"",
+      "source": ["PUB main() | x, y", "  x := @y.[3]"]
+    },
+    {
+      "id": "err_c_scmrf_m512",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m512: \"STRING characters must range from 1 to 255\" (STRING())",
+      "source": ["PUB main() | x", "  x := string(0)"]
+    },
+    {
+      "id": "err_c_sdcx_m520",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m520: \"@\\\"string\\\"/STRING/LSTRING data cannot exceed 254 bytes\" (@\"string\")",
+      "source": { "template": ["PUB main() | x\n  x := @\"", { "repeat": 255, "text": "a" }, "\"\n"] }
+    },
+    {
+      "id": "err_c_sdcx_m521",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m521: \"@\\\"string\\\"/STRING/LSTRING data cannot exceed 254 bytes\" (STRING())",
+      "source": { "template": ["PUB main() | x\n  x := string(\"", { "repeat": 255, "text": "a" }, "\")\n"] }
+    },
+    {
+      "id": "err_c_sdcx_m522",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m522: \"@\\\"string\\\"/STRING/LSTRING data cannot exceed 254 bytes\" (LSTRING())",
+      "source": { "template": ["{Spin2_v52}\nPUB main() | x\n  x := lstring(\"", { "repeat": 255, "text": "a" }, "\")\n"] }
+    },
+    {
+      "id": "err_c_lscmrf",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"LSTRING characters must range from 0 to 255\"",
+      "source": ["{Spin2_v52}", "PUB main() | x", "  x := lstring(256)"]
+    },
+    {
+      "id": "err_c_bwldcx",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m011: \"BYTE/WORD/LONG data cannot exceed 255 bytes\"",
+      "source": { "template": ["PUB main() | x\n  x := byte(0", { "repeat": 255, "text": ",0" }, ")\n"] }
+    },
+    {
+      "id": "err_c_iec_m390",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m390: \"Invalid escape character\" (first hex digit)",
+      "source": ["PUB main() | x", "  x := @\\\"\\xg\""]
+    },
+    {
+      "id": "err_c_iec_m391",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m391: \"Invalid escape character\" (second hex digit)",
+      "source": ["PUB main() | x", "  x := @\\\"\\x1g\""]
+    },
+    {
+      "id": "err_c_recvcbu",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"RECV() can be used only as a term and \\\\RECV() is not allowed\"",
+      "source": ["PUB main()", "  recv()"]
+    },
+    {
+      "id": "err_c_sendcbu",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"SEND() can be used only as an instruction and \\\\SEND() is not allowed\"",
+      "source": ["PUB main() | x", "  x := send(1)"]
+    },
+    {
+      "id": "err_c_eav_m250",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m250: \"Expected a variable\" (^@ operand)",
+      "source": ["PUB main() | x", "  x := ^@5"]
+    },
+    {
+      "id": "err_c_eav_m251",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m251: \"Expected a variable\"",
+      "source": ["PUB main()", "  repeat 5 with x"]
+    },
+    {
+      "id": "err_c_spmcrmv_m590",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m590: \"SEND parameter methods cannot return multiple values\" (object method)",
+      "source": ["OBJ", "  a : \"gen_err_c_spmcrmv_m590__c\"", "PUB main()", "  send(a.two())"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["PUB two() : p, q", "  return 1, 2"] }]
+    },
+    {
+      "id": "err_c_spmcrmv_m591",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m591: \"SEND parameter methods cannot return multiple values\" (method)",
+      "source": ["PUB main()", "  send(two())", "PUB two() : p, q", "  return 1, 2"]
+    },
+    {
+      "id": "err_c_spmcrmv_m592",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m592: \"SEND parameter methods cannot return multiple values\" (method pointer)",
+      "source": ["PUB main() | mp", "  send(mp():2)"]
+    },
+    {
+      "id": "err_c_tmrnr",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"This method returns no results\"",
+      "source": ["PUB f()", "  return", "PUB main() | x", "  x := f()"]
+    },
+    {
+      "id": "err_c_tmrmr",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"This method returns multiple result longs\"",
+      "source": ["PUB f() : a, b", "  return 1, 2", "PUB main() | x", "  x := 1 + f()"]
+    },
+    {
+      "id": "err_c_eregsym",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a register symbol\"",
+      "source": ["PUB main() | x", "  x := #5"]
+    },
+    {
+      "id": "err_c_fpo_m342",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m342: \"Floating-point overflow\"",
+      "source": ["CON", "  a = 1.0e30 *. 1.0e30"]
+    },
+    {
+      "id": "err_c_fpo_m344",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m344: \"Floating-point overflow\" (TRUNC)",
+      "source": ["CON", "  a = trunc(1.0e10)"]
+    },
+    {
+      "id": "err_c_fpo_exp_shift",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/utils/pnutFloat.ts fp_expn exponent check: \"Floating-point overflow\"",
+      "source": ["{Spin2_v52}", "CON", "  a = exp2 1000.0"]
+    },
+    {
+      "id": "err_c_fpo_exp_pack",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/utils/pnutFloat.ts fp_expn pack carry: \"Floating-point overflow\"",
+      "source": ["{Spin2_v52}", "CON", "  a = exp2 128.0"]
+    },
+    {
+      "id": "err_c_fpo_pow",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/utils/pnutFloat.ts fp_pow product overflow: \"Floating-point overflow\"",
+      "source": ["{Spin2_v52}", "CON", "  a = 1.0e30 pow 1.0e38"]
+    },
+    {
+      "id": "err_c_fpcmbp_sqrt",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/utils/pnutFloat.ts fp_sqrt: \"Floating-point constant must be positive\"",
+      "source": ["CON", "  a = fsqrt -1.0"]
+    },
+    {
+      "id": "err_c_fpcmbp_log_neg",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/utils/pnutFloat.ts fp_logx negative operand: \"Floating-point constant must be positive\"",
+      "source": ["{Spin2_v52}", "CON", "  a = log -1.0"]
+    },
+    {
+      "id": "err_c_fpcmbp_log_zero",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/utils/pnutFloat.ts fp_logx zero operand: \"Floating-point constant must be positive\"",
+      "source": ["{Spin2_v52}", "CON", "  a = log 0.0"]
+    },
+    {
+      "id": "err_c_soioa",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"SIZEOF() is only allowed in DAT, VAR, PUB, and PRI blocks\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT pt(long a)", "  a = sizeof(pt)"]
+    },
+    {
+      "id": "err_c_ooioa",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"OFFSETOF() is only allowed in DAT, VAR, PUB, and PRI blocks\"",
+      "source": ["{Spin2_v53}", "CON", "  STRUCT pt(long a)", "  a = offsetof(pt.a)"]
+    },
+    {
+      "id": "err_c_dioa",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"\\\"$\\\" (DAT origin) is only allowed in DAT blocks\"",
+      "source": ["CON", "  a = $"]
+    },
+    {
+      "id": "err_c_diioa",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"\\\"$$\\\" (DITTO index) is only allowed within a DITTO block, inside a DAT block\"",
+      "source": ["CON", "  a = $$"]
+    },
+    {
+      "id": "err_c_lvmb_m450",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m450: \"Local variable must be LONG and within first 16 longs\" (PNut-TS wording differs from PNut)",
+      "source": ["PUB main() | byte b", "  org", "  mov b, #1", "  end"]
+    },
+    {
+      "id": "err_c_lvmb_m451",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m451: \"Local variable must be LONG and within first 16 longs\" (PNut-TS wording differs from PNut)",
+      "source": ["PUB main() | v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16", "  org", "  mov v16, #1", "  end"]
+    },
+    {
+      "id": "err_c_eads",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a DAT symbol\"",
+      "source": ["DAT", "  long @5"]
+    },
+    {
+      "id": "err_c_eaocsom",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected an object constant, structure, or method\"",
+      "source": ["OBJ", "  a : \"gen_err_c_eaocsom__c\"", "PUB main()", "  a.nosuch()"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_eacn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m081: \"Expected a constant name\"",
+      "source": ["CON", "  a = nosuch.5"]
+    },
+    {
+      "id": "err_c_us",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Undefined symbol\"",
+      "source": ["CON", "  a = nosuch"]
+    },
+    {
+      "id": "err_c_cmbf1t15",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Constant must be from 1 to 15\"",
+      "source": ["PUB main() | x, y", "  x, _[0] := y"]
+    },
+    {
+      "id": "err_c_ecoeol",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\",\\\" or end of line\"",
+      "source": ["VAR", "  long a b", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_c_esoeol",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected STEP or end of line\"",
+      "source": ["PUB main() | x", "  repeat x from 1 to 5 foo", "    x := 1"]
+    },
+    {
+      "id": "err_c_ecor",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\",\\\" or \\\")\\\"\"",
+      "source": ["PUB main() | mp, x", "  x := mp(1 2)"]
+    },
+    {
+      "id": "err_c_epoeol",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"|\\\" or end of line\"",
+      "source": ["PUB main() 5", "  return"]
+    },
+    {
+      "id": "err_c_eptrid",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected pointer variable, \\\"++\\\", or \\\"--\\\"\"",
+      "source": ["PUB main() | x, y", "  x := [y]"]
+    },
+    {
+      "id": "err_c_eptr",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected pointer variable\"",
+      "source": ["PUB main() | x, y", "  x := [++]y"]
+    },
+    {
+      "id": "err_c_cmbf0t511_m131",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m131: \"Constant must be from 0 to 511\" (REG[])",
+      "source": ["PUB main() | x", "  x := reg[512]"]
+    },
+    {
+      "id": "err_c_eleft",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"(\\\"\"",
+      "source": ["PUB main() | x", "  x := string 5"]
+    },
+    {
+      "id": "err_c_eleftb",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"[\\\"\"",
+      "source": ["PUB main() | x, y", "  x := y.z"]
+    },
+    {
+      "id": "err_c_ecomma",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\",\\\"\"",
+      "source": ["PUB f(a, b)", "  return", "PUB main()", "  f(1)"]
+    },
+    {
+      "id": "err_c_epound",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"#\\\"\"",
+      "source": ["DAT", "  org", "x res 1", "  getbyte x, x, 5"]
+    },
+    {
+      "id": "err_c_eequal",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\"=\\\"\"",
+      "source": ["OBJ", "  a : \"gen_err_c_eequal__c\" | p 1", "PUB main()", "  return"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_ecolon_obj",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\":\\\"\" (OBJ declaration)",
+      "source": ["OBJ", "  a \"gen_err_c_ecolon_obj__c\"", "PUB main()", "  return"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_ecolon_ternary",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\":\\\"\" (ternary operator)",
+      "source": ["PUB main() | x, y", "  x := y ? 1 2"]
+    },
+    {
+      "id": "err_c_ecolon_case",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\":\\\"\" (CASE arm)",
+      "source": ["PUB main() | x", "  case x", "    1 x := 2"]
+    },
+    {
+      "id": "err_c_edot",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\".\\\"\"",
+      "source": ["OBJ", "  a : \"gen_err_c_edot__c\"", "PUB main()", "  a"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_c_eassign",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected \\\":=\\\"\"",
+      "source": ["PUB main() | x, y", "  x, y = 5"]
+    },
+    {
+      "id": "err_c_efrom",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected FROM\"",
+      "source": ["PUB main() | y", "  repeat y to 5 from 1", "    y := 1"]
+    },
+    {
+      "id": "err_c_eto",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected TO\"",
+      "source": ["PUB main() | y", "  repeat y from 1 5", "    y := 1"]
+    },
+    {
+      "id": "err_c_dbz_m145",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m145: \"Divide by zero\" (/)",
+      "source": ["CON", "  a = 1 / 0"]
+    },
+    {
+      "id": "err_c_dbz_m141",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m141: \"Divide by zero\" (+/)",
+      "source": ["CON", "  a = 1 +/ 0"]
+    },
+    {
+      "id": "err_c_dbz_m142",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m142: \"Divide by zero\" (//)",
+      "source": ["CON", "  a = 1 // 0"]
+    },
+    {
+      "id": "err_c_dbz_m143",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m143: \"Divide by zero\" (+//)",
+      "source": ["CON", "  a = 1 +// 0"]
+    },
+    {
+      "id": "err_c_dbz_m144",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m144: \"Divide by zero\" (FRAC)",
+      "source": ["{Spin2_v52}", "CON", "  a = 5 frac 0"]
+    },
+    {
+      "id": "err_c_dbz_pub",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "PNut error_dbz \"Divide by zero\" for a constant divisor in a PUB expression (PNut-TS reports an internal NumberStack message)",
+      "source": ["PUB main() | x", "  x := 1 / 0"]
+    },
+    {
+      "id": "err_c_divo",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Division overflow\"",
+      "source": ["{Spin2_v52}", "CON", "  a = 5 frac 3"]
+    },
+    {
+      "id": "err_c_ionaifpe",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Integer operator not allowed in floating-point expression\"",
+      "source": ["CON", "  a = 1.0 // 2.0"]
+    },
+    {
+      "id": "err_c_fpnaiie",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Floating-point not allowed in integer expression\"",
+      "source": ["CON", "  a = 2 + 1.0"]
+    },
+    {
+      "id": "err_c_inaifpe",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Integer not allowed in floating-point expression\"",
+      "source": ["CON", "  a = 1.0 + 2"]
+    },
+    {
+      "id": "err_c_cmbf0t511_m130",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m130: \"Constant must be from 0 to 511\" (PASM)",
+      "source": ["DAT", "  org", "x res 1", "  mov x, #512"]
+    },
+    {
+      "id": "err_c_eitc",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "PNut error_eitc \"Expression is too complex\" (constant-expression stack of 16; no PNut-TS message)",
+      "source": { "template": ["CON\n  a = ", { "repeat": 20, "text": "1 + (" }, "1", { "repeat": 20, "text": ")" }, "\nPUB main()\n  return\n"] }
+    },
+    {
+      "id": "err_c_os",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "flag": "debug",
+      "expectLine": 2,
+      "covers": "PNut error_os \"Open string\" (unterminated DEBUG tick string at end of file; no PNut-TS message)",
+      "source": "PUB main()\n  debug(`hello"
+    },
+    {
+      "id": "err_c_stif",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 15423,
+      "note": "expectLine is estimated from the PNut symbol record size; the Windows GOLD gives the true line.",
+      "covers": "PNut error_stif \"Symbol table is full\" (main symbol table of 256KB; no PNut-TS message)",
+      "source": { "template": ["VAR\n", { "repeat": 25000, "text": "  long v${i:5}\n" }, "PUB main()\n  return\n"] }
+    },
+    {
+      "id": "err_b2_bfaoa",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Bitfields are only allowed for BYTE/WORD/LONG members\"",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT a(long x)", "  STRUCT s(a y.f[3])"]
+    },
+    {
+      "id": "err_b2_eas_bitfield",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Expected a bitfield name\"",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.[3])"]
+    },
+    {
+      "id": "err_b2_bnebwlb_m680",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m680: \"Bit number exceeds BYTE/WORD/LONG boundary\"",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[32])"]
+    },
+    {
+      "id": "err_b2_bnebwlb_m681",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m681: \"Bit number exceeds BYTE/WORD/LONG boundary\" (negative lower bit)",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[-1..3])"]
+    },
+    {
+      "id": "err_b2_lbnceubn",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Lower bit number cannot exceed upper bit number\"",
+      "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[3..5])"]
+    },
+    {
+      "id": "err_b_object_nesting",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut-ts",
+      "expectLine": 2,
+      "covers": "src/classes/compiler.ts: \"Object nesting exceeds 16 levels - illegal circular reference may exist\" (PNut-TS-only message)",
+      "source": ["OBJ", "  a : \"gen_err_b_object_nesting\"", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_d_eaunbwlo",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a unique name, BYTE, WORD, LONG, or assembly instruction\"",
+      "source": ["DAT", "  5"]
+    },
+    {
+      "id": "err_d_edend_m260",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m260: \"Expected DITTO END\" (DITTO block open at end of file)",
+      "note": "Reported at the last line of the file (the end-of-file element); PNut's position for an end-of-file error is unconfirmed.",
+      "source": "{Spin2_v52}\nDAT\n  ditto 2\n  long 0"
+    },
+    {
+      "id": "err_d_edend_m261",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts m261: \"Expected DITTO END\" (inline assembly ends inside a DITTO block)",
+      "source": ["{Spin2_v52}", "PUB main()", "  org", "  ditto 2", "  nop", "  end"]
+    },
+    {
+      "id": "err_d_edend_m262",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts m262: \"Expected DITTO END\" (a DITTO block still open when the next DAT block opens on an empty block)",
+      "source": ["{Spin2_v52}", "DAT", "  ditto 2", "  long 0", "DAT", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_d_eend_m270",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m270: \"Expected END\" (inline assembly open at end of file)",
+      "note": "Reported at the last line of the file (the end-of-file element); PNut's position for an end-of-file error is unconfirmed.",
+      "source": "PUB main()\n  org\n  nop"
+    },
+    {
+      "id": "err_d_eend_m271",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts m271: \"Expected END\" (DITTO inside a DITTO block)",
+      "source": ["{Spin2_v52}", "DAT", "  ditto 2", "  long 0", "  ditto 3"]
+    },
+    {
+      "id": "err_d_dscobd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts: \"DAT structures can only be declared in ORGH mode\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT pt(long a)", "DAT", "  org", "p pt"]
+    },
+    {
+      "id": "err_d_dsmbpbas",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DAT structure must be preceded by a symbol\"",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT pt(long a)", "DAT", "  pt"]
+    },
+    {
+      "id": "err_d_fvar_m351",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m351: \"FVAR/FVARS data is too big\" (FVAR past $1FFF_FFFF; the FVARS site m350 is the row fvars_too_big)",
+      "source": ["DAT", "  org", "  byte FVAR $2000_0000"]
+    },
+    {
+      "id": "err_d_dcmbapi",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"DITTO count must be a positive integer or zero\" (negative count; PNut compares signed, PNut-TS compares unsigned)",
+      "source": ["{Spin2_v52}", "DAT", "  ditto -1", "  long 0", "  ditto end"]
+    },
+    {
+      "id": "err_d_haefl",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Hub address exceeds FIT limit\"",
+      "source": ["DAT", "  orgh $400", "  long 0,0", "  fit $400"]
+    },
+    {
+      "id": "err_d_caefl",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Cog address exceeds FIT limit\"",
+      "source": ["DAT", "  org $100", "  fit $80"]
+    },
+    {
+      "id": "err_d_rinaiom",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"RES is not allowed in ORGH mode\"",
+      "source": ["DAT", "  orgh", "  res 1"]
+    },
+    {
+      "id": "err_d_oinaiom",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"ORGF is not allowed in ORGH mode\"",
+      "source": ["DAT", "  orgh", "  orgf 5"]
+    },
+    {
+      "id": "err_d_cael_m110",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m110: \"Cog address exceeds limit\" (RES past the cog limit)",
+      "source": ["DAT", "  org", "  res $200"]
+    },
+    {
+      "id": "err_d_cael_m111",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m111: \"Cog address exceeds limit\" (ORGF past the cog limit)",
+      "source": ["DAT", "  org", "  orgf $1F9"]
+    },
+    {
+      "id": "err_d_cael_m112",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m112: \"Cog address exceeds limit\" (FILE data past the cog limit)",
+      "source": ["DAT", "  org", "  f file \"gen_err_d_cael_m112__d.bin\""],
+      "aux": [{ "name": "d.bin", "sibling": true, "source": { "template": [{ "repeat": 2100, "text": "x" }] } }]
+    },
+    {
+      "id": "err_d_cael_m113",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m113: \"Cog address exceeds limit\" (data emitted past an ORG limit)",
+      "source": ["DAT", "  org $100,$102", "  long 0,0,0"]
+    },
+    {
+      "id": "err_d_cael_org_limit_below_start",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m113 divergence: PNut reports ORG start above its limit on the ORG line; PNut-TS reports it at the first data emitted after",
+      "source": ["DAT", "  org $100,$50", "  nop"]
+    },
+    {
+      "id": "err_d_oaet",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"Origin already exceeds target\"",
+      "source": ["DAT", "  org", "x res 1", "  long 0,0", "  orgf 1"]
+    },
+    {
+      "id": "err_d_onawiac",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"ORG not allowed within inline assembly code\"",
+      "source": ["PUB main()", "  org", "  org", "  end"]
+    },
+    {
+      "id": "err_d_onawads",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"ORG not allowed within a DITTO block\"",
+      "source": ["{Spin2_v52}", "DAT", "  ditto 2", "  org", "  long 0", "  ditto end"]
+    },
+    {
+      "id": "err_d_caexl_m120",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m120: \"Cog address exceeds $400 limit\" (ORG start)",
+      "source": ["DAT", "  org $401"]
+    },
+    {
+      "id": "err_d_caexl_m121",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m121: \"Cog address exceeds $400 limit\" (ORG limit operand)",
+      "source": ["DAT", "  org 0,$401"]
+    },
+    {
+      "id": "err_d_ohnawiac",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"ORGH not allowed within inline assembly code\"",
+      "source": ["PUB main()", "  org", "  orgh", "  end"]
+    },
+    {
+      "id": "err_d_ohnawads",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"ORGH not allowed within a DITTO block\" (the check hangs off the wrong branch, so PNut-TS accepts the source)",
+      "source": ["{Spin2_v52}", "DAT", "  ditto 2", "  orgh", "  long 0", "  ditto end"]
+    },
+    {
+      "id": "err_d_habxl",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Hub address below $400 limit\"",
+      "source": ["DAT", "  orgh $100", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_d_haec_m360",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m360: \"Hub address exceeds $100000 ceiling\" (ORGH address; PNut-TS compares against 24MB, so it accepts the source)",
+      "source": ["DAT", "  orgh $100001", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_d_haec_m361",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m361: \"Hub address exceeds $100000 ceiling\" (ORGH limit operand)",
+      "source": ["DAT", "  orgh $400,$100001", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_d_hael_m370",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m370: \"Hub address exceeds limit\" (ORGH limit below its address; the data-emit site m372 is EXCEPT-tests/exception_test_006)",
+      "source": ["DAT", "  orgh $500,$400"]
+    },
+    {
+      "id": "err_d_hael_m371",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m371: \"Hub address exceeds limit\" (FILE data past an ORGH limit)",
+      "source": ["DAT", "  orgh $400,$500", "  f file \"gen_err_d_hael_m371__d.bin\""],
+      "aux": [{ "name": "d.bin", "sibling": true, "source": { "template": [{ "repeat": 300, "text": "x" }] } }]
+    },
+    {
+      "id": "err_d_hacd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Hub address cannot decrease\"",
+      "source": ["DAT", "  long 0,0,0,0,0", "  orgh 4"]
+    },
+    {
+      "id": "err_d_aanawiac",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"ALIGNW/ALIGNL not allowed within inline assembly code\"",
+      "source": ["PUB main()", "  org", "  alignl", "  end"]
+    },
+    {
+      "id": "err_d_eidbwloe",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"Expected instruction, directive, BYTE/WORD/LONG, or END\"",
+      "source": ["PUB main()", "  org", "  5", "  end"]
+    },
+    {
+      "id": "err_d_eaasmi",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected an assembly instruction\"",
+      "source": ["DAT", "  org", "x res 1", "  if_z"]
+    },
+    {
+      "id": "err_d_smb0t7_m570",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m570: \"Selector must be 0 to 7\" (SETNIB)",
+      "source": ["DAT", "  org", "x res 1", "  setnib x,x,#8"]
+    },
+    {
+      "id": "err_d_smb0t7_m571",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m571: \"Selector must be 0 to 7\" (GETNIB)",
+      "source": ["DAT", "  org", "x res 1", "  getnib x,x,#8"]
+    },
+    {
+      "id": "err_d_smb0t3_m560",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m560: \"Selector must be 0 to 3\" (SETBYTE)",
+      "source": ["DAT", "  org", "x res 1", "  setbyte x,x,#4"]
+    },
+    {
+      "id": "err_d_smb0t3_m561",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m561: \"Selector must be 0 to 3\" (GETBYTE)",
+      "source": ["DAT", "  org", "x res 1", "  getbyte x,x,#4"]
+    },
+    {
+      "id": "err_d_smb0t1_m550",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m550: \"Selector must be 0 to 1\" (SETWORD)",
+      "source": ["DAT", "  org", "x res 1", "  setword x,x,#2"]
+    },
+    {
+      "id": "err_d_smb0t1_m551",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m551: \"Selector must be 0 to 1\" (GETWORD)",
+      "source": ["DAT", "  org", "x res 1", "  getword x,x,#2"]
+    },
+    {
+      "id": "err_d_rbeiooa",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"REP block end is out of alignment\" (hub label at an odd address)",
+      "source": ["DAT", "  orgh $400", "  rep @x,#1", "  nop", "  byte 0", "x nop"]
+    },
+    {
+      "id": "err_d_rbeioor",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts: \"REP block end is out of range\" (block longer than 512 instructions)",
+      "source": ["DAT", "  orgh $400", "  rep @x,#1", "  long 0[$300]", "x nop"]
+    },
+    {
+      "id": "err_d_drmbpppp_m160",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m160: \"D register must be PA/PB/PTRA/PTRB\" (CALLD, hub mode, unaligned relative target)",
+      "source": ["DAT", "  orgh $400", "  calld $100,#lbl", "  byte 0", "lbl nop"]
+    },
+    {
+      "id": "err_d_drmbpppp_m161",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m161: \"D register must be PA/PB/PTRA/PTRB\" (CALLD, hub mode, relative target out of range)",
+      "source": ["DAT", "  orgh $400", "  calld $100,#lbl", "  long 0[$200]", "lbl nop"]
+    },
+    {
+      "id": "err_d_drmbpppp_m162",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m162: \"D register must be PA/PB/PTRA/PTRB\" (CALLD, cog mode, relative target out of range)",
+      "source": ["DAT", "  org", "  calld $100,#$190"]
+    },
+    {
+      "id": "err_d_drmbpppp_m163",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m163: \"D register must be PA/PB/PTRA/PTRB\" (CALLD with an absolute target)",
+      "source": ["DAT", "  org", "  calld $100,#\\$190"]
+    },
+    {
+      "id": "err_d_drmbpppp_m164",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m164: \"D register must be PA/PB/PTRA/PTRB\" (LOC)",
+      "source": ["DAT", "  org", "x res 1", "  loc x,#0"]
+    },
+    {
+      "id": "err_d_amnex_m000",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m000: \"Address must not exceed $FFFFF\" (LOC)",
+      "source": ["DAT", "  org", "x res 1", "  loc pa,#\\$100000"]
+    },
+    {
+      "id": "err_d_amnex_m001",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts m001: \"Address must not exceed $FFFFF\" (JMP/CALL immediate or relative)",
+      "source": ["DAT", "  org", "x res 1", "  jmp #\\$100000"]
+    },
+    {
+      "id": "err_d_ewcwzwcz",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected WC, WZ, or WCZ\"",
+      "source": ["DAT", "  org", "x res 1", "  getbrk x"]
+    },
+    {
+      "id": "err_d_ewaox",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected WC, WZ, ANDC, ANDZ, ORC, ORZ, XORC, or XORZ\"",
+      "source": ["DAT", "  org", "x res 1", "  testp x"]
+    },
+    {
+      "id": "err_d_nchcor",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"NOP cannot have a condition or _RET_\"",
+      "source": ["DAT", "  org", "x res 1", "  if_z nop"]
+    },
+    {
+      "id": "err_d_eaaeoeol",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Expected an assembly effect or end of line\"",
+      "source": ["DAT", "  org", "x res 1", "  mov x,x 5"]
+    },
+    {
+      "id": "err_d_teinafti",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"This effect is not allowed for this instruction\"",
+      "source": ["DAT", "  org", "x res 1", "  nop wc"]
+    },
+    {
+      "id": "err_d_rainawi_m500",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m500: \"Relative address is not aligned with instruction\" (## form, hub mode)",
+      "source": ["DAT", "  orgh $400", "  djnz $100,##$401"]
+    },
+    {
+      "id": "err_d_rainawi_m501",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 3,
+      "covers": "src/classes/spinResolver.ts m501: \"Relative address is not aligned with instruction\" (# form, hub mode)",
+      "source": ["DAT", "  orgh $400", "  djnz $100,#$401"]
+    },
+    {
+      "id": "err_d_raioor",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Relative address is out of range\"",
+      "source": ["DAT", "  org", "x res 1", "  djnz x,#$180"]
+    },
+    {
+      "id": "err_d_racc",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Relative addresses cannot cross between cog and hub domains\"",
+      "source": ["DAT", "  org", "x res 1", "  djnz x,#$400"]
+    },
+    {
+      "id": "err_d_cmbf0t255",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Constant must be from 0 to 255\" (RDLUT immediate)",
+      "source": ["DAT", "  org", "x res 1", "  rdlut x,#256"]
+    },
+    {
+      "id": "err_d_rcex",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"Register cannot exceed $1FF\"",
+      "source": ["DAT", "  org", "x res 1", "  mov x,#$1FF", "  mov $200,x"]
+    },
+    {
+      "id": "err_d_picmr6b",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"PTRA/PTRB index constant must range from -32 to 31\"",
+      "source": ["DAT", "  org", "x res 1", "  rdlong x,ptra[32]"]
+    },
+    {
+      "id": "err_d_picmr116",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"PTRA/PTRB index constant must range from 1 to 16\" (updating pointer form)",
+      "source": ["DAT", "  org", "x res 1", "  rdlong x,ptra++[17]"]
+    },
+    {
+      "id": "err_d_tdcbpbas",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"This directive cannot be preceded by a symbol\"",
+      "source": ["DAT", "x fit 5"]
+    },
+    {
+      "id": "err_d_bmbft",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"BYTEFIT values must range from -$80 to $FF\"",
+      "source": ["DAT", "  bytefit 256", "  byte 256"]
+    },
+    {
+      "id": "err_d_wmbft",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"WORDFIT values must range from -$8000 to $FFFF\"",
+      "source": ["DAT", "  wordfit 70000", "  word 70000"]
+    },
+    {
+      "id": "err_d_ebwls",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected BYTE, WORD, LONG, or STRUCT name\" (pointer variable declaration)",
+      "source": ["VAR", "  ^5"]
+    },
+    {
+      "id": "err_d_csmbla",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"Cog symbol must be long-aligned\"",
+      "source": ["DAT", "  org", "  byte 1", "x byte 2"]
+    },
+    {
+      "id": "err_d_eals",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts: \"Expected a local symbol\"",
+      "source": ["DAT", "  ."]
+    },
+    {
+      "id": "err_d_loxdse",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 10001,
+      "covers": "src/classes/spinResolver.ts: \"Limit of 10k DAT symbols exceeded\" (the 10,000th DAT symbol)",
+      "source": { "template": ["DAT\n", { "repeat": 10000, "text": "s${i}\n" }] }
+    },
+    {
+      "id": "err_d_icaexl_m380",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m380: \"Inline cog address exceeds $120 limit\" (inline ORG start)",
+      "source": ["PUB main()", "  org $121", "  nop", "  end"]
+    },
+    {
+      "id": "err_d_icaexl_m381",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m381: \"Inline cog address exceeds $120 limit\" (inline ORG limit operand)",
+      "source": ["PUB main()", "  org 0,$121", "  nop", "  end"]
+    },
+    {
+      "id": "err_d_isil",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"ORGH inline block exceeds $FFFF longs (including the added RET instruction)\"",
+      "note": "Reported at the END line, where the block length is known; PNut's position is unconfirmed.",
+      "source": ["PUB main()", "  orgh", "  long 0[$10000]", "  end"]
+    },
+    {
+      "id": "err_e_cfcobd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants\"",
+      "note": "Clock errors are raised after the whole file is read and are reported at its last line; PNut's position for them is unconfirmed.",
+      "source": "CON\n  _clkfreq = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_cccbd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  clkmode_ = 5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_codcssf",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spinResolver.ts: \"Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  _clkfreq = 100_000_000\n  _xtlfreq = 20_000_000\n  _xinfreq = 10_000_000\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_pllscnba",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts: \"PLL settings could not be achieved per _CLKFREQ\" (250 kHz input, 500 MHz output: the multiplier would exceed 1024)",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  _xinfreq = 250_000\n  _clkfreq = 500_000_000\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_xinfreq_range",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts: \"_XINFREQ must be from 250_000 to 500_000_000\" (PNut-TS range check; REF-V52A has no such message)",
+      "note": "Reported at the last line of the file.",
+      "source": "CON\n  _xinfreq = 100_000\n  _clkfreq = 100_000_000\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_clkfreq_range",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"_CLKFREQ must be from 3_333_333 to 500_000_000\" (PNut-TS range check; REF-V52A has no such message)",
+      "note": "Reported at the last line of the file.",
+      "source": "CON\n  _clkfreq = 3_000_000\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_downbaud",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DOWNLOAD_BAUD can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  download_baud = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_debugpin",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_PIN can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_pin = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_debugptx",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_PIN_TX can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_pin_tx = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_debugprx",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_PIN_RX can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_pin_rx = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_debugbaud",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_BAUD can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_baud = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_ddcobd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_DISABLE can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_disable = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_dmcobd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 5,
+      "covers": "src/classes/spinResolver.ts: \"DEBUG_MASK can only be defined as an integer constant\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_mask = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_debugcog",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug",
+      "expectLine": 5,
+      "covers": "src/classes/spin2Parser.ts: \"DEBUG_COGS can only be defined as an integer constant\" (checked only in a DEBUG compile)",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_cogs = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_debugdly",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug",
+      "expectLine": 5,
+      "covers": "src/classes/spin2Parser.ts: \"DEBUG_DELAY can only be defined as an integer constant\" (checked only in a DEBUG compile)",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  debug_delay = 1.5\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_acobd",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 7,
+      "covers": "src/classes/spin2Parser.ts: \"_AUTOCLK can only be defined as an integer constant\" (checked only for a pure-PASM program with a clock setting, outside DEBUG)",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  _xtlfreq = 20_000_000\n  _autoclk = 1.5\n\nDAT\n  org\n  nop"
+    },
+    {
+      "id": "err_e_debugclk",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug",
+      "expectLine": 5,
+      "covers": "src/classes/spin2Parser.ts: \"DEBUG requires at least 10 MHz of crystal/external clocking\"",
+      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "source": "CON\n  _xtlfreq = 5_000_000\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_lsvi",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: version directive below the lowest legal version ({Spin2_v40}; PNut says \"Lowest selectable Spin2 version is v41\", PNut-TS has one wording for both ends)",
+      "source": "{Spin2_v40}\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_hsvi",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 1,
+      "covers": "src/classes/spinDocument.ts: version directive above the highest legal version ({Spin2_v56}; PNut says \"Highest selectable Spin2 version is vNN\", PNut-TS has one wording for both ends)",
+      "source": "{Spin2_v56}\nPUB main()\n  return"
+    },
+    {
+      "id": "err_e_level44",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/parseUtils.ts: \"{Spin2_v44} is no longer supported due to changes in data structures beginning in v45\" (PNut-TS text has a stray closing bracket)",
+      "source": ["{Spin2_v44}", "CON", "  a = clkfreq", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_f_hub_ram",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 5,
+      "covers": "src/classes/spin2Parser.ts: \"Program requirement exceeds 512KB hub RAM by N bytes\" (PNut-TS-only message)",
+      "note": "Reported at the last line of the file.",
+      "source": "DAT\nx byte 0[$80000]\n\nPUB main()\n  return"
+    },
+    {
+      "id": "err_f_pclo",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2048,
+      "covers": "src/classes/objectSymbols.ts: \"PUB/CON list overflowed 64k bytes\" (PNut says \"PUB/CON list overflow\")",
+      "source": { "template": ["CON\n", { "repeat": 2400, "text": "  c${i:4}_abcdefghijklmnopqrstu = ${i}\n" }, "PUB main()\n  return\n"] }
+    },
+    {
+      "id": "err_f_obj_data_m691",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 27,
+      "covers": "src/classes/compiler.ts m691: \"OBJ data exceeds 24576k limit\" (27 distinct child objects of about 960 KB each)",
+      "note": "The error is reported at the end of the sibling child gen_err_f_obj_data_m691__c25.spin2, the 26th child, at its line 6; expectLine is the OBJ line of this file that names it.",
+      "source": { "template": ["OBJ\n", { "repeat": 27, "text": "  o${i:2} : \"gen_err_f_obj_data_m691__c${i:2}\"\n" }, "PUB main()\n  return\n"] },
+      "aux": [{ "name": "c${i:2}.spin2", "sibling": true, "count": 27, "source": { "template": ["DAT\n  byte ${i}\n  byte 0[$F0000]\nPUB go()\n  return\n"] } }]
+    },
+    {
+      "id": "err_f_child_object_m490",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 27,
+      "covers": "src/classes/childObjectsImage.ts m490: \"Child Object exceeds 24576KB\" (the 26th distinct child ends within 62 bytes of the 24 MB cap)",
+      "note": "Sizes are tuned: 25 children of $F0000 data bytes plus a last child of 589120 data bytes put the stored children within 62 bytes below the cap. The error is reported at the end of the sibling child gen_err_f_child_object_m490__c25.spin2 (its line 6); expectLine is the OBJ line of this file that names it.",
+      "source": { "template": ["OBJ\n", { "repeat": 26, "text": "  o${i:2} : \"gen_err_f_child_object_m490__c${i:2}\"\n" }, "PUB main()\n  return\n"] },
+      "aux": [
+        { "name": "c${i:2}.spin2", "sibling": true, "count": 25, "source": { "template": ["DAT\n  byte ${i}\n  byte 0[$F0000]\nPUB go()\n  return\n"] } },
+        { "name": "c25.spin2", "sibling": true, "source": ["DAT", "  byte 25", "  byte 0[589120]", "PUB go()", "  return"] }
+      ]
+    },
+    {
+      "id": "err_f_image_m491",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut-ts",
+      "expectLine": 30,
+      "note": "Reported at the last line of the file, where the finished image is written out.",
+      "covers": "src/classes/objectImage.ts m491: \"Program exceeds 24576KB\" (25 distinct children of about 960 KB each plus 960 KB of the parent's own DAT data)",
+      "source": { "template": ["OBJ\n", { "repeat": 25, "text": "  o${i:2} : \"gen_err_f_image_m491__c${i:2}\"\n" }, "DAT\n  byte 0[$F0000]\nPUB main()\n  return"] },
+      "aux": [{ "name": "c${i:2}.spin2", "sibling": true, "count": 25, "source": { "template": ["DAT\n  byte ${i}\n  byte 0[$F0000]\nPUB go()\n  return\n"] } }]
     }
   ]
 }

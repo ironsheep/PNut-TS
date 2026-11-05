@@ -49,6 +49,9 @@
  *                           not in pnutDirectives (#include, #error, ...).
  * notes                     lines for the generated header.
  *
+ * A file named gen_<id>__<name>.spin2 is a child of a generated fixture, compiled
+ * only through its parent, so it is always on the Skip list.
+ *
  * Per file, the expected outcome and the gold source come from its
  * fixtures.json row when one owns the file (kind reject = expected to fail,
  * goldSource pnut-ts = skipped), and otherwise from the two rules above. The
@@ -85,6 +88,8 @@ const SUITE_KEYS = [
 // Text placed inside a PowerShell double-quoted string must not interpolate.
 const PS_NAME = /^[A-Za-z0-9_.*?[\]-]+$/;
 const SPIN2_NAME = /^[A-Za-z0-9_.-]+\.spin2$/;
+// A sibling child written by generate.js (gen_<id>__<name>.spin2).
+const CHILD_FIXTURE = /^(debug_)?gen_.*__/;
 
 function has(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
@@ -116,17 +121,26 @@ function loadSuites(file) {
   for (const key of Object.keys(config))
     if (!TOP_KEYS.includes(key)) problems.push(`suites: unknown key "${key}"`);
   if (config.schema !== 1) problems.push('suites: schema must be 1');
-  if (!isStringArray(config.pnutDirectives) || config.pnutDirectives.length === 0)
+  if (
+    !isStringArray(config.pnutDirectives) ||
+    config.pnutDirectives.length === 0
+  )
     problems.push('suites: pnutDirectives is a non-empty array of names');
   if (!isPlainObject(config.suites))
-    return { config: null, problems: [...problems, 'suites: "suites" is an object'] };
+    return {
+      config: null,
+      problems: [...problems, 'suites: "suites" is an object']
+    };
   const excluded = has(config, 'excluded') ? config.excluded : {};
-  if (!isPlainObject(excluded)) problems.push('suites: "excluded" is an object');
+  if (!isPlainObject(excluded))
+    problems.push('suites: "excluded" is an object');
 
   for (const [dir, s] of Object.entries(config.suites)) {
     const w = `suite ${dir}`;
     if (!/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/.test(dir)) {
-      problems.push(`${w}: the key is a directory under TEST/ (letters, digits, _ - /)`);
+      problems.push(
+        `${w}: the key is a directory under TEST/ (letters, digits, _ - /)`
+      );
       continue;
     }
     if (!isPlainObject(s)) {
@@ -134,7 +148,8 @@ function loadSuites(file) {
       continue;
     }
     for (const key of Object.keys(s))
-      if (!SUITE_KEYS.includes(key)) problems.push(`${w}: unknown field "${key}"`);
+      if (!SUITE_KEYS.includes(key))
+        problems.push(`${w}: unknown field "${key}"`);
     if (!FLAGS.includes(s.defaultFlag))
       problems.push(`${w}: defaultFlag must be one of ${FLAGS.join(', ')}`);
     if (has(s, 'produces')) {
@@ -143,7 +158,9 @@ function loadSuites(file) {
         s.produces.length === 0 ||
         !s.produces.every((x) => OUTPUTS.includes(x))
       )
-        problems.push(`${w}: produces is a non-empty list of ${OUTPUTS.join(', ')}`);
+        problems.push(
+          `${w}: produces is a non-empty list of ${OUTPUTS.join(', ')}`
+        );
     }
     for (const table of ['perFilePatternFlag', 'perFileFlag']) {
       if (!has(s, table)) continue;
@@ -152,31 +169,46 @@ function loadSuites(file) {
         continue;
       }
       for (const [k, v] of Object.entries(s[table])) {
-        const nameOk = table === 'perFileFlag' ? SPIN2_NAME.test(k) : PS_NAME.test(k);
-        if (!nameOk) problems.push(`${w}: ${table} key "${k}" is not a plain name or pattern`);
-        if (!FLAGS.includes(v)) problems.push(`${w}: ${table} "${k}" flag must be one of ${FLAGS.join(', ')}`);
+        const nameOk =
+          table === 'perFileFlag' ? SPIN2_NAME.test(k) : PS_NAME.test(k);
+        if (!nameOk)
+          problems.push(
+            `${w}: ${table} key "${k}" is not a plain name or pattern`
+          );
+        if (!FLAGS.includes(v))
+          problems.push(
+            `${w}: ${table} "${k}" flag must be one of ${FLAGS.join(', ')}`
+          );
       }
       const lower = Object.keys(s[table]).map((k) => k.toLowerCase());
       if (new Set(lower).size !== lower.length)
-        problems.push(`${w}: ${table} has keys that differ only in case (a PowerShell hashtable rejects them)`);
+        problems.push(
+          `${w}: ${table} has keys that differ only in case (a PowerShell hashtable rejects them)`
+        );
     }
     if (has(s, 'patternNote')) {
       if (!has(s, 'perFilePatternFlag'))
         problems.push(`${w}: patternNote needs perFilePatternFlag`);
-      if (!isStringArray(s.patternNote) || !s.patternNote.every(safeCommentLine))
+      if (
+        !isStringArray(s.patternNote) ||
+        !s.patternNote.every(safeCommentLine)
+      )
         problems.push(`${w}: patternNote is a list of single comment lines`);
     }
     if (has(s, 'skip')) {
-      if (!isPlainObject(s.skip)) problems.push(`${w}: skip is an object of name -> reason`);
+      if (!isPlainObject(s.skip))
+        problems.push(`${w}: skip is an object of name -> reason`);
       else
         for (const [k, v] of Object.entries(s.skip)) {
-          if (!SPIN2_NAME.test(k)) problems.push(`${w}: skip key "${k}" is not a plain name.spin2`);
+          if (!SPIN2_NAME.test(k))
+            problems.push(`${w}: skip key "${k}" is not a plain name.spin2`);
           if (typeof v !== 'string' || v.trim() === '' || !safeCommentLine(v))
             problems.push(`${w}: skip "${k}" needs a one-line reason`);
         }
     }
     for (const b of ['expectFailWhenErroutGold', 'classifyDirectives'])
-      if (has(s, b) && typeof s[b] !== 'boolean') problems.push(`${w}: ${b} is true or false`);
+      if (has(s, b) && typeof s[b] !== 'boolean')
+        problems.push(`${w}: ${b} is true or false`);
     if (!isStringArray(s.notes) || !s.notes.every(safeCommentLine))
       problems.push(`${w}: notes is a list of single lines (no <# or #>)`);
   }
@@ -184,12 +216,18 @@ function loadSuites(file) {
     for (const [dir, why] of Object.entries(excluded)) {
       if (typeof why !== 'string' || why.trim() === '')
         problems.push(`excluded ${dir}: needs a reason`);
-      if (has(config.suites, dir)) problems.push(`excluded ${dir}: is also in suites`);
+      if (has(config.suites, dir))
+        problems.push(`excluded ${dir}: is also in suites`);
     }
   }
   for (const name of Object.keys(SUITES)) {
-    if (!has(config.suites, name) && !(isPlainObject(excluded) && has(excluded, name)))
-      problems.push(`suite ${name}: is in scripts/fixtures/generate.js SUITES but in neither suites nor excluded`);
+    if (
+      !has(config.suites, name) &&
+      !(isPlainObject(excluded) && has(excluded, name))
+    )
+      problems.push(
+        `suite ${name}: is in scripts/fixtures/generate.js SUITES but in neither suites nor excluded`
+      );
   }
   return { config: { ...config, excluded }, problems };
 }
@@ -203,7 +241,12 @@ function listSpin2(dirPath) {
     throw e;
   }
   return entries
-    .filter((e) => e.isFile() && /\.spin2$/i.test(e.name) && !/(__pre|-pre)\.spin2$/i.test(e.name))
+    .filter(
+      (e) =>
+        e.isFile() &&
+        /\.spin2$/i.test(e.name) &&
+        !/(__pre|-pre)\.spin2$/i.test(e.name)
+    )
     .map((e) => e.name)
     .sort((a, b) => {
       const x = a.toLowerCase();
@@ -237,12 +280,18 @@ function planSuite(dir, suite, files, rows, root, allowedDirectives) {
   const listed = new Set(files);
   for (const r of rows)
     if (!listed.has(r.file))
-      problems.push(`suite ${dir}: row ${r.id} owns ${r.file}, which is not in the directory`);
+      problems.push(
+        `suite ${dir}: row ${r.id} owns ${r.file}, which is not in the directory`
+      );
   for (const table of ['perFileFlag', 'skip'])
     for (const name of Object.keys(suite[table] || {}))
-      if (!listed.has(name)) problems.push(`suite ${dir}: ${table} names ${name}, which is not in the directory`);
+      if (!listed.has(name))
+        problems.push(
+          `suite ${dir}: ${table} names ${name}, which is not in the directory`
+        );
   for (const name of files)
-    if (!SPIN2_NAME.test(name)) problems.push(`suite ${dir}: ${name} is not a plain file name`);
+    if (!SPIN2_NAME.test(name))
+      problems.push(`suite ${dir}: ${name} is not a plain file name`);
 
   const expectFail = [];
   const skip = [];
@@ -259,19 +308,31 @@ function planSuite(dir, suite, files, rows, root, allowedDirectives) {
       pnutTs = row.goldSource === 'pnut-ts';
       pnutTsWhy = `fixtures.json row ${row.id} is goldSource pnut-ts`;
     } else {
-      if (suite.expectFailWhenErroutGold && fs.existsSync(path.join(dirPath, `${base}.errout.GOLD`))) {
+      if (
+        suite.expectFailWhenErroutGold &&
+        fs.existsSync(path.join(dirPath, `${base}.errout.GOLD`))
+      ) {
         fails = true;
         failWhy = 'has .errout.GOLD';
       }
       if (suite.classifyDirectives) {
-        const used = foreignDirectives(fs.readFileSync(path.join(dirPath, name), 'latin1'), allowedDirectives);
+        const used = foreignDirectives(
+          fs.readFileSync(path.join(dirPath, name), 'latin1'),
+          allowedDirectives
+        );
         if (used.length > 0) {
           pnutTs = true;
           pnutTsWhy = `goldSource pnut-ts: uses ${used.join(', ')}`;
         }
       }
     }
-    if (suite.skip && has(suite.skip, name)) skip.push({ name, why: suite.skip[name] });
+    if (CHILD_FIXTURE.test(name))
+      skip.push({
+        name,
+        why: 'child of a generated fixture, compiled through its parent'
+      });
+    else if (suite.skip && has(suite.skip, name))
+      skip.push({ name, why: suite.skip[name] });
     else if (pnutTs) skip.push({ name, why: pnutTsWhy });
     else if (fails) expectFail.push({ name, why: failWhy });
   }
@@ -286,7 +347,8 @@ function hashtableLines(table, note) {
   const keys = Object.keys(table);
   const width = Math.max(...keys.map((k) => quoted(k).length));
   const lines = (note || []).map((l) => `            # ${l}`);
-  for (const k of keys) lines.push(`            ${quoted(k).padEnd(width)} = ${quoted(table[k])}`);
+  for (const k of keys)
+    lines.push(`            ${quoted(k).padEnd(width)} = ${quoted(table[k])}`);
   return lines;
 }
 
@@ -314,7 +376,9 @@ function rulesSummary(suite, plan) {
           .join('; ')
       : '(none)';
   const counted = (list, arg) =>
-    list.length === 0 ? '(none)' : `${list.length} file(s), listed in ${arg} below`;
+    list.length === 0
+      ? '(none)'
+      : `${list.length} file(s), listed in ${arg} below`;
   return [
     'Rules:',
     `  - Default flag: ${suite.defaultFlag}`,
@@ -346,20 +410,45 @@ function render(dir, suite, plan) {
   const ups = '..\\'.repeat(dir.split('/').length + 1);
 
   // Each argument is a block of lines; every block but the last ends with a backtick.
-  const args = [[`        -PNutVersion $PNutVersion`], [`        -PNutInstallRoot $PNutInstallRoot`], [`        -PNutBinary $PNutBinary`]];
+  const args = [
+    [`        -PNutVersion $PNutVersion`],
+    [`        -PNutInstallRoot $PNutInstallRoot`],
+    [`        -PNutBinary $PNutBinary`]
+  ];
   args.push([`        -DefaultFlag ${quoted(suite.defaultFlag)}`]);
-  if (suite.produces) args.push([`        -Produces @(${suite.produces.map(quoted).join(', ')})`]);
-  if (suite.perFilePatternFlag && Object.keys(suite.perFilePatternFlag).length > 0)
-    args.push(['        -PerFilePatternFlag @{', ...hashtableLines(suite.perFilePatternFlag, suite.patternNote), '        }']);
+  if (suite.produces)
+    args.push([
+      `        -Produces @(${suite.produces.map(quoted).join(', ')})`
+    ]);
+  if (
+    suite.perFilePatternFlag &&
+    Object.keys(suite.perFilePatternFlag).length > 0
+  )
+    args.push([
+      '        -PerFilePatternFlag @{',
+      ...hashtableLines(suite.perFilePatternFlag, suite.patternNote),
+      '        }'
+    ]);
   if (suite.perFileFlag && Object.keys(suite.perFileFlag).length > 0)
-    args.push(['        -PerFileFlag @{', ...hashtableLines(suite.perFileFlag), '        }']);
-  if (plan.skip.length > 0) args.push(['        -Skip @(', ...arrayLines(plan.skip), '        )']);
+    args.push([
+      '        -PerFileFlag @{',
+      ...hashtableLines(suite.perFileFlag),
+      '        }'
+    ]);
+  if (plan.skip.length > 0)
+    args.push(['        -Skip @(', ...arrayLines(plan.skip), '        )']);
   if (plan.expectFail.length > 0)
-    args.push(['        -ExpectFail @(', ...arrayLines(plan.expectFail), '        )']);
+    args.push([
+      '        -ExpectFail @(',
+      ...arrayLines(plan.expectFail),
+      '        )'
+    ]);
   const argLines = [];
   args.forEach((block, k) => {
     const last = k === args.length - 1;
-    block.forEach((line, j) => argLines.push(!last && j === block.length - 1 ? `${line} \`` : line));
+    block.forEach((line, j) =>
+      argLines.push(!last && j === block.length - 1 ? `${line} \`` : line)
+    );
   });
 
   const body = [
@@ -396,7 +485,12 @@ function findScripts(root, rel = '') {
   for (const e of entries) {
     const child = rel === '' ? e.name : `${rel}/${e.name}`;
     if (e.isDirectory()) {
-      if (/-rebuild-v\d/.test(e.name) || e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      if (
+        /-rebuild-v\d/.test(e.name) ||
+        e.name === 'node_modules' ||
+        e.name.startsWith('.')
+      )
+        continue;
       found.push(...findScripts(root, child));
     } else if (e.isFile() && e.name === SCRIPT_NAME && rel !== '') {
       found.push(rel);
@@ -414,9 +508,13 @@ function build(root) {
   const rows = manifest(table.rows);
   for (const r of rows) {
     if (has(config.excluded, r.suite) && r.goldSource === 'pnut')
-      problems.push(`row ${r.id}: goldSource pnut in ${r.suite}, which has no Windows run (${config.excluded[r.suite]})`);
+      problems.push(
+        `row ${r.id}: goldSource pnut in ${r.suite}, which has no Windows run (${config.excluded[r.suite]})`
+      );
   }
-  const allowed = new Set((config.pnutDirectives || []).map((d) => d.toUpperCase()));
+  const allowed = new Set(
+    (config.pnutDirectives || []).map((d) => d.toUpperCase())
+  );
   const outputs = [];
   const absent = [];
   for (const [dir, suite] of Object.entries(config.suites)) {
@@ -425,13 +523,27 @@ function build(root) {
       absent.push(dir);
       continue;
     }
-    const r = planSuite(dir, suite, files, rows.filter((x) => x.suite === dir), root, allowed);
+    const r = planSuite(
+      dir,
+      suite,
+      files,
+      rows.filter((x) => x.suite === dir),
+      root,
+      allowed
+    );
     problems.push(...r.problems);
-    outputs.push({ dir, file: path.join(root, dir, SCRIPT_NAME), text: render(dir, suite, r.plan), plan: r.plan });
+    outputs.push({
+      dir,
+      file: path.join(root, dir, SCRIPT_NAME),
+      text: render(dir, suite, r.plan),
+      plan: r.plan
+    });
   }
   for (const dir of findScripts(root))
     if (!has(config.suites, dir))
-      problems.push(`ORPHAN ${dir}/${SCRIPT_NAME}: suites.json has no entry for ${dir}`);
+      problems.push(
+        `ORPHAN ${dir}/${SCRIPT_NAME}: suites.json has no entry for ${dir}`
+      );
   return { problems, outputs, absent };
 }
 
@@ -462,32 +574,45 @@ function main(argv) {
   try {
     opts = parseArgs(argv);
   } catch (e) {
-    process.stderr.write(`gen-rebuild-scripts: ${e.message}\nusage: gen-rebuild-scripts.js [--check] [--root DIR]\n`);
+    process.stderr.write(
+      `gen-rebuild-scripts: ${e.message}\nusage: gen-rebuild-scripts.js [--check] [--root DIR]\n`
+    );
     return 2;
   }
   const { problems, outputs, absent } = build(opts.root);
   for (const dir of absent)
-    process.stdout.write(`gen-rebuild-scripts: ${dir}: directory absent under ${opts.root}, passed over\n`);
+    process.stdout.write(
+      `gen-rebuild-scripts: ${dir}: directory absent under ${opts.root}, passed over\n`
+    );
 
   if (opts.check) {
     const found = [...problems];
     for (const o of outputs) {
       const have = readIfExists(o.file);
       if (have === null) found.push(`MISSING ${o.dir}/${SCRIPT_NAME}`);
-      else if (have !== o.text) found.push(`DIFFERS ${o.dir}/${SCRIPT_NAME}: not what suites.json and fixtures.json give (a hand edit or a stale script); run npm run gen-rebuild-scripts`);
+      else if (have !== o.text)
+        found.push(
+          `DIFFERS ${o.dir}/${SCRIPT_NAME}: not what suites.json and fixtures.json give (a hand edit or a stale script); run npm run gen-rebuild-scripts`
+        );
     }
     if (found.length > 0) {
       process.stderr.write(found.map((p) => `${p}\n`).join(''));
-      process.stderr.write(`gen-rebuild-scripts --check: ${found.length} problem(s)\n`);
+      process.stderr.write(
+        `gen-rebuild-scripts --check: ${found.length} problem(s)\n`
+      );
       return 1;
     }
-    process.stdout.write(`gen-rebuild-scripts --check: ${outputs.length} script(s) clean under ${opts.root}\n`);
+    process.stdout.write(
+      `gen-rebuild-scripts --check: ${outputs.length} script(s) clean under ${opts.root}\n`
+    );
     return 0;
   }
 
   if (problems.length > 0) {
     process.stderr.write(problems.map((p) => `${p}\n`).join(''));
-    process.stderr.write('gen-rebuild-scripts: problems found; nothing written\n');
+    process.stderr.write(
+      'gen-rebuild-scripts: problems found; nothing written\n'
+    );
     return 1;
   }
   let written = 0;

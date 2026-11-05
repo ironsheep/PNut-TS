@@ -31,7 +31,7 @@
  *
  * row field      type            req.   meaning / consumer
  * -------------  --------------  -----  ----------------------------------------------
- * id             string          yes    [a-z0-9_]+, unique. Names gen_<id>.spin2.
+ * id             string          yes    [a-z0-9_]+ without "__", unique. Names gen_<id>.spin2.
  * suite          string          yes    a key of SUITES below; the written file lands
  *                                       in TEST/<suite>/. Consumers: the jest suite of
  *                                       that directory, rebuild-gold.ps1 generation.
@@ -44,7 +44,10 @@
  *                                       kept and never regenerated on Windows.
  * flag           none|debug|     no     the compile flag class the source is written
  *                flash                  for (default none). Must equal the suite's own
- *                                       default flag class; there is no per-row flag.
+ *                                       default flag class, except that EXCEPT-tests
+ *                                       also takes debug: such a row is written as
+ *                                       debug_gen_<id>.spin2, a name its test compiles
+ *                                       with -d.
  * source         string |        yes    the file body. A string is used as is; an array
  *                string[] |             of lines is joined with \n plus a final \n; an
  *                {template:[...]}       object holds a template (below).
@@ -68,6 +71,15 @@
  *                                       the entry repeats count times and ${i}
  *                                       (from..from+count-1, default from 0) and ${n}
  *                                       (= count) are available in name and template.
+ *                                       An OBJ filename cannot contain "/", so a child
+ *                                       object must sit beside the main file: with
+ *                                       "sibling": true the entry is written as
+ *                                       <suite>/gen_<id>__<name> (the double underscore
+ *                                       marks a child: the EXCEPT test and the Windows
+ *                                       script skip such a file, since it is compiled
+ *                                       through its parent); the main file names a
+ *                                       .spin2 child without its extension, a data file
+ *                                       with it. An id therefore never contains "__".
  * note           string          no     free text, not read by any tool.
  *
  * Template. {"template": [ part... ]}; the output is the parts concatenated.
@@ -185,7 +197,10 @@ const SUITES = {
     tsFlags:
       '--regression element (no -d: only debug_/isp_/coverage_debug_ names get -d)',
     discovery: NON_DEBUG_GLOB,
-    kinds: ['accept', 'reject']
+    kinds: ['accept', 'reject'],
+    // Its test already compiles debug_* names with -d; a row with flag "debug"
+    // is written as debug_gen_<id>.spin2 and so falls in that group.
+    extraFlags: ['debug']
   },
   // Compares .pre, .lst and .bin; its test passes -i and --regression preproc.
   // It has no Windows run (scripts/gold/suites.json "excluded"), so it carries
@@ -228,7 +243,7 @@ const ROW_KEYS = [
   'note'
 ];
 const REQUIRED_KEYS = ['id', 'suite', 'kind', 'goldSource', 'source', 'covers'];
-const AUX_KEYS = ['name', 'source', 'count', 'from'];
+const AUX_KEYS = ['name', 'source', 'count', 'from', 'sibling'];
 const TABLE_KEYS = ['schema', 'doc', 'rows'];
 
 class RowError extends Error {}
@@ -383,8 +398,14 @@ function resolveRow(row, index) {
   for (const key of REQUIRED_KEYS) {
     if (!has(row, key)) throw new RowError(`${where}: missing field "${key}"`);
   }
-  if (typeof row.id !== 'string' || !/^[a-z0-9][a-z0-9_]*$/.test(row.id))
-    throw new RowError(`${where}: id must match [a-z0-9][a-z0-9_]*`);
+  if (
+    typeof row.id !== 'string' ||
+    !/^[a-z0-9][a-z0-9_]*$/.test(row.id) ||
+    row.id.includes('__')
+  )
+    throw new RowError(
+      `${where}: id must match [a-z0-9][a-z0-9_]* and not contain "__"`
+    );
   if (typeof row.covers !== 'string' || oneLine(row.covers) === '')
     throw new RowError(
       `${where}: covers is empty; say which src line or message the row exists for`
@@ -405,7 +426,7 @@ function resolveRow(row, index) {
   const flag = has(row, 'flag') ? row.flag : 'none';
   if (!['none', 'debug', 'flash'].includes(flag))
     throw new RowError(`${where}: flag must be none, debug or flash`);
-  if (flag !== suite.flag) {
+  if (flag !== suite.flag && !(suite.extraFlags || []).includes(flag)) {
     throw new RowError(
       `${where}: flag "${flag}" does not fit suite ${row.suite}, whose default flag class is "${suite.flag}"; no per-row flag override exists`
     );
@@ -456,13 +477,15 @@ function resolveRow(row, index) {
     rel = row.file;
     text = body;
   } else {
-    rel = `gen_${row.id}.spin2`;
+    rel =
+      flag !== suite.flag ? `debug_gen_${row.id}.spin2` : `gen_${row.id}.spin2`;
     const h = withHeader(body, row);
     text = h.text;
     headerAfterLine = h.headerAfterLine;
   }
   const base = rel.replace(/\.spin2$/, '');
   const outputs = [{ rel, text, adopted }];
+  const siblingBases = [];
 
   if (has(row, 'aux')) {
     if (adopted)
@@ -492,11 +515,21 @@ function resolveRow(row, index) {
             `${w}: "${name}" is not a safe file name (no path, no .GOLD)`
           );
         const auxText = expandSource(entry.source, vars, w);
-        outputs.push({
-          rel: `gen_${row.id}.d/${name}`,
-          text: auxText,
-          adopted: false
-        });
+        if (entry.sibling === true) {
+          outputs.push({
+            rel: `gen_${row.id}__${name}`,
+            text: auxText,
+            adopted: false
+          });
+          if (/\.spin2$/.test(name))
+            siblingBases.push(`gen_${row.id}__${name}`.replace(/\.spin2$/, ''));
+        } else {
+          outputs.push({
+            rel: `gen_${row.id}.d/${name}`,
+            text: auxText,
+            adopted: false
+          });
+        }
       }
     });
   }
@@ -514,6 +547,7 @@ function resolveRow(row, index) {
     file: rel,
     adopted,
     outputs,
+    siblingBases,
     expectFileLine,
     golds: row.kind === 'reject' ? ['errout'] : suite.golds
   };
@@ -582,7 +616,7 @@ function manifest(rows) {
     expectLine: has(r.row, 'expectLine') ? r.row.expectLine : null,
     expectFileLine: r.expectFileLine,
     covers: oneLine(r.row.covers),
-    aux: r.outputs.filter((o) => o.rel.includes('/')).map((o) => o.rel)
+    aux: r.outputs.slice(1).map((o) => o.rel)
   }));
 }
 
@@ -610,6 +644,8 @@ function checkTree(rows, root) {
   const ownedBases = new Set();
   for (const r of rows) {
     ownedBases.add(`${r.row.suite}/${r.base}`);
+    for (const sibling of r.siblingBases)
+      ownedBases.add(`${r.row.suite}/${sibling}`);
     for (const out of r.outputs) {
       ownedFiles.add(`${r.row.suite}/${out.rel}`);
       const have = readIfExists(path.join(root, r.row.suite, out.rel));
@@ -641,7 +677,7 @@ function checkTree(rows, root) {
       const rel = `${suiteName}/${entry.name}`;
       if (
         entry.isFile() &&
-        /^gen_.*\.spin2$/.test(entry.name) &&
+        /^(debug_)?gen_.*\.spin2$/.test(entry.name) &&
         !/(__pre|-pre)\.spin2$/.test(entry.name)
       ) {
         if (!ownedFiles.has(rel))
@@ -651,9 +687,16 @@ function checkTree(rows, root) {
           if (!ownedFiles.has(`${rel}/${child.name}`))
             problems.push(`ORPHAN ${rel}/${child.name}: no row owns this file`);
         }
+      } else if (
+        entry.isFile() &&
+        /^gen_.+__.+/.test(entry.name) &&
+        !/\.GOLD$/i.test(entry.name)
+      ) {
+        if (!ownedFiles.has(rel))
+          problems.push(`ORPHAN ${rel}: no row owns this child file`);
       } else if (entry.isFile()) {
         const g = new RegExp(
-          `^(gen_.+)\\.(${GOLD_EXTS.join('|')})\\.GOLD$`
+          `^((?:debug_)?gen_.+)\\.(${GOLD_EXTS.join('|')})\\.GOLD$`
         ).exec(entry.name);
         if (g !== null && !ownedBases.has(`${suiteName}/${g[1]}`))
           problems.push(`ORPHAN ${rel}: no row owns this GOLD`);

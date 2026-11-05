@@ -59,6 +59,8 @@ describe('PNut_ts detects .spin2 exceptions w/debug() correctly', () => {
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
+  // children of generated fixtures (gen_<id>__<name>) are compiled through their parent
+  files = files.filter((f) => !/^(debug_)?gen_.*__/.test(path.basename(f)));
   if (files.length > 1) {
     files.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }
@@ -261,6 +263,8 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
+  // children of generated fixtures (gen_<id>__<name>) are compiled through their parent
+  files = files.filter((f) => !/^(debug_)?gen_.*__/.test(path.basename(f)));
   if (files.length > 1) {
     files.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   }
