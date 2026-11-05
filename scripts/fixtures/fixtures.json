@@ -3528,6 +3528,194 @@
       "note": "The 4,096 limit itself is not reachable through an import: each imported definition also sits in the child's 64 KB PUB/CON list (pubcon_list_limit $10000, p2com.asm 62), so about 2,000 is the most; 1,000 is well inside it. The 4,096 own-definition limit is acc_struct_defs_max. Unconfirmed until GOLD.",
       "source": ["{Spin2_v52}", "OBJ", "  c1 : \"gen_acc_obj_structs_imported_1000__c1\"", "PUB main()", "  return"],
       "aux": [{ "name": "c1.spin2", "sibling": true, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1000, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }]
+    },
+    {
+      "id": "cor_spin_quit_next_levels",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts ci_next_quit: QUIT 1 out of a plain REPEAT, NEXT 1 out of a counted REPEAT and out of a REPEAT FROM loop (level skipping and the pop count of a count loop)",
+      "note": "Unconfirmed until GOLD; the level operand is the v52a ci_next_quit form.",
+      "source": ["{Spin2_v55}", "PUB main() | i, j", "  repeat", "    repeat", "      quit 1", "  repeat 3", "    repeat 2", "      next 1", "  repeat i from 0 to 3", "    repeat j from 0 to 3", "      next 1"]
+    },
+    {
+      "id": "cor_spin_ptr_postdec_index",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts checkVariable: a pointer variable indexed by post-decrement, a constant and an expression (pl[--], pl[3], pl[i + 1]); spin2Parser.ts P2List: the pointer VAR symbol type in the listing",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "VAR", "  ^long pl", "PUB main() | i", "  i := pl[--]", "  i := pl[3]", "  i := pl[i + 1]"]
+    },
+    {
+      "id": "cor_spin_case_fast_at_eof",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts blockCaseFast: a CASE_FAST block that is the last construct before the end of the file",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "PUB main() | i", "  fastc(i)", "PRI fastc(x)", "  case_fast x", "    1: x := 2", "    other: x := 3"]
+    },
+    {
+      "id": "cor_spin_register_address_constant",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts getConstant: #PA, a register address used as a constant in a method",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "PUB main() | i", "  i := #PA", "DAT", "  org", "lbl nop"]
+    },
+    {
+      "id": "cor_spin_method_pointer_in_struct",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts getMethodPointerVariable, scanToRightBracket, compileParameter: a method pointer held in a struct LONG member (called as a statement, in an expression, with multiple results and as a parameter) and a nested bracket in a local array size",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sTri(sPt sides[3])", "VAR", "  sPt vp", "PUB main() | i, j, a[OFFSETOF(sTri.sides[1]) / 4]", "  vp.x := @two", "  i := vp.x(3):1", "  vp.x(3)", "  i, j := vp.x(1):2", "  take(vp.x(1):2)", "  take(two(1))", "PRI two(a) : r, s", "  return a, a", "PRI take(a, b)"]
+    },
+    {
+      "id": "cor_spin_struct_nameless_index",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT indexed by its own index (one[3].ready, vio[1][i].mode, one[i])",
+      "note": "Unconfirmed until GOLD; the nameless single-BWL STRUCT is v54.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  sIo vio[4]", "  sIo one", "PUB main() | i", "  i := vio[1][2].ready", "  i := vio[1][i].mode", "  i := one[3].ready", "  i := one[i]"]
+    },
+    {
+      "id": "cor_spin_struct_bitfield_runtime",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime .[expr] bitfield after a member that already carries a bitfield (vb.flags.[3], vb.flags.[i..0]) and a STRUCT instance held in DAT used from Spin",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sBF(LONG flags.ready[0].mode[3..2], WORD w)", "VAR", "  sIo vio[4]", "  sBF vb", "DAT", "        orgh", "dpt     sPt", "PUB main() | i", "  i := vio[i].ready", "  i := vio[2].mode", "  i := vb.flags.[3]", "  i := vb.flags.[i..0]", "  dpt.x := 1", "  i := dpt.y"]
+    },
+    {
+      "id": "cor_spin_pointer_step_sizes",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compileVariable, checkVariable: pre and post increment and decrement of BYTE, WORD and struct pointers, a size override with an index on a LONG pointer, and a struct pointer whose STRUCT has bitfields",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  byte buf[64]", "  sIo vio[4]", "PUB main() | i", "  ptrs(@i, @buf, @buf, @vio)", "PRI ptrs(^long pLong, ^byte pByte, ^word pWord, ^sIo pIo) : r", "  r := pByte[++] + [--]pWord + pByte[--] + [++]pByte + pWord[++]", "  r := pLong.byte[2]", "  pLong.word[1] := 3", "  r := pLong.long[1]", "  r := pIo.ready", "  r := pIo[++].mode", "  r := [++]pIo.mode", "  r := [--]pIo.ready", "  r := pIo[--].ready"]
+    },
+    {
+      "id": "cor_con_enum_forward_start",
+      "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_con_blocks: an enumeration whose start value is defined after it, so the CON pass runs again",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  #x_start, e1, e2", "  x_start = 3", "PUB main() | i", "  i := e2"]
+    },
+    {
+      "id": "cor_con_float_corners",
+      "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/utils/pnutFloat.ts fp_pack, fp_add, fp_float, fp_rt, get_float: a denormal result, an addition with an exponent gap over 24, float(0), float(-5), round and trunc at .3 and .5, round(-2.5), a 13-digit literal and a denormal quotient",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  a = 1.0e10 +. 1.0", "  b = 1.0e-30 *. 1.0e-10", "  c = float(0)", "  d = float(-5)", "  e = round(0.3)", "  f = round(0.5)", "  g = trunc(0.5)", "  h = round(-2.5)", "  i = 1234567890123.0", "  j = 1.0e-30 /. 1.0e10", "PUB main() | x", "  x := a"]
+    },
+    {
+      "id": "cor_dat_offsetof_member",
+      "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts getConstant: OFFSETOF(struct.member) as a DAT constant",
+      "note": "Unconfirmed until GOLD; OFFSETOF is v53.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "DAT", "        long OFFSETOF(sPt.y)"]
+    },
+    {
+      "id": "cor_dat_file_after_org",
+      "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_dat_blocks: FILE after ORG, so the cog origin advances by the file length",
+      "note": "Unconfirmed until GOLD; the file loop is p2com.asm @@file, which enters bytes in either mode.",
+      "source": ["{Spin2_v55}", "DAT", "  org", "  file \"gen_cor_dat_file_after_org__data.bin\""],
+      "aux": [{ "name": "data.bin", "sibling": true, "source": "abcd" }]
+    },
+    {
+      "id": "cor_dat_rcslow_autoclk",
+      "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spin2Parser.ts P2InsertClockSetter, checkClockSetterInsert: a PASM-only program with _RCSLOW and _AUTOCLK, so the clock setter is inserted ahead of the code",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  _RCSLOW = 1", "  _AUTOCLK = 1", "DAT", "  org", "  nop", "  jmp #$"]
+    },
+    {
+      "id": "cor_dbg_disable",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spinResolver.ts determine_debug_enables: DEBUG_DISABLE set under -d, so the DEBUG statements are dropped",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  DEBUG_DISABLE = 1", "PUB main()", "  debug(\"dropped\")"]
+    },
+    {
+      "id": "cor_dbg_config_symbols",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spin2Parser.ts P2InsertDebugger: the DEBUG_COGS, DEBUG_COGINIT, DEBUG_MAIN, DEBUG_DELAY and DEBUG_TIMESTAMP configuration symbols patched into the debugger image",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "  DEBUG_COGS = %0000_1111", "  DEBUG_COGINIT = 1", "  DEBUG_MAIN = 1", "  DEBUG_DELAY = 100", "  DEBUG_TIMESTAMP = 1", "PUB main()", "  debug(\"hello\")"]
+    },
+    {
+      "id": "cor_dbg_delay_clamp",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spin2Parser.ts P2InsertDebugger: DEBUG_DELAY large enough that the patched delay is clamped to $FFFFFFFF",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "  DEBUG_DELAY = 100_000_000", "PUB main()", "  debug(\"hello\")"]
+    },
+    {
+      "id": "cor_dbg_nested_paren_text",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spinResolver.ts debugTickString: parentheses nested inside the backtick text of a DEBUG statement",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main() | x, y", "  x := 5", "  y := 6", "  debug(`txt (nested paren) `uhex(x) \" \"  `uhex(y))"]
+    },
+    {
+      "id": "cor_flash_tiny_image",
+      "suite": "FLASH-tests", "kind": "accept", "goldSource": "pnut", "flag": "flash",
+      "covers": "src/classes/spin2Parser.ts P2MakeFlashFileImage: -F on a PASM image shorter than $400 bytes whose length is not a multiple of four, so the image is padded",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "DAT", "  org", "  nop", "  byte 1,2,3"]
+    },
+    {
+      "id": "cor_var_struct_defs_40",
+      "suite": "VAR-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/objectStructures.ts ensureCapacity: more than 1024 bytes of STRUCT definitions (40 definitions of four longs), so the definition buffer grows once",
+      "note": "Unconfirmed until GOLD.",
+      "source": { "template": ["{Spin2_v55}\nCON\n", { "repeat": 40, "from": 1, "text": "  STRUCT st${i:2}(long a, long b, long c, long d)\n" }, "VAR\n  st01 v1\n  st40 v40\nPUB main() | i\n  i := v1.a + v40.d\n"] }
+    },
+    {
+      "id": "cor_dbg_delay_fractional_clock",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spin2Parser.ts P2InsertDebugger: DEBUG_DELAY with a clock frequency that is not a multiple of 1000, so the patched delay depends on dividing the clock by 1000 as an integer",
+      "note": "PNut uses integer div (p2com.asm 7316-7320: mov eax,[clkfreq]; mov ecx,1000; div ecx; mul ebx), giving 98,760 x 1000 = 98,760,000 here; PNut-TS divides as a float and patches 98,760,008. The GOLD decides.",
+      "source": ["{Spin2_v55}", "CON", "  _XTLFREQ = 12_345_001", "  _CLKFREQ = 98_760_008", "  DEBUG_DELAY = 1000", "PUB main()", "  debug(\"hello\")"]
+    },
+    {
+      "id": "err_c_register_in_array_size",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts getConstant: \"Register is not allowed here\" (a cog register as a VAR array size)",
+      "source": ["VAR", "  long v[PA]", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_c_fpo_exp_digits",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 2,
+      "covers": "src/utils/pnutFloat.ts get_float: a float constant whose exponent digits overflow, \"Floating-point constant must be within +/- 3.4e+38\"",
+      "source": ["CON", "  a = 1.0e999"]
+    },
+    {
+      "id": "err_c_fpo_scaled_product",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 2,
+      "covers": "src/utils/pnutFloat.ts get_float: a float constant whose mantissa scaled by its power of ten overflows, \"Floating-point constant must be within +/- 3.4e+38\"",
+      "source": ["CON", "  a = 9.0e38"]
+    },
+    {
+      "id": "cor_var_header_at_eof",
+      "suite": "VAR-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_var_blocks: a VAR block header that is the last line of the file, so the block ends at the end of file",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "PUB main()", "  return", "VAR"]
+    },
+    {
+      "id": "cor_obj_include_sibling",
+      "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut-ts",
+      "covers": "src/utils/files.ts locateIncludeFile: #include of a .spin2 file found beside the including file",
+      "note": "#include is a PNut-TS preprocessor feature, so the GOLD is PNut-TS's own. The included file is a sibling, which the OBJ test does not compile on its own.",
+      "source": ["{Spin2_v55}", "#include \"gen_cor_obj_include_sibling__incl.spin2\"", "PUB main() | x", "  x := INCVAL"],
+      "aux": [{ "name": "incl.spin2", "sibling": true, "source": ["CON", "  INCVAL = 5"] }]
+    },
+    {
+      "id": "cor_enc_utf16le_bom",
+      "suite": "ENCODING-tests", "kind": "accept", "goldSource": "pnut-ts", "encoding": "utf16le-bom",
+      "covers": "src/utils/files.ts loadFileAsString: a source file saved as UTF-16LE behind a byte-order mark",
+      "note": "PNut-TS decodes the byte-order mark; PNut cannot compile this file, so the GOLD is PNut-TS's own.",
+      "source": ["{Spin2_v55}", "PUB main()", "  return"]
+    },
+    {
+      "id": "cor_pre_elseifndef_doc_comment",
+      "suite": "PREPROC-tests", "kind": "accept", "goldSource": "pnut-ts",
+      "covers": "src/classes/spinDocument.ts isPreprocessorDirective, blankNonDocComments: an #elseifndef line that is kept, and a brace comment followed by a doc comment that closes on the same line and on a later line",
+      "note": "PNut-TS preprocessor feature; no PNut GOLD exists. The #pragma exportdef lines only change behaviour with -D or -U, which this suite does not pass.",
+      "source": ["{Spin2_v55}", "#pragma exportdef FOO", "#pragma exportdef BAR", "#define GUARD_A 1", "#ifndef GUARD_A", "#define SIDE_ONE 1", "#elseifndef GUARD_B", "#define SIDE_TWO 2", "#endif", "{ lead }{{ inline doc }}", "{ lead }{{ doc opens here", " doc closes here }}", "PUB main() | i", "  i := 1"]
     }
   ]
 }

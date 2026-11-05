@@ -64,6 +64,9 @@
  *                                       no header and must equal `source` byte for
  *                                       byte; it is checked, never renamed or rewritten
  *                                       under TEST/. GOLD names follow its name.
+ * encoding       utf16le-bom     no     write the main file (header included) as UTF-16LE
+ *                                       behind a byte-order mark instead of UTF-8. Aux
+ *                                       files stay UTF-8.
  * aux            object[]        no     extra files the main file refers to, written to
  *                                       TEST/<suite>/gen_<id>.d/<name> (a directory the
  *                                       jest globs do not enter). Each entry:
@@ -239,9 +242,11 @@ const ROW_KEYS = [
   'expectLine',
   'covers',
   'file',
+  'encoding',
   'aux',
   'note'
 ];
+const ENCODINGS = ['utf16le-bom'];
 const REQUIRED_KEYS = ['id', 'suite', 'kind', 'goldSource', 'source', 'covers'];
 const AUX_KEYS = ['name', 'source', 'count', 'from', 'sibling'];
 const TABLE_KEYS = ['schema', 'doc', 'rows'];
@@ -483,8 +488,19 @@ function resolveRow(row, index) {
     text = h.text;
     headerAfterLine = h.headerAfterLine;
   }
+  if (has(row, 'encoding') && !ENCODINGS.includes(row.encoding))
+    throw new RowError(
+      `${where}: encoding must be one of ${ENCODINGS.join(', ')}`
+    );
   const base = rel.replace(/\.spin2$/, '');
-  const outputs = [{ rel, text, adopted }];
+  const outputs = [
+    {
+      rel,
+      text,
+      adopted,
+      ...(has(row, 'encoding') ? { encoding: row.encoding } : {})
+    }
+  ];
   const siblingBases = [];
 
   if (has(row, 'aux')) {
@@ -629,6 +645,16 @@ function readIfExists(file) {
   }
 }
 
+// The bytes a generated file holds: UTF-8 unless the row names an encoding.
+function outputBytes(out) {
+  if (out.encoding === 'utf16le-bom')
+    return Buffer.concat([
+      Buffer.from([0xff, 0xfe]),
+      Buffer.from(out.text, 'utf16le')
+    ]);
+  return Buffer.from(out.text, 'utf8');
+}
+
 function listDir(dir) {
   try {
     return fs.readdirSync(dir, { withFileTypes: true });
@@ -654,7 +680,7 @@ function checkTree(rows, root) {
         problems.push(
           `MISSING ${r.row.suite}/${out.rel}: ${label} of row ${r.row.id} does not exist`
         );
-      else if (!have.equals(Buffer.from(out.text, 'utf8'))) {
+      else if (!have.equals(outputBytes(out))) {
         problems.push(
           `DIFFERS ${r.row.suite}/${out.rel}: ${label} does not match row ${r.row.id} (drift or a hand edit)`
         );
@@ -714,7 +740,7 @@ function writeTree(rows, root) {
   for (const r of rows) {
     for (const out of r.outputs) {
       const target = path.join(root, r.row.suite, out.rel);
-      const buf = Buffer.from(out.text, 'utf8');
+      const buf = outputBytes(out);
       const have = readIfExists(target);
       if (have !== null && have.equals(buf)) {
         unchanged++;
