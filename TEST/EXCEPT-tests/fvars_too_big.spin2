@@ -1,0 +1,6 @@
+'' FVARS holds -$1000_0000..$0FFF_FFFF; one past the positive end is an error.
+'' (The legal values on both sides are in DAT-PASM-tests/fvar_fvars_encoding.spin2.)
+DAT
+                org
+                byte    FVARS $0FFF_FFFF
+                byte    FVARS $1000_0000

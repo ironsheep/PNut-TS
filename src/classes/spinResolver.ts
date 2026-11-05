@@ -1483,7 +1483,9 @@ export class SpinResolver {
                 const isSigned = this.currElement.value == 1n;
                 const fvarResult = this.getValue(eMode.BM_OperandIntOnly, eResolve.BR_Must);
                 if (isSigned) {
-                  if ((BigInt(fvarResult.value) & BigInt(0xf0000000)) != BigInt(0xf0000000)) {
+                  // PNut: fvars must have four msb's same (all 0 or all 1) — i.e. -$1000_0000..$0FFF_FFFF
+                  const topNibble: bigint = (BigInt(fvarResult.value) >> 28n) & 0xfn;
+                  if (topNibble != 0n && topNibble != 0xfn) {
                     // [error_fvar]
                     throw new Error('FVAR/FVARS data is too big (m350)');
                   }
@@ -4495,37 +4497,60 @@ export class SpinResolver {
   }
 
   private compileRfvarsDat(value: bigint) {
-    // generates 1-4 bytes (signed)
-    const masks = [
-      { mask: BigInt(0x1fffffc0), bits: BigInt(0x7f) },
-      { mask: BigInt(0x1fffe000), bits: BigInt(0x3fff) },
-      { mask: BigInt(0x1ff00000), bits: BigInt(0x1fffff) }
-    ];
-    let needLastCompile: boolean = true;
-    for (let i = 0; i < masks.length; i++) {
-      if ((value & masks[i].mask) == 0n || (value & masks[i].mask) == masks[i].mask) {
-        this.compileRfvarDat(value & masks[i].bits);
-        needLastCompile = false;
-        break;
-      }
-    }
-    if (needLastCompile) {
-      this.compileRfvarDat(value & BigInt(0x1fffffff)); // 29 bits
+    // DAT FVARS: 1-4 bytes (signed), via the one RFVARS encoder
+    for (const byteValue of SpinResolver.encodeRfvars(value)) {
+      this.enterDataByte(BigInt(byteValue));
     }
   }
 
   private compileRfvarDat(value: bigint) {
-    // generates 1-4 bytes (unsigned)
-    const masks = [BigInt(0x1fffff80), BigInt(0x1fffc000), BigInt(0x1fe00000)];
-    for (let i = 0; i < masks.length; i++) {
-      if (value & masks[i]) {
-        this.enterDataByte(BigInt(((Number(value) >> (7 * i)) & 0x7f) | 0x80));
-      } else {
-        this.enterDataByte(BigInt((Number(value) >> (7 * i)) & 0x7f));
-        return;
-      }
+    // DAT FVAR: 1-4 bytes (unsigned), via the one RFVAR encoder
+    for (const byteValue of SpinResolver.encodeRfvar(value)) {
+      this.enterDataByte(BigInt(byteValue));
     }
-    this.enterDataByte(BigInt((Number(value) >> 21) & 0xff));
+  }
+
+  // RFVARS encoding, coded per PNut compile_rfvars (p2com.asm): the value is
+  //   reduced to 29 bits and sign-extended, then emitted in the shortest of
+  //   1/2/3/4 bytes whose field (7/14/21/29 bits) holds it as a SIGNED value.
+  //   Bytes are LSB-first; bit 7 set = another byte follows; byte 4 carries 8 bits.
+  private static encodeRfvars(value: bigint): number[] {
+    let workingValue: bigint = value & BigInt(0xffffffff);
+    if (value & BigInt(0x10000000)) {
+      workingValue |= BigInt(0xf0000000);
+    } else {
+      workingValue &= BigInt(0x0fffffff);
+    }
+    let byteCount: number;
+    if (workingValue >= BigInt(0xffffffc0) || workingValue <= BigInt(0x0000003f)) {
+      byteCount = 1;
+    } else if (workingValue >= BigInt(0xffffe000) || workingValue <= BigInt(0x00001fff)) {
+      byteCount = 2;
+    } else if (workingValue >= BigInt(0xfff00000) || workingValue <= BigInt(0x000fffff)) {
+      byteCount = 3;
+    } else {
+      byteCount = 4;
+    }
+    return SpinResolver.rfvarBytes(Number(workingValue & BigInt(0x1fffffff)), byteCount);
+  }
+
+  // RFVAR encoding, coded per PNut compile_rfvar (p2com.asm): the value is
+  //   reduced to 29 bits and emitted in the shortest of 1/2/3/4 bytes whose
+  //   field (7/14/21/29 bits) holds it as an UNSIGNED value.
+  private static encodeRfvar(value: bigint): number[] {
+    const value29: number = Number(value & BigInt(0x1fffffff));
+    const byteCount: number = value29 < 0x80 ? 1 : value29 < 0x4000 ? 2 : value29 < 0x200000 ? 3 : 4;
+    return SpinResolver.rfvarBytes(value29, byteCount);
+  }
+
+  private static rfvarBytes(value29: number, byteCount: number): number[] {
+    const bytes: number[] = [];
+    for (let i = 0; i < byteCount - 1; i++) {
+      bytes.push(((value29 >>> (7 * i)) & 0x7f) | 0x80);
+    }
+    // final byte: 7 bits with bit 7 clear, except a 4th byte which carries 8 bits
+    bytes.push(byteCount == 4 ? (value29 >>> 21) & 0xff : (value29 >>> (7 * (byteCount - 1))) & 0x7f);
+    return bytes;
   }
 
   private enterDatSymbol() {
@@ -9841,48 +9866,17 @@ private checkDec(): boolean {
   }
 
   private compileRfvars(value: bigint) {
-    // coded per PNut compile_rfvars:
-    let workingValue: bigint = value & BigInt(0xffffffff);
-    if (value & BigInt(0x10000000)) {
-      workingValue |= BigInt(0xf0000000);
-    } else {
-      workingValue &= BigInt(0x0fffffff);
-    }
-    if (workingValue >= BigInt(0xffffffc0) || workingValue <= BigInt(0x0000003f)) {
-      // 1 BYTE value
-      this.objImage.appendByte(Number(workingValue & BigInt(0x7f)));
-    } else if (workingValue >= BigInt(0xffffe000) || workingValue <= BigInt(0x00001fff)) {
-      // 2 BYTE value
-      this.objImage.appendByte(Number(workingValue | BigInt(0x80)));
-      this.objImage.appendByte(Number((workingValue >> 7n) & BigInt(0x7f)));
-    } else if (workingValue >= BigInt(0xfff00000) || workingValue <= BigInt(0x000fffff)) {
-      // 3 BYTE value
-      this.objImage.appendByte(Number(workingValue | BigInt(0x80)));
-      this.objImage.appendByte(Number((workingValue >> 7n) | BigInt(0x80)));
-      this.objImage.appendByte(Number((workingValue >> 14n) & BigInt(0x7f)));
-    } else {
-      // 4 BYTE value
-      // NOTE: unable to figure out, so far, how to coverage test this
-      this.objImage.appendByte(Number(workingValue | BigInt(0x80)));
-      this.objImage.appendByte(Number((workingValue >> 7n) | BigInt(0x80)));
-      this.objImage.appendByte(Number((workingValue >> 14n) | BigInt(0x80)));
-      this.objImage.appendByte(Number(workingValue >> 21n));
+    // bytecode RFVARS operand: 1-4 bytes (signed), via the one RFVARS encoder
+    for (const byteValue of SpinResolver.encodeRfvars(value)) {
+      this.objImage.appendByte(byteValue);
     }
   }
 
   private compileRfvar(value: bigint) {
-    // generates 1-4 bytes (unsigned)
-    const masks = [BigInt(0x1fffff80), BigInt(0x1fffc000), BigInt(0x1fe00000)];
-    for (let i = 0; i < masks.length; i++) {
-      if (value & masks[i]) {
-        this.objImage.appendByte(((Number(value) >> (7 * i)) & 0x7f) | 0x80);
-      } else {
-        this.objImage.appendByte((Number(value) >> (7 * i)) & 0x7f);
-        return;
-      }
+    // bytecode RFVAR operand: 1-4 bytes (unsigned), via the one RFVAR encoder
+    for (const byteValue of SpinResolver.encodeRfvar(value)) {
+      this.objImage.appendByte(byteValue);
     }
-    // NOTE: unable to figure out, so far, how to coverage test this
-    this.objImage.appendByte((Number(value) >> 21) & 0xff);
   }
 
   private compileIndexCheckCon(): iValueReturn {
