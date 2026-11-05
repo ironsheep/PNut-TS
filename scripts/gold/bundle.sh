@@ -152,7 +152,7 @@ for f in "${DRY_RUN_FILES[@]}"; do
         exit 1
     fi
     if ! sed -n '/-ExpectFail @(/,/^        )/p' TEST/EXCEPT-tests/rebuild-gold.ps1 \
-         | grep -qx "            \"$f\""; then
+         | grep -x "            \"$f\"" > /dev/null; then
         echo "ERROR: dry-run fixture $f is not in TEST/EXCEPT-tests/rebuild-gold.ps1 -ExpectFail" >&2
         exit 1
     fi
@@ -254,6 +254,43 @@ param(
 
 $all = Join-Path $PSScriptRoot "scripts\gold\rebuild-gold-all.ps1"
 $dryRun = @(@DRY_RUN_FILES@)
+
+# ---- Step 0: the per-compile timeout, checked on a throwaway copy ---------
+# A stub compiler that never finishes must be recorded TIMED-OUT, and its whole
+# process tree killed. Runs in %TEMP%, so nothing in this folder is touched
+# except the one-line result file. Its result is reported, never blocking.
+$stubRoot = Join-Path $env:TEMP ("pnutts-timeout-check-" + [guid]::NewGuid().ToString("N"))
+$stubSuite = Join-Path $stubRoot "TEST\EXCEPT-tests"
+$timeoutResult = Join-Path $PSScriptRoot "TEST\timeout-check.txt"
+try {
+    New-Item -ItemType Directory -Force -Path $stubSuite | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $stubRoot "scripts\gold") | Out-Null
+    Copy-Item -Path (Join-Path $PSScriptRoot "scripts\gold\*.ps1") -Destination (Join-Path $stubRoot "scripts\gold")
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "TEST\EXCEPT-tests\rebuild-gold.ps1") -Destination $stubSuite
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "TEST\EXCEPT-tests\fvars_too_big.spin2") -Destination $stubSuite
+    $stub = Join-Path $stubRoot "hang.bat"
+    Set-Content -LiteralPath $stub -Value "@ping -n 600 127.0.0.1 >nul" -Encoding ASCII
+    $stubSummary = Join-Path $stubRoot "summary.txt"
+    Write-Output "STEP 0: timeout check with a stub compiler that never finishes (about 15 s)"
+    & (Join-Path $stubRoot "scripts\gold\rebuild-gold-all.ps1") -RepoRoot $stubRoot -PNutBinary $stub `
+        -Suites EXCEPT-tests -Files @("fvars_too_big.spin2") -CompileTimeoutSeconds 5 `
+        -SummaryPath $stubSummary | Out-Null
+    $timedOut = $false
+    if (Test-Path -LiteralPath $stubSummary) {
+        $timedOut = [bool]((Get-Content -LiteralPath $stubSummary) -match "TIMED-OUT")
+    }
+    $leftover = @(Get-CimInstance Win32_Process -Filter "Name='PING.EXE'" |
+        Where-Object { $_.CommandLine -like "*-n 600 127.0.0.1*" })
+    foreach ($p in $leftover) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
+    $line = "timeout check: recorded TIMED-OUT = $timedOut; stub processes left running = $($leftover.Count)"
+    if ($timedOut -and $leftover.Count -eq 0) { $line = "PASS $line" } else { $line = "FAIL $line" }
+} catch {
+    $line = "FAIL timeout check could not run: $($_.Exception.Message)"
+}
+Set-Content -LiteralPath $timeoutResult -Value $line -Encoding ASCII
+Write-Output "  $line"
+Remove-Item -LiteralPath $stubRoot -Recurse -Force -ErrorAction SilentlyContinue
+Write-Output ""
 
 Write-Output "STEP 1 of 2: dry run, EXCEPT-tests: $($dryRun -join ', ')"
 & $all -PNutVersion $PNutVersion -PNutInstallRoot $PNutInstallRoot -PNutBinary $PNutBinary `
