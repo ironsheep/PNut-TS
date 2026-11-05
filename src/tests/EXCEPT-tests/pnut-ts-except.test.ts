@@ -259,10 +259,12 @@ describe('PNut_ts detects .spin2 exceptions w/o debug() correctly', () => {
   // get our list of files to compile
   let files: string[] = [];
   try {
-    files = globSync(`${testDirPath}/!(debug_|isp_|coverage_debug_)*.spin2`);
+    files = globSync(`${testDirPath}/*.spin2`);
   } catch (error) {
     console.error('ERROR: glob issue:', error);
   }
+  // the debug_/isp_/coverage_debug_ files are compiled with -d by the block above
+  files = files.filter((f) => !/^(debug_|isp_|coverage_debug_)/.test(path.basename(f)));
   // children of generated fixtures (gen_<id>__<name>) are compiled through their parent
   files = files.filter((f) => !/^(debug_)?gen_.*__/.test(path.basename(f)));
   if (files.length > 1) {

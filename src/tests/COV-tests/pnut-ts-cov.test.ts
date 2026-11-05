@@ -117,7 +117,8 @@ describe('Directory existence tests', () => {
 });
 
 describe('PNut_ts builds our COV non-debug() test files correctly', () => {
-  const files: string[] = listFixtures('!(debug_|isp_|coverage_debug_)*.spin2');
+  // every file except the debug_/isp_/coverage_debug_ ones, which the debug block compiles
+  const files: string[] = listFixtures('*.spin2').filter((file) => !/^(debug_|isp_|coverage_debug_)/.test(path.basename(file)));
   files.forEach((file) => {
     testOrPending(file)(`Compile file: ${path.basename(file)}`, () => {
       compileAndCompare(file, false);
