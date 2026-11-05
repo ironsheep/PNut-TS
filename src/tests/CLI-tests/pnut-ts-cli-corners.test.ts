@@ -67,6 +67,25 @@ describe('PNut_ts command-line options and environment', () => {
       expect(result.output).toContain('DAT file not found [incdata.bin]');
       expect(fs.existsSync(path.join(workDir, 'withdata.bin'))).toBe(false);
     });
+
+    test('-I data-file search: a relative -I folder is taken from the current directory even when the source is in another folder', () => {
+      fs.mkdirSync(path.join(workDir, 'src'));
+      fs.writeFileSync(path.join(workDir, 'src', 'withdata.spin2'), FILE_DATA_SOURCE);
+      fs.mkdirSync(path.join(workDir, 'src', 'inc'));
+      fs.writeFileSync(path.join(workDir, 'src', 'inc', 'incdata.bin'), FILE_DATA_BYTES);
+      const result = runCompiler(['-I', 'src/inc', '--', 'src/withdata.spin2']);
+      expect(result.status).toBe(0);
+      const binary: Buffer = fs.readFileSync(path.join(workDir, 'src', 'withdata.bin'));
+      expect(binary.indexOf(FILE_DATA_BYTES)).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  test('-v reports the Node version of the running runtime', () => {
+    fs.writeFileSync(path.join(workDir, 'bare.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['-v', 'bare.spin2']);
+    expect(result.status).toBe(0);
+    expect(result.output).toContain(`Node version: ${process.version}`);
+    expect(result.output).not.toContain('v18.5.0');
   });
 
   test('a filename given without its extension resolves to the .spin2 file', () => {

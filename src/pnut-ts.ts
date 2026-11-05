@@ -14,7 +14,6 @@ import { captureReference, verifyAgainstReference, VerifySnapshot } from './util
 import { PreprocessorError, SpinDocument } from './classes/spinDocument';
 import path from 'path';
 import fs from 'fs';
-import { exec } from 'child_process';
 //import { UsbSerial } from './utils/usb.serial';
 
 // NOTEs re-stdio in js/ts
@@ -558,8 +557,12 @@ export class PNutInTypeScript {
       // forward  Include Folder name(s)
       const includeDirs: string[] = this.options.Include;
       for (const newFolder of includeDirs) {
-        if (fs.existsSync(newFolder) && fs.statSync(newFolder).isDirectory()) {
-          this.context.preProcessorOptions.includeFolders.push(newFolder);
+        // a relative -I folder names a folder relative to the current directory;
+        // it is made absolute here so that every later search (OBJ, DAT FILE,
+        // #include) resolves it the same way, whatever the source file's folder
+        const resolvedFolder: string = path.resolve(newFolder);
+        if (fs.existsSync(resolvedFolder) && fs.statSync(resolvedFolder).isDirectory()) {
+          this.context.preProcessorOptions.includeFolders.push(resolvedFolder);
         }
       }
       //this.context.logger.verboseMsg(`Include Dirs=[${this.context.preProcessorOptions.includeFolders}]`);
@@ -688,33 +691,8 @@ export class PNutInTypeScript {
         this.context.logger.verboseMsg(`inc dir [${this.context.preProcessorOptions.includeFolders}]`);
       }
       this.context.logger.verboseMsg(''); // blank line
-      /*
-      this.runCommand('node -v').then((result) => {
-        if (result.error) {
-          this.context.logger.errorMsg(`${result.error}`);
-        } else {
-          this.context.logger.verboseMsg(`Node version: ${result.value}`);
-          this.context.logger.verboseMsg(''); // blank line
-        }
-      });
-      */
-      const result = await this.runCommand('node -v');
-      if (result.value !== null) {
-        this.context.logger.verboseMsg(`Node version: ${result.value} (external)`);
-      } else {
-        // fake this for now...
-        this.context.logger.verboseMsg(`Node version: v18.5.0 (built-in)`);
-        /*
-        const nodePath = process.execPath;
-        this.context.logger.verboseMsg(`nodePath: [${nodePath}]`);
-        result = await this.runCommand(`${nodePath} -v`);
-        if (result.value !== null) {
-          this.context.logger.verboseMsg(`Node version: ${result.value}`);
-        } else {
-          this.context.logger.verboseMsg(`CMD [${result.cmd}] FAIL: [${result.error}]`);
-        }
-        */
-      }
+      // the Node runtime executing this compiler (the bundled one in a packaged binary)
+      this.context.logger.verboseMsg(`Node version: ${process.version}`);
     }
 
     if (!this.shouldAbort && this.spinDocument && this.context.compileOptions.compile) {
@@ -768,30 +746,6 @@ export class PNutInTypeScript {
     } else {
       return `PNut-TS: ${str}`;
     }
-  }
-
-  private async runCommand(command: string): Promise<{ cmd: string; value: string | null; error: string | null }> {
-    return new Promise((resolve) => {
-      try {
-        exec(command, (error, stdout, stderr) => {
-          if (error) {
-            resolve({ cmd: command, value: null, error: error.message });
-          }
-          if (stderr) {
-            resolve({ cmd: command, value: null, error: stderr });
-          }
-          resolve({ cmd: command, value: stdout.trim(), error: null });
-        });
-      } catch (error: unknown) {
-        let excString: string;
-        if (error instanceof Error) {
-          excString = `Exception: ${error.name}-${error.message}`;
-        } else {
-          excString = `Exception: ${JSON.stringify(error)}`;
-        }
-        resolve({ cmd: command, value: null, error: excString });
-      }
-    });
   }
 }
 
