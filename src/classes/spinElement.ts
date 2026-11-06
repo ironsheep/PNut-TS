@@ -107,10 +107,6 @@ export class SpinElement {
     return this._overrideSymbolLength != this.NOTSET && this._symbolLength != this._overrideSymbolLength;
   }
 
-  get hasAltSourceCharOffset(): boolean {
-    return this._overrideCharacterOffset != this.NOTSET;
-  }
-
   public setPartOfObjReference(value: boolean) {
     this._isObjectReference = value;
   }
@@ -228,6 +224,8 @@ export class SpinElement {
   }
 
   get isSymbol(): boolean {
+    // Same answer as refersToSymbol, which is the accessor the compiler calls; this one is kept as the
+    // named counterpart of PNut's [symbol_flag] (p2com.asm:4145, 8412, 8708).
     // PNut uses a [symbol_flag] set to zero or one and DOES NOT distinguish between built-in or not
     return this._isSymbol;
   }
@@ -256,10 +254,6 @@ export class SpinElement {
     return this._type == eElementType.type_op && (this.operation == eOperationType.op_add || this.operation == eOperationType.op_fadd);
   }
 
-  get isSub(): boolean {
-    return this._type == eElementType.type_op && this.operation == eOperationType.op_sub;
-  }
-
   get isLogNot(): boolean {
     return this._type == eElementType.type_op && this.operation == eOperationType.op_lognot;
   }
@@ -270,14 +264,6 @@ export class SpinElement {
 
   public operationString(): string {
     return eOperationType[this.operation] !== undefined ? eOperationType[this.operation] : '{OP-NOT-FOUND}';
-  }
-
-  get isBlockCon(): boolean {
-    let foundStatus: boolean = false;
-    if (this._type == eElementType.type_block && typeof this._value === 'bigint') {
-      foundStatus = Number(this._value) == eBlockType.block_con;
-    }
-    return foundStatus;
   }
 
   //
@@ -294,6 +280,8 @@ export class SpinElement {
   }
 
   get flexParamCount(): number {
+    // Not called by the compiler (compile_flex decodes the same bits from the symbol value); kept as the
+    // accessor for the params field of PNut's flex symbol, p2com.asm:1186.
     // returns the count of parameters
     let desiredValue: number = -1;
     if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
@@ -314,6 +302,8 @@ export class SpinElement {
   }
 
   get flexIsPinField(): boolean {
+    // Not called by the compiler (compile_flex decodes the same bit from the symbol value); kept as the
+    // accessor for the pinfld field of PNut's flex symbol, p2com.asm:1186.
     // returns the count of return values
     let desiredValue: boolean = false;
     if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
@@ -324,6 +314,8 @@ export class SpinElement {
   }
 
   get flexIsHUbCode(): boolean {
+    // Not called by the compiler (compile_flex decodes the same bit from the symbol value); kept as the
+    // accessor for the hubcode field of PNut's flex symbol, p2com.asm:1186.
     // returns the count of return values
     let desiredValue: boolean = false;
     if (this._type == eElementType.type_i_flex && typeof this._value === 'bigint') {
@@ -356,6 +348,8 @@ export class SpinElement {
   }
 
   get methodIsPub(): boolean {
+    // Not called by the compiler; kept as the accessor for the pub/pri bit (bit 31) that PNut sets in a
+    // method's index long, p2com.asm:4320.
     // returns the count of return values for type_method
     let desiredValue: boolean = false;
     if (this._type == eElementType.type_method && typeof this._value === 'bigint') {
