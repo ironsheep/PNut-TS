@@ -7077,9 +7077,10 @@ export class SpinResolver {
     // return value z=1 if '`', z=0 if ')'
     if (this.isLogging) this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
     let foundEndWithTickStatus: boolean = false;
-    let currSrcLine = this.srcFile?.sourceLineAt(this.currElement.sourceLineIndex).text;
+    const srcFile = this.srcFile;
+    const currSrcLine = srcFile?.sourceLineAt(this.currElement.sourceLineIndex).text;
     let stringText: string = '';
-    if (currSrcLine) {
+    if (srcFile !== undefined && currSrcLine) {
       const charOffset = this.currElement.sourceCharacterOffset; // the backtick
       // gather the bytes to emit: the string runs to the next '`', or to a ')' that ends its line
       let endLineIndex: number = this.currElement.sourceLineIndex;
@@ -7090,8 +7091,8 @@ export class SpinResolver {
       } else {
         // the string runs on past this line, carrying each line ending as PNut's source holds it (CR)
         stringText = currSrcLine.substring(charOffset);
-        for (let lineIndex = endLineIndex + 1; lineIndex < this.srcFile!.lastLineNumber && stringEndIndex < 0; lineIndex++) {
-          const lineText: string = this.srcFile!.sourceLineAt(lineIndex).text;
+        for (let lineIndex = endLineIndex + 1; lineIndex < srcFile.lastLineNumber && stringEndIndex < 0; lineIndex++) {
+          const lineText: string = srcFile.sourceLineAt(lineIndex).text;
           stringEndIndex = this.tickStringEnd(lineText, 0);
           if (stringEndIndex >= 0) {
             stringText += `\r${lineText.substring(0, stringEndIndex)}`;

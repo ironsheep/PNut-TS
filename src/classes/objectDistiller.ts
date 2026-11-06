@@ -130,7 +130,7 @@ export class ObjectDistiller {
 
     // Iterate through all records
     for (let matchIdx = 0; matchIdx < this.distillerList.recordCount; matchIdx++) {
-      const matchRecord = this.distillerList.getRecordAt(matchIdx)!;
+      const matchRecord = this.distillerList.requireRecordAt(matchIdx);
 
       // Check if all sub-objects are marked complete (bit 31 set)
       let allComplete = true;
@@ -147,7 +147,7 @@ export class ObjectDistiller {
 
       // Search forward for a matching (equivalent) record
       for (let searchIdx = matchIdx + 1; searchIdx < this.distillerList.recordCount; searchIdx++) {
-        const searchRecord = this.distillerList.getRecordAt(searchIdx)!;
+        const searchRecord = this.distillerList.requireRecordAt(searchIdx);
 
         if (this.areRecordsEquivalent(objImage, matchRecord, searchRecord)) {
           // Found a match - update references and remove the redundant record
@@ -286,7 +286,7 @@ export class ObjectDistiller {
         throw new Error(`ERROR[INTERNAL] failed to locate Object Id ${subObjId} in list`);
       }
 
-      const matchRecord = this.distillerList.getRecordAt(matchIndex)!;
+      const matchRecord = this.distillerList.requireRecordAt(matchIndex);
 
       // Calculate and write relative offset
       const relativeOffset = (matchRecord.objectOffset - record.objectOffset) & 0x7fffffff;

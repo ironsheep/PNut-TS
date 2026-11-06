@@ -15,7 +15,16 @@
   "rules": {
     "no-console": 1, // Means warning
     "prettier/prettier": 2, // Means error
-    "max-len": 0 // Disabled - line length is not enforced
+    "max-len": 0, // Disabled - line length is not enforced
+    "@typescript-eslint/no-non-null-assertion": 2 // Means error
   },
+  "overrides": [
+    {
+      "files": ["src/tests/**"],
+      "rules": {
+        "@typescript-eslint/no-non-null-assertion": 0 // In a test, a wrong assertion only fails that test
+      }
+    }
+  ],
   "plugins": ["@typescript-eslint", "prettier"]
 }

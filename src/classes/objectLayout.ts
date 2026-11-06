@@ -528,7 +528,11 @@ export function buildObjectLayout(input: LayoutBuildInput): ObjectLayout {
         symbols: { methods: [], dat: [], pasmLabels: [], inlinePasm: [] }
       });
     }
-    return { header, layoutImage: images.get(base)! };
+    const layoutImage = images.get(base);
+    if (layoutImage === undefined) {
+      fail('(top)', `no image recorded at ${hex(base)}`);
+    }
+    return { header, layoutImage };
   };
 
   const visit = (
@@ -579,13 +583,18 @@ export function buildObjectLayout(input: LayoutBuildInput): ObjectLayout {
 
     let slot = 0;
     for (const child of node.children) {
-      const objSymbol = node.variant.symbols.find(
-        (symbol) => symbol.type === eElementType.type_obj && symbolLong(symbol) !== undefined && symbolLong(symbol)! >>> 24 === child.position
-      );
+      const objSymbol = node.variant.symbols.find((symbol) => {
+        const value = symbolLong(symbol);
+        return symbol.type === eElementType.type_obj && value !== undefined && value >>> 24 === child.position;
+      });
       if (objSymbol === undefined) {
         fail(path, `no OBJ symbol for declaration ${child.position} (${child.sourceFileName})`);
       }
-      const firstSlot = symbolLong(objSymbol)! & 0xffffff;
+      const objSymbolValue = symbolLong(objSymbol);
+      if (objSymbolValue === undefined) {
+        fail(path, `OBJ ${objSymbol.name} has no value`);
+      }
+      const firstSlot = objSymbolValue & 0xffffff;
       if (firstSlot !== slot) {
         fail(path, `OBJ ${objSymbol.name} starts at slot ${firstSlot} but its declarations place it at slot ${slot}`);
       }
@@ -642,8 +651,11 @@ export function buildObjectLayout(input: LayoutBuildInput): ObjectLayout {
   }
 
   for (const layoutImage of ordered) {
-    const header = headers.get(layoutImage.base)!;
     const where = `image #${layoutImage.number}`;
+    const header = headers.get(layoutImage.base);
+    if (header === undefined) {
+      fail(where, `no header recorded at ${hex(layoutImage.base)}`);
+    }
     layoutImage.sources = [...new Set(layoutImage.users.map((user) => user.sourceFileName))].sort(compareOrdinal);
     layoutImage.slots = header.slots.map((pair, index) => {
       const names = new Set<string>();
@@ -651,11 +663,15 @@ export function buildObjectLayout(input: LayoutBuildInput): ObjectLayout {
         const child = user.children[index];
         names.add(child.path.substring(child.path.lastIndexOf('.') + 1));
       }
+      const slotImage = images.get(layoutImage.base + pair.codeOffset);
+      if (slotImage === undefined) {
+        fail(where, `slot ${index} points at ${hex(layoutImage.base + pair.codeOffset)}, where no image is recorded`);
+      }
       return {
         index,
         codeOffset: pair.codeOffset,
         varOffset: pair.varOffset,
-        image: images.get(layoutImage.base + pair.codeOffset)!,
+        image: slotImage,
         names: [...names].sort(compareOrdinal)
       };
     });

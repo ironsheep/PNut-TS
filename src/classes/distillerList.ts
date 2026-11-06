@@ -131,6 +131,15 @@ export class DistillerList {
     return index >= 0 && index < this._recordList.length ? this._recordList[index] : undefined;
   }
 
+  // Get record at an index the caller knows is in range
+  public requireRecordAt(index: number): DistillerRecord {
+    const record = this.getRecordAt(index);
+    if (record === undefined) {
+      throw new Error(`ERROR[INTERNAL] no distiller record at index ${index}`);
+    }
+    return record;
+  }
+
   // Remove record at index
   public removeRecordAt(index: number): boolean {
     if (index >= 0 && index < this._recordList.length) {

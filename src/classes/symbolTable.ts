@@ -120,7 +120,13 @@ export class SymbolTable {
       const escaped = [...this.symbols.keys()].map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
       this._cachedRegex = new RegExp(escaped.join('|'), 'g');
     }
-    return inputString.replace(this._cachedRegex, (match) => `${this.symbols.get(match)!.value}`);
+    return inputString.replace(this._cachedRegex, (match) => {
+      const symbol = this.symbols.get(match);
+      if (symbol === undefined) {
+        throw new Error(`ERROR[INTERNAL] symbol [${match}] matched but is not in the table`);
+      }
+      return `${symbol.value}`;
+    });
   }
 
   /**
