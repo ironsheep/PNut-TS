@@ -30,17 +30,6 @@ export class ObjectDistiller {
     this.isLoggingOutline = ctx.logOptions.logOutline;
   }
 
-  public get recordCount(): number {
-    return this.distillerList.recordCount;
-  }
-
-  /**
-   * Get access to the distiller list for map generation
-   */
-  public get records(): DistillerList {
-    return this.distillerList;
-  }
-
   /**
    * Main entry point - Distills (optimizes) the object image by eliminating duplicate objects.
    * @param objImage - The object image to optimize
