@@ -1,0 +1,19 @@
+{Spin2_v55}
+'' gen_cor_spin_struct_bitfield_runtime: generated from scripts/fixtures/fixtures.json row "cor_spin_struct_bitfield_runtime"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_struct_setup: a runtime .[expr] bitfield after a member that already carries a bitfield (vb.flags.[3], vb.flags.[i..0]) and a STRUCT instance held in DAT used from Spin
+CON
+  STRUCT sPt(long x, long y)
+  STRUCT sIo(LONG.ready[0].mode[3..2])
+  STRUCT sBF(LONG flags.ready[0].mode[3..2], WORD w)
+VAR
+  sIo vio[4]
+  sBF vb
+DAT
+        orgh
+dpt     sPt
+PUB main() | i
+  i := vio[i].ready
+  i := vio[2].mode
+  i := vb.flags.[3]
+  i := vb.flags.[i..0]
+  dpt.x := 1
+  i := dpt.y

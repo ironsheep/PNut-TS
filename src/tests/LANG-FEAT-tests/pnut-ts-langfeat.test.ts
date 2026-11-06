@@ -110,3 +110,13 @@ describe('PNut_ts compiles STRUCT tests correctly', () => {
     });
   });
 });
+
+describe('PNut_ts compiles generated language-feature fixtures correctly', () => {
+  // children of generated fixtures (gen_<id>__<name>) are compiled through their parent
+  const generatedFiles = allFiles.filter((file) => /^gen_(?!.*__)/.test(path.basename(file)));
+  generatedFiles.forEach((file) => {
+    test(`Compile file: ${path.basename(file)}`, () => {
+      runCompilationTest(file);
+    });
+  });
+});

@@ -16,6 +16,7 @@
     "<rootDir>/dist/tests/SPIN-tests/",
     "<rootDir>/dist/tests/VAR-tests/",
     "<rootDir>/dist/tests/LANG-VER-tests/",
+    "<rootDir>/dist/tests/LANG-FEAT-tests/",
     "<rootDir>/dist/tests/ENCODING-tests/",
     "<rootDir>/dist/tests/V52A-tests/",
     "<rootDir>/dist/tests/INCLUDE-tests/",

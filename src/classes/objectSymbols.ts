@@ -84,9 +84,6 @@ export class ObjectSymbols {
       newBuffer.set(this._objSymbolsByteAr);
       //this._objSymbolsByteAr = null; // force prior to be deallocated AUGH doesn't work!
       this._objSymbolsByteAr = newBuffer;
-    } else if (neededCapacity > this._objSymbolsByteAr.length) {
-      // [error_pclo]
-      throw new Error(`PUB/CON list overflowed ${ObjectSymbols.MAX_SIZE_IN_BYTES / 1024}k bytes`);
     }
   }
 
@@ -158,8 +155,13 @@ export class ObjectSymbols {
 
   public writeByte(uint8: number) {
     // append byte to end of image
+    //  the list may fill exactly: only the byte past the last one is an error
+    if (this._objOffset == ObjectSymbols.MAX_SIZE_IN_BYTES) {
+      // [error_pclo]
+      throw new Error('PUB/CON list overflow');
+    }
     this.logMessage(`* OBJSYM: append(v=(${hexByte(uint8)})) wroteTo(${hexAddress(this._objOffset)})`);
-    this.ensureCapacity(this._objOffset + 64); // ensure we have room for 63 more bytes...
+    this.ensureCapacity(this._objOffset + 1);
     this._objSymbolsByteAr[this._objOffset++] = uint8 & 0xff;
   }
 

@@ -57,7 +57,7 @@ export class ObjectStructures {
   private _id: string;
 
   static readonly MAX_STRUCTURES: number = 0x1000; // PNut  struct_id_limit := $1000;
-  static readonly MAX_SIZE_IN_BYTES: number = 2048;
+  static readonly MAX_SIZE_IN_BYTES: number = 0x20000; // PNut  struct_def_limit := $20000;
   static readonly ALLOC_SIZE_IN_BYTES: number = 1024; // Initial size for the Uint8Array
 
   private _objStructRecordOffsets: number[] = [];
@@ -184,10 +184,9 @@ export class ObjectStructures {
     this.enterLong(BigInt(this._structMemorySize));
   }
 
-  public endMemberRecord(nbrInstances: number, objectLimit: number, flagValue: number) {
+  public endMemberRecord(flagValue: number) {
     // end our structure member record
     this.logMessage(`* OBJSTRUCT: endMemberRecord(flag=(${flagValue}))`);
-    this.finalizeStructElement(nbrInstances, objectLimit);
     this.enterByte(flagValue);
   }
 
@@ -289,21 +288,24 @@ export class ObjectStructures {
     //this._structMemorySize += this._lastSizeRecorded;
   }
 
-  public finalizeStructElement(nbrInstances: number, objectLimit: number) {
-    // multiply element size in bytes by nbrInstances w/size exceeded checks
-    // first see if this size will work
-    if (nbrInstances > 1 && this._structMemorySize > 0xffff) {
+  public checkIndexedMemberSize() {
+    // a member with more than one instance must itself be indexable
+    if (this._lastSizeRecorded > 0xffff) {
       // [error_iscexb]
       throw new Error('Indexed structures cannot exceed $FFFF bytes in size (m400)');
     }
-    // PNut @@gotcount:
+  }
+
+  public finalizeStructElement(nbrInstances: number, objectSizeLimit: number) {
+    // PNut @@gotcount: multiply element size in bytes by nbrInstances w/size exceeded checks
+    //  one member may reach the limit, but the running offset must stay below it
     const elementSizeInBytes: number = this._lastSizeRecorded * nbrInstances;
-    if (elementSizeInBytes > 0x10000) {
+    if (elementSizeInBytes > objectSizeLimit) {
       // [error_sehr]
       throw new Error('Structure exceeds hub range of $FFFFF (m530)');
     }
     this._structMemorySize += elementSizeInBytes;
-    if (this._structMemorySize > objectLimit) {
+    if (this._structMemorySize >= objectSizeLimit) {
       // [error_sehr]
       throw new Error('Structure exceeds hub range of $FFFFF (m531)');
     }
@@ -325,8 +327,13 @@ export class ObjectStructures {
 
   public enterByte(uint8Value: number) {
     // append byte to end of image
+    //  the definitions may fill the buffer exactly: only the byte past the last one is an error
+    if (this._objStructureOffset == ObjectStructures.MAX_SIZE_IN_BYTES) {
+      // [error_dsdle]
+      throw new Error('Data structure-definitions limit exceeded');
+    }
     this.logMessage(`* OBJSTRUCT: append(v=(${hexByte(uint8Value)})) wroteTo(${hexAddress(this._objStructureOffset)})`);
-    this.ensureCapacity(this._objStructureOffset + 64); // ensure we have room for 63 more bytes...
+    this.ensureCapacity(this._objStructureOffset + 1);
     this._objStructureByteAr[this._objStructureOffset++] = uint8Value & 0xff;
     this._structRecordSize++;
   }
@@ -348,6 +355,7 @@ export class ObjectStructures {
     this._objStructureOffset = 0; // call method, so logs
     this._objReadStructureOffset = 0;
     this._objStructRecordOffsets = [];
+    this._structIdNext = 0;
     this.logMessage(`* OBJSTRUCT: reset()`);
   }
 

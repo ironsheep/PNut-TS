@@ -206,6 +206,16 @@
       "source": ["{Spin2_v52}", "CON", "  STRUCT s x"]
     },
     {
+      "id": "err_b_eeol_struct_nameless_two_index",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "note": "Bench 2026-11-05: PNut gave this text on this form when it was line 9 of cor_spin_struct_nameless_index. fwdspin2 p2com.asm 17069-17077: a nameless single-BWL STRUCT takes one index, the member's.",
+      "covers": "src/classes/spinResolver.ts getEndOfLine: \"Expected end of line\" (a second index on a nameless single-BWL STRUCT)",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  sIo vio[4]", "PUB main() | i", "  i := vio[1][2].ready"]
+    },
+    {
       "id": "err_b_eaesn_m641",
       "suite": "EXCEPT-tests",
       "kind": "reject",
@@ -399,9 +409,40 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 3,
+      "expectLine": 4,
+      "note": "asm v52 p2com.asm 6860-6865: the member's product, 17 x $10000 = $110000, is over $100000; a $10000-count member of 16 bytes or less is legal.",
       "covers": "src/classes/objectStructures.ts m530: \"Structure exceeds hub range of $FFFFF\" (one member)",
-      "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a[$10000])"]
+      "source": ["{Spin2_v52}", "CON", "  STRUCT a(byte x[17])", "  STRUCT s(a y[$10000])", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_sehr_m531_at_limit",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 3,
+      "note": "asm v52 p2com.asm 6866-6868: the running offset is tested with 'jae', so a total of exactly $100000 is the error. acc_struct_total_max is the $FFFFF side.",
+      "covers": "src/classes/objectStructures.ts m531: \"Structure exceeds hub range of $FFFFF\" (cumulative members) - one past the limit (a structure of exactly $100000 bytes)",
+      "source": { "template": ["{Spin2_v52}\nCON\n  STRUCT big(", { "repeat": 15, "text": "byte m${i:2}[$10000], " }, "byte z[$10000])\nPUB main()\n  return\n"] }
+    },
+    {
+      "id": "err_b_sehr_m532_over_limit",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 7,
+      "note": "asm v52 p2com.asm 17115-17117: the constant index times the size must not pass $100000; here $1001 x $100 = $100100. acc_struct_var_index_product_max is the accepted side.",
+      "covers": "src/classes/spinResolver.ts m532: \"Structure exceeds hub range of $FFFFF\" (variable index times size) - one index past the limit",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte b[$100])", "VAR", "  s v", "PUB main() | x", "  x := v[$1001].b[0]"]
+    },
+    {
+      "id": "err_b_sehr_m533_over_limit",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 8,
+      "note": "asm v52 p2com.asm 17118-17120: the running offset must not pass $100000; here $FFFF0 plus the variable base $14. acc_struct_var_index_product_max is the same index at base 4.",
+      "covers": "src/classes/spinResolver.ts m533: \"Structure exceeds hub range of $FFFFF\" (variable index plus base) - just past the limit",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte b[$10])", "VAR", "  long pad[4]", "  s v", "PUB main() | x", "  x := v[$FFFF].b[0]"]
     },
     {
       "id": "err_b_sehr_m531",
@@ -445,6 +486,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 8,
+      "note": "The product here is over $100000, so m532 is the site reached (same text and line); err_b_sehr_m533_over_limit reaches m533.",
       "covers": "src/classes/spinResolver.ts m533: \"Structure exceeds hub range of $FFFFF\" (variable index plus base)",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte b[$FFFF])", "VAR", "  long pad[200]", "  s v", "PUB main() | x", "  x := v[384].b[0]"]
     },
@@ -561,21 +603,25 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 4099,
+      "expectLine": 1102,
+      "note": "Own definitions alone cannot reach 4096: each also goes into this object's 64 KB PUB/CON list (at least 14 record bytes plus type and name), and the list overflows first. Imported definitions take ids but no list space, so 3000 imported (asm v52 p2com.asm 4499-4512, before compile_con_blocks_2nd) plus 1097 own make this own definition the 4097th. Unconfirmed until GOLD.",
       "covers": "src/classes/spinResolver.ts m622: \"Limit of 4096 data structure definitions exceeded\" (own STRUCT definitions)",
-      "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4097, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB main()\n  return\n"] }
+      "source": { "template": ["{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_loxdsde_m622__c1\"\n  c2 : \"gen_err_b_loxdsde_m622__c2\"\nCON\n", { "repeat": 1097, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB main()\n  return\n"] },
+      "aux": [
+        { "name": "c${i}.spin2", "sibling": true, "count": 2, "from": 1, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1500, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }
+      ]
     },
     {
       "id": "err_b_loxdsde_m621",
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 5,
-      "note": "PNut-TS reports this at the end of the file.",
+      "expectLine": 1,
+      "note": "One child cannot hold 4097 definitions (its 64 KB PUB/CON list overflows at 3277 of these), so two children of 2049 make the 4097th arrive during the import. Line 1 is a prediction: compile_done clears source_start (asm v52 p2com.asm 2969) and compile_obj_symbols runs first in the second pass. PNut-TS reports this at the end of the file. Unconfirmed until GOLD.",
       "covers": "src/classes/spinResolver.ts m621: \"Limit of 4096 data structure definitions exceeded\" (structures imported from child objects)",
-      "source": "{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_loxdsde_m621__c1\"\nPUB main()\n  return",
+      "source": "{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_loxdsde_m621__c1\"\n  c2 : \"gen_err_b_loxdsde_m621__c2\"\nPUB main()\n  return",
       "aux": [
-        { "name": "c1.spin2", "sibling": true, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4096, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }
+        { "name": "c${i}.spin2", "sibling": true, "count": 2, "from": 1, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 2049, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }
       ]
     },
     {
@@ -1003,10 +1049,13 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 4098,
-      "note": "The record size is taken from the acc_struct_defs_max note (6+4+1+1+name+1 bytes, asm 6805-6819), not re-derived here. 4095 records of 32 bytes plus one of 33 (a 20-character member name) make 131073 bytes, one over struct_def_limit 20000h = 131072. asm v52, unconfirmed until GOLD.",
-      "covers": "PNut error_dsdle \"Data structure-definitions limit exceeded\" (no PNut-TS message). asm v52 p2com.asm 4504-4508: the record end must not pass struct_def_limit 20000h (line 59). Record copy at 4507 is 'ja', so the buffer may fill exactly; one byte over is the error. Struct ids stay below struct_id_limit 1000h (4096).",
-      "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4095, "text": "  STRUCT s${i:4}(long member_name_padding)\n" }, "  STRUCT s4095(long member_name_paddingx)\n", "PUB main()\n  return\n"] }
+      "expectLine": 7,
+      "note": "One object's own definitions cannot reach this: the same bytes also go into its 64 KB PUB/CON list. Imported definitions take no list space in the parent. Three children hold 4095 records of 32 bytes (6+4+1+1+19+1, each child's list 51,870 bytes), and one own record of 33 bytes (a 20-character member name) ends at 131073, one over struct_def_limit 20000h = 131072. Struct ids stay at struct_id_limit 1000h (4096). asm v52, unconfirmed until GOLD.",
+      "covers": "src/classes/objectStructures.ts: \"Data structure-definitions limit exceeded\". asm v52 p2com.asm 6921-6924: the record byte past struct_def_limit 20000h (line 59) is the error, so the buffer may fill exactly.",
+      "source": { "template": ["{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_dsdle__c1\"\n  c2 : \"gen_err_b_dsdle__c2\"\n  c3 : \"gen_err_b_dsdle__c3\"\nCON\n  STRUCT s4095(long member_name_paddingx)\nPUB main()\n  return\n"] },
+      "aux": [
+        { "name": "c${i}.spin2", "sibling": true, "count": 3, "from": 1, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1365, "text": "  STRUCT s${i:4}(long member_name_padding)\n" }, "PUB go()\n  return\n"] } }
+      ]
     },
     {
       "id": "err_c_tocbufa_m610",
@@ -2803,8 +2852,8 @@
     {
       "id": "err_f_pclo",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
-      "expectLine": 2048,
-      "covers": "src/classes/objectSymbols.ts: \"PUB/CON list overflowed 64k bytes\" (PNut says \"PUB/CON list overflow\")",
+      "expectLine": 2050,
+      "covers": "src/classes/objectSymbols.ts: \"PUB/CON list overflow\" (the 2049th 32-byte constant)",
       "source": { "template": ["CON\n", { "repeat": 2400, "text": "  c${i:4}_abcdefghijklmnopqrstu = ${i}\n" }, "PUB main()\n  return\n"] }
     },
     {
@@ -3534,10 +3583,27 @@
     },
     {
       "id": "acc_struct_defs_max",
+      "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts m622 and the $20000-byte definition buffer (src/classes/objectStructures.ts \"Data structure-definitions limit exceeded\"): \"Limit of 4096 data structure definitions exceeded\" - at limit (4,096 definitions, each a 32-byte record, filling the buffer exactly)",
+      "note": "The one maximum-size row for both limits. asm v52 p2com.asm 6805-6819 and struct_def_limit $20000: a record is 6 + 4 + 1 + 1 + 19 (member name) + 1 = 32 bytes, so 4,096 records fill $20000 bytes exactly. One object's own definitions overflow its 64 KB PUB/CON list at 1,725 of these (38 list bytes each), so 4,095 are imported from three children and the last is the parent's own. Unconfirmed until GOLD.",
+      "source": { "template": ["{Spin2_v52}\nOBJ\n  c1 : \"gen_acc_struct_defs_max__c1\"\n  c2 : \"gen_acc_struct_defs_max__c2\"\n  c3 : \"gen_acc_struct_defs_max__c3\"\nCON\n  STRUCT s4095(long member_name_padding)\nPUB main()\n  return\n"] },
+      "aux": [
+        { "name": "c${i}.spin2", "sibling": true, "count": 3, "from": 1, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1365, "text": "  STRUCT s${i:4}(long member_name_padding)\n" }, "PUB go()\n  return\n"] } }
+      ]
+    },
+    {
+      "id": "acc_struct_indexed_member_count_one",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
-      "covers": "src/classes/spinResolver.ts m622 and the $20000-byte definition buffer (PNut error_dsdle): \"Limit of 4096 data structure definitions exceeded\" - at limit (4,096 definitions, each a 32-byte record, filling the buffer exactly)",
-      "note": "The one maximum-size row for both limits. asm v52 p2com.asm 6805-6819 and struct_def_limit $20000: a record is 6 + 4 + 1 + 1 + 19 (member name) + 1 = 32 bytes, so 4,096 records fill $20000 bytes exactly. Unconfirmed until GOLD.",
-      "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 4096, "text": "  STRUCT s${i:4}(long member_name_padding)\n" }, "PUB main()\n  return\n"] }
+      "covers": "src/classes/objectStructures.ts m400: \"Indexed structures cannot exceed $FFFF bytes in size\" (STRUCT member count) - a $10000-byte member with count 1, which is not tested",
+      "note": "asm v52 p2com.asm 6851-6855: a count of exactly 1 skips the size test. err_b_iscexb_m400 is the same member with count 2. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v52}", "CON", "  STRUCT a(long x[$4000])", "  STRUCT c(a p, a r[1])", "PUB main()", "  return"]
+    },
+    {
+      "id": "acc_pubcon_list_full",
+      "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/objectSymbols.ts: \"PUB/CON list overflow\" - at limit (the list filled to exactly 65,536 bytes)",
+      "note": "asm v52 p2com.asm 17464-17466: only the byte past the limit is the error. 2,047 constants of 32 bytes, one of 28 bytes (a 23-character name) and the 4-byte PUB entry make 65,536. Unconfirmed until GOLD.",
+      "source": { "template": ["CON\n", { "repeat": 2047, "text": "  c${i:4}_abcdefghijklmnopqrstu = ${i}\n" }, "  z_abcdefghijklmnopqrstu = 1\nPUB m()\n  return\n"] }
     },
     {
       "id": "acc_obj_count_range",
@@ -3628,9 +3694,30 @@
     {
       "id": "cor_spin_struct_nameless_index",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
-      "covers": "src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT indexed by its own index (one[3].ready, vio[1][i].mode, one[i])",
-      "note": "Unconfirmed until GOLD; the nameless single-BWL STRUCT is v54.",
-      "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  sIo vio[4]", "  sIo one", "PUB main() | i", "  i := vio[1][2].ready", "  i := vio[1][i].mode", "  i := one[3].ready", "  i := one[i]"]
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT indexed by its one index (vio[1].ready, vio[i].mode, one[3].ready, one[i])",
+      "note": "The v54 nameless single-BWL STRUCT has no index of its own: the one index is the member's. err_b_eeol_struct_nameless_two_index is the rejected form. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  sIo vio[4]", "  sIo one", "PUB main() | i", "  i := vio[1].ready", "  i := vio[i].mode", "  i := one[3].ready", "  i := one[i]"]
+    },
+    {
+      "id": "cor_spin_struct_nameless_nested",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT as a member of another STRUCT (vw.io, vw.io.mode, vw.io[i].ready, vw.io.[3])",
+      "note": "fwdspin2 p2com.asm 17062-17077 tests for the nameless member on every pass of @@structloop, nested records included. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sWrap(long pad, sIo io)", "VAR", "  sWrap vw", "PUB main() | i", "  i := vw.io", "  i := vw.io.mode", "  i := vw.io[i].ready", "  i := vw.io.[3]"]
+    },
+    {
+      "id": "cor_spin_struct_name_address",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a STRUCT name given an address, struct_name[address] (member read, write and assign, constant and runtime index, @, whole-struct read and write, nameless single-BWL, compare, copy, swap, multi-assign, parameter) and SIZEOF of that form",
+      "note": "asm v52 p2com.asm 16870-16879 and 16903-16907 load the record for this operand as for any other. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sBox(sPt a, sPt b)", "  STRUCT sBig(long a[20])", "VAR", "  long buf[8]", "  sPt vp, vq", "  sBig vb", "PUB main() | i, j, addr", "  i := sizeof(sPt[0])", "  i := sizeof(sBox[addr].b)", "  i := sPt[addr].y", "  sPt[addr].y := 3", "  sBox[@buf].b.x := i", "  i := sPt[addr][1].x", "  i := sPt[addr][i].y", "  i := @sPt[addr]", "  i := @sPt[addr].y", "  sPt[addr].y++", "  sIo[addr].ready := 1", "  i := sIo[addr].mode", "  i := sIo[addr][2]", "  vp := sPt[addr]", "  sPt[addr] := vp", "  i := sPt[addr] == vp", "  i := vp <> sPt[addr]", "  vb := sBig[addr]", "  sPt[addr] :=: vq", "  i, j := sPt[addr]", "  sPt[addr] := 1, 2", "  i := take(sPt[addr])", "  i := sPt[addr].x + sPt[addr + 4].y", "PRI take(a, b) : r"]
+    },
+    {
+      "id": "cor_spin_offsetof_past_bitfield",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts get_offset_of_struct_member: OFFSETOF of a member that follows one carrying a bitfield chain",
+      "note": "fwdspin2 p2com.asm 17558-17565 skips the chain when a name does not match. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sBF(LONG flags.ready[0].mode[3..2], WORD w)", "PUB main() | i", "  i := OFFSETOF(sBF.w)"]
     },
     {
       "id": "cor_spin_struct_bitfield_runtime",
@@ -3681,6 +3768,13 @@
       "covers": "src/classes/spin2Parser.ts P2InsertClockSetter, checkClockSetterInsert: a PASM-only program with _RCSLOW and _AUTOCLK, so the clock setter is inserted ahead of the code",
       "note": "Unconfirmed until GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _RCSLOW = 1", "  _AUTOCLK = 1", "DAT", "  org", "  nop", "  jmp #$"]
+    },
+    {
+      "id": "cor_dbg_struct_name_address",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: struct_name[address] inside a DEBUG statement, where the element history must survive the deferred pop address",
+      "note": "asm v52 p2com.asm 17011-17020. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | addr", "  debug(udec(sPt[addr].y))"]
     },
     {
       "id": "cor_dbg_disable",

@@ -3511,8 +3511,12 @@ export class SpinResolver {
           }
         }
 
-        // check continuation byte
-        const continuation: number = record.nextByte();
+        // check continuation byte: skip any bitfield chain to reach the next 0/1 terminator
+        let continuation: number = record.nextByte();
+        while (continuation === 2) {
+          record.skipBitfieldEntry();
+          continuation = record.nextByte();
+        }
         if (continuation === 0) {
           // [error_sdctn]  v55: text aligned with PNut's error_sdnctbwl
           throw new Error('Structure does not contain this BYTE/WORD/LONG/STRUCT name (m660)');
@@ -5487,14 +5491,19 @@ export class SpinResolver {
             if (tempInstanceCount < 1) {
               // [error_iccbl]
               throw new Error('Instance count cannot be less than 1');
-            } else if (tempInstanceCount > 0x10000) {
-              // [error_icce]
-              throw new Error('Instance count cannot exceed $10000');
+            } else if (tempInstanceCount > 1) {
+              this.objectStructureSet.checkIndexedMemberSize();
+              if (tempInstanceCount > 0x10000) {
+                // [error_icce]
+                throw new Error('Instance count cannot exceed $10000');
+              }
             }
             instanceCount = tempInstanceCount;
           }
           this.getRightBracket();
         }
+        // PNut @@gotcount:
+        this.objectStructureSet.finalizeStructElement(instanceCount, this.obj_size_limit);
         // v54: optional named bitfield chain '.bfname[bits]{.bfname[bits]...}'
         if (this.checkDot()) {
           if (memberType == eMemberType.MT_STRUCT) {
@@ -5542,13 +5551,13 @@ export class SpinResolver {
         if (singleBWL) {
           // v54: nameless member terminates the struct immediately
           this.getRightParen();
-          this.objectStructureSet.endMemberRecord(instanceCount, this.obj_limit, 0);
+          this.objectStructureSet.endMemberRecord(0);
           foundComma = false;
         } else {
           foundComma = this.getCommaOrRightParen();
           const flagValue: number = foundComma ? 1 : 0;
-          // check sizes and record more or done byte value
-          this.objectStructureSet.endMemberRecord(instanceCount, this.obj_limit, flagValue);
+          // record more or done byte value
+          this.objectStructureSet.endMemberRecord(flagValue);
         }
         notFirst = true; // v54: subsequent members cannot be nameless
       } while (foundComma);
@@ -10527,6 +10536,8 @@ private checkDec(): boolean {
       popExpressionIndex = this.logSavedElementLocation();
       this.skipExpression();
       this.getRightBracket();
+      // get entire structure record for this StructureID
+      structureRecord = this.objectStructureSet.getStructureRecord(structureId);
     } else if (this.isStructPtr(type)) {
       // have structure pointer
       structPtrVariable.type = type + 4;
@@ -10545,29 +10556,16 @@ private checkDec(): boolean {
     // PNut @@gotsetup:
     // eslint-disable-next-line no-constant-condition
     let foundMatch: boolean = false;
-    // v54: detect single nameless BYTE/WORD/LONG member - source uses struct var directly (no .member)
-    const namelessSingleBWL: boolean =
-      structureType != eElementType.type_con_struct && structureRecord.length > 0 && structureRecord.isFirstMemberNameless();
     do {
       // PNut @@structloop:
       structureRecord.nextWord(); // skip record size
       memberSize = structureRecord.nextLong(); // get structure in-memory size
-      const indexResults: iIndexReturn = this.handleStructureIndex(memberSize, liveIndexCount, offsetInStructure);
-      if (indexResults.foundIndex) {
-        resultStructure.flags |= eStructureType.ST_IndexOrSubStructure; // index or '.'
-        if (indexResults.foundLiveIndex) {
-          liveIndexExpElementIndex[liveIndexCount] = indexResults.liveIndexElemIndex;
-          liveIndexSize[liveIndexCount] = memberSize; // (MOVE)
-          liveIndexCount++;
-        } else {
-          offsetInStructure = indexResults.offsetInStructure;
-        }
-      }
       resultStructure.size = memberSize;
       resultStructure.wordSize = eMemberType.MT_STRUCT; // default to structure
 
-      // v54: nameless single-BWL short-circuit - fake-match the unnamed member without requiring .name in source
-      if (namelessSingleBWL) {
+      // v54: a single nameless BYTE/WORD/LONG member - source uses the struct directly (no .member).
+      //  The struct has no index of its own: an index here is the member's index.
+      if (structureRecord.isFirstMemberNameless()) {
         if (this.isLogging) this.logMessage(`  -- CSR() v54 nameless single-BWL member short-circuit`);
         const memberOffset: number = structureRecord.nextLong();
         const memberType: number = structureRecord.nextByte(); // 0/1/2
@@ -10596,6 +10594,18 @@ private checkDec(): boolean {
         resultStructure.address = offsetInStructure; // v54: normal flow sets this at do-while tail; we break earlier, so set it here
         foundMatch = true;
         break; // exit @@structloop
+      }
+
+      const indexResults: iIndexReturn = this.handleStructureIndex(memberSize, liveIndexCount, offsetInStructure);
+      if (indexResults.foundIndex) {
+        resultStructure.flags |= eStructureType.ST_IndexOrSubStructure; // index or '.'
+        if (indexResults.foundLiveIndex) {
+          liveIndexExpElementIndex[liveIndexCount] = indexResults.liveIndexElemIndex;
+          liveIndexSize[liveIndexCount] = memberSize; // (MOVE)
+          liveIndexCount++;
+        } else {
+          offsetInStructure = indexResults.offsetInStructure;
+        }
       }
 
       if (!this.checkDot()) {
@@ -10836,12 +10846,12 @@ private checkDec(): boolean {
           throw new Error('Structure index must be from 0 to $FFFF (m671)');
         }
         const scaledMemberSize: number = memberSize * instanceCount;
-        if (scaledMemberSize > this.obj_limit) {
+        if (scaledMemberSize > this.obj_size_limit) {
           // [error_sehr]
           throw new Error('Structure exceeds hub range of $FFFFF (m532)');
         }
         indexReturn.offsetInStructure += scaledMemberSize;
-        if (indexReturn.offsetInStructure > this.obj_limit) {
+        if (indexReturn.offsetInStructure > this.obj_size_limit) {
           // [error_sehr]
           throw new Error('Structure exceeds hub range of $FFFFF (m533)');
         }
