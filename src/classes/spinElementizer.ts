@@ -66,7 +66,6 @@ export class SpinElementizer {
   private at_eol: boolean = false;
   private symbol_tables: SpinSymbolTables;
   private lastEmittedIsLineEnd: boolean = true;
-  private firstCharColumn: number = 0;
   private lastSymboblEndOffset: number = 0;
   private debugStringState: eDebugStringState = eDebugStringState.NOT_IN_DEBUG;
   private debugParenNestCount: number = 0; // count of nested parens in `{dbgCmd}(...) directives
@@ -95,7 +94,6 @@ export class SpinElementizer {
     this.at_eol = false;
     this.at_eof = false;
     this.lastEmittedIsLineEnd = true;
-    this.firstCharColumn = 0;
     this.lastSymboblEndOffset = 0;
   }
 
@@ -181,7 +179,6 @@ export class SpinElementizer {
     if (this.currCharacterIndex == 0) {
       const lineNbrString: string = this.lineNumberString(this.sourceLineNumber, this.unprocessedLine.length);
       if (this.isLogging) this.logMessage(`  --- NEW ---   Ln#${lineNbrString}  line=[${this.unprocessedLine}]`);
-      this.firstCharColumn = this.countColumnsOfLeftEdgeWhite(this.unprocessedLine) + 1;
       firstElementOfLine = true;
       inDebugStatement = false;
       this.setDebugStringState(eDebugStringState.NOT_IN_DEBUG);
@@ -449,7 +446,7 @@ export class SpinElementizer {
     if (returningSingleEntry) {
       const lineNbrString: string = this.lineNumberString(this.symbolLineNumber, this.symbolCharacterOffset);
       if (this.isLogging) this.logMessage(`- get_element_entries() Ln#${lineNbrString} - type=(${elemTypeStr}), value=(${valueToDisplay})`);
-      if (this.isLogging) this.logMessage(''); // blank line  countColumnsOfLeftEdgeWhite
+      if (this.isLogging) this.logMessage(''); // blank line
       const singleElement = new SpinElement(this.srcFile.fileId, typeFound, valueFound, this.symbolLineNumber - 1, this.symbolCharacterOffset);
       let symbolColumn: number = this.lastSymboblEndOffset + 1;
       if (typeFound != eElementType.type_end) {
@@ -507,91 +504,6 @@ export class SpinElementizer {
     return newElements;
   }
 
-  private elementsForStringCharacterOLD(charCodeValue: number, charOffset: number, notLastChar: boolean, dblQuoteOffset: number): SpinElement[] {
-    //  In UTF-8 encoding, characters in the range U+0080 to U+00FF are represented using two bytes.
-    //  The first byte is either 0xC2 or 0xC3, depending on the character's code point. Specifically:
-    //
-    //  Characters in the range U+0080 to U+00BF use 0xC2 as the first byte.
-    //  Characters in the range U+00C0 to U+00FF use 0xC3 as the first byte.
-    //
-    //  Here is the breakdown:
-    //
-    //  Characters using 0xC2
-    //     U+0080 to U+00BF
-    //
-    //  Examples:
-    //  U+0080 (Control character) -> 0xC2 0x80
-    //  U+00A0 (Non-breaking space) -> 0xC2 0xA0
-    //  U+00B0 (°) -> 0xC2 0xB0
-    //  U+00BF (¿) -> 0xC2 0xBF
-    //
-    //  Characters using 0xC3
-    //     U+00C0 to U+00FF
-    //  Examples:
-    //
-    //  U+00C0 (À) -> 0xC3 0x80
-    //  U+00C1 (Á) -> 0xC3 0x81
-    //  U+00C2 (Â) -> 0xC3 0x82
-    //  U+00C3 (Ã) -> 0xC3 0x83
-    //  ...
-    //  ...
-    //  U+00FE (þ) -> 0xC3 0xBE
-    //  U+00FF (ÿ) -> 0xC3 0xBF
-    //
-    const newElements: SpinElement[] = [];
-    let charCode: number = charCodeValue;
-    const isString: boolean = charCode == 0x09 || (charCode >= 0x20 && charCode <= 0x7f);
-    let shouldBe2ByteCode: boolean = charCode >= 0x80 && charCode <= 0xff;
-    let prefixByte: bigint = BigInt(0xc2);
-    const haveUnmappedChar: boolean = false; // disable this code    charCode == 0xfffd;
-    // NOTE: the following might not happen as we now attempt multiple encoding conversions on file load of .spin2 files
-    if (haveUnmappedChar) {
-      shouldBe2ByteCode = false;
-      charCode = 0xfe; // SPECIAL utf-8  unmapped characters come thru as 0xFFFD we use this internally
-    }
-    if (shouldBe2ByteCode && charCode >= 0xc0) {
-      prefixByte = BigInt(0xc3);
-    }
-    /**
-    if (shouldBe2ByteCode) {
-      // push two prefix elements
-      const prefixChar: SpinElement = this.buildElement(eElementType.type_con_int, prefixByte, charOffset);
-      newElements.push(prefixChar);
-      const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
-      elementComma.midStringComma = true;
-      newElements.push(elementComma);
-      if (prefixByte == BigInt(0xc3)) {
-        charCode -= 0x40; // rebias from 0xC0-0xFF to 0x80-0xBF
-      }
-    }
-    //*/
-    if (shouldBe2ByteCode) {
-      // instead let's map this to 8-bit with msbit set
-      if (prefixByte == BigInt(0xc3)) {
-        // 0xC3 are value 0x80 to 0xBF remap these to 0xC0-0xFF
-        charCode += 0x40; // rebias from 0x80-0xBF to 0xC0-0xFF
-      } else if (prefixByte == BigInt(0xc2)) {
-        // 0xC2 are value 0x80 to 0xBF this is our desired value
-      }
-    }
-    // now push our character element
-    const char = isString ? String.fromCharCode(charCode) : BigInt(charCode);
-    let elementChar: SpinElement;
-    if (dblQuoteOffset != -1) {
-      elementChar = this.buildElement(eElementType.type_con_int, char, charOffset, dblQuoteOffset);
-    } else {
-      elementChar = this.buildElement(eElementType.type_con_int, char, charOffset);
-    }
-    newElements.push(elementChar);
-    // if this is not the last character of the string push a trailing comma element
-    if (notLastChar) {
-      const elementComma: SpinElement = this.buildElement(eElementType.type_comma, 0n, charOffset);
-      elementComma.midStringComma = true;
-      newElements.push(elementComma);
-    }
-    return newElements;
-  }
-
   private skipLeadingWhiteSpace() {
     // if there is leading whitespace on this line, skip past it
     const whiteSkipCount = this.skipNCountWhite(this.unprocessedLine);
@@ -621,27 +533,6 @@ export class SpinElementizer {
       }
     }
     return columnsCount + 1; // now make it a column number
-  }
-
-  private countColumnsOfLeftEdgeWhite(line: string): number {
-    // count columns of white space expanding tabs as we count
-    let whiteColumnsCount: number = 0; // zero-based...
-    const tabStops: number = 8;
-    if (line !== undefined && line.length > 0) {
-      for (let index = 0; index < line.length; index++) {
-        const currChar = line.charAt(index);
-        if (currChar == ' ') {
-          whiteColumnsCount++;
-        } else if (currChar == '\t') {
-          // zero-based, inverted [0-7] becomes [8-1]...
-          const movementCount = tabStops - (whiteColumnsCount % tabStops);
-          whiteColumnsCount += movementCount;
-        } else {
-          break; // non white char, we are done, outta here!
-        }
-      }
-    }
-    return whiteColumnsCount;
   }
 
   private skipToLineWithDocCommentClose(): number {
