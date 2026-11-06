@@ -14,7 +14,7 @@ import { eBlockType, eByteCode, eElementType, eFlexcode, eOperationType, eValueT
 import { float32ToHexString, hexString } from '../utils/float32';
 import { SpinSymbolTables, eOpcode, eAsmcode } from './parseUtils';
 import { SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
-import { ObjectImage } from './objectImage';
+import { BrkSite, ObjectImage } from './objectImage';
 import { getSourceSymbol } from '../utils/fileUtils';
 import { BlockStack } from './blockStack';
 import { ObjFile, SpinFiles } from './spinFiles';
@@ -128,6 +128,27 @@ enum eRepeat {
   RP_NextAddress,
   RP_QuitAddress,
   RP_LoopAddress
+}
+
+interface iBlockMemoFrame {
+  level: number; // this block's level on the block stack
+  labels: Map<string, number>; // enclosing-block labels it read, "level:index" -> value
+}
+
+interface iBlockMemoEntry {
+  labels: Map<string, number>;
+  bytes: Uint8Array;
+  brkSites: BrkSite[];
+  nextElementIndex: number;
+  currElement: SpinElement;
+  replacedName: string;
+  scopeColumn: number;
+  lineColumn: number;
+  mathMode: eMathMode;
+  debug_first: boolean;
+  debug_stack_depth: number;
+  hubMode: boolean;
+  isVerified: boolean; // develop mode clears this until a real compile has matched it
 }
 
 enum eOptimizerMethod {
@@ -311,6 +332,9 @@ export class SpinResolver {
 
   // Spin2 processing support data
   private blockStack: BlockStack;
+  private blockMemo: Map<string, iBlockMemoEntry[]> = new Map(); // one method's finished blocks
+  private blockMemoFrames: iBlockMemoFrame[] = []; // the blocks being compiled right now
+  private blockMemoTaint: number = 0; // counts compiles a block cannot simply repeat
   private subResults: number = 0;
   private lineColumn: number = 1; // PNut [column] [1,n]
   private scopeColumn: number = 1; // PNut x86 'ebp' register
@@ -3379,7 +3403,7 @@ export class SpinResolver {
       }
       // here is @@nolocals:
       const subIndex: number = this.objImage.offset >> 2;
-      if (subIndex - subStartIndex > this.subs_limit) {
+      if (subIndex - subStartIndex >= this.subs_limit) {
         // [error_loxppme]
         throw new Error(`Limit of ${this.subs_limit} PUB/PRI methods exceeded`);
       }
@@ -3788,6 +3812,8 @@ export class SpinResolver {
     // PNut compile_top_block:
     if (this.isLogging) this.logMessage(`*==* compileTopBlock()`);
     this.blockStack.reset();
+    this.blockMemo.clear();
+    this.blockMemoFrames = [];
     this.setScopeColumn(0); // effectively -1
     this.compileBlock(this.scopeColumn); // effectively -1
     this.objImage.appendByte(eByteCode.bc_return_results);
@@ -6129,6 +6155,7 @@ export class SpinResolver {
     // compile inline section
     if (this.isLogging) this.logMessage(`  -- compile inline section`);
     this.hubMode = false;
+    this.blockMemoTaint++;
     this.compile_dat_blocks(isInlineMode, inlineOrigin << 2, inline_org_limit << 2);
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -6165,6 +6192,7 @@ export class SpinResolver {
     // compile inline section
     if (this.isLogging) this.logMessage(`  -- compile inline section`);
     this.hubMode = true;
+    this.blockMemoTaint++;
     this.compile_dat_blocks(isInlineMode, inlineOrigin << 2, inline_org_limit << 2);
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -6293,9 +6321,11 @@ export class SpinResolver {
     // Emit branch to target address
     if (isNext) {
       const address: number = this.blockStack.readAtLevel(nestLevel, 0); // NEXT address
+      this.noteBlockMemoLabel(nestLevel, 0, address);
       this.compileBranch(eByteCode.bc_jmp, address);
     } else {
       const address: number = this.blockStack.readAtLevel(nestLevel, 1); // QUIT address
+      this.noteBlockMemoLabel(nestLevel, 1, address);
       this.compileBranch(byteCode, address);
     }
   }
@@ -7189,6 +7219,10 @@ export class SpinResolver {
       // compress our debug data then store it for listing and binary writing
       if (this.isLogging) this.logMessage('* collapse_debug_data()');
       this.debug_compressed_data = this.debug_data.collapseDebugData;
+      if (this.debug_compressed_data.length > DebugData.COLLAPSED_SIZE_LIMIT) {
+        // [error_dditl]
+        throw new Error('DEBUG data is too long (m154)');
+      }
     }
   }
 
@@ -7871,6 +7905,128 @@ export class SpinResolver {
   }
 
   private optimizeBlock(methodId: eOptimizerMethod, subType: number = 0) {
+    // PNut compiles a nested block again on every pass of each block around it,
+    // so the work grows as a power of the depth. The result of compiling a block
+    // depends only on what the key and the recorded labels capture, so a block
+    // reached again in the same state replays its finished result instead.
+    // A LOOKUP/LOOKDOWN sits inside an expression, so it is never memoised itself.
+    if (methodId == eOptimizerMethod.OM_Look) {
+      this.compileBlockUntilStable(methodId, subType);
+      return;
+    }
+    const key: string = [
+      methodId,
+      subType,
+      this.nextElementIndex,
+      this.objImage.offset,
+      this.scopeColumn,
+      this.lineColumn,
+      this.mathMode,
+      this.debug_first,
+      this.debug_stack_depth,
+      this.hubMode,
+      this.blockStack.typeStackKey
+    ].join();
+    const known: iBlockMemoEntry | undefined = this.blockMemo.get(key)?.find((entry) => this.blockMemoLabelsMatch(entry));
+    if (known !== undefined && known.isVerified) {
+      this.replayBlockMemo(known);
+      return;
+    }
+
+    const startOffset: number = this.objImage.offset;
+    const taintAtEntry: number = this.blockMemoTaint;
+    const frame: iBlockMemoFrame = { level: this.blockStack.topIndex, labels: new Map() };
+    this.blockMemoFrames.push(frame);
+    try {
+      this.compileBlockUntilStable(methodId, subType);
+    } finally {
+      this.blockMemoFrames.pop();
+    }
+    if (this.blockMemoTaint != taintAtEntry) {
+      return; // inline PASM changes the symbol tables, so this block is not repeatable
+    }
+
+    const result: iBlockMemoEntry = {
+      labels: frame.labels,
+      bytes: this.objImage.bytesFrom(startOffset),
+      brkSites: this.objImage.brkSites.filter((site) => site.offset >= startOffset),
+      nextElementIndex: this.nextElementIndex,
+      currElement: this.currElement,
+      replacedName: this.replacedName,
+      scopeColumn: this.scopeColumn,
+      lineColumn: this.lineColumn,
+      mathMode: this.mathMode,
+      debug_first: this.debug_first,
+      debug_stack_depth: this.debug_stack_depth,
+      hubMode: this.hubMode,
+      isVerified: !this.context.runEnvironment.developerModeEnabled
+    };
+    if (known !== undefined) {
+      this.checkBlockMemo(known, result);
+      known.isVerified = true;
+      return;
+    }
+    const entries: iBlockMemoEntry[] | undefined = this.blockMemo.get(key);
+    if (entries === undefined) {
+      this.blockMemo.set(key, [result]);
+    } else {
+      entries.push(result);
+    }
+  }
+
+  private blockMemoLabelsMatch(entry: iBlockMemoEntry): boolean {
+    for (const [labelKey, value] of entry.labels) {
+      const [level, index] = labelKey.split(':').map(Number);
+      if (this.blockStack.readAtLevel(level, index) != value) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private noteBlockMemoLabel(level: number, index: number, value: number) {
+    // an enclosing block's label is an input to every open block nested inside it
+    for (const frame of this.blockMemoFrames) {
+      if (level < frame.level) {
+        frame.labels.set(`${level}:${index}`, value);
+      }
+    }
+  }
+
+  private replayBlockMemo(entry: iBlockMemoEntry) {
+    for (const [labelKey, value] of entry.labels) {
+      const [level, index] = labelKey.split(':').map(Number);
+      this.noteBlockMemoLabel(level, index, value);
+    }
+    for (const byteValue of entry.bytes) {
+      this.objImage.appendByte(byteValue);
+    }
+    for (const site of entry.brkSites) {
+      this.objImage.addBrkSite({ ...site });
+    }
+    this.nextElementIndex = entry.nextElementIndex;
+    this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, entry.currElement);
+    this.replacedName = entry.replacedName;
+    this.scopeColumn = entry.scopeColumn;
+    this.lineColumn = entry.lineColumn;
+    this.mathMode = entry.mathMode;
+    this.debug_first = entry.debug_first;
+    this.debug_stack_depth = entry.debug_stack_depth;
+    this.hubMode = entry.hubMode;
+  }
+
+  private checkBlockMemo(expected: iBlockMemoEntry, actual: iBlockMemoEntry) {
+    // Develop mode: the first reuse of each entry is compiled for real and compared.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const comparable = ({ labels, currElement, isVerified, bytes, ...rest }: iBlockMemoEntry) =>
+      JSON.stringify({ ...rest, bytes: Array.from(bytes), labels: Array.from(labels), element: currElement.toString() });
+    if (comparable(expected) != comparable(actual)) {
+      // [error_internal]
+      throw new Error('Internal error! - optimizeBlock() replay differs from a real compile');
+    }
+  }
+
+  private compileBlockUntilStable(methodId: eOptimizerMethod, subType: number) {
     // Optimizing block compiler
     // PNut optimize_block:
     // XYZZY this is our optimize loop we want to instrument to fix out how it's demanding time/memory

@@ -148,6 +148,36 @@ describe('PNut_ts command-line options and environment', () => {
     expect(fs.existsSync(path.join(workDir, 'second.bin'))).toBe(false);
   });
 
+  test('-o with a relative name writes the binary beside the source', () => {
+    fs.writeFileSync(path.join(workDir, 'named.spin2'), MINIMAL_SOURCE);
+    const result = runCompiler(['-o', 'relative.bin', '--', 'named.spin2']);
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(path.join(workDir, 'relative.bin'))).toBe(true);
+  });
+
+  test('-o with an absolute name writes the binary at exactly that path', () => {
+    fs.writeFileSync(path.join(workDir, 'named.spin2'), MINIMAL_SOURCE);
+    const absoluteName: string = path.join(workDir, 'absolute.bin');
+    const result = runCompiler(['-o', absoluteName, '--', 'named.spin2']);
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(absoluteName)).toBe(true);
+  });
+
+  test('40 nested IF blocks compile, and develop mode finds every reused block identical', () => {
+    let source: string = 'PUB main() : r\n';
+    for (let depth = 0; depth < 40; depth++) {
+      source += `${' '.repeat(depth + 2)}if r\n`;
+    }
+    source += `${' '.repeat(42)}r := 1\n`;
+    fs.writeFileSync(path.join(workDir, 'deep.spin2'), source);
+    const plain = runCompiler(['-q', '--', 'deep.spin2']);
+    expect(plain.status).toBe(0);
+    const plainBinary: Buffer = fs.readFileSync(path.join(workDir, 'deep.bin'));
+    const checked = runCompiler(['-q', '--', 'deep.spin2'], { PNUT_DEVELOP_MODE: '1' });
+    expect(checked.status).toBe(0);
+    expect(fs.readFileSync(path.join(workDir, 'deep.bin')).equals(plainBinary)).toBe(true);
+  });
+
   test('a single source filename still compiles', () => {
     fs.writeFileSync(path.join(workDir, 'only.spin2'), MINIMAL_SOURCE);
     const result = runCompiler(['-q', 'only.spin2']);

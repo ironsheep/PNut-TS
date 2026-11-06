@@ -1,0 +1,19 @@
+'' gen_acc_spin_bnso_4096: generated from scripts/fixtures/fixtures.json row "acc_spin_bnso_4096"; edit the row, not this file. Covers: PNut error_bnso "Blocknest stack overflow" (no PNut-TS message) - at limit (15 nested IF = 15 x 272 = 4080 dwords, then 1 nested REPEAT = 16, total 4096 = block_stack_limit; asm v52 p2com.asm 11820-11822, 11106, 11587)
+PUB main() | x
+  if x
+   if x
+    if x
+     if x
+      if x
+       if x
+        if x
+         if x
+          if x
+           if x
+            if x
+             if x
+              if x
+               if x
+                if x
+                 repeat
+                  x := 1

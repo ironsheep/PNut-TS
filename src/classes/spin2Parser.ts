@@ -443,7 +443,8 @@ export class Spin2Parser {
           const debugRecords = debugRawData.recordCount;
           const debugDataBytes = debugRawData.length - 0x200; // subtract index table size
           const maxRecords = DebugData.MAX_ENTRIES;
-          const maxDataBytes = DebugData.DEBUG_SIZE_IN_BYTES - 0x200;
+          // the collapsed table (a word per record, plus the end marker) shares the limit with the data
+          const maxDataBytes = DebugData.COLLAPSED_SIZE_LIMIT - (debugRecords + 1) * 2;
           const recordsString = this.rightAlignedDecimalValue(debugRecords, 11);
           const debugBytesString = this.rightAlignedDecimalValue(debugDataBytes, 11);
           const recordsPct = ((debugRecords / maxRecords) * 100).toFixed(1);

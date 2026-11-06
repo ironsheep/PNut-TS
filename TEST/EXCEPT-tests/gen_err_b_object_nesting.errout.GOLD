@@ -1,0 +1,1 @@
+/workspaces/PNut-TS/TEST/EXCEPT-tests/gen_err_b_object_nesting.spin2:6:error:Object nesting exceeds 16 levels - illegal circular reference may exist

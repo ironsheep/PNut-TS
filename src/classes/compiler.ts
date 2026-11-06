@@ -307,7 +307,8 @@ export class Compiler {
     if (this.isLoggingOutline)
       this.logMessageOutline(`++ compileRecursly(${depth}, [${srcFile.fileName}]) - ENTRY ---------------------------------------`);
     if (this.spin2Parser !== undefined) {
-      if (depth > OBJ_STACK_LIMIT) {
+      // the top file is depth 0 here and level 1 in PNut (P2.ObjStackPtr > ObjStackLimit)
+      if (depth + 1 > OBJ_STACK_LIMIT) {
         throw new Error(`Object nesting exceeds ${OBJ_STACK_LIMIT} levels - illegal circular reference may exist`);
       }
 

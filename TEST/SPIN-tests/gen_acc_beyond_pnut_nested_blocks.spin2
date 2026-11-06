@@ -1,0 +1,20 @@
+'' gen_acc_beyond_pnut_nested_blocks: generated from scripts/fixtures/fixtures.json row "acc_beyond_pnut_nested_blocks"; edit the row, not this file. Covers: PNut-TS has no block-nesting limit (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source at line 19 of its v55 GOLD with "Limit of 16 nested blocks exceeded". PNut error_loxnbe "Limit of 16 nested blocks exceeded" (no PNut-TS message). asm v52 p2com.asm 11810-11811 tests bnest_ptr against block_nest_limit (16, line 64) before each push. Pushes come from IF/IFNOT (11107), CASE (11181), CASE_FAST (11316), REPEAT (11588) and LOOKUP/LOOKDOWN (14078); compile_top_block (11006) resets the pointer without a push, so the method body is not counted. 17 nested REPEAT = PNut limit + 1.
+PUB main() | x
+  repeat
+   repeat
+    repeat
+     repeat
+      repeat
+       repeat
+        repeat
+         repeat
+          repeat
+           repeat
+            repeat
+             repeat
+              repeat
+               repeat
+                repeat
+                 repeat
+                  repeat
+                   x := 1

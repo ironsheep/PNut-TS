@@ -299,7 +299,7 @@ That is expected for a small class of sources, and it is the reason this diagnos
 
 ### Nesting depth
 
-The original PNut limits conditional nesting to 8 levels. PNut-TS does not impose that limit — source nested deeper compiles here. If your source needs to build under both compilers, stay within 8 levels.
+The original PNut limits conditional nesting to 8 levels. PNut-TS does not impose that limit — source nested deeper compiles here. If your source needs to build under both compilers, stay within 8 levels. [Porting](Porting.md) lists the other differences.
 
 ## Predefined Symbols
 

@@ -1015,33 +1015,28 @@
       "source": ["PUB main() | x, y", "  quit"]
     },
     {
-      "id": "err_b_loxnbe",
-      "suite": "EXCEPT-tests",
-      "kind": "reject",
-      "goldSource": "pnut",
-      "expectLine": 18,
-      "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message). asm v52 p2com.asm 11810-11811 tests bnest_ptr against block_nest_limit (16, line 64) before each push. Pushes come from IF/IFNOT (11107), CASE (11181), CASE_FAST (11316), REPEAT (11588) and LOOKUP/LOOKDOWN (14078); compile_top_block (11006) resets the pointer without a push, so the method body is not counted. 17 nested REPEAT = PNut limit + 1.",
-      "note": "asm v52 p2com.asm, unconfirmed until GOLD.",
+      "id": "acc_beyond_pnut_nested_blocks",
+      "suite": "SPIN-tests",
+      "kind": "accept",
+      "goldSource": "pnut-ts",
+      "covers": "PNut-TS has no block-nesting limit (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source at line 19 of its v55 GOLD with \"Limit of 16 nested blocks exceeded\". PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message). asm v52 p2com.asm 11810-11811 tests bnest_ptr against block_nest_limit (16, line 64) before each push. Pushes come from IF/IFNOT (11107), CASE (11181), CASE_FAST (11316), REPEAT (11588) and LOOKUP/LOOKDOWN (14078); compile_top_block (11006) resets the pointer without a push, so the method body is not counted. 17 nested REPEAT = PNut limit + 1.",
       "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  repeat", "                   x := 1"]
     },
     {
-      "id": "err_b_bnso",
-      "suite": "EXCEPT-tests",
-      "kind": "reject",
-      "goldSource": "pnut",
-      "expectLine": 17,
-      "covers": "PNut error_bnso \"Blocknest stack overflow\" (no PNut-TS message). asm v52 p2com.asm 11820-11822: after a push, bstack_ptr (in dwords) must not exceed block_stack_limit (1000h = 4096, line 65). An IF/IFNOT reserves if_limit/16+1 times 16 = 272 dwords (11106; if_limit 256, line 66). 16 nested IF = 4352 > 4096. Only 16 blocks are pushed, so error_loxnbe (11811) is not reached.",
-      "note": "asm v52 p2com.asm, unconfirmed until GOLD. Under PNut-TS (current dist) this row did not finish compiling within 300 s (D15 class: nested IF).",
+      "id": "acc_beyond_pnut_block_stack",
+      "suite": "SPIN-tests",
+      "kind": "accept",
+      "goldSource": "pnut-ts",
+      "covers": "PNut-TS has no block-stack limit (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source at line 18 of its v55 GOLD with \"Blocknest stack overflow\". PNut error_bnso \"Blocknest stack overflow\" (no PNut-TS message). asm v52 p2com.asm 11820-11822: after a push, bstack_ptr (in dwords) must not exceed block_stack_limit (1000h = 4096, line 65). An IF/IFNOT reserves if_limit/16+1 times 16 = 272 dwords (11106; if_limit 256, line 66). 16 nested IF = 4352 > 4096. Only 16 blocks are pushed, so error_loxnbe (11811) is not reached.",
       "source": ["PUB main() | x", "  if x", "   if x", "    if x", "     if x", "      if x", "       if x", "        if x", "         if x", "          if x", "           if x", "            if x", "             if x", "              if x", "               if x", "                if x", "                 if x", "                  x := 1"]
     },
     {
-      "id": "err_b_loxudfe",
-      "suite": "EXCEPT-tests",
-      "kind": "reject",
-      "goldSource": "pnut",
-      "expectLine": 257,
-      "covers": "PNut error_loxudfe \"Limit of 32 unique DAT files exceeded\" (no PNut-TS message; the PNut-TS file limit is 255)",
-      "source": { "template": ["DAT\n", { "repeat": 256, "text": "  f${i:3} file \"gen_err_b_loxudfe__d${i:3}.txt\"\n" }] },
+      "id": "acc_beyond_pnut_dat_files",
+      "suite": "DAT-PASM-tests",
+      "kind": "accept",
+      "goldSource": "pnut-ts",
+      "covers": "PNut-TS has no limit on unique DAT files (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source at the 256th file (line 258 of its v55 GOLD) with \"Limit of 32 unique DAT files exceeded\"; its text says 32 but its limit is 255.",
+      "source": { "template": ["DAT\n", { "repeat": 256, "text": "  f${i:3} file \"gen_acc_beyond_pnut_dat_files__d${i:3}.txt\"\n" }] },
       "aux": [{ "name": "d${i:3}.txt", "sibling": true, "count": 256, "source": "x\n" }]
     },
     {
@@ -2061,13 +2056,11 @@
       "source": ["DAT", "  org", "x res 1", "  mov x, #512"]
     },
     {
-      "id": "err_c_eitc",
-      "suite": "EXCEPT-tests",
-      "kind": "reject",
-      "goldSource": "pnut",
-      "expectLine": 2,
-      "covers": "PNut error_eitc \"Expression is too complex\" (no PNut-TS message). asm v52 p2com.asm 9626-9627: perform_push errors when the math stack is full; matsize = 10h = 16 (line 10118). A constant pushes once (9312), '(' recurses into resolve_exp (9321) without a push, and the binary operator runs after its right operand, so each '1 + (' leaves one value pending. 16 levels = 17 pushes, and the 17th errors.",
-      "note": "asm v52 p2com.asm, unconfirmed until GOLD.",
+      "id": "acc_beyond_pnut_expression_depth",
+      "suite": "CON-tests",
+      "kind": "accept",
+      "goldSource": "pnut-ts",
+      "covers": "PNut-TS has no expression-depth limit of its own (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source with \"Expression is too complex\". PNut error_eitc \"Expression is too complex\" (no PNut-TS message). asm v52 p2com.asm 9626-9627: perform_push errors when the math stack is full; matsize = 10h = 16 (line 10118). A constant pushes once (9312), '(' recurses into resolve_exp (9321) without a push, and the binary operator runs after its right operand, so each '1 + (' leaves one value pending. 16 levels = 17 pushes, and the 17th errors.",
       "source": { "template": ["CON\n  a = ", { "repeat": 16, "text": "1 + (" }, "1", { "repeat": 16, "text": ")" }, "\nPUB main()\n  return\n"] }
     },
     {
@@ -2090,14 +2083,12 @@
       "source": "PUB main()\n  debug(`hello"
     },
     {
-      "id": "err_c_stif",
-      "suite": "EXCEPT-tests",
-      "kind": "reject",
-      "goldSource": "pnut",
-      "expectLine": 15423,
-      "note": "expectLine is estimated from the PNut symbol record size; the Windows GOLD gives the true line.",
-      "covers": "PNut error_stif \"Symbol table is full\" (main symbol table of 256KB; no PNut-TS message)",
-      "source": { "template": ["VAR\n", { "repeat": 25000, "text": "  long v${i:5}\n" }, "PUB main()\n  return\n"] }
+      "id": "acc_beyond_pnut_symbol_table",
+      "suite": "VAR-tests",
+      "kind": "accept",
+      "goldSource": "pnut-ts",
+      "covers": "PNut-TS has no symbol-table limit (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source at line 15419 of its v55 GOLD with \"Symbol table is full\" (its main symbol table of 256KB).",
+      "source": { "template": ["VAR\n", { "repeat": 16000, "text": "  long v${i:5}\n" }, "PUB main()\n  return\n"] }
     },
     {
       "id": "err_b2_bfaoa",
@@ -3313,7 +3304,7 @@
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"NEXT/QUIT level must be from 1 to 15\" - at limit (both ends: level 1 and level 15)",
       "note": "asm v52 p2com.asm 12135-12142, unconfirmed until GOLD. Level 15 needs 16 enclosing blocks.",
-      "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  if x", "                    next 15", "                  else", "                    quit 1", "                  quit 15"]
+      "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  next 15", "                  quit 1", "                  quit 15"]
     },
     {
       "id": "acc_spin_write_skip_range",
@@ -3640,13 +3631,42 @@
     {
       "id": "acc_obj_nesting_16",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
-      "covers": "src/classes/compiler.ts: \"Object nesting exceeds 16 levels - illegal circular reference may exist\" (PNut-TS-only message) - at limit (a chain of 16 nested child objects)",
-      "note": "PNut-TS's own limit (REF-V52A has no nesting limit); the PNut ceiling is unconfirmed until GOLD.",
+      "covers": "src/classes/compiler.ts: \"Object nesting exceeds 16 levels - illegal circular reference may exist\" - at limit (16 files: the top file and a chain of 15 child objects)",
+      "note": "PNut counts the top file as level 1 (EditorUnit.pas 2494-2496, ObjStackLimit 16). The v55 GOLD for a 17-file chain was a rejection, so this row stops at 16 files. Unconfirmed until GOLD.",
       "source": ["OBJ", "  c : \"gen_acc_obj_nesting_16__c01\"", "PUB main()", "  return"],
       "aux": [
-        { "name": "c${i:2}.spin2", "sibling": true, "count": 15, "from": 1, "source": { "template": ["OBJ\n  n : \"gen_acc_obj_nesting_16__c${i+1:2}\"\nPUB go${i:2}()\n  return\n"] } },
+        { "name": "c${i:2}.spin2", "sibling": true, "count": 14, "from": 1, "source": { "template": ["OBJ\n  n : \"gen_acc_obj_nesting_16__c${i+1:2}\"\nPUB go${i:2}()\n  return\n"] } },
+        { "name": "c15.spin2", "sibling": true, "source": ["PUB go15()", "  return"] }
+      ]
+    },
+    {
+      "id": "err_b_obj_nesting_17",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/compiler.ts: \"Object nesting exceeds 16 levels - illegal circular reference may exist\" - limit + 1 (17 files, no circular reference); EditorUnit.pas 2495-2496",
+      "note": "PNut's CLI writes an empty message for this Delphi-side error, so the GOLD asserts rejection only. Unconfirmed until GOLD.",
+      "source": ["OBJ", "  c : \"gen_err_b_obj_nesting_17__c01\"", "PUB main()", "  return"],
+      "aux": [
+        { "name": "c${i:2}.spin2", "sibling": true, "count": 15, "from": 1, "source": { "template": ["OBJ\n  n : \"gen_err_b_obj_nesting_17__c${i+1:2}\"\nPUB go${i:2}()\n  return\n"] } },
         { "name": "c16.spin2", "sibling": true, "source": ["PUB go16()", "  return"] }
       ]
+    },
+    {
+      "id": "acc_obj_name_cut_to_32",
+      "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinFiles.ts addObjFile: an OBJ name longer than 32 characters is cut to 32 before the search (EditorUnit.pas 2473 ObjFilenames: string[32], then 2539-2544)",
+      "note": "The name written has 37 characters; only the file with its first 32 exists. Read from the Pascal, unconfirmed until GOLD.",
+      "source": ["OBJ", "  c : \"gen_acc_obj_name_cut_to_32__xyzwEXTRA\"", "PUB main()", "  return"],
+      "aux": [{ "name": "xyzw.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_obj_name_cut_missing",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinFiles.ts addObjFile: \"Cannot find\" names the name cut to 32 characters, reported on the OBJ line (EditorUnit.pas 2473, 2551)",
+      "note": "Only the file with the full name exists, so PNut's cut name finds nothing. The earlier 37-character acc_obj_structs_imp row was rejected this way. Unconfirmed until GOLD.",
+      "source": ["OBJ", "  c : \"gen_err_b_obj_name_cut_missing__child\"", "PUB main()", "  return"],
+      "aux": [{ "name": "child.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
     },
     {
       "id": "acc_obj_structs_imp_1000",
@@ -3924,7 +3944,7 @@
     {
       "id": "err_b_tmvsid_m602_aligned_to_limit",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
-      "expectLine": 6,
+      "expectLine": 5,
       "covers": "src/classes/spinResolver.ts alignVar m602: \"Too much variable space is declared\" when alignment rounds the VAR pointer up to exactly the limit",
       "note": "The VAR pointer starts at 4, so byte a[$FFFF9] ends at $FFFFD and aligns to $100000. asm v52 p2com.asm 4675-4680 tests with jae, unconfirmed until GOLD.",
       "source": ["VAR", "  byte a[$FFFF9]", "", "PUB main()", "  return"]

@@ -12,6 +12,7 @@ import { eElementType } from './types';
 
 const FILES_LIMIT: number = 255; // DAT and OBJ limit is same PNut files_limit
 const OBJ_PARAMS_LIMIT: number = 16; // OBJ override limit - PNut obj_params_limit
+const OBJ_NAME_LIMIT: number = 32; // characters of an OBJ filename PNut keeps
 const ALLOW_LIBRARY_SEARCH: boolean = true;
 
 interface iPossibleSymbolTable {
@@ -290,7 +291,10 @@ export class SpinFiles {
 
   public addObjFile(fileName: string, elementIndex: number = 0): ObjFile {
     let desiredFile: ObjFile | undefined = undefined;
-    const spin2fileName: string = fileName.toLowerCase().endsWith('.spin2') ? fileName : `${fileName}.spin2`;
+    // PNut keeps at most 32 characters of an OBJ name, then adds .spin2 (EditorUnit.pas ObjFilenames: string[32])
+    const hasExtension: boolean = fileName.toLowerCase().endsWith('.spin2');
+    const baseName: string = hasExtension ? fileName.slice(0, -'.spin2'.length) : fileName;
+    const spin2fileName: string = `${baseName.substring(0, OBJ_NAME_LIMIT)}${hasExtension ? fileName.slice(-'.spin2'.length) : '.spin2'}`;
     if (this._objFiles.length >= FILES_LIMIT) {
       // [error_loxuoe]
       // PNut's text says 32 although its limit, like ours, is FILES_LIMIT

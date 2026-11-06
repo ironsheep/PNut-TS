@@ -59,9 +59,9 @@ every package: `pnut_ts` is a symlink to `pnut-ts` on Unix and a copy of
    and copies these documents from the repo root:
 
    `README.md` · `CHANGELOG.md` · `AUTHORS` · `CommandLine.md` ·
-   `Preprocessor.md` · `copyright` · `LICENSE.txt` (or `LICENSE`)
+   `Preprocessor.md` · `Porting.md` · `copyright` · `LICENSE.txt` (or `LICENSE`)
 
-   **The step fails the job if any of the first six is missing** (explicit
+   **The step fails the job if any of the first seven is missing** (explicit
    `[ ! -f "${doc}" ]` check per file); the license file falls back from
    `LICENSE.txt` to `LICENSE` and only warns if neither exists.
 6. Zips the four Windows/Linux folders directly and uploads them as the

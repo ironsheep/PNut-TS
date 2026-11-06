@@ -45,7 +45,9 @@ export function outputFilespecs(context: Context): iOutputFilespecs {
   const overrideName: string = context.compileOptions.outputFilename;
   // -o names the binary outright, replacing both the derived name and the suffix
   // that -a would otherwise have chosen.
-  const overridden: string = overrideName.length > 0 ? path.join(path.dirname(listing), overrideName) : '';
+  // A relative name lands beside the source; an absolute one is used as written.
+  const overridden: string =
+    overrideName.length == 0 ? '' : path.isAbsolute(overrideName) ? overrideName : path.join(path.dirname(listing), overrideName);
   return {
     listing: listing,
     map: listing.replace('.lst', '.map'),

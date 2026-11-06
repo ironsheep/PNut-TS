@@ -1,0 +1,19 @@
+'' gen_acc_beyond_pnut_block_stack: generated from scripts/fixtures/fixtures.json row "acc_beyond_pnut_block_stack"; edit the row, not this file. Covers: PNut-TS has no block-stack limit (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source at line 18 of its v55 GOLD with "Blocknest stack overflow". PNut error_bnso "Blocknest stack overflow" (no PNut-TS message). asm v52 p2com.asm 11820-11822: after a push, bstack_ptr (in dwords) must not exceed block_stack_limit (1000h = 4096, line 65). An IF/IFNOT reserves if_limit/16+1 times 16 = 272 dwords (11106; if_limit 256, line 66). 16 nested IF = 4352 > 4096. Only 16 blocks are pushed, so error_loxnbe (11811) is not reached.
+PUB main() | x
+  if x
+   if x
+    if x
+     if x
+      if x
+       if x
+        if x
+         if x
+          if x
+           if x
+            if x
+             if x
+              if x
+               if x
+                if x
+                 if x
+                  x := 1

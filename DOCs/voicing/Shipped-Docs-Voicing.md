@@ -3,7 +3,7 @@
 How the documents that ship **inside the release package** are written:
 
 `README.md` · `CHANGELOG.md` · `CommandLine.md` · `Preprocessor.md` ·
-`AUTHORS` · `LICENSE` · `copyright`
+`Porting.md` · `AUTHORS` · `LICENSE` · `copyright`
 
 **Read [`README.md`](README.md) first** — it carries the audience, the
 evidence-grounding rule, the no-internals/no-churning-values rule, and the voice.
@@ -37,7 +37,7 @@ directory at all.** `README.md` also links `BUILD-RUN.md`, `Coverage.md` and
 The rules:
 
 - **Link only to files that ship beside the document.** `LICENSE`, `copyright`,
-  `CHANGELOG.md`, `CommandLine.md`, `Preprocessor.md` and `README.md` may
+  `CHANGELOG.md`, `CommandLine.md`, `Preprocessor.md`, `Porting.md` and `README.md` may
   reference each other freely — they are in the same folder.
 - **Everything else gets an absolute `https://` URL** to the GitHub repo. A
   developer-only document (`BUILD-RUN.md`, `Testing.md`, `Coverage.md`,

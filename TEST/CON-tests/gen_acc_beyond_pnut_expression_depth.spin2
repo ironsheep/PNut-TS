@@ -1,0 +1,5 @@
+'' gen_acc_beyond_pnut_expression_depth: generated from scripts/fixtures/fixtures.json row "acc_beyond_pnut_expression_depth"; edit the row, not this file. Covers: PNut-TS has no expression-depth limit of its own (Stephen, 2026-11-05; Porting-Guide.md). PNut rejects this source with "Expression is too complex". PNut error_eitc "Expression is too complex" (no PNut-TS message). asm v52 p2com.asm 9626-9627: perform_push errors when the math stack is full; matsize = 10h = 16 (line 10118). A constant pushes once (9312), '(' recurses into resolve_exp (9321) without a push, and the binary operator runs after its right operand, so each '1 + (' leaves one value pending. 16 levels = 17 pushes, and the 17th errors.
+CON
+  a = 1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1))))))))))))))))
+PUB main()
+  return

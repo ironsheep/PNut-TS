@@ -58,6 +58,7 @@ export class DebugData {
   static readonly MAX_ENTRIES: number = 255;
   // static readonly DEBUG_SIZE_IN_BYTES: number = DebugData.MAX_ENTRIES * (DebugRecord.MAX_RECORD_LENGTH + 1);
   static readonly DEBUG_SIZE_IN_BYTES = 0x4000; // is hard size limit
+  static readonly COLLAPSED_SIZE_LIMIT = 0x2a00; // PNut debug_size_limit: what the debugger can hold, table included
   private _debugImage = new Uint8Array(DebugData.DEBUG_SIZE_IN_BYTES); // total memory size
   private _debugOffset: number = 0; // current index into OBJ image
   private _maxOffset: number = 0; // current index into OBJ image

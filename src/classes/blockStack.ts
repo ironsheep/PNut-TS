@@ -147,6 +147,10 @@ export class BlockStack {
     return desiredType;
   }
 
+  get typeStackKey(): string {
+    return this._stack.map((level) => level.type).join('.');
+  }
+
   public enableLogging(enable: boolean = true) {
     // can pass false to disable
     this.isLogging = enable;

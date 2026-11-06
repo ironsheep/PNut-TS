@@ -209,6 +209,11 @@ export class ObjectImage {
     this.updateMax();
   }
 
+  /** A copy of the bytes written from `offset` up to the write cursor. */
+  public bytesFrom(offset: number): Uint8Array {
+    return this._objImageByteAr.slice(offset, this._objOffset);
+  }
+
   public read(offset: number): number {
     // read existing value from image
     let desiredValue: number = 0;

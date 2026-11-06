@@ -143,6 +143,13 @@
       ],
       "verified": "1.55.10"
     },
+    "Porting.md": {
+      "class": "shipped",
+      "covers": [
+        "diagnostics"
+      ],
+      "verified": "1.55.10"
+    },
     "BUILD-RUN.md": {
       "class": "process",
       "verified": null
