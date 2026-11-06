@@ -1,0 +1,3 @@
+'' gen_err_a_ce32b: generated from scripts/fixtures/fixtures.json row "err_a_ce32b"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Constant exceeds 32 bits"
+PUB main() | x
+  x := $1_0000_0000

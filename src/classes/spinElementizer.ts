@@ -359,6 +359,10 @@ export class SpinElementizer {
       valueFound = value;
       symbolLengthFound = charsUsed;
       this.unprocessedLine = this.skipAhead(charsUsed, this.unprocessedLine);
+    } else if (this.unprocessedLine.startsWith('%%')) {
+      // '%%' must be followed by a base-four digit
+      // [error_idbn]
+      throw new Error('Invalid double-binary number');
     } else if (this.unprocessedLine.charAt(0) == '%' && this.isBinStartChar(this.unprocessedLine.charAt(1))) {
       // handle base-two numbers of the form %0100_0111, %01111010, etc
       const [charsUsed, value] = this.binaryConversion(this.unprocessedLine);
@@ -985,7 +989,6 @@ export class SpinElementizer {
 
   private validate32BitInteger(value: bigint): void {
     if (value > 0xffffffff) {
-      this.context.logger.logErrorMessage(`The result (${value}) does not fit in 32 bits`);
       // [error_ce32b]
       throw new Error('Constant exceeds 32 bits');
     }

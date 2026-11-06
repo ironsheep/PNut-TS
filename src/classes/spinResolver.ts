@@ -7091,26 +7091,22 @@ export class SpinResolver {
     let charCount: number = 1;
     if (currSrcLine) {
       let charOffset = this.currElement.sourceCharacterOffset; // the backtick
-      // count number of bytes to emit
-      let parenNestCount: number = 0;
-      for (let index = charOffset + 1; index < currSrcLine.length; index++) {
-        const currChar = currSrcLine.charAt(index);
-        if (currChar == '`') {
-          // if we found next '`'
-          foundEndWithTickStatus = true;
-          break;
-        } else if (currChar == '(') {
-          parenNestCount++;
-        } else if (currChar == ')') {
-          if (parenNestCount > 0) {
-            parenNestCount--;
-          }
-          // if we are at closing ')' at end of line
-          if (parenNestCount == 0) {
-            break;
-          }
+      // count number of bytes to emit: the string runs to the next '`', or to a ')' that ends its line
+      const stringEndIndex: number = this.tickStringEnd(currSrcLine, charOffset + 1);
+      if (stringEndIndex >= 0) {
+        charCount += stringEndIndex - (charOffset + 1);
+        foundEndWithTickStatus = currSrcLine.charAt(stringEndIndex) == '`';
+      } else {
+        charCount += currSrcLine.length - (charOffset + 1);
+        // the string runs on past this line: it is open if no later line ends it
+        let isOpen: boolean = true;
+        for (let lineIndex = this.currElement.sourceLineIndex + 1; lineIndex < this.srcFile!.lastLineNumber && isOpen; lineIndex++) {
+          isOpen = this.tickStringEnd(this.srcFile!.sourceLineAt(lineIndex).text, 0) < 0;
         }
-        charCount++;
+        if (isOpen) {
+          // [error_os]
+          throw new Error('Open string');
+        }
       }
 
       // now write the string to debug
@@ -7127,6 +7123,27 @@ export class SpinResolver {
       this.logMessage(` -- debugTickString(${this.currElement.toString()}) charCount=(${charCount}) --> endWithTic=(${foundEndWithTickStatus})`);
 
     return foundEndWithTickStatus;
+  }
+
+  private tickStringEnd(lineText: string, startIndex: number): number {
+    // index of the '`' or line-ending ')' that closes a tick-mode string, -1 when this line has none.
+    //  A ')' with anything but a comment after it is string text, so parens need not balance.
+    for (let index = startIndex; index < lineText.length; index++) {
+      const currChar = lineText.charAt(index);
+      if (currChar == '`') {
+        return index;
+      }
+      if (currChar == ')') {
+        const lineRemainder: string = lineText
+          .substring(index + 1)
+          .replace(/\{[^}]*\}/g, '')
+          .trim();
+        if (lineRemainder.length == 0 || lineRemainder.startsWith("'")) {
+          return index;
+        }
+      }
+    }
+    return -1;
   }
 
   private debugEnterByte(byteValue: number) {
@@ -8130,10 +8147,16 @@ export class SpinResolver {
             const lowerDigit: number = hexDigit2.charCodeAt(0);
             character = (hexDigit1 >= 'A' ? upperDigit - 0x41 + 10 : upperDigit - 0x30) << 4;
             character |= hexDigit2 >= 'A' ? lowerDigit - 0x41 + 10 : lowerDigit - 0x30;
+            if (character == 0) {
+              // [error_scmrf]
+              throw new Error('STRING characters must range from 1 to 255 (m513)');
+            }
           }
           break;
         default:
-          this.backElement(); // replace unknown char
+          // unrecognized escape: back up past the character and its comma so the backslash is passed on alone
+          this.backElement();
+          this.backElement();
           character = '\\'.charCodeAt(0);
           break;
       }
@@ -8581,6 +8604,8 @@ export class SpinResolver {
       this.resolveExp(eMode.BM_Spin2, eResolve.BR_Must, this.lowestPrecedence);
     } catch (error) {
       // code to handle the exception
+      // nothing was resolved: the finally block must not pop, or its failure would replace the error being handled
+      didResolve = false;
       if (this.isLogging) this.logMessage(`!!! trySpin2ConExpr() caught INTERNAL error`); // XYZZY BUG HERE
       if (error instanceof Error) {
         if (error.message !== '[INTERNAL] Spin2 Constant failed to resolve') {
@@ -8652,7 +8677,7 @@ export class SpinResolver {
             if (this.isLogging) this.logMessage(`* SKIP Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[activeOperation]}]`);
           } else {
             if (this.isLogging) this.logMessage(`* Perform Unary a=(${float32ToHexString(aValue)}), b=(0), op=[${eOperationType[activeOperation]}]`);
-            exprResult = this.resolveOperation(aValue, 0n, activeOperation, this.mathMode == eMathMode.MM_FloatMode);
+            exprResult = this.resolveOperation(aValue, 0n, activeOperation, mode != eMode.BM_Spin2 && this.mathMode == eMathMode.MM_FloatMode);
           }
           if (this.isLogging) this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
           this.numberStack.push(exprResult);
@@ -8732,7 +8757,7 @@ export class SpinResolver {
                 this.logMessage(
                   `* Perform Binary a=(${float32ToHexString(aValue)}), b=(${float32ToHexString(bValue)}), op=[${eOperationType[activeOperation]}]`
                 );
-              exprResult = this.resolveOperation(aValue, bValue, activeOperation, this.mathMode == eMathMode.MM_FloatMode);
+              exprResult = this.resolveOperation(aValue, bValue, activeOperation, mode != eMode.BM_Spin2 && this.mathMode == eMathMode.MM_FloatMode);
             }
             if (this.isLogging) this.logMessage(`* Push result=(${float32ToHexString(exprResult)})`);
             this.numberStack.push(exprResult);

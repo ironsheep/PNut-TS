@@ -3805,6 +3805,20 @@
       "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main() | x, y", "  x := 5", "  y := 6", "  debug(`txt (nested paren) `uhex(x) \" \"  `uhex(y))"]
     },
     {
+      "id": "cor_dbg_tick_string_ends",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spinResolver.ts tickStringEnd: a tick string with unbalanced ')' in its text, and one closed by a ')' before a line comment or a brace comment",
+      "note": "asm v52 p2com.asm 13305-13316, unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main() | x", "  x := 5", "  debug(`a) b(c) d) `uhex(x))", "  debug(`e (f) g) ' comment", "  debug(`h) { comment }"]
+    },
+    {
+      "id": "cor_dbg_tick_string_two_lines",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "covers": "src/classes/spinResolver.ts debugTickString: a tick string that runs on to the next line and ends there",
+      "note": "PNut's scan crosses lines (asm v52 p2com.asm 13299-13316) and copies the line ending into the string. PNut-TS emits only the first line, and this row's GOLD shows which bytes to emit.",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main() | x", "  x := 5", "  debug(`first line", "  second line)"]
+    },
+    {
       "id": "cor_flash_tiny_image",
       "suite": "FLASH-tests", "kind": "accept", "goldSource": "pnut", "flag": "flash",
       "covers": "src/classes/spin2Parser.ts P2MakeFlashFileImage: -F on a PASM image shorter than $400 bytes whose length is not a multiple of four, so the image is padded",
@@ -3871,6 +3885,29 @@
       "covers": "src/classes/spinDocument.ts isPreprocessorDirective, blankNonDocComments: an #elseifndef line that is kept, and a brace comment followed by a doc comment that closes on the same line and on a later line",
       "note": "PNut-TS preprocessor feature; no PNut GOLD exists. The #pragma exportdef lines only change behaviour with -D or -U, which this suite does not pass.",
       "source": ["{Spin2_v55}", "#pragma exportdef FOO", "#pragma exportdef BAR", "#define GUARD_A 1", "#ifndef GUARD_A", "#define SIDE_ONE 1", "#elseifndef GUARD_B", "#define SIDE_TWO 2", "#endif", "{ lead }{{ inline doc }}", "{ lead }{{ doc opens here", " doc closes here }}", "PUB main() | i", "  i := 1"]
+    },
+    {
+      "id": "cor_con_int_fold_after_float_const",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts resolveExp: an integer fold of 1 + -3 in a method after a float constant was defined in CON (Spin2 constant folding is always integer)",
+      "note": "Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  f = 1.5", "PUB main() | x", "  x := 1 + -3"]
+    },
+    {
+      "id": "cor_spin_escape_unknown",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts handleEscapeChr: an unrecognized escape (\\q) passes the backslash on and keeps the following character, and \\x01 and \\xFF are accepted",
+      "note": "Unconfirmed until GOLD; the unrecognized-escape behaviour follows the v52a handle_escape_chr.",
+      "source": ["{Spin2_v55}", "PUB main() | x", "  x := @\\\"a\\qb\\x01\\xFF\""]
+    },
+    {
+      "id": "err_c_esc_zero",
+      "suite": "EXCEPT-tests",
+      "kind": "reject",
+      "goldSource": "pnut",
+      "expectLine": 2,
+      "covers": "src/classes/spinResolver.ts m513: \"STRING characters must range from 1 to 255\" (the escape \\x00)",
+      "source": ["PUB main() | x", "  x := @\\\"a\\x00b\""]
     }
   ]
 }

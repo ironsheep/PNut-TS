@@ -1,0 +1,3 @@
+'' gen_err_c_os: generated from scripts/fixtures/fixtures.json row "err_c_os"; edit the row, not this file. Covers: PNut error_os "Open string" (unterminated DEBUG tick string at end of file; no PNut-TS message)
+PUB main()
+  debug(`hello

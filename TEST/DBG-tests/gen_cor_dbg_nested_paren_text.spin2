@@ -1,0 +1,9 @@
+{Spin2_v55}
+'' gen_cor_dbg_nested_paren_text: generated from scripts/fixtures/fixtures.json row "cor_dbg_nested_paren_text"; edit the row, not this file. Covers: src/classes/spinResolver.ts debugTickString: parentheses nested inside the backtick text of a DEBUG statement
+CON
+  _CLKFREQ = 160_000_000
+  _XTLFREQ = 20_000_000
+PUB main() | x, y
+  x := 5
+  y := 6
+  debug(`txt (nested paren) `uhex(x) " "  `uhex(y))

@@ -1,0 +1,3 @@
+'' gen_err_c_eregsym: generated from scripts/fixtures/fixtures.json row "err_c_eregsym"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a register symbol"
+PUB main() | x
+  x := #5

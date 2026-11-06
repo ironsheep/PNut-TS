@@ -1,0 +1,3 @@
+'' gen_err_a_idbn: generated from scripts/fixtures/fixtures.json row "err_a_idbn"; edit the row, not this file. Covers: PNut error_idbn "Invalid double-binary number" (PNut-TS has no such message; it reports Expected an expression term m172)
+PUB main() | x
+  x := %%4

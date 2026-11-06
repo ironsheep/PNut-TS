@@ -1,0 +1,3 @@
+'' gen_err_c_dbz_pub: generated from scripts/fixtures/fixtures.json row "err_c_dbz_pub"; edit the row, not this file. Covers: PNut error_dbz "Divide by zero" for a constant divisor in a PUB expression (PNut-TS reports an internal NumberStack message)
+PUB main() | x
+  x := 1 / 0
