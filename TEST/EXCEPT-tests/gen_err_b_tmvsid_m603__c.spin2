@@ -1,0 +1,4 @@
+VAR
+  byte pad[$FFFFC]
+PUB go()
+  return

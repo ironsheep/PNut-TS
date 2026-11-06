@@ -1,0 +1,5 @@
+'' gen_err_b_eauvn: generated from scripts/fixtures/fixtures.json row "err_b_eauvn"; edit the row, not this file. Covers: PNut error_eauvn "Expected a unique variable name" (src/classes/spinResolver.ts: the PNut-TS site is shadowed by the m240 check)
+VAR
+  long 5
+PUB main()
+  return

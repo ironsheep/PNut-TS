@@ -1,0 +1,5 @@
+'' gen_err_b_omblc_m471: generated from scripts/fixtures/fixtures.json row "err_b_omblc_m471"; edit the row, not this file. Covers: src/classes/spinResolver.ts m471: "OTHER must be last case" (CASE_FAST)
+PUB main() | x, y
+  case_fast x
+    other: x := 1
+    1: x := 2

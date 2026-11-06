@@ -1,0 +1,8 @@
+{Spin2_v54}
+'' gen_err_b_sdnctn_m662: generated from scripts/fixtures/fixtures.json row "err_b_sdnctn_m662"; edit the row, not this file. Covers: src/classes/spinResolver.ts m662: "Structure does not contain this BYTE/WORD/LONG/STRUCT name" (bitfield name)
+CON
+  STRUCT s(long y.f[3])
+VAR
+  s v
+PUB main() | x
+  x := v.y.nosuch

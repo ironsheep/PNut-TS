@@ -315,7 +315,7 @@ export class SpinElementizer {
       } else {
         if (endQuoteOffset == 0) {
           // [error_es] we have an empty string
-          throw new Error('Empty string');
+          throw new Error('Empty string (m021)');
         } else {
           // [error_eatq] we have an unterminated string
           throw new Error('Expected a terminating quote');
@@ -439,7 +439,7 @@ export class SpinElementizer {
       } else {
         // NEW: generate exception on  bad character....  we added a new Unknown type to be able to do this
         // [error_uc]
-        throw new Error(`Unrecognized character [${valueFound}]($${this.unprocessedLine.charCodeAt(0).toString(16)})`);
+        throw new Error('Unrecognized character');
       }
     }
     // return findings and position within file (sourceLine# NOT lineIndex!)
@@ -873,10 +873,12 @@ export class SpinElementizer {
           interpValue |= BigInt(asciiStr.charCodeAt(i) << (i * 8));
         }
         charsUsed = asciiStr.length + 3;
+      } else if (asciiStr.length == 0) {
+        // [error_es]
+        throw new Error('Empty string (m022)');
       } else {
-        const explainStr = asciiStr.length == 0 ? 'short' : 'long';
         // [error_nmt4c]
-        throw new Error(`Packed ascii must be 1-4 characters - [${asciiStr}] is too ${explainStr}`);
+        throw new Error('No more than 4 characters can be packed into a long');
       }
     } else {
       // [error_NEW not in Pnut]

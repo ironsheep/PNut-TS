@@ -1,0 +1,4 @@
+{Spin2_v40}
+'' gen_err_e_lsvi: generated from scripts/fixtures/fixtures.json row "err_e_lsvi"; edit the row, not this file. Covers: src/classes/spinDocument.ts: version directive below the lowest legal version ({Spin2_v40}; PNut says "Lowest selectable Spin2 version is v41", PNut-TS has one wording for both ends)
+PUB main()
+  return

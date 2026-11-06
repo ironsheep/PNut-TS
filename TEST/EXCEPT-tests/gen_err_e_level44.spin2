@@ -1,0 +1,7 @@
+{Spin2_v44}
+'' gen_err_e_level44: generated from scripts/fixtures/fixtures.json row "err_e_level44"; edit the row, not this file. Covers: src/classes/parseUtils.ts: "{Spin2_v44} is no longer supported due to changes in data structures beginning in v45" (PNut-TS text has a stray closing bracket)
+CON
+  a = clkfreq
+
+PUB main()
+  return

@@ -1,0 +1,3 @@
+'' gen_err_a_nmt4c: generated from scripts/fixtures/fixtures.json row "err_a_nmt4c"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Packed ascii must be 1-4 characters" (PNut: No more than 4 characters can be packed into a long)
+PUB main() | x
+  x := %"abcde"

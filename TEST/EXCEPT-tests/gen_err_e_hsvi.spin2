@@ -1,0 +1,4 @@
+{Spin2_v56}
+'' gen_err_e_hsvi: generated from scripts/fixtures/fixtures.json row "err_e_hsvi"; edit the row, not this file. Covers: src/classes/spinDocument.ts: version directive above the highest legal version ({Spin2_v56}; PNut says "Highest selectable Spin2 version is vNN", PNut-TS has one wording for both ends)
+PUB main()
+  return

@@ -1,0 +1,3 @@
+'' gen_err_a_uc: generated from scripts/fixtures/fixtures.json row "err_a_uc"; edit the row, not this file. Covers: src/classes/spinElementizer.ts: "Unrecognized character"
+PUB main() | x
+  x := ;

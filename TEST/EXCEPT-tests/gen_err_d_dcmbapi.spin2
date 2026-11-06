@@ -1,0 +1,6 @@
+{Spin2_v52}
+'' gen_err_d_dcmbapi: generated from scripts/fixtures/fixtures.json row "err_d_dcmbapi"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "DITTO count must be a positive integer or zero" (negative count; PNut compares signed, PNut-TS compares unsigned)
+DAT
+  ditto -1
+  long 0
+  ditto end

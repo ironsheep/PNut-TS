@@ -1,0 +1,7 @@
+'' gen_err_e_pllscnba: generated from scripts/fixtures/fixtures.json row "err_e_pllscnba"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "PLL settings could not be achieved per _CLKFREQ" (250 kHz input, 500 MHz output: the multiplier would exceed 1024)
+CON
+  _xinfreq = 250_000
+  _clkfreq = 500_000_000
+
+PUB main()
+  return

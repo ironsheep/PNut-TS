@@ -86,7 +86,7 @@ export class ObjFile {
       // have existing symbol table, make sure we don't overflow
       if (possibleSymbolTable.overrides.length >= OBJ_PARAMS_LIMIT) {
         // [error_tmop]
-        throw new Error(`Too many object parameters, exceeded limit of ${OBJ_PARAMS_LIMIT}`);
+        throw new Error('Too many object parameters');
       }
     }
     this.logMessage(`* recordOverride() ADD symbol [${constantName}]`);
@@ -293,7 +293,8 @@ export class SpinFiles {
     const spin2fileName: string = fileName.toLowerCase().endsWith('.spin2') ? fileName : `${fileName}.spin2`;
     if (this._objFiles.length >= FILES_LIMIT) {
       // [error_loxuoe]
-      throw new Error(`Limit of ${FILES_LIMIT} unique objects exceeded`);
+      // PNut's text says 32 although its limit, like ours, is FILES_LIMIT
+      throw new Error('Limit of 32 unique objects exceeded');
     }
     let fileSpec: string | undefined = undefined;
     if (this.objFileExists(spin2fileName)) {

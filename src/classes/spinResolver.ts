@@ -684,15 +684,18 @@ export class SpinResolver {
           }
 
           // is this a size (BYTE, WORD, LONG)?
+          let hadTypePrefix: boolean = false;
           if (this.currElement.type == eElementType.type_size) {
             const sizeEncoded: number = Number(this.currElement.value);
             variableSize = 1 << sizeEncoded; // NOTE: this matches our enum values
             variableType = eElementType.type_var_byte + sizeEncoded;
+            hadTypePrefix = true;
             this.getElementObj();
           }
 
           // handle structure
           if (this.currElement.type == eElementType.type_con_struct) {
+            hadTypePrefix = true;
             //if (this.isLogging) this.logMessage(`** == * comp_var_blks() have STRUCT...`);
             structId = this.currElement.numberValue;
             // get struct size in bytes
@@ -704,6 +707,7 @@ export class SpinResolver {
           // handle ^var  pointer variable
           if (this.checkPtr()) {
             //if (this.isLogging) this.logMessage(`** == * comp_var_blks() have PTR...`);
+            hadTypePrefix = true;
             variableSize = 4; // all pointers
             if (this.currElement.type == eElementType.type_size) {
               const sizeEncoded: number = Number(this.currElement.value); // NOTE: this matches our enum values
@@ -719,7 +723,8 @@ export class SpinResolver {
           }
 
           // ok, had to have one of these four!
-          if (this.currElement.isTypeUndefined) {
+          if (this.currElement.isTypeUndefined || hadTypePrefix) {
+            // a type was given, so a non-name here is reported as a missing name below
             this.backElement();
           } else {
             //if (this.isLogging) this.logMessage(`** == * comp_var_blks() NOT undefined...`);
@@ -752,7 +757,7 @@ export class SpinResolver {
           // now record [count|1] instances with symbol name at start
           let adjustedValue: number = (structId << 20) | this.varPtr;
           this.varPtr += instanceCount * variableSize;
-          if (this.varPtr > this.hubOrgLimit) {
+          if (this.varPtr >= this.hubOrgLimit) {
             // [error_tmvsid]
             throw new Error('Too much variable space is declared (m601)');
           }
@@ -852,13 +857,13 @@ export class SpinResolver {
   }
 
   private alignVar(alignMask: number) {
-    // now force our alignment
-    while (this.varPtr & alignMask) {
-      this.varPtr++;
-    }
-    if (this.varPtr > this.hubOrgLimit) {
-      // [error_tmvsid]
-      throw new Error('Too much variable space is declared (m602)');
+    // now force our alignment: the limit is only tested when alignment moved the pointer
+    if (this.varPtr & alignMask) {
+      this.varPtr = (this.varPtr | alignMask) + 1;
+      if (this.varPtr >= this.hubOrgLimit) {
+        // [error_tmvsid]
+        throw new Error('Too much variable space is declared (m602)');
+      }
     }
   }
 
@@ -949,6 +954,14 @@ export class SpinResolver {
     return badCharStatus;
   }
 
+  private clockSetupError(message: string): Error {
+    // PNut has cleared its source position by the time the clock is determined, so
+    // its clock-setup errors are reported at line 1 of the file
+    const fileId: number = this.srcFile !== undefined ? this.srcFile.fileId : this.currElement.fileId;
+    this.currElement = new SpinElement(fileId, eElementType.type_undefined, '', 0, 0);
+    return new Error(message);
+  }
+
   private determine_clock() {
     // PNut determine_clock:
     // Determine clock mode and frequency
@@ -989,7 +1002,7 @@ export class SpinResolver {
           }
         } else {
           // [error_cfcobd]
-          throw new Error('_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants');
+          throw this.clockSetupError('_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants');
         }
       }
     }
@@ -999,7 +1012,7 @@ export class SpinResolver {
     // make sure neither CLKMODE_ nor CLKFREQ_ were declared
     if (symbolsFoundBits & 0b11000000) {
       // [error_cccbd]
-      throw new Error('CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler');
+      throw this.clockSetupError('CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler');
     }
 
     // hide _ERRFREQ in ah to reduce comparisons
@@ -1070,7 +1083,7 @@ export class SpinResolver {
 
       default:
         // [error_codcssf]
-        throw new Error('Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found');
+        throw this.clockSetupError('Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found');
     }
 
     // record our symbols
@@ -1303,7 +1316,7 @@ export class SpinResolver {
 
     if (_found == false) {
       // [error_pllscnba]
-      throw new Error('PLL settings could not be achieved per _CLKFREQ');
+      throw this.clockSetupError('PLL settings could not be achieved per _CLKFREQ');
     }
     if (this.isLogging)
       this.logMessage(`* pllCalc(${inputFrequency}, ${requestedFrequency}, ${allowedError}) -> [_mode=(${hexString(_mode)}), _freq=(${_freq})]`);
@@ -1557,7 +1570,7 @@ export class SpinResolver {
                 this.enterDatSymbol(); // process pending symbol
                 // retrieve the DITTO repeat count
                 let repeatCountResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
-                if (repeatCountResult.value < 0n) {
+                if (BigInt.asIntN(32, repeatCountResult.value) < 0n) {
                   // [error_dcmbapi]
                   throw new Error('DITTO count must be a positive integer or zero');
                 }
@@ -1843,7 +1856,8 @@ export class SpinResolver {
           }
           // eslint-disable-next-line no-constant-condition
           if (this.isLogging) this.logMessage(`LOOP: next line BOTTOM`);
-        } while (this.nextElementType() != eElementType.type_block); // NEXT LINE in BLOCK...
+          // a block that ends with a DITTO block still open is read here, so the error lands on the next block's designator
+        } while (this.nextElementType() != eElementType.type_block || (this.dittoIsActive && !inLineMode)); // NEXT LINE in BLOCK...
         if (this.isLogging) this.logMessage(`LOOP: next block BOTTOM`);
         // eslint-disable-next-line no-constant-condition
       } while (this.nextElementType() == eElementType.type_block); // NEXT BLOCK...
@@ -3518,7 +3532,7 @@ export class SpinResolver {
           continuation = record.nextByte();
         }
         if (continuation === 0) {
-          // [error_sdctn]  v55: text aligned with PNut's error_sdnctbwl
+          // [error_sdnctbwl]
           throw new Error('Structure does not contain this BYTE/WORD/LONG/STRUCT name (m660)');
         }
         // else continue to next member
@@ -3957,6 +3971,7 @@ export class SpinResolver {
       // if any match after 'other', error
       if (haveOtherCase) {
         // [error_omblc]
+        this.getElement(); // report at the case that follows OTHER, as PNut does
         throw new Error('OTHER must be last case (m470)');
       }
       if (matchIsOtherCase) {
@@ -3969,6 +3984,7 @@ export class SpinResolver {
         // here is @@notother1:
         if (++caseCount > this.case_limit) {
           // [error_loxcase]
+          this.getElement(); // report at the case element itself, as PNut does
           throw new Error(`Limit of ${this.case_limit} CASE elements exceeded`);
         }
         // here is @@nextrange:
@@ -4126,6 +4142,7 @@ export class SpinResolver {
       // if any match after 'other', error
       if (haveOtherCase) {
         // [error_omblc]
+        this.getElement(); // report at the case that follows OTHER, as PNut does
         throw new Error('OTHER must be last case (m471)');
       }
       const savedCaseColumn: number = this.scopeColumn;
@@ -4137,6 +4154,7 @@ export class SpinResolver {
         // here is @@notother1:
         if (++caseCount > this.case_fast_limit) {
           // [error_loxcasef]
+          this.getElement(); // report at the case element itself, as PNut does
           throw new Error(`Limit of ${this.case_fast_limit} CASE_FAST elements exceeded`);
         }
         // here is @@nextrange1:
@@ -4240,6 +4258,7 @@ export class SpinResolver {
       const currObjOffset: number = this.objImage.offset;
       if (currObjOffset - tablePtr > 0xffff) {
         // [error_cfbex]
+        this.getElement(); // report at the element that ended the block, as PNut does
         throw new Error('CASE_FAST block exceeds 64KB');
       }
       this.objImage.appendByte(eByteCode.bc_case_fast_done);
@@ -5351,7 +5370,7 @@ export class SpinResolver {
               if (requiredVersion > 0) {
                 throw new Error(`"${backupSymbolName}" requires {Spin2_v${requiredVersion}} or later`);
               }
-              throw new Error('Expected "=" "[" "," or end of line');
+              throw new Error('Expected "=", "[" ",", or end of line');
             }
           } else if (this.currElement.type == eElementType.type_struct) {
             // PNut :@@struct
@@ -5487,7 +5506,8 @@ export class SpinResolver {
           // have multiplier
           const resultReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
           if (resultReturn.isResolved) {
-            const tempInstanceCount: number = Number(resultReturn.value);
+            // the count is a signed 32-bit value: a negative count must fail the < 1 test
+            const tempInstanceCount: number = Number(resultReturn.value) | 0;
             if (tempInstanceCount < 1) {
               // [error_iccbl]
               throw new Error('Instance count cannot be less than 1');
@@ -5517,7 +5537,7 @@ export class SpinResolver {
             const [bfIsSymbol, bfName] = this.getSymbol();
             if (bfIsSymbol == false) {
               // [error_eas]
-              throw new Error('Expected a bitfield name');
+              throw new Error('Expected a symbol (m192)');
             }
             this.getLeftBracket();
             const upperResult = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
@@ -6085,16 +6105,14 @@ export class SpinResolver {
       const startValueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
       if (startValueReturn.value > BigInt(inline_org_limit)) {
         // [error_icaexl]
-        //throw new Error('Inline cog address exceeds $120 limit');
-        throw new Error(`Inline cog address exceeds $${this.inline_org_limit.toString(16)} limit (m380)`);
+        throw new Error('Inline cog address exceeds $11F limit (m380)');
       }
       inlineOrigin = Number(startValueReturn.value);
       if (this.checkComma()) {
         const limitValueReturn: iValueReturn = this.getValue(eMode.BM_IntOnly, eResolve.BR_Must);
         if (limitValueReturn.value > BigInt(inline_org_limit)) {
           // [error_icaexl]
-          //throw new Error('Inline cog address exceeds $120 limit');
-          throw new Error(`Inline cog address exceeds $${this.inline_org_limit.toString(16)} limit (m381)`);
+          throw new Error('Inline cog address exceeds $11F limit (m381)');
         }
         inline_org_limit = Number(limitValueReturn.value);
       }
@@ -6694,7 +6712,7 @@ export class SpinResolver {
     this.debug_stack_depth += 4;
     if (this.debug_stack_depth > 127) {
       // [error_dditl]
-      throw new Error('DEBUG data is too long: too many expressions (> 31) (m152)');
+      throw new Error('DEBUG data is too long (m152)');
     }
   }
 
@@ -8993,16 +9011,18 @@ export class SpinResolver {
               // if inline mode, remap local longs
               //  HANDLE DAT Local variable now in register for inline access
               // [error_lvmb]
-              // We don't quite like this message (so we adjusted to not match PNut)
-              throw new Error('Local variable must be LONG and within first 16 longs (m450)');
+              throw new Error(
+                'For access via inline assembly, a local variable must be either a long, a structure, or a pointer, and be both within the first 16 longs and long-aligned (m450)'
+              );
             } else if (
               this.inlineModeForGetConstant &&
               this.currElement.type == eElementType.type_loc_long &&
               (this.currElement.bigintValue & BigInt(0b11) || this.currElement.bigintValue >= BigInt(0x10 << 2))
             ) {
               // [error_lvmb]
-              // We don't quite like this message (so we adjusted to not match PNut)
-              throw new Error('Local variable must be LONG and within first 16 longs (m451)');
+              throw new Error(
+                'For access via inline assembly, a local variable must be either a long, a structure, or a pointer, and be both within the first 16 longs and long-aligned (m451)'
+              );
             } else if (
               this.inlineModeForGetConstant &&
               (this.currElement.type == eElementType.type_loc_long ||
@@ -10705,8 +10725,8 @@ private checkDec(): boolean {
         const endMarkerInterp: string = rcdSetEndMarker == 0 ? 'EndOfRcds' : 'MoreRcds';
         if (this.isLogging) this.logMessage(`  -- CSR() recdEndMarker=(${rcdSetEndMarker}) - ${endMarkerInterp}`);
         if (rcdSetEndMarker == 0) {
-          // [error_sdnctn]  v55: text aligned with PNut's error_sdnctbwl
-          throw new Error('Structure does not contain this BYTE/WORD/LONG/STRUCT name (m661)');
+          // [error_sdnctn]
+          throw new Error('Structure does not contain this name (m661)');
         }
         // continue at @@checkmember
       }
@@ -10731,7 +10751,7 @@ private checkDec(): boolean {
             const [bfIsSymbol, bfName] = this.getSymbol();
             if (!bfIsSymbol) {
               // [error_easmn]
-              throw new Error('Expected a structure bitfield name');
+              throw new Error('Expected a structure member name (m652)');
             }
             let resolvedDescriptor: number = 0;
             let matched: boolean = false;
@@ -10750,8 +10770,8 @@ private checkDec(): boolean {
               }
             }
             if (!matched) {
-              // [error_sdnctn] — reuse for unknown bitfield. v55: text aligned with PNut's error_sdnctbwl
-              throw new Error('Structure does not contain this BYTE/WORD/LONG/STRUCT name (m662)');
+              // [error_sdnctn] — reuse for unknown bitfield
+              throw new Error('Structure does not contain this name (m662)');
             }
             // 0x80000000 sentinel ensures nonzero for any valid descriptor, including descriptor == 0 (bit 0, span 1)
             resultStructure.compiledBitfield = 0x80000000 | resolvedDescriptor;

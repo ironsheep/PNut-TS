@@ -1,0 +1,4 @@
+{Spin2_v52}
+'' gen_err_b_iccbl_neg: generated from scripts/fixtures/fixtures.json row "err_b_iccbl_neg"; edit the row, not this file. Covers: PNut error_iccbl "Instance count cannot be less than 1" for a negative count (PNut-TS reports Instance count cannot exceed $10000)
+CON
+  STRUCT s(long a[-1])

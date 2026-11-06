@@ -1,0 +1,8 @@
+'' gen_err_e_codcssf: generated from scripts/fixtures/fixtures.json row "err_e_codcssf"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found"
+CON
+  _clkfreq = 100_000_000
+  _xtlfreq = 20_000_000
+  _xinfreq = 10_000_000
+
+PUB main()
+  return

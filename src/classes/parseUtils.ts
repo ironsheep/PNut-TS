@@ -2979,11 +2979,6 @@ export class SpinSymbolTables {
       }
     }
 
-    if (this.currSpinVersion == 44) {
-      // [error_level44]
-      throw new Error(`{Spin2_v44} is no longer supported due to changes in data structures beginning in v45]`);
-    }
-
     if (this.currSpinVersion >= 44) {
       if (this.automatic_symbols_v44.has(symbolName)) {
         const symbolInfo: iBaseSymbolInfo | undefined = this.automatic_symbols_v44.get(symbolName);

@@ -1,0 +1,5 @@
+'' gen_err_b_tmvsid_m603: generated from scripts/fixtures/fixtures.json row "err_b_tmvsid_m603"; edit the row, not this file. Covers: src/classes/spinResolver.ts m603: "Too much variable space is declared" (child object variables)
+OBJ
+  a[25] : "gen_err_b_tmvsid_m603__c"
+PUB main()
+  return

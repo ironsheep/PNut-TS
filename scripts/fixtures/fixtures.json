@@ -793,7 +793,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 4,
-      "note": "PNut-TS reports this at the end of the file.",
+      "note": "PNut reports this inside the child object, at its VAR line (line 2), because a 4-byte pointer plus the $FFFFC-byte array reaches $100000 in the child itself; PNut-TS follows (m601 in the child). expectLine is not the reported line.",
       "covers": "src/classes/spinResolver.ts m603: \"Too much variable space is declared\" (child object variables)",
       "source": "OBJ\n  a[25] : \"gen_err_b_tmvsid_m603__c\"\nPUB main()\n  return",
       "aux": [{ "name": "c.spin2", "sibling": true, "source": ["VAR", "  byte pad[$FFFFC]", "PUB go()", "  return"] }]
@@ -2689,7 +2689,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants\"",
-      "note": "Clock errors are raised after the whole file is read and are reported at its last line; PNut's position for them is unconfirmed.",
+      "note": "PNut reports clock-setup errors at line 1 of the file (the Windows GOLD shows it), and PNut-TS follows; the row cannot give line 1 as an expectLine.",
       "source": "CON\n  _clkfreq = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2697,7 +2697,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "PNut reports clock-setup errors at line 1 of the file (the Windows GOLD shows it), and PNut-TS follows; the row cannot give line 1 as an expectLine.",
       "source": "CON\n  clkmode_ = 5\n\nPUB main()\n  return"
     },
     {
@@ -2705,7 +2705,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 7,
       "covers": "src/classes/spinResolver.ts: \"Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "PNut reports clock-setup errors at line 1 of the file (the Windows GOLD shows it), and PNut-TS follows; the row cannot give line 1 as an expectLine.",
       "source": "CON\n  _clkfreq = 100_000_000\n  _xtlfreq = 20_000_000\n  _xinfreq = 10_000_000\n\nPUB main()\n  return"
     },
     {
@@ -2713,7 +2713,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 6,
       "covers": "src/classes/spinResolver.ts: \"PLL settings could not be achieved per _CLKFREQ\" (250 kHz input, 500 MHz output: the multiplier would exceed 1024)",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "PNut reports clock-setup errors at line 1 of the file (the Windows GOLD shows it), and PNut-TS follows; the row cannot give line 1 as an expectLine.",
       "source": "CON\n  _xinfreq = 250_000\n  _clkfreq = 500_000_000\n\nPUB main()\n  return"
     },
     {
@@ -3899,6 +3899,35 @@
       "covers": "src/classes/spinResolver.ts handleEscapeChr: an unrecognized escape (\\q) passes the backslash on and keeps the following character, and \\x01 and \\xFF are accepted",
       "note": "Unconfirmed until GOLD; the unrecognized-escape behaviour follows the v52a handle_escape_chr.",
       "source": ["{Spin2_v55}", "PUB main() | x", "  x := @\\\"a\\qb\\x01\\xFF\""]
+    },
+    {
+      "id": "cor_spin_version_42",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinDocument.ts getVersionFromHeader: {Spin2_v42} is a selectable level",
+      "note": "asm v52 p2com.asm 3754-3757 accepts every level from 41 to the current one, unconfirmed until GOLD.",
+      "source": ["{Spin2_v42}", "PUB main() | x", "  x := 1"]
+    },
+    {
+      "id": "cor_spin_version_three_digits",
+      "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinDocument.ts getVersionFromHeader: {Spin2_v100} has three digits, so it is an ordinary comment and the file compiles at the default level",
+      "note": "asm v52 p2com.asm 3730-3747 takes exactly two digits before the closing brace, unconfirmed until GOLD.",
+      "source": ["{Spin2_v100}", "PUB main() | x", "  x := 1"]
+    },
+    {
+      "id": "cor_dat_dollar_in_data",
+      "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
+      "covers": "src/classes/spinResolver.ts getConstant: $ (the origin) as a DAT data value",
+      "note": "PNut-TS allows this. asm v52 p2com.asm 9484-9487 rejects $ outside operand mode, so this row's GOLD decides whether a data declaration counts as operand mode; if PNut rejects it the row becomes a reject row and the check is added.",
+      "source": ["DAT", "  org", "x long 1, $", "  word $", "", "PUB main()", "  return"]
+    },
+    {
+      "id": "err_b_tmvsid_m602_aligned_to_limit",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
+      "expectLine": 6,
+      "covers": "src/classes/spinResolver.ts alignVar m602: \"Too much variable space is declared\" when alignment rounds the VAR pointer up to exactly the limit",
+      "note": "The VAR pointer starts at 4, so byte a[$FFFF9] ends at $FFFFD and aligns to $100000. asm v52 p2com.asm 4675-4680 tests with jae, unconfirmed until GOLD.",
+      "source": ["VAR", "  byte a[$FFFF9]", "", "PUB main()", "  return"]
     },
     {
       "id": "err_c_esc_zero",

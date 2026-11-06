@@ -229,7 +229,7 @@ export class SpinDocument {
   private nonDocNestCount: number = 0;
   // PNut-ts version number handling for this .spin2 file
   private defaultVersion: number = 41;
-  private legalVersions: number[] = [41, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55];
+  private legalVersions: number[] = [41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55];
   private requiredVersion: number = 0;
   // errors reported while processing file
   private hadFatalDiagnostic: boolean = false;
@@ -583,7 +583,7 @@ export class SpinDocument {
             // through unexpanded. Fatal, because a macro that never expands
             // makes the build wrong. Only the SYMBOL token is inspected -- a
             // value with parens is fine.
-            this.reportError('#define does not support arguments — only simple symbol definitions', lineIdx, eDiagnosticSeverity.DS_FATAL);
+            this.reportError('Expected end of line', lineIdx, eDiagnosticSeverity.DS_FATAL);
           } else if (symbol) {
             const canAdd = this.thisSideKeepsCode() || !this.inIfDef();
             if (canAdd) {
@@ -866,11 +866,7 @@ export class SpinDocument {
           this.logMessage(`SpinPP: SKIP ENUM [${currLine}]`);
         } else {
           // generate error! vs. throwing exception
-          let lineParts = this.splitLineOnWhiteSpace(currLine);
-          if (lineParts.length == 0) {
-            lineParts = [currLine];
-          }
-          this.reportError(`Unknown #directive: [${lineParts[0]}]`, lineIdx, eDiagnosticSeverity.DS_FATAL);
+          this.reportError('Undefined symbol', lineIdx, eDiagnosticSeverity.DS_FATAL);
           skipThisline = true;
         }
       } else if (currLine.startsWith('{{')) {
@@ -963,13 +959,13 @@ export class SpinDocument {
 
     // An #ifdef/#ifndef the author never closed does not fail on its own -- it just
     // ends at EOF, leaving the rest of the file's inclusion decided by a block that
-    // was never finished. Name the line that opened it, not the end of the file.
+    // was never finished. PNut's wording and position (REF-V52A/p2com.asm:3629): the
+    // error lands on the END OF FILE line, the empty entry after a trailing newline,
+    // else the final line itself.
     if (this.inIfDef()) {
       const unclosedLevel: PreProcState | undefined = this.currIfDef();
       if (unclosedLevel !== undefined) {
-        // PNut's exact wording -- REF-V52A/p2com.asm:3629 -- so a user grepping build
-        // logs across both compilers gets the same hits.
-        this.reportError(`Expected #ENDIF`, unclosedLevel.openingLineIndex, eDiagnosticSeverity.DS_FATAL);
+        this.reportError(`Expected #ENDIF`, this.rawLines.length - 1, eDiagnosticSeverity.DS_FATAL);
       }
     }
 
@@ -1231,23 +1227,35 @@ export class SpinDocument {
   }
 
   private getVersionFromHeader(headerComments: TextLine[]): void {
-    const spinLangVersionRegEx = /\{Spin2_v(\d{2,3})\}/i;
+    // exactly two digits: anything else is an ordinary comment, as in PNut
+    const spinLangVersionRegEx = /\{Spin2_v(\d{2})\}/i;
     for (const headerLine of headerComments) {
       const symbolMatch = headerLine.text.match(spinLangVersionRegEx);
       // yields: symbolMatch=[{Spin2_v43},43](2), hdr=[' {Spin2_v43}]
       if (symbolMatch) {
         const possibleVersion = parseInt(symbolMatch[1]);
         this.requiredVersion = this.legalVersions.includes(possibleVersion) ? possibleVersion : 0;
+        if (possibleVersion == 44) {
+          // v44 is selectable but unsupported; it is reported at its directive, as PNut does
+          this.reportError(
+            '{Spin2_v44} is no longer supported due to changes in data structures beginning in v45',
+            headerLine.sourceLineIndex,
+            eDiagnosticSeverity.DS_FATAL
+          );
+          return;
+        }
         if (possibleVersion != this.requiredVersion) {
           // Fatal: compiling a source against a language level it did not ask for is
           // exactly the silent-wrong-output failure this must not produce. The line
           // index comes from the header comment itself -- using its position within
           // headerComments[] cited a line number that meant nothing.
-          this.reportError(
-            `${symbolMatch[0]}, ${possibleVersion} is not a legal Spin2 Language Version!`,
-            headerLine.sourceLineIndex,
-            eDiagnosticSeverity.DS_FATAL
-          );
+          const versionMessage: string =
+            possibleVersion < this.legalVersions[0]
+              ? `Lowest selectable Spin2 version is v${this.legalVersions[0]}`
+              : `Highest selectable Spin2 version is v${this.legalVersions[this.legalVersions.length - 1]}`;
+          this.reportError(versionMessage, headerLine.sourceLineIndex, eDiagnosticSeverity.DS_FATAL);
+          // like PNut, only the first version directive found is reported
+          return;
         }
       }
     }

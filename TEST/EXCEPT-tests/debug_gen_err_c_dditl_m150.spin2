@@ -1,0 +1,3 @@
+'' gen_err_c_dditl_m150: generated from scripts/fixtures/fixtures.json row "err_c_dditl_m150"; edit the row, not this file. Covers: src/classes/debugData.ts m150: "DEBUG data is too long" (PNut-TS adds ": record exceeds 255 bytes")
+PUB main()
+  debug("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
