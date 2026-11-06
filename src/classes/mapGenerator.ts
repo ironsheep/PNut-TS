@@ -213,8 +213,8 @@ export class MapGenerator {
       this.emitMemoryLayout(layout);
       this.emitObjectDetails(layout);
       const facts = this.collectFacts(layout);
-      this.emitAddressIndex(layout, facts);
-      this.emitSymbolIndex(layout, facts);
+      this.emitAddressIndex(facts);
+      this.emitSymbolIndex(facts);
       // One synchronous write: anything reading the map right after the
       // compiler reports "Wrote <name>.map" must see the complete file.
       fs.writeFileSync(mapFilename, this.lines.join(''));
@@ -469,7 +469,7 @@ export class MapGenerator {
   // ADDRESS INDEX
   // --------------------------------------------------------------------
 
-  private emitAddressIndex(layout: ObjectLayout, facts: Fact[]): void {
+  private emitAddressIndex(facts: Fact[]): void {
     this.writeLine('=== ADDRESS INDEX ===');
     this.writeLine('');
     const typeOrder: Record<Fact['type'], number> = { IMAGE: 0, METHOD: 1, DAT: 2, PASM: 3, INLINE: 4, VAR: 5 };
@@ -499,7 +499,7 @@ export class MapGenerator {
   // SYMBOL INDEX
   // --------------------------------------------------------------------
 
-  private emitSymbolIndex(layout: ObjectLayout, facts: Fact[]): void {
+  private emitSymbolIndex(facts: Fact[]): void {
     this.writeLine('=== SYMBOL INDEX ===');
     this.writeLine('');
     const named = facts.filter((f) => f.name !== '(start)');
