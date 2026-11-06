@@ -125,21 +125,6 @@ export class SourceFiles {
     return this._srcFiles.find((file) => file.fileId === fileID);
   }
 
-  public getFileAtIndex(index: number): SpinDocument | undefined {
-    if (index >= 0 && index < this._srcFiles.length) {
-      return this._srcFiles[index];
-    }
-    return undefined;
-  }
-
-  public getFileIndex(file: SpinDocument): number {
-    return this._srcFiles.indexOf(file);
-  }
-
-  public get fileCount(): number {
-    return this._srcFiles.length;
-  }
-
   private hasFile(fileName: string): boolean {
     return this._srcFiles.some((file) => file.fileName === fileName);
   }
