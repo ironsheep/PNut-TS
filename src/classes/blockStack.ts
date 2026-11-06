@@ -12,14 +12,12 @@ export class BlockNestLevel {
   private context: Context;
   private isLogging: boolean = false;
   private _type: eElementType;
-  private _size: number;
   private _addressStack: number[];
 
   constructor(ctx: Context, type: eElementType, size: number) {
     this.context = ctx;
     //this.isLogging = ctx.logOptions.logResolver;
     this._type = type;
-    this._size = size;
     this._addressStack = Array(size).fill(0x7ffff);
   }
 
@@ -73,10 +71,6 @@ export class BlockStack {
 
   get topIndex(): number {
     return this._stack.length > 0 ? this._stack.length - 1 : -1;
-  }
-
-  get isEmpty(): boolean {
-    return this._stack.length > 0 ? false : true;
   }
 
   private get topNestLevel(): BlockNestLevel {
