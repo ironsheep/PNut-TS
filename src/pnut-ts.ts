@@ -79,12 +79,6 @@ export class PNutInTypeScript {
     this.context.compilerVersion = this.version;
   }
 
-  public setArgs(runArgs: string[]) {
-    //console.log('runArgs: %o', runArgs);
-    this.argsArray = runArgs;
-    //PNutInTypeScript.isTesting = true;
-  }
-
   /**
    * Compile, and on any failure leave no output files behind.
    *
@@ -129,7 +123,7 @@ export class PNutInTypeScript {
     if (outputs.listing.length == 0) {
       return;
     }
-    const filespecs: string[] = [outputs.listing, outputs.map, outputs.flash, outputs.object, outputs.binary, outputs.flashLoaderBinary];
+    const filespecs: string[] = [outputs.listing, outputs.map, outputs.flash, outputs.object, outputs.binary];
     for (const filespec of filespecs) {
       if (fs.existsSync(filespec)) {
         this.context.logger.verboseMsg(`* Build failed, removing ${filespec}`);
