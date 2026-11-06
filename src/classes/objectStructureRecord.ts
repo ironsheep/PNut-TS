@@ -90,18 +90,6 @@ export class ObjectStructureRecord {
     return this.readOffset;
   }
 
-  public set offset(newOffset: number) {
-    this.readOffset = newOffset;
-  }
-
-  public nextContinuation(): number {
-    // v54: read the continuation byte following a member's name (or the 16-bit packed descriptor of a bitfield entry)
-    //  0 = end of struct, 1 = another member, 2 = bitfield entry follows
-    const cont = this.nextByte();
-    this.logMessage(`* OSRcd: nextContinuation() -> ${cont}`);
-    return cont;
-  }
-
   public readBitfieldEntry(): { name: string; packedDescriptor: number } {
     // v54: read a single bitfield-chain entry: length-prefixed name then 16-bit packed descriptor
     //  caller has already consumed the continuation byte (value == 2).
@@ -213,29 +201,5 @@ export class ObjectStructureRecord {
     if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
-  }
-
-  public dumpBytes(startOffset: number, byteCount: number, dumpId: string) {
-    /// dump hex and ascii data
-    let displayOffset: number = 0;
-    //let currOffset = startOffset;
-    this.logMessage(`-- -------- ${dumpId} ------------------ --`);
-    while (displayOffset < byteCount) {
-      let hexPart = '';
-      let asciiPart = '';
-      const remainingBytes = byteCount - displayOffset;
-      const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
-      for (let i = 0; i < lineLength; i++) {
-        const byteValue = 0; //this.read(currOffset + i);
-        hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
-        asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
-      }
-      const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
-
-      this.logMessage(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'`);
-      //currOffset += lineLength;
-      displayOffset += lineLength;
-    }
-    this.logMessage(`-- -------- -------- ------------------ --`);
   }
 }
