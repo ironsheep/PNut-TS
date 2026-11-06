@@ -7,7 +7,7 @@
 
 import { eElementType, eValueType, eBlockType, eByteCode, eOperationType, eFlexcode } from './types';
 import { Context } from '../utils/context';
-import { hexByte, hexWord } from '../utils/formatUtils';
+import { hexByte } from '../utils/formatUtils';
 
 export interface iSpinSymbol {
   symbol: string;
@@ -2930,24 +2930,11 @@ export class SpinSymbolTables {
       if (tmpFlexCode !== undefined) {
         foundFlexCode = tmpFlexCode;
       } else {
-        //this.dumpFlexCodeMap();
         // [error_INTERNAL]
         throw new Error(`[INTERNAL] failed to located fc_ value for bc_ (${bcValue})[${eByteCode[bcValue]}]`);
       }
     }
     return foundFlexCode;
-  }
-
-  private dumpFlexCodeMap() {
-    let tbleIdx: number = 0;
-    for (const [bcValue, fcValue] of this.byteCodeToFlexCodeMap) {
-      const fullFlexValue: number | undefined = this.flexcodeValues.get(fcValue);
-      const flexValueInterp = fullFlexValue !== undefined ? hexWord(fullFlexValue, '0x') : '??---??';
-      const fcvalHex: string = `${hexByte(fcValue, '0x')}`;
-      this.logMessage(
-        `- [${tbleIdx++}] fc=(${fcValue}, ${fcvalHex}), bc=(${bcValue}, ${hexByte(bcValue, '0x')}), [${eFlexcode[fcValue]}]=(${flexValueInterp})`
-      );
-    }
   }
 
   public enableLogging(enable: boolean = true) {
