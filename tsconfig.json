@@ -6,6 +6,8 @@
     "rootDir": "./src",
     "types": ["node", "jest"],
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
