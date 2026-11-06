@@ -509,7 +509,9 @@ export class Spin2Parser {
         }
       }
 
-      fs.writeFileSync(outFilename, lines.join(''));
+      // Symbol names are byte strings (an object instance's number is the last
+      // character of its name and reaches $FF), so each character is written as one byte.
+      fs.writeFileSync(outFilename, Buffer.from(lines.join(''), 'latin1'));
       this.context.logger.progressMsg(`Wrote ${outFilename}`);
     }
   }
@@ -847,12 +849,13 @@ export class Spin2Parser {
     [symbolFound, isConstInteger, value] = this.checkDebugSymbol(symdelay);
     if (symbolFound) {
       if (isConstInteger) {
-        const clkFreqInKHz = this.spinResolver.clockFrequency / 1000;
-        let adjustedFreq = clkFreqInKHz * Number(value);
-        if (adjustedFreq > 0xffffffff) {
-          adjustedFreq = 0xffffffff; // limit to 0FFFFFFFFh
+        // whole kHz of the clock (integer divide), times the delay, limited to 0FFFFFFFFh
+        const clkFreqInKHz = BigInt(Math.floor(this.spinResolver.clockFrequency / 1000));
+        let adjustedFreq = clkFreqInKHz * BigInt.asUintN(32, BigInt(value));
+        if (adjustedFreq > 0xffffffffn) {
+          adjustedFreq = 0xffffffffn; // limit to 0FFFFFFFFh
         }
-        this.objImage.replaceLong(adjustedFreq, _delay_);
+        this.objImage.replaceLong(Number(adjustedFreq), _delay_);
       } else {
         // [error_debugdly]
         throw new Error('DEBUG_DELAY can only be defined as an integer constant');
@@ -932,10 +935,8 @@ export class Spin2Parser {
     objImage.replaceLong(checkSum, _loaderSum_);
 
     // pad fullimage to 0x100 longs if shorter
-    if (objImage.offset < 0x400) {
-      for (let offset = objImage.offset; offset < 0x400; offset++) {
-        objImage.replaceByte(0, offset);
-      }
+    while (objImage.offset < 0x400) {
+      objImage.appendByte(0);
     }
   }
 

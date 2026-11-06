@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_cor_flash_tiny_image: generated from scripts/fixtures/fixtures.json row "cor_flash_tiny_image"; edit the row, not this file. Covers: src/classes/spin2Parser.ts P2MakeFlashFileImage: -F on a PASM image shorter than $400 bytes whose length is not a multiple of four, so the image is padded
+DAT
+  org
+  nop
+  byte 1,2,3

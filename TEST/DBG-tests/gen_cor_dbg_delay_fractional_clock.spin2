@@ -1,0 +1,8 @@
+{Spin2_v55}
+'' gen_cor_dbg_delay_fractional_clock: generated from scripts/fixtures/fixtures.json row "cor_dbg_delay_fractional_clock"; edit the row, not this file. Covers: src/classes/spin2Parser.ts P2InsertDebugger: DEBUG_DELAY with a clock frequency that is not a multiple of 1000, so the patched delay depends on dividing the clock by 1000 as an integer
+CON
+  _XTLFREQ = 12_345_001
+  _CLKFREQ = 98_760_008
+  DEBUG_DELAY = 1000
+PUB main()
+  debug("hello")

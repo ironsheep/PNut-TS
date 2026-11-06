@@ -3853,7 +3853,7 @@ export class SpinResolver {
     let optimizerMethod: eOptimizerMethod;
     optimizerMethod = this.currElement.type == eElementType.type_if ? eOptimizerMethod.OM_If : eOptimizerMethod.OM_IfNot;
     this.setScopeColumn(this.lineColumn);
-    this.new_bnest(eElementType.type_if, this.if_limit + 1);
+    this.new_bnest(eElementType.type_if, this.if_limit + 16); // room for the first and last addresses of a full chain
     this.optimizeBlock(optimizerMethod);
     this.end_bnest();
     if (this.isLogging) this.logMessage(`*==* cb_if() EXIT`);

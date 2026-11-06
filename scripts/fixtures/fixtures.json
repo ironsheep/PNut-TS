@@ -3649,11 +3649,11 @@
       ]
     },
     {
-      "id": "acc_obj_structs_imported_1000",
+      "id": "acc_obj_structs_imp_1000",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m621: \"Limit of 4096 data structure definitions exceeded\" (structures imported from child objects) - a large legal import (1,000 definitions)",
-      "note": "The 4,096 limit itself is not reachable through an import: each imported definition also sits in the child's 64 KB PUB/CON list (pubcon_list_limit $10000, p2com.asm 62), so about 2,000 is the most; 1,000 is well inside it. The 4,096 own-definition limit is acc_struct_defs_max. Unconfirmed until GOLD.",
-      "source": ["{Spin2_v52}", "OBJ", "  c1 : \"gen_acc_obj_structs_imported_1000__c1\"", "PUB main()", "  return"],
+      "note": "The 4,096 limit itself is not reachable through an import: each imported definition also sits in the child's 64 KB PUB/CON list (pubcon_list_limit $10000, p2com.asm 62), so about 2,000 is the most; 1,000 is well inside it. The 4,096 own-definition limit is acc_struct_defs_max. The child's name is 32 characters: the id is short so that it fits PNut's 32-character OBJ filename (EditorUnit.pas ObjFilenames is string[32]); the earlier 37-character name made PNut fail at the OBJ line. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v52}", "OBJ", "  c1 : \"gen_acc_obj_structs_imp_1000__c1\"", "PUB main()", "  return"],
       "aux": [{ "name": "c1.spin2", "sibling": true, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1000, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }]
     },
     {

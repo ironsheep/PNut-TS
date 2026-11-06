@@ -118,7 +118,9 @@ export function checkMapStructure(map: ParsedMap, program: DecodedProgram): stri
     if (block.childSlots.length > 0 && block.childSlots.length !== decoded.slots.length) {
       problems.push(`image #${block.image}: Child slots rows ${block.childSlots.length}, decoded slots ${decoded.slots.length}`);
     }
-    const mapMethodAddresses = block.methods.map((m) => m.address).sort((a, b) => a - b);
+    // Instances that share an image may know one method by different names, so the
+    // table can hold several rows at one address; the image has one entry there.
+    const mapMethodAddresses = [...new Set(block.methods.map((m) => m.address))].sort((a, b) => a - b);
     const decodedMethodEntries = decoded.methods.map((m) => m.entry).sort((a, b) => a - b);
     if (JSON.stringify(mapMethodAddresses) !== JSON.stringify(decodedMethodEntries)) {
       problems.push(
