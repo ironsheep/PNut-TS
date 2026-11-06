@@ -46,15 +46,6 @@ export function isSpin2File(fileSpec: string): boolean {
 }
 
 /**
- * Checks if a file has a Spin extension.
- * @param {string} filename - The name of the file.
- * @returns {boolean} True if the file has a Spin extension, false otherwise.
- */
-export function isSpinExt(filename: string): boolean {
-  return ['.spin', '.spin2', '.p2asm'].includes(path.extname(filename).toLowerCase());
-}
-
-/**
  * Checks if a file exists.
  * @param {string} pathSpec - The path to the file.
  * @returns {boolean} True if the file exists, false otherwise.
