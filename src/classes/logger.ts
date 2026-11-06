@@ -48,10 +48,6 @@ export class Logger {
     this.logMessage(`${this.programName}: ${message}`);
   }
 
-  public warningMsg(message: string): void {
-    this.logErrorMessage(`${this.programName}: WARNING- ${message}`);
-  }
-
   public progressMsg(message: string): void {
     this.logMessage(`${this.programName}: ${message}`);
   }
