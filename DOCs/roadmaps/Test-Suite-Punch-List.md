@@ -36,15 +36,18 @@ should be deleted in a follow-up pass:
   `programFlash` branch
 - `Spin2Parser.LoadHardware()` — only callable from the now-removed
   `ramDownload` branch
-- The `flashLoader` external resource it embeds (under `src/ext/`)
+- `ExternalFiles.flashLoaderLength` — referenced only from
+  `P2InsertFlashLoader`, so it goes with it. The `flashLoader` getter and
+  `flash_loader.obj` stay: the `-F` path (`P2MakeFlashFileImage`) copies bytes
+  0x160-0x1f0 of it.
 
 The flash *image file* path (`-F, --flashfile`, `P2MakeFlashFile`,
 `writeFlashImageFile`) is still active and supported — that produces a
 `.flash` image for an external programmer, which is the use case we kept.
 
-**Why deferred:** removing the helpers ripples into `externalFiles.ts` and
-the `src/ext/` resource bundling — small but touches surface area beyond the
-CLI cleanup that motivated this release.
+**Why deferred:** removing the helpers touches `externalFiles.ts` — small, but
+surface area beyond the CLI cleanup that motivated this release. Nothing under
+`src/ext/` is removed; `externalFiles.ts` loses one getter.
 
 ---
 

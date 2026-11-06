@@ -24,8 +24,6 @@ export class SpinElement {
   private _midStringComma: boolean = false; // valid only if type_comma
   private _isSymbol: boolean = false; // valid when element refers to symbol in source code
   private _symbolLength: number = 0; // valid only when _isSymbol is true
-  private _overrideSymbolLength: number = this.NOTSET;
-  private _sourceSymbolWasUndefined: boolean = false; // valid only when _isSymbol is true
   private _isObjectReference: boolean = false; // valid only when ...
 
   constructor(fileID: number, type: eElementType, value: bigint | string, lineIndex: number, charIndex: number, copy?: SpinElement) {
@@ -39,7 +37,6 @@ export class SpinElement {
       this._midStringComma = copy._midStringComma; // valid only if type_comma
       this._isSymbol = copy._isSymbol; // valid when element referrs to symbol in source code
       this._symbolLength = copy._symbolLength; // valid only when _isSymbol is true
-      this._sourceSymbolWasUndefined = copy._sourceSymbolWasUndefined; // valid only when _isSymbol is true
       this._isObjectReference = copy._isObjectReference; // valid only when _isSymbol is true
     } else {
       // if not copy constructor then load these five specifically
@@ -63,15 +60,6 @@ export class SpinElement {
     return this._isSymbol;
   }
 
-  // getElement() does symbol lookup and replacement
-  //  however, we need to know if the original element
-  //  was undefined
-  //        symbolWasUndefined()       sets this condition
-  //  while sourceSymbolWasUndefined() tests this condition
-  public setSourceElementWasUndefined() {
-    this._sourceSymbolWasUndefined = true;
-  }
-
   // elementizer USE!
   public setSourceColumnOffset(countLeftWhiteColumns: number) {
     this._expandedColumn = countLeftWhiteColumns;
@@ -83,12 +71,11 @@ export class SpinElement {
     this._overrideExpandedColumn = columnOffset;
   }
 
-  public setAlternateSourceLocation(lineNbr: number, charOffset: number, expandedColumn: number, symLength: number) {
+  public setAlternateSourceLocation(lineNbr: number, charOffset: number, expandedColumn: number) {
     // use by getElementObj() to spoof element locations
     this._overrideLineIndex = lineNbr;
     this._overrideCharacterOffset = charOffset;
     this._overrideExpandedColumn = expandedColumn;
-    this._overrideSymbolLength = symLength;
   }
 
   get haveSourceLineOverride(): boolean {
@@ -103,20 +90,12 @@ export class SpinElement {
     return this._overrideExpandedColumn != this.NOTSET && this._expandedColumn != this._overrideExpandedColumn;
   }
 
-  get haveSymbolLengthOverride(): boolean {
-    return this._overrideSymbolLength != this.NOTSET && this._symbolLength != this._overrideSymbolLength;
-  }
-
   public setPartOfObjReference(value: boolean) {
     this._isObjectReference = value;
   }
 
   get isPartOfObjReference(): boolean {
     return this._isObjectReference;
-  }
-
-  get sourceElementWasUndefined(): boolean {
-    return this._sourceSymbolWasUndefined;
   }
 
   get sourceCharacterEndOffset(): number {

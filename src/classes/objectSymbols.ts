@@ -59,7 +59,6 @@ export class ObjectSymbols {
   private context: Context;
   private isLogging: boolean;
   private isLoggingOutline: boolean;
-  private _id: string;
 
   static readonly MAX_SIZE_IN_BYTES: number = 0x10000;
   static readonly ALLOC_SIZE_IN_BYTES: number = ObjectSymbols.MAX_SIZE_IN_BYTES / 16;
@@ -67,9 +66,8 @@ export class ObjectSymbols {
   private _objOffset: number = 0; // current index into OBJ image
   private _objReadOffset: number = 0; // read index into OBJ image
 
-  constructor(ctx: Context, idString: string) {
+  constructor(ctx: Context) {
     this.context = ctx;
-    this._id = idString;
     this.isLogging = ctx.logOptions.logCompile;
     this.isLoggingOutline = ctx.logOptions.logOutline;
   }
@@ -85,10 +83,6 @@ export class ObjectSymbols {
       //this._objSymbolsByteAr = null; // force prior to be deallocated AUGH doesn't work!
       this._objSymbolsByteAr = newBuffer;
     }
-  }
-
-  [Symbol.iterator]() {
-    return this._objSymbolsByteAr.values();
   }
 
   get length(): number {

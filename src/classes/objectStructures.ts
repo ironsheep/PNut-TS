@@ -54,7 +54,6 @@ export class ObjectStructures {
   private context: Context;
   private isLogging: boolean;
   private isLoggingOutline: boolean;
-  private _id: string;
 
   static readonly MAX_STRUCTURES: number = 0x1000; // PNut  struct_id_limit := $1000;
   static readonly MAX_SIZE_IN_BYTES: number = 0x20000; // PNut  struct_def_limit := $20000;
@@ -63,7 +62,6 @@ export class ObjectStructures {
   private _objStructRecordOffsets: number[] = [];
   private _objStructureByteAr: Uint8Array;
   private _objStructureOffset: number = 0; // current index into OBJ image
-  private _objReadStructureOffset: number = 0; // read index into OBJ image
   // structure support
   private _structIdNext: number = 0;
   private _structRecordSize: number = 0;
@@ -72,9 +70,8 @@ export class ObjectStructures {
   private _lastTypeRecorded: eMemberType = eMemberType.MT_Unknown;
   private _lastSizeRecorded: number = 0;
 
-  constructor(ctx: Context, idString: string) {
+  constructor(ctx: Context) {
     this.context = ctx;
-    this._id = idString;
     this.isLogging = ctx.logOptions.logCompile;
     this.isLoggingOutline = ctx.logOptions.logOutline;
     this._objStructureByteAr = new Uint8Array(ObjectStructures.ALLOC_SIZE_IN_BYTES); // initial memory size
@@ -93,27 +90,8 @@ export class ObjectStructures {
     }
   }
 
-  [Symbol.iterator]() {
-    return this._objStructureByteAr.values();
-  }
-
-  get length(): number {
-    return this._objStructureOffset;
-  }
-
   get haveMaxStructures(): boolean {
     return this._structIdNext >= ObjectStructures.MAX_STRUCTURES ? true : false;
-  }
-
-  public setOffset(offset: number) {
-    this._objReadStructureOffset = offset;
-  }
-
-  public readNext(): number {
-    let desiredValue: number = 0;
-    desiredValue = this._objStructureByteAr[this._objReadStructureOffset++];
-    this.logMessage(`* OBJSTRUCT: readnext(${hexAddress(this._objReadStructureOffset - 1)}) -> v=(${hexByte(desiredValue)})`);
-    return desiredValue;
   }
 
   public getStructureSizeForID(recordId: number): number {
@@ -188,19 +166,6 @@ export class ObjectStructures {
     // end our structure member record
     this.logMessage(`* OBJSTRUCT: endMemberRecord(flag=(${flagValue}))`);
     this.enterByte(flagValue);
-  }
-
-  public enterSymbolName(name: string) {
-    // record name into record, length first
-    this.logMessage(`* OBJSTRUCT: enterSymbolName('${name}')`);
-    if (name !== undefined && name.length > 0 && name.length < 32) {
-      this.enterByte(name.length);
-      for (let index = 0; index < name.length; index++) {
-        this.enterByte(name.charCodeAt(index));
-      }
-    } else {
-      this.context.logger.errorMsg(`ERROR: ObjectStructures() bad name!`);
-    }
   }
 
   public readLongAt(offset: number, buffer: Uint8Array): number {
@@ -338,22 +303,9 @@ export class ObjectStructures {
     this._structRecordSize++;
   }
 
-  public read(offset: number): number {
-    // read existing value from image
-    let desiredValue: number = 0;
-    if (offset >= 0 && offset < this._objStructureOffset) {
-      desiredValue = this._objStructureByteAr[offset];
-    } else {
-      // [error_INTERNAL]
-      throw new Error(`ERROR[INTERNAL]: OBJSTRUCT: read() offset=(${offset}) out of range [0-${this._objStructureOffset}]`);
-    }
-    return desiredValue;
-  }
-
   public reset() {
     // effectively empty our image
     this._objStructureOffset = 0; // call method, so logs
-    this._objReadStructureOffset = 0;
     this._objStructRecordOffsets = [];
     this._structIdNext = 0;
     this.logMessage(`* OBJSTRUCT: reset()`);

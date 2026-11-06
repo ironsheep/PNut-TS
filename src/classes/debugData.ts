@@ -12,15 +12,8 @@ import { hexAddress, hexWord } from '../utils/formatUtils';
 
 export class DebugRecord {
   static readonly MAX_RECORD_LENGTH: number = 255; // + terminator on each
-  private context: Context;
-  private isLogging: boolean;
   private _debugRecord = new Uint8Array(DebugRecord.MAX_RECORD_LENGTH); // total memory size
   private _debugOffset: number = 0; // current index into OBJ image
-
-  constructor(ctx: Context) {
-    this.context = ctx;
-    this.isLogging = ctx.logOptions.logResolver;
-  }
 
   get length(): number {
     return this._debugOffset;
@@ -61,7 +54,6 @@ export class DebugData {
   static readonly COLLAPSED_SIZE_LIMIT = 0x2a00; // PNut debug_size_limit: what the debugger can hold, table included
   private _debugImage = new Uint8Array(DebugData.DEBUG_SIZE_IN_BYTES); // total memory size
   private _debugOffset: number = 0; // current index into OBJ image
-  private _maxOffset: number = 0; // current index into OBJ image
 
   constructor(ctx: Context) {
     this.context = ctx;
@@ -69,25 +61,10 @@ export class DebugData {
     const nextFreeOffset: number = 0x200;
     this.replaceWord(nextFreeOffset, 0); // set offset to first record
     this._debugOffset = nextFreeOffset;
-    this._maxOffset = nextFreeOffset;
   }
 
   public setLogging(enable: boolean) {
     this.isLogging = enable;
-  }
-
-  get rawUint8Array(): Uint8Array {
-    return this._debugImage;
-  }
-
-  get offset(): number {
-    // return current offset
-    return this._debugOffset;
-  }
-
-  get offsetHex(): string {
-    // return current offset
-    return hexAddress(this._debugOffset);
   }
 
   get length(): number {
@@ -202,7 +179,7 @@ export class DebugData {
    * size and capacity limits with their original error codes.
    */
   public injectRecord(bytes: Uint8Array): number {
-    const wrapper = new DebugRecord(this.context);
+    const wrapper = new DebugRecord();
     for (let i = 0; i < bytes.length; i++) {
       wrapper.append(bytes[i]); // throws (m150) if the saved record overflows MAX_RECORD_LENGTH
     }
@@ -226,21 +203,6 @@ export class DebugData {
     this._debugOffset = offset;
   }
 
-  public read(offset: number): number {
-    // read existing value from image
-    let desiredValue: number = 0;
-    //if (offset >= 0 && offset <= this._maxOffset - 1) {
-    desiredValue = this._debugImage[offset];
-    //}
-    return desiredValue;
-  }
-
-  private updateMax() {
-    if (this._debugOffset > this._maxOffset) {
-      this._maxOffset = this._debugOffset;
-    }
-  }
-
   public readWord(offset: number): number {
     // read existing word from image
     let desiredValue: number = 0;
@@ -262,36 +224,6 @@ export class DebugData {
     //} else {
     //  this.logMessage(`* DebugData: ERROR BAD address! replaceWord(v=(${hexWord(uint16)}), addr(${hexAddress(offset)}))`);
     //}
-  }
-
-  public reset() {
-    this.logMessage(`* DebugData: reset Offset to zero`);
-    // effectively empty our image
-    this.setOffsetTo(0); // call method, so logs
-  }
-
-  public dumpBytes(startOffset: number, byteCount: number, dumpId: string) {
-    /// dump hex and ascii data
-    let displayOffset: number = 0;
-    let currOffset = startOffset;
-    this.logMessage(`-- -------- ${dumpId} ------------------ --`);
-    while (displayOffset < byteCount) {
-      let hexPart = '';
-      let asciiPart = '';
-      const remainingBytes = byteCount - displayOffset;
-      const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
-      for (let i = 0; i < lineLength; i++) {
-        const byteValue = this.read(currOffset + i);
-        hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
-        asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
-      }
-      const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
-
-      this.logMessage(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'`);
-      currOffset += lineLength;
-      displayOffset += lineLength;
-    }
-    this.logMessage(`-- -------- -------- ------------------ --`);
   }
 
   private logMessage(message: string): void {

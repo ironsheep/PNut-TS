@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 'use strict';
 
 import fs from 'fs';
@@ -7,9 +5,7 @@ import { Context } from '../utils/context';
 import { iOutputFilespecs, outputFilespecs } from '../utils/outputFilespecs';
 import { SpinDocument } from './spinDocument';
 import { SpinElementizer } from './spinElementizer';
-import { SpinElement } from './spinElement';
 import { RegressionReporter } from './regression';
-import { SpinSymbolTables } from './parseUtils';
 import { OBJ_LIMIT, SpinResolver } from './spinResolver';
 import { ID_SEPARATOR_STRING, SymbolEntry, SymbolTable, iSymbol } from './symbolTable';
 import { float32ToHexString } from '../utils/float32';
@@ -18,7 +14,6 @@ import { eElementType } from './types';
 import { ObjectImage } from './objectImage';
 import { ExternalFiles } from './externalFiles';
 import { hexLong } from '../utils/formatUtils';
-import path from 'path';
 import { MapGenerator } from './mapGenerator';
 import { DebugData } from './debugData';
 
@@ -30,21 +25,17 @@ export class Spin2Parser {
   private isLoggingOutline: boolean = false;
   private srcFile: SpinDocument | undefined;
   private elementizer: SpinElementizer;
-  private spinSymbolTables: SpinSymbolTables;
-  private spinElements: SpinElement[] = [];
   private spinResolver: SpinResolver;
   private externalFiles: ExternalFiles;
   private objImage: ObjectImage;
   private readonly HubLimit: number = 0x80000;
   private readonly obj_limit = OBJ_LIMIT;
-  private earlyDeduplicationSavings: number = 0;
 
   constructor(ctx: Context) {
     this.context = ctx;
     this.isLogging = ctx.logOptions.logParser;
     this.isLoggingOutline = ctx.logOptions.logOutline;
     this.elementizer = new SpinElementizer(this.context);
-    this.spinSymbolTables = new SpinSymbolTables(this.context);
     this.spinResolver = new SpinResolver(this.context);
     this.externalFiles = new ExternalFiles(this.context);
     this.objImage = ctx.compileData.objImage;
@@ -72,10 +63,6 @@ export class Spin2Parser {
     return this.spinResolver.failingFileID;
   }
 
-  get distiller() {
-    return this.spinResolver.distiller;
-  }
-
   public setSourceFile(spinCode: SpinDocument) {
     this.srcFile = spinCode;
     if (this.isLogging) this.logMessage(`* Parser.setSourceFile([${this.srcFile.fileName}])`);
@@ -89,7 +76,6 @@ export class Spin2Parser {
     // publish for next steps to use
     if (this.srcFile) {
       this.elementizer.setSourceFile(this.srcFile);
-      this.spinElements = this.srcFile.elementList;
       this.spinResolver.setSourceFile(this.srcFile);
 
       //if (this.isLogging) this.logMessage(`* P2Elementize() - Log Element List - ENTRY`);
@@ -104,10 +90,6 @@ export class Spin2Parser {
         if (this.isLogging) this.logMessage(`* P2Elementize() - Dump Element List - EXIT`);
       }
     }
-  }
-
-  public setEarlyDeduplicationSavings(savings: number): void {
-    this.earlyDeduplicationSavings = savings;
   }
 
   public P2Compile1(overrideSymbol: SymbolTable | undefined) {
@@ -411,9 +393,8 @@ export class Spin2Parser {
       } else {
         // Report the DISTILLER's savings only, in PNut's single-line form.
         //
-        // `earlyDeduplicationSavings` is deliberately NOT reported here. It
-        // carries `memoryStats.memoryBytesSaved` (compiler.ts), which counts
-        // bytes we avoided RECOMPILING — a cache hit, or a child object
+        // `memoryStats.memoryBytesSaved` (compiler.ts) is deliberately NOT reported here.
+        // It counts bytes we avoided RECOMPILING — a cache hit, or a child object
         // compiled once and reused. That is a compile-time figure and removes
         // nothing from the object image, so adding it to a line labelled
         // "Redundant OBJ bytes removed" overstated the number against PNut's,
@@ -541,15 +522,6 @@ export class Spin2Parser {
     return interpValue;
   }
 
-  public fakeResolver() {
-    // our list is in class objexct
-    const spinElements: SpinElement[] = this.spinElements;
-    this.spinResolver.setElements(this.spinElements);
-    this.spinResolver.testResolveExp(0, 0, this.spinSymbolTables.lowestPrecedence);
-    // now process list of elements, writing to our symbol tables
-    // the dump symbol tables to listing file
-  }
-
   // The destination is passed in rather than derived here: this writes the .obj for
   // one caller and the .flash image for the other. It used to take the LISTING name
   // and do lstFilename.replace('.lst', '.obj'), which produced the .obj for the first
@@ -576,10 +548,9 @@ export class Spin2Parser {
   }
   public ComposeRam() {
     // here is pascal ComposeRAM()
-    // pnut-ts is a compiler-only tool: --flash/--ram download options were
-    // never wired up and the corresponding programFlash/ramDownload code
-    // paths (P2InsertFlashLoader, LoadHardware) are dormant. The flash *image*
-    // file (.flash) for external programmers is still produced when
+    // pnut-ts is a compiler-only tool: it has no --flash/--ram download options,
+    // so there is no flash loader insertion or hardware load here. The flash *image*
+    // file (.flash) for external programmers is produced when
     // --flashfile is set; that path goes through P2MakeFlashFile.
     const isPasmMode: boolean = this.spinResolver.isPasmMode;
     const isDebugMode: boolean = this.context.compileOptions.enableDebug;
@@ -633,7 +604,7 @@ export class Spin2Parser {
 
     // save binary file
     if (this.context.compileOptions.writeBin) {
-      this.writeBinaryFile(this.objImage, 0, this.objImage.length, false);
+      this.writeBinaryFile(this.objImage, 0, this.objImage.length);
     }
 
     if (this.context.compileOptions.writeFlashImageFile) {
@@ -641,11 +612,11 @@ export class Spin2Parser {
     }
   }
 
-  private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number, hasFlashLoader: boolean = false) {
+  private writeBinaryFile(objImage: ObjectImage, offset: number, byteCount: number) {
     // BUGFIX: for issue #4 add true -o option -- the -o override lives in the
     // shared derivation now, along with the -a suffix choice
     const outputs: iOutputFilespecs = outputFilespecs(this.context);
-    const objFilename = hasFlashLoader ? outputs.flashLoaderBinary : outputs.binary;
+    const objFilename = outputs.binary;
     if (this.isLogging) this.logMessage(`  -- writing BIN file (${byteCount} bytes from offset ${offset}) to ${objFilename}`);
     // Synchronous: stream.end() returns before the bytes are on disk, so a
     // caller that reads the binary straight after a compile can see a stale or
@@ -941,41 +912,6 @@ export class Spin2Parser {
     }
   }
 
-  public P2InsertFlashLoader() {
-    // PNut insert_flash_loader:
-    // pad object to next long
-    while (this.objImage.offset & 0b11) {
-      this.objImage.appendByte(0);
-    }
-    const _checksum_ = 0x04;
-    const _debugnop_ = 0x08;
-    const _NOP_INSTRU_ = 0;
-    const flashLoaderLength = this.externalFiles.flashLoaderLength;
-    // move object upwards to accommodate flash loader
-    if (this.isLogging) this.logMessage(`  -- move object up - flashLoaderLength=(${flashLoaderLength}) bytes`);
-    this.moveObjectUp(this.objImage, flashLoaderLength, 0, this.objImage.offset);
-    // install flash loader
-    if (this.isLogging) this.logMessage(`  -- load flash loader`);
-    // now path the loader
-    this.objImage.rawUint8Array.set(this.externalFiles.flashLoader, 0);
-    const isDebugMode: boolean = this.context.compileOptions.enableDebug;
-    if (isDebugMode) {
-      // debug is on
-      const debugInstru = this.objImage.readLong(_debugnop_);
-      this.objImage.replaceLong(debugInstru | this.spinResolver.debugPinTransmit, _debugnop_);
-    } else {
-      // debug is off
-      this.objImage.replaceLong(_NOP_INSTRU_, _debugnop_);
-    }
-    // compute negative sum of all data
-    let checkSum: number = 0;
-    for (let offset = 0; offset < this.objImage.offset; offset += 4) {
-      checkSum -= this.objImage.readLong(offset);
-    }
-    // insert checksum into loader
-    this.objImage.replaceLong(checkSum, _checksum_);
-  }
-
   private checkClockSetterInsert(): boolean {
     // PNut part of insert_clock_setter:
     // Return T/F where T means  _AUTOCLK not defined or _AUTOCLK <> 0
@@ -1036,10 +972,6 @@ export class Spin2Parser {
       }
     }
     return insertedBytes;
-  }
-
-  public LoadHardware() {
-    // FIXME: UNDONE  we need code here LoadHardware() when we awaken USB support
   }
 
   private logMessage(message: string): void {

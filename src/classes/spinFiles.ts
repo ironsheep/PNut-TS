@@ -20,14 +20,10 @@ interface iPossibleSymbolTable {
 }
 export class ObjFile {
   // details about a given OBJ file
-  private static nextInstanceNumber = 0;
   private context: Context;
   private isLogging: boolean = false;
   private _fileSpec: string;
   private _fileName: string;
-  private _spinFileId: number = 0; // index into Context:SourceFiles
-  private _parameters: number = 0;
-  private _instanceNumber: number;
   private _elementIndex: number; // index of assoc 'file' element in spin code
   private _maxParameterSets: number = 0; // how many times this object is placed in memory PNut [obj_instances[].length]
   private _parameterSet: iPossibleSymbolTable[] = []; // this is indexed by instance number  Map<string:number>
@@ -36,7 +32,6 @@ export class ObjFile {
 
   constructor(ctx: Context, fileSpec: string, elementIndex: number) {
     this.context = ctx;
-    this._instanceNumber = ++ObjFile.nextInstanceNumber;
     this._fileSpec = fileSpec;
     this._fileName = path.basename(fileSpec);
     this._elementIndex = elementIndex;
@@ -48,21 +43,12 @@ export class ObjFile {
     this.isLogging = enable;
   }
 
-  get fileIndex(): number {
-    return this._instanceNumber - 1; // index is zero relative
-  }
-
   get parameterSymbolTable(): SymbolTable | undefined {
     const possibleTable = this._parameterSet[this._maxParameterSets - 1];
     if (possibleTable === undefined) {
       this.logMessage(`EEEE: ObjFile: [${this._fileName}] didn't find parameter set at [${this._maxParameterSets}]`);
     }
     return possibleTable?.overrides;
-  }
-
-  public setSpinSourceFileId(fileId: number) {
-    // can pass false to disable
-    this._spinFileId = fileId;
   }
 
   get fileName(): string {
@@ -122,10 +108,6 @@ export class ObjFile {
     this._numberInstances = 0; // default to 0 instances in all cases setObjectInstanceCount() will override this value
   }
 
-  get occurrenceIndex(): number {
-    return this._maxParameterSets;
-  }
-
   /*
 ddx             obj_files                                       ;object file count
 dbx             obj_filenames,file_limit*256                    ;object filenames
@@ -152,22 +134,14 @@ dbx             obj_title,256                                   ;object title
 export class DatFile {
   // details about a given Data file loaded from spin 'file' statement
   static readonly MAX_SIZE_IN_BYTES: number = 0x100000;
-  private static nextInstanceNumber = 0;
   private context: Context;
-  private isLogging: boolean = false;
   private _fileSpec: string;
   private _fileName: string;
   private _fileExists: boolean;
-  private _instanceNumber: number;
-  private _elementIndex: number; // index of assoc 'file' element in spin code
-  private _failedToLoad: boolean = false;
 
-  constructor(ctx: Context, fileName: string, enableLogging: boolean, elementIndex: number) {
+  constructor(ctx: Context, fileName: string) {
     this.context = ctx;
-    this._instanceNumber = ++DatFile.nextInstanceNumber;
-    this.isLogging = enableLogging;
     this._fileName = path.basename(fileName);
-    this._elementIndex = elementIndex;
     // we call load file into memory
     const fileSpec: string | undefined = locateDataFile(this.context.currentFolder, fileName, this.context);
     this._fileExists = fileSpec === undefined ? false : true;
@@ -182,21 +156,12 @@ export class DatFile {
     return this._fileExists;
   }
 
-  public enableLogging(enable: boolean = true) {
-    // can pass false to disable
-    this.isLogging = enable;
-  }
-
-  get failedToLoad(): boolean {
-    return this._failedToLoad;
-  }
-
   get fileName(): string {
     return this._fileName;
   }
 
   /*
-ddx             dat_files                                       ;data file count
+ddx             dat_files                                      ;data file count
 dbx             dat_filenames,file_limit*256                    ;data filenames
 ddx             dat_name_start,file_limit                       ;data filenames source start
 ddx             dat_name_finish,file_limit                      ;data filenames source finish
@@ -204,12 +169,6 @@ ddx             dat_offsets,file_limit                          ;data offsets
 ddx             dat_lengths,file_limit                          ;data lengths
 dbx             dat_data,obj_limit                              ;data data
   */
-
-  private logMessage(message: string): void {
-    if (this.isLogging) {
-      this.context.logger.logMessage(message);
-    }
-  }
 }
 
 export class SpinFiles {
@@ -245,20 +204,13 @@ export class SpinFiles {
     this._objFiles = [];
   }
 
-  public clear() {
-    // clear out all prior knowledge
-    this.clearDataFiles();
-    this.clearObjFiles();
-    this.setPasmMode(false);
-  }
-
   get objFileCount(): number {
     // this is PNut [obj_files]
     return this._objFiles.length;
   }
 
   get datFileCount(): number {
-    // this is PNut [dat_files]
+    // this is PNut [dat_files]; nothing calls it
     return this._datFiles.length;
   }
 
@@ -283,8 +235,8 @@ export class SpinFiles {
     return [foundStatus, desiredIndex];
   }
 
-  public addDataFile(fileName: string, elementIndex: number): boolean {
-    const newData: DatFile = new DatFile(this.context, fileName, this.isLogging, elementIndex);
+  public addDataFile(fileName: string): boolean {
+    const newData: DatFile = new DatFile(this.context, fileName);
     this._datFiles.push(newData);
     return newData.fileExists;
   }
@@ -339,7 +291,7 @@ export class SpinFiles {
         }
       }
     } else {
-      desiredFile = new DatFile(this.context, fileName, this.isLogging, 0);
+      desiredFile = new DatFile(this.context, fileName);
       this._datFiles.push(desiredFile);
       this.logMessage(`* loadDataFile([${fileName}]) - new file...at Index=(${this._datFiles.length - 1}), found=(${desiredFile.fileExists})`);
       if (desiredFile.fileExists == false) {

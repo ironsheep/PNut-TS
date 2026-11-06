@@ -153,10 +153,6 @@ export class Compiler {
     }
   }
 
-  public getEarlyDeduplicationSavings(): number {
-    return this.memoryStats.memoryBytesSaved;
-  }
-
   public Compile() {
     //logContextState(this.context, 'Compiler');
     if (this.isLogging) this.logMessage(`* Compiler LOGGING is enabled!`);
@@ -203,9 +199,6 @@ export class Compiler {
         // Build the object layout from the final image, before anything moves it
         this.buildObjectLayoutWhenWanted();
 
-        // Pass early deduplication savings to spin2Parser for list file reporting
-        this.spin2Parser.setEarlyDeduplicationSavings(this.memoryStats.memoryBytesSaved);
-
         this.spin2Parser.P2List();
         this.spin2Parser.P2Map();
         this.spin2Parser.ComposeRam();
@@ -238,7 +231,6 @@ export class Compiler {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   /**
    * Subtree dependency manifests, one entry per child that has finished
    * compiling (or cache-hit) at the current recursion level.
@@ -557,7 +549,6 @@ export class Compiler {
                 childObjSourceFile = new SpinDocument(this.context, fileSpec);
                 this.context.sourceFiles.addFile(childObjSourceFile);
               }
-              objFile.setSpinSourceFileId(childObjSourceFile.fileId);
               const overrideSymbolTable: SymbolTable | undefined = objFile.parameterSymbolTable;
               // Record the instance before descending: parent identity, this
               // child's position in the parent's OBJ block, and the child's

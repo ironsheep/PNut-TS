@@ -24,8 +24,6 @@ export interface iOutputFilespecs {
   object: string;
   /** Honours -o, which replaces the derived name entirely. */
   binary: string;
-  /** The flash-loader variant of the binary; -o overrides this one too. */
-  flashLoaderBinary: string;
 }
 
 /**
@@ -39,7 +37,7 @@ export interface iOutputFilespecs {
 export function outputFilespecs(context: Context): iOutputFilespecs {
   const listing: string = context.compileOptions.listFilename;
   if (listing.length == 0) {
-    return { listing: '', map: '', flash: '', object: '', binary: '', flashLoaderBinary: '' };
+    return { listing: '', map: '', flash: '', object: '', binary: '' };
   }
   const binarySuffix: string = context.compileOptions.binarySuffix;
   const overrideName: string = context.compileOptions.outputFilename;
@@ -53,7 +51,6 @@ export function outputFilespecs(context: Context): iOutputFilespecs {
     map: listing.replace('.lst', '.map'),
     flash: listing.replace('.lst', '.flash'),
     object: listing.replace('.lst', '.obj'),
-    binary: overridden.length > 0 ? overridden : listing.replace('.lst', `.${binarySuffix}`),
-    flashLoaderBinary: overridden.length > 0 ? overridden : listing.replace('.lst', `.${binarySuffix}f`)
+    binary: overridden.length > 0 ? overridden : listing.replace('.lst', `.${binarySuffix}`)
   };
 }

@@ -31,13 +31,6 @@ export class ExternalFiles {
     return this._clockSetterImage;
   }
 
-  get flashLoaderLength(): number {
-    if (this._flashLoaderImage.length == 0) {
-      this.loadFiles();
-    }
-    return this._flashLoaderImage.length;
-  }
-
   get flashLoader(): Uint8Array {
     if (this._flashLoaderImage.length == 0) {
       this.loadFiles();
