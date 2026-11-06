@@ -129,21 +129,9 @@ class PreProcState {
   private inIfSide: boolean = false;
   private foundElse: boolean = false; // T/F where T means the endif can be emitted even if side not emitting
   private skipThisIfDef: boolean = false; // T/F where T means all sides of IFDEF...ENDIF don't emit code
-  // where the #ifdef/#ifndef that opened this level was written, so an unterminated
-  // conditional can name the line the author needs to look at rather than EOF
-  private readonly openedAtLineIndex: number;
 
-  constructor(openedAtLineIndex: number = 0) {
-    this.openedAtLineIndex = openedAtLineIndex;
+  constructor() {
     this.clear();
-  }
-
-  get openingLineIndex(): number {
-    return this.openedAtLineIndex;
-  }
-
-  get ignoreIfdef(): boolean {
-    return this.skipThisIfDef;
   }
 
   get thisSideEmits(): boolean {
@@ -202,7 +190,6 @@ export class SpinDocument {
   // remaining lines are preprocessing
   private readonly preprocessedLines: TextLine[] = [];
   // description of file
-  private readonly eolType: eEOLType = eEOLType.EOL_Unknown;
   private readonly langId: eLangaugeId = eLangaugeId.LID_Unknown;
   private readonly docFolder: string;
   private readonly fileBaseName: string;
@@ -219,7 +206,6 @@ export class SpinDocument {
   private preProcNestingState: PreProcState[] = [];
   // preprocess state information
   private cmdLineDefines: string[] = [];
-  private cmdLineUndefines: string[] = [];
   private headerComments: TextLine[] = [];
   private trailerComments: string[] = [];
   private gatheringHeaderComment: boolean = true;
@@ -254,16 +240,13 @@ export class SpinDocument {
         this.haveFile = true; // only spin2 files are usable for now
       }
       if (this.langId == eLangaugeId.LID_SPIN2) {
-        // load file and record line-ending type then split into lines (removing endings)
+        // load file then split into lines (removing endings)
         const fileContents: string = loadFileAsString(fileSpec);
         if (fileContents.includes('\r\n')) {
-          this.eolType = eEOLType.EOL_CRLF;
           this.rawLines = fileContents.split(/\r\n/);
         } else if (fileContents.includes('\n')) {
-          this.eolType = eEOLType.EOL_LF_ONLY;
           this.rawLines = fileContents.split(/\n/);
         } else {
-          this.eolType = eEOLType.EOL_CR_ONLY;
           this.rawLines = fileContents.split(/\r/);
         }
         this.logMessage(`CODE: loaded [${this.fileBaseName}] from [${this.docFolder}]`);
@@ -477,14 +460,6 @@ export class SpinDocument {
     return this.preprocessedLines;
   }
 
-  get EndOfLine(): eEOLType {
-    return this.eolType;
-  }
-
-  get languageId(): eLangaugeId {
-    return this.langId;
-  }
-
   /**
    * Returns a TextLine object representing the line at the given index.
    * @param {number} lineIndex - The index of the line to return.
@@ -627,7 +602,7 @@ export class SpinDocument {
           // parse #elseifdef {symbol}
           const isElseForm: boolean = /^\s*#elseifdef\s+/i.test(currLine);
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
-          const ifState = isElseForm ? this.currIfDef() : this.enterIf(lineIdx);
+          const ifState = isElseForm ? this.currIfDef() : this.enterIf();
           if (ifState === undefined) {
             replaceCurrent = this.commentOut(currLine);
             this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
@@ -682,7 +657,7 @@ export class SpinDocument {
           // parse #elseifndef {symbol}
           const isElseForm: boolean = /^\s*#elseifndef\s+/i.test(currLine);
           const wasEmitting = !this.inIfDef() || (this.inIfDef() && this.thisSideKeepsCode());
-          const ifState = isElseForm ? this.currIfDef() : this.enterIf(lineIdx);
+          const ifState = isElseForm ? this.currIfDef() : this.enterIf();
           if (ifState === undefined) {
             replaceCurrent = this.commentOut(currLine);
             this.reportError(MSG_MISSING_CONDITIONAL, lineIdx, eDiagnosticSeverity.DS_FATAL);
@@ -1301,8 +1276,8 @@ export class SpinDocument {
 
   // #ifdef/#ifndef support routines
 
-  private enterIf(lineIndex: number): PreProcState {
-    const newProcLevel = new PreProcState(lineIndex);
+  private enterIf(): PreProcState {
+    const newProcLevel = new PreProcState();
     newProcLevel.setInIf();
     this.preProcNestingState.push(newProcLevel);
     return newProcLevel;
@@ -1344,16 +1319,6 @@ export class SpinDocument {
     if (this.isLogging) {
       this.context.logger.logMessage(message);
     }
-  }
-
-  private logMessageConditional(condition: boolean, message: string): void {
-    if (condition == true) {
-      this.context.logger.logMessage(message);
-    }
-  }
-
-  private forceLogMessage(message: string): void {
-    this.context.logger.logMessage(message);
   }
 
   private logMessageOutline(message: string): void {
