@@ -8,9 +8,10 @@
 > studying it.
 >
 > This is *not* PNut-TS compiler code — it is an artifact the compiler **emits**.
-> When the user passes `-FLASH`, PNut-TS prepends this image (compiled from
-> `flash_loader.spin2`) to the user program; the resulting binary is what
-> actually programs an SPI flash and survives a power-cycle.
+> When the user passes `-F` (`--flashfile`), PNut-TS prepends a 144-byte subset
+> of this image (bytes 0x160-0x1EF of `flash_loader.obj`, compiled from
+> `flash_loader.spin2`) to the user program and writes a `.flash` file for an
+> external programmer. That image is what boots from SPI flash after a power-cycle.
 
 ---
 
@@ -838,6 +839,6 @@ If you ever touch this file, verify *every* one of these still holds:
 | Subject | Source file |
 | --- | --- |
 | The loader code (this doc) | `src/ext/flash_loader.spin2` |
-| Compiler invocation that uses it | `src/classes/compiler.ts` (search for `flash_loader`) |
-| PNut-TS `-FLASH` CLI flag | `src/pnut-ts.ts` |
+| Compiler code that uses it | `src/classes/spin2Parser.ts` (`P2MakeFlashFileImage`) |
+| PNut-TS `-F, --flashfile` CLI flag | `src/pnut-ts.ts` |
 | P2 Knowledge Base entries cited | `p2kbArchSpiImplementationGuide`, `p2kbPasm2StreamerSmartpinControl`, `p2kbPasm2Xinit`, `p2kbPasm2Setxfrq`, `p2kbPasm2Rdfast`, `p2kbPasm2Wrfast`, `p2kbPasm2Hubset`, `p2kbPasm2RepInstruction`, `p2kbArchSmartPin00101TransitionOutput`, `p2kbSpin2StreamerSymbols`, `p2kbPasm2ExecutionModes` |

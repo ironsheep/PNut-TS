@@ -45,12 +45,8 @@ The real layouts are:
 A **`.flash` file** (see Flash File Generation below) additionally prepends a
 144-byte flash-loader subset to whichever of the above was produced.
 
-> **Historical note:** an older `--flash`/`.binf` path (`Spin2Parser.P2InsertFlashLoader()`)
-> still exists in source but is **dormant — never called** from `ComposeRam()`.
-> The live flash path is `--flashfile` → `Spin2Parser.P2MakeFlashFile()` →
-> `P2MakeFlashFileImage()`. Earlier revisions of this document described the
-> dormant path's layout (1KB loader, app at 0x0400, checksum at 0x3FC); none
-> of that describes what the compiler emits today.
+> The only flash output is `--flashfile` → `Spin2Parser.P2MakeFlashFile()` →
+> `P2MakeFlashFileImage()`. The compiler has no `.binf` output.
 
 ## Component Details
 
