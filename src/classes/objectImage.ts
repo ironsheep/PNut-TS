@@ -108,10 +108,6 @@ export class ObjectImage {
     this.isLogging = enable;
   }
 
-  get isLoggingEnabled(): boolean {
-    return this.isLogging;
-  }
-
   get rawUint8Array(): Uint8Array {
     return this._objImageByteAr;
   }
@@ -333,11 +329,6 @@ export class ObjectImage {
     return [...this._brkSites];
   }
 
-  /** Number of brkSites currently captured. Cheap accessor for tests/asserts. */
-  public get brkSiteCount(): number {
-    return this._brkSites.length;
-  }
-
   /** Shift every captured brkSite offset by `byteDelta`. Used by compile_final
    *  when it prepends vsize/psize and moves the existing image up by 8 bytes:
    *  brkSites were captured pre-shift, so they need to track the move to keep
@@ -346,30 +337,6 @@ export class ObjectImage {
     for (const site of this._brkSites) {
       site.offset += byteDelta;
     }
-  }
-
-  public dumpBytes(startOffset: number, byteCount: number, dumpId: string) {
-    /// dump hex and ascii data
-    let displayOffset: number = 0;
-    let currOffset = startOffset;
-    this.logMessage(`-- -------- ${dumpId} ------------------ --`);
-    while (displayOffset < byteCount) {
-      let hexPart = '';
-      let asciiPart = '';
-      const remainingBytes = byteCount - displayOffset;
-      const lineLength = remainingBytes > 16 ? 16 : remainingBytes;
-      for (let i = 0; i < lineLength; i++) {
-        const byteValue = this.read(currOffset + i);
-        hexPart += byteValue.toString(16).padStart(2, '0').toUpperCase() + ' ';
-        asciiPart += byteValue >= 0x20 && byteValue <= 0x7e ? String.fromCharCode(byteValue) : '.';
-      }
-      const offsetPart = displayOffset.toString(16).padStart(5, '0').toUpperCase();
-
-      this.logMessage(`${offsetPart}- ${hexPart.padEnd(48, ' ')}  '${asciiPart}'`);
-      currOffset += lineLength;
-      displayOffset += lineLength;
-    }
-    this.logMessage(`-- -------- -------- ------------------ --`);
   }
 
   private logMessage(message: string): void {
