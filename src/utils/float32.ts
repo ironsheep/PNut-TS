@@ -23,7 +23,7 @@ export function float32ToHexString(float32: bigint): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function float32ToString(float32: bigint | string): string {
+export function float32ToString(_float32: bigint | string): string {
   // used by: spinElement.ts, spinElementizer.ts
   return '';
 }
