@@ -71,10 +71,6 @@ export class DistillerRecord {
     this._objectOffset = value;
   }
 
-  set subObjectIds(ids: number[]) {
-    this._subObjectIds = ids;
-  }
-
   // Update a specific sub-object ID at index
   public updateSubObjectId(index: number, newId: number): void {
     if (index >= 0 && index < this._subObjectIds.length) {
@@ -125,40 +121,12 @@ export class DistillerList {
     this.logMessage(`* distiller ADD #${this.recordCount}[${this.recordCount - 1}]: ${newRecord.toString()}`);
   }
 
-  public record(index: number): DistillerRecord | undefined {
-    let desiredRecord: DistillerRecord | undefined = undefined;
-    if (index >= 0 && index < this._recordList.length) {
-      desiredRecord = this._recordList[index];
-    }
-
-    return desiredRecord;
-  }
-
-  public dumpRecords() {
-    this.logMessage('  -- ------------------------------');
-    if (this._recordList.length > 0) {
-      for (let index = 0; index < this._recordList.length; index++) {
-        const currRecord = this._recordList[index];
-        const recordIdStr: string = `#${index + 1}[${index}]`;
-        this.logMessage(`  -- ${recordIdStr} ${currRecord.toString()}`);
-      }
-    } else {
-      this.logMessage('     {empty distiller record list}');
-    }
-    this.logMessage('  -- ------------------------------');
-  }
-
   // Clear all records
   public clear(): void {
     this._recordList = [];
   }
 
-  // Get record count (method alias for property)
-  public getRecordCount(): number {
-    return this._recordList.length;
-  }
-
-  // Get record at index (clearer alias for record())
+  // Get record at index
   public getRecordAt(index: number): DistillerRecord | undefined {
     return index >= 0 && index < this._recordList.length ? this._recordList[index] : undefined;
   }
@@ -167,15 +135,6 @@ export class DistillerList {
   public removeRecordAt(index: number): boolean {
     if (index >= 0 && index < this._recordList.length) {
       this._recordList.splice(index, 1);
-      return true;
-    }
-    return false;
-  }
-
-  // Replace record at index
-  public replaceRecordAt(index: number, record: DistillerRecord): boolean {
-    if (index >= 0 && index < this._recordList.length) {
-      this._recordList[index] = record;
       return true;
     }
     return false;
@@ -190,12 +149,6 @@ export class DistillerList {
       }
     }
     return -1;
-  }
-
-  // Find record by object ID (returns record or undefined)
-  public findRecordByObjectId(objectId: number): DistillerRecord | undefined {
-    const index = this.findRecordIndexByObjectId(objectId);
-    return index >= 0 ? this._recordList[index] : undefined;
   }
 
   // Replace all sub-object ID references across all records
@@ -218,11 +171,6 @@ export class DistillerList {
     for (let i = 0; i < this._recordList.length; i++) {
       yield [i, this._recordList[i]];
     }
-  }
-
-  // forEach helper for cleaner iteration
-  public forEach(callback: (record: DistillerRecord, index: number) => void): void {
-    this._recordList.forEach((record, index) => callback(record, index));
   }
 
   private logMessage(message: string): void {
