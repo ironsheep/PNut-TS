@@ -3,7 +3,6 @@
 'use strict';
 
 import { Context } from '../utils/context';
-import { dumpBytes, OVERRIDE_MESSAGE } from '../utils/dumpUtils';
 import { hexAddress, hexByte, hexLong, hexWord } from '../utils/formatUtils';
 import { OBJ_LIMIT } from './spinResolver';
 import { BrkSite } from './objectImage';
@@ -20,7 +19,6 @@ export interface iFileDetails {
 
 export class ChildObjectsImage {
   private context: Context;
-  private _firstTimeOff: boolean = true;
   private isLogging: boolean;
   private isLoggingOutline: boolean;
   private _id: string;
@@ -152,29 +150,6 @@ export class ChildObjectsImage {
 
   get objectFileRanges(): iFileDetails[] {
     return this._fileDetails;
-  }
-
-  public isChildPresent(childImage: Uint8Array): boolean {
-    let childMatchStatus: boolean = false;
-    let matchIndex: number = 0;
-    for (let fileIdx = 0; fileIdx < this.objectFileCount; fileIdx++) {
-      const [objOffset, objLength] = this.getOffsetAndLengthForFile(fileIdx);
-      if (childImage.length == objLength) {
-        const possibleChildImage = this.rawUint8Array.subarray(objOffset, objOffset + objLength);
-        const sameChild: boolean = possibleChildImage.every((byte, idx) => byte === childImage[idx]);
-        if (sameChild) {
-          childMatchStatus = true;
-          matchIndex = fileIdx;
-          break; // found a match, no need to continue
-        }
-      }
-    }
-    if (childMatchStatus) {
-      this.logMessageOutline(`  -- cOBJ[${this._id}]: child [${matchIndex} of ${this.objectFileCount}] MATCHed=(true)`);
-    } else {
-      this.logMessageOutline(`  -- cOBJ[${this._id}]: none of [${this.objectFileCount}] children MATCHed=(false)`);
-    }
-    return childMatchStatus;
   }
 
   public findDuplicateChild(childImage: Uint8Array): { exists: boolean; fileIndex: number } {
@@ -333,15 +308,6 @@ export class ChildObjectsImage {
     return desiredValue;
   }
 
-  public nextWord(): number {
-    // read existing WORD value from image
-    let desiredValue: number = 0;
-    desiredValue = this._chldObjImageByteAr[this._offset++];
-    desiredValue |= this._chldObjImageByteAr[this._offset++] << 8;
-    this.logMessage(`* cOBJ[${this._id}] nextWord() (${hexAddress(this._offset - 2)}) -> v=(${hexWord(desiredValue)})`);
-    return desiredValue;
-  }
-
   public peekWord(): number {
     // read existing WORD value from image without moving past
     let desiredValue: number = 0;
@@ -365,24 +331,6 @@ export class ChildObjectsImage {
     const desiredBytesArray = new Uint8Array(this._chldObjImageByteAr.subarray(this._offset, this._offset + sizeInBytes));
     this._offset += sizeInBytes;
     return desiredBytesArray;
-  }
-
-  public writeByte(value: number) {
-    // read existing value from image
-    this.ensureCapacity(this._offset + 64);
-    this._chldObjImageByteAr[this._offset++] = value;
-  }
-
-  public dumpBytes(dataOffset: number, nbrBytes: number, dsplyOffset: number, idStr: string) {
-    const endOffset = dataOffset + nbrBytes - 1;
-    const currOffset = dataOffset;
-    let addrRange: string = `${hexByte(currOffset)}-${hexByte(endOffset)}`;
-    if (dsplyOffset != -1) {
-      addrRange = `${hexByte(dsplyOffset)}-${hexByte(dsplyOffset + nbrBytes - 1)}`;
-    }
-    const desiredBytesArray = new Uint8Array(this._chldObjImageByteAr.subarray(currOffset, endOffset));
-    const titleText: string = `cOBJ[${this._id}] [${addrRange}] - ${idStr}`;
-    dumpBytes(this.context, desiredBytesArray, desiredBytesArray.length, -1, titleText, OVERRIDE_MESSAGE);
   }
 
   private logMessage(message: string): void {
