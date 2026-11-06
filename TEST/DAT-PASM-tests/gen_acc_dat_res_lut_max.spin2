@@ -1,0 +1,7 @@
+'' gen_acc_dat_res_lut_max: generated from scripts/fixtures/fixtures.json row "acc_dat_res_lut_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m110/m114: RES - at limit (ORG $200 then RES $200 ends exactly at the $400 LUT limit)
+DAT
+  org $200
+x res $200
+
+PUB main()
+  return

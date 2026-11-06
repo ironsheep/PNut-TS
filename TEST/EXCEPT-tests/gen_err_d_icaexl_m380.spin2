@@ -1,4 +1,4 @@
-'' gen_err_d_icaexl_m380: generated from scripts/fixtures/fixtures.json row "err_d_icaexl_m380"; edit the row, not this file. Covers: src/classes/spinResolver.ts m380: "Inline cog address exceeds $120 limit" (inline ORG start)
+'' gen_err_d_icaexl_m380: generated from scripts/fixtures/fixtures.json row "err_d_icaexl_m380"; edit the row, not this file. Covers: src/classes/spinResolver.ts m380: "Inline cog address exceeds $11F limit" (inline ORG start)
 PUB main()
   org $121
   nop

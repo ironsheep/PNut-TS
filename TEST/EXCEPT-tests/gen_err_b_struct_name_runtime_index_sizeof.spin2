@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_err_b_struct_name_runtime_index_sizeof: generated from scripts/fixtures/fixtures.json row "err_b_struct_name_runtime_index_sizeof"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address] inside SIZEOF
+CON
+  STRUCT sPt(long x, long y)
+PUB main() | i, addr
+  i := sizeof(sPt[addr][i].y)

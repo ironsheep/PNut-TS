@@ -1,0 +1,7 @@
+{Spin2_v52}
+'' gen_err_b_sehr_m530: generated from scripts/fixtures/fixtures.json row "err_b_sehr_m530"; edit the row, not this file. Covers: src/classes/objectStructures.ts m530: "Structure exceeds hub range of $FFFFF" (one member)
+CON
+  STRUCT a(byte x[17])
+  STRUCT s(a y[$10000])
+PUB main()
+  return

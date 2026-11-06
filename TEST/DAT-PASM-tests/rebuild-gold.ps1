@@ -12,7 +12,7 @@
       - Produces:     lst, obj, bin
       - Patterns:     (none)
       - Per-file:     (none)
-      - Skip:         (none)
+      - Skip:         1 file(s), listed in -Skip below
       - Expect fail:  (none)
 
     Sourced from: src/tests/DAT-PASM-tests/pnut-ts-datpasm.test.ts (glob *.spin2).
@@ -31,7 +31,11 @@ try {
         -PNutVersion $PNutVersion `
         -PNutInstallRoot $PNutInstallRoot `
         -PNutBinary $PNutBinary `
-        -DefaultFlag "-c"
+        -DefaultFlag "-c" `
+        -Skip @(
+            # fixtures.json row acc_beyond_pnut_dat_files is goldSource pnut-ts
+            "gen_acc_beyond_pnut_dat_files.spin2"
+        )
 }
 finally {
     Pop-Location

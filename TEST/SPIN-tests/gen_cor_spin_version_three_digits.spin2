@@ -1,0 +1,4 @@
+{Spin2_v100}
+'' gen_cor_spin_version_three_digits: generated from scripts/fixtures/fixtures.json row "cor_spin_version_three_digits"; edit the row, not this file. Covers: src/classes/spinDocument.ts getVersionFromHeader: {Spin2_v100} has three digits, so it is an ordinary comment and the file compiles at the default level
+PUB main() | x
+  x := 1

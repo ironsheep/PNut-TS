@@ -1,0 +1,4 @@
+OBJ
+  n : "gen_acc_obj_nesting_16__c15"
+PUB go14()
+  return

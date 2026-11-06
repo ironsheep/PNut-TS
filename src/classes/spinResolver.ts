@@ -978,9 +978,9 @@ export class SpinResolver {
     return badCharStatus;
   }
 
-  private clockSetupError(message: string): Error {
-    // PNut has cleared its source position by the time the clock is determined, so
-    // its clock-setup errors are reported at line 1 of the file
+  private errorAtClearedSourcePosition(message: string): Error {
+    // PNut clears its source position when the first pass ends (compile_done), so errors
+    // raised before the next block is reached (OBJ symbol import, clock setup) report line 1
     const fileId: number = this.srcFile !== undefined ? this.srcFile.fileId : this.currElement.fileId;
     this.currElement = new SpinElement(fileId, eElementType.type_undefined, '', 0, 0);
     return new Error(message);
@@ -1026,7 +1026,9 @@ export class SpinResolver {
           }
         } else {
           // [error_cfcobd]
-          throw this.clockSetupError('_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants');
+          throw this.errorAtClearedSourcePosition(
+            '_CLKFREQ, _XTLFREQ, _XINFREQ, _ERRFREQ, _RCFAST, _RCSLOW can only be defined as integer constants'
+          );
         }
       }
     }
@@ -1036,7 +1038,7 @@ export class SpinResolver {
     // make sure neither CLKMODE_ nor CLKFREQ_ were declared
     if (symbolsFoundBits & 0b11000000) {
       // [error_cccbd]
-      throw this.clockSetupError('CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler');
+      throw this.errorAtClearedSourcePosition('CLKMODE_ and CLKFREQ_ cannot be declared, since they are set by the compiler');
     }
 
     // hide _ERRFREQ in ah to reduce comparisons
@@ -1107,7 +1109,7 @@ export class SpinResolver {
 
       default:
         // [error_codcssf]
-        throw this.clockSetupError('Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found');
+        throw this.errorAtClearedSourcePosition('Conflicting or deficient _CLKFREQ/_XTLFREQ/_XINFREQ/_RCFAST/_RCSLOW symbols found');
     }
 
     // record our symbols
@@ -1340,7 +1342,7 @@ export class SpinResolver {
 
     if (_found == false) {
       // [error_pllscnba]
-      throw this.clockSetupError('PLL settings could not be achieved per _CLKFREQ');
+      throw this.errorAtClearedSourcePosition('PLL settings could not be achieved per _CLKFREQ');
     }
     if (this.isLogging)
       this.logMessage(`* pllCalc(${inputFrequency}, ${requestedFrequency}, ${allowedError}) -> [_mode=(${hexString(_mode)}), _freq=(${_freq})]`);
@@ -5040,7 +5042,7 @@ export class SpinResolver {
               // ensure we have room for new structure
               if (this.objectStructureSet.haveMaxStructures) {
                 // [error_loxdsde]
-                throw new Error(`Limit of ${ObjectStructures.MAX_STRUCTURES} data structure definitions exceeded (m621)`);
+                throw this.errorAtClearedSourcePosition(`Limit of ${ObjectStructures.MAX_STRUCTURES} data structure definitions exceeded (m621)`);
               }
               const structId: number = this.objectStructureSet.enterStructureAsNew(structRcdBytes);
               const newObjConSymbol: iSymbol = { name: objectsSymbolName, type: actualType, value: BigInt(structId) };
@@ -7136,39 +7138,54 @@ export class SpinResolver {
     if (this.isLogging) this.logMessage(` -- debugTickString(${this.currElement.toString()})`);
     let foundEndWithTickStatus: boolean = false;
     let currSrcLine = this.srcFile?.sourceLineAt(this.currElement.sourceLineIndex).text;
-    let charCount: number = 1;
+    let stringText: string = '';
     if (currSrcLine) {
-      let charOffset = this.currElement.sourceCharacterOffset; // the backtick
-      // count number of bytes to emit: the string runs to the next '`', or to a ')' that ends its line
-      const stringEndIndex: number = this.tickStringEnd(currSrcLine, charOffset + 1);
+      const charOffset = this.currElement.sourceCharacterOffset; // the backtick
+      // gather the bytes to emit: the string runs to the next '`', or to a ')' that ends its line
+      let endLineIndex: number = this.currElement.sourceLineIndex;
+      let endLineText: string = currSrcLine;
+      let stringEndIndex: number = this.tickStringEnd(currSrcLine, charOffset + 1);
       if (stringEndIndex >= 0) {
-        charCount += stringEndIndex - (charOffset + 1);
-        foundEndWithTickStatus = currSrcLine.charAt(stringEndIndex) == '`';
+        stringText = currSrcLine.substring(charOffset, stringEndIndex);
       } else {
-        charCount += currSrcLine.length - (charOffset + 1);
-        // the string runs on past this line: it is open if no later line ends it
-        let isOpen: boolean = true;
-        for (let lineIndex = this.currElement.sourceLineIndex + 1; lineIndex < this.srcFile!.lastLineNumber && isOpen; lineIndex++) {
-          isOpen = this.tickStringEnd(this.srcFile!.sourceLineAt(lineIndex).text, 0) < 0;
+        // the string runs on past this line, carrying each line ending as PNut's source holds it (CR)
+        stringText = currSrcLine.substring(charOffset);
+        for (let lineIndex = endLineIndex + 1; lineIndex < this.srcFile!.lastLineNumber && stringEndIndex < 0; lineIndex++) {
+          const lineText: string = this.srcFile!.sourceLineAt(lineIndex).text;
+          stringEndIndex = this.tickStringEnd(lineText, 0);
+          if (stringEndIndex >= 0) {
+            stringText += `\r${lineText.substring(0, stringEndIndex)}`;
+            endLineIndex = lineIndex;
+            endLineText = lineText;
+          } else {
+            stringText += `\r${lineText}`;
+          }
         }
-        if (isOpen) {
+        if (stringEndIndex < 0) {
           // [error_os]
           throw new Error('Open string');
         }
       }
+      foundEndWithTickStatus = endLineText.charAt(stringEndIndex) == '`';
 
       // now write the string to debug
       this.debugEnterByte(eValueType.dc_str); // enter debug string command
       // enter string bytes
-      for (let index = charOffset; index < charOffset + charCount; index++) {
-        const currCharCode: number = currSrcLine.charCodeAt(index);
-        this.debugEnterByte(currCharCode);
+      for (let index = 0; index < stringText.length; index++) {
+        this.debugEnterByte(stringText.charCodeAt(index));
       }
       this.debugEnterByte(0); // zero-terminate string
       this.nextDebugIsFirst(); // reset to first after string
+
+      // the elements of the lines the string ran through are string text, step past them
+      while (this.spinElements[this.nextElementIndex].sourceLineIndex < endLineIndex) {
+        this.getElement(this.IGNORE_SYMBOL_TABLE);
+      }
     }
     if (this.isLogging)
-      this.logMessage(` -- debugTickString(${this.currElement.toString()}) charCount=(${charCount}) --> endWithTic=(${foundEndWithTickStatus})`);
+      this.logMessage(
+        ` -- debugTickString(${this.currElement.toString()}) charCount=(${stringText.length}) --> endWithTic=(${foundEndWithTickStatus})`
+      );
 
     return foundEndWithTickStatus;
   }
@@ -10952,7 +10969,12 @@ private checkDec(): boolean {
         this.logRestoredElementLocation(liveIndexExpElementIndex[liveIndex]);
         this.compileExpression();
       }
-      this.logRestoredElementLocation(savedElementIndex);
+      // PNut's back_element below reads its element history, which compiling the index just
+      //  rewrote, so a struct_name[address] setup with a runtime index resumes at that index's
+      //  ']' and the caller rejects it. Rejecting what PNut rejects means staying there.
+      if (structureType != eElementType.type_con_struct) {
+        this.logRestoredElementLocation(savedElementIndex);
+      }
     }
     // PNut @@noindexexp:
     if (structureType == eElementType.type_con_struct) {

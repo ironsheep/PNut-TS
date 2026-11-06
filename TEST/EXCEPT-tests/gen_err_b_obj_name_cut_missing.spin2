@@ -1,0 +1,5 @@
+'' gen_err_b_obj_name_cut_missing: generated from scripts/fixtures/fixtures.json row "err_b_obj_name_cut_missing"; edit the row, not this file. Covers: src/classes/spinFiles.ts addObjFile: "Cannot find" names the name cut to 32 characters, reported on the OBJ line (EditorUnit.pas 2473, 2551)
+OBJ
+  c : "gen_err_b_obj_name_cut_missing__child"
+PUB main()
+  return

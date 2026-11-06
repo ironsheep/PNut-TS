@@ -1,0 +1,7 @@
+{Spin2_v52}
+'' gen_acc_struct_indexed_member_count_one: generated from scripts/fixtures/fixtures.json row "acc_struct_indexed_member_count_one"; edit the row, not this file. Covers: src/classes/objectStructures.ts m400: "Indexed structures cannot exceed $FFFF bytes in size" (STRUCT member count) - a $10000-byte member with count 1, which is not tested
+CON
+  STRUCT a(long x[$4000])
+  STRUCT c(a p, a r[1])
+PUB main()
+  return

@@ -1,0 +1,12 @@
+{Spin2_v55}
+'' gen_cor_spin_struct_nameless_index: generated from scripts/fixtures/fixtures.json row "cor_spin_struct_nameless_index"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT indexed by its one index (vio[1].ready, vio[i].mode, one[3].ready, one[i])
+CON
+  STRUCT sIo(LONG.ready[0].mode[3..2])
+VAR
+  sIo vio[4]
+  sIo one
+PUB main() | i
+  i := vio[1].ready
+  i := vio[i].mode
+  i := one[3].ready
+  i := one[i]

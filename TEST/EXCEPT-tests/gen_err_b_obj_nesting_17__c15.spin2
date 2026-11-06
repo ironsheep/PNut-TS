@@ -1,0 +1,4 @@
+OBJ
+  n : "gen_err_b_obj_nesting_17__c16"
+PUB go15()
+  return

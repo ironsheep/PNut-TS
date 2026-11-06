@@ -1,0 +1,4 @@
+{Spin2_v42}
+'' gen_cor_spin_version_42: generated from scripts/fixtures/fixtures.json row "cor_spin_version_42"; edit the row, not this file. Covers: src/classes/spinDocument.ts getVersionFromHeader: {Spin2_v42} is a selectable level
+PUB main() | x
+  x := 1

@@ -1,0 +1,8 @@
+'' gen_cor_dat_dollar_in_data: generated from scripts/fixtures/fixtures.json row "cor_dat_dollar_in_data"; edit the row, not this file. Covers: src/classes/spinResolver.ts getConstant: $ (the origin) as a DAT data value
+DAT
+  org
+x long 1, $
+  word $
+
+PUB main()
+  return

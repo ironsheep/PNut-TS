@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_cor_con_int_fold_after_float_const: generated from scripts/fixtures/fixtures.json row "cor_con_int_fold_after_float_const"; edit the row, not this file. Covers: src/classes/spinResolver.ts resolveExp: an integer fold of 1 + -3 in a method after a float constant was defined in CON (Spin2 constant folding is always integer)
+CON
+  f = 1.5
+PUB main() | x
+  x := 1 + -3

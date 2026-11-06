@@ -1,0 +1,35 @@
+{Spin2_v55}
+'' gen_cor_spin_struct_name_address: generated from scripts/fixtures/fixtures.json row "cor_spin_struct_name_address"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_struct_setup: a STRUCT name given an address, struct_name[address] (member read, write and assign, constant index, @, whole-struct read and write, nameless single-BWL, compare, copy, swap, multi-assign, parameter) and SIZEOF of that form
+CON
+  STRUCT sPt(long x, long y)
+  STRUCT sIo(LONG.ready[0].mode[3..2])
+  STRUCT sBox(sPt a, sPt b)
+  STRUCT sBig(long a[20])
+VAR
+  long buf[8]
+  sPt vp, vq
+  sBig vb
+PUB main() | i, j, addr
+  i := sizeof(sPt[0])
+  i := sizeof(sBox[addr].b)
+  i := sPt[addr].y
+  sPt[addr].y := 3
+  sBox[@buf].b.x := i
+  i := sPt[addr][1].x
+  i := @sPt[addr]
+  i := @sPt[addr].y
+  sPt[addr].y++
+  sIo[addr].ready := 1
+  i := sIo[addr].mode
+  i := sIo[addr][2]
+  vp := sPt[addr]
+  sPt[addr] := vp
+  i := sPt[addr] == vp
+  i := vp <> sPt[addr]
+  vb := sBig[addr]
+  sPt[addr] :=: vq
+  i, j := sPt[addr]
+  sPt[addr] := 1, 2
+  i := take(sPt[addr])
+  i := sPt[addr].x + sPt[addr + 4].y
+PRI take(a, b) : r

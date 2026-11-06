@@ -1,0 +1,4 @@
+{Spin2_v55}
+'' gen_cor_spin_escape_unknown: generated from scripts/fixtures/fixtures.json row "cor_spin_escape_unknown"; edit the row, not this file. Covers: src/classes/spinResolver.ts handleEscapeChr: an unrecognized escape (\q) passes the backslash on and keeps the following character, and \x01 and \xFF are accepted
+PUB main() | x
+  x := @\"a\qb\x01\xFF"

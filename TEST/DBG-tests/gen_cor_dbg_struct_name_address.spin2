@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_cor_dbg_struct_name_address: generated from scripts/fixtures/fixtures.json row "cor_dbg_struct_name_address"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_struct_setup: struct_name[address] inside a DEBUG statement, where the element history must survive the deferred pop address
+CON
+  STRUCT sPt(long x, long y)
+PUB main() | addr
+  debug(udec(sPt[addr].y))

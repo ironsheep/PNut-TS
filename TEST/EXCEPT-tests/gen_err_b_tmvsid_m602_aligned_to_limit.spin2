@@ -1,0 +1,6 @@
+'' gen_err_b_tmvsid_m602_aligned_to_limit: generated from scripts/fixtures/fixtures.json row "err_b_tmvsid_m602_aligned_to_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts alignVar m602: "Too much variable space is declared" when alignment rounds the VAR pointer up to exactly the limit
+VAR
+  byte a[$FFFF9]
+
+PUB main()
+  return

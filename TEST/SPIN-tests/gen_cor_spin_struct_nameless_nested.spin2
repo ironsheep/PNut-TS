@@ -1,0 +1,12 @@
+{Spin2_v55}
+'' gen_cor_spin_struct_nameless_nested: generated from scripts/fixtures/fixtures.json row "cor_spin_struct_nameless_nested"; edit the row, not this file. Covers: src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT as a member of another STRUCT (vw.io, vw.io.mode, vw.io[i].ready, vw.io.[3])
+CON
+  STRUCT sIo(LONG.ready[0].mode[3..2])
+  STRUCT sWrap(long pad, sIo io)
+VAR
+  sWrap vw
+PUB main() | i
+  i := vw.io
+  i := vw.io.mode
+  i := vw.io[i].ready
+  i := vw.io.[3]

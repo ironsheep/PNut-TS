@@ -1,4 +1,4 @@
-'' gen_err_c_lvmb_m451: generated from scripts/fixtures/fixtures.json row "err_c_lvmb_m451"; edit the row, not this file. Covers: src/classes/spinResolver.ts m451: "Local variable must be LONG and within first 16 longs" (PNut-TS wording differs from PNut)
+'' gen_err_c_lvmb_m451: generated from scripts/fixtures/fixtures.json row "err_c_lvmb_m451"; edit the row, not this file. Covers: src/classes/spinResolver.ts m451: "For access via inline assembly, a local variable must be either a long ..."
 PUB main() | v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16
   org
   mov v16, #1

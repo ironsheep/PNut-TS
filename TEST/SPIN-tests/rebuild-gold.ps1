@@ -12,7 +12,7 @@
       - Produces:     lst, obj, bin
       - Patterns:     (none)
       - Per-file:     (none)
-      - Skip:         (none)
+      - Skip:         2 file(s), listed in -Skip below
       - Expect fail:  (none)
 
     Sourced from: src/tests/SPIN-tests/pnut-ts-spin.test.ts (glob *.spin2).
@@ -31,7 +31,13 @@ try {
         -PNutVersion $PNutVersion `
         -PNutInstallRoot $PNutInstallRoot `
         -PNutBinary $PNutBinary `
-        -DefaultFlag "-c"
+        -DefaultFlag "-c" `
+        -Skip @(
+            # fixtures.json row acc_beyond_pnut_block_stack is goldSource pnut-ts
+            "gen_acc_beyond_pnut_block_stack.spin2"
+            # fixtures.json row acc_beyond_pnut_nested_blocks is goldSource pnut-ts
+            "gen_acc_beyond_pnut_nested_blocks.spin2"
+        )
 }
 finally {
     Pop-Location

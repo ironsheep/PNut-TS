@@ -1,0 +1,5 @@
+'' gen_acc_obj_nesting_16: generated from scripts/fixtures/fixtures.json row "acc_obj_nesting_16"; edit the row, not this file. Covers: src/classes/compiler.ts: "Object nesting exceeds 16 levels - illegal circular reference may exist" - at limit (16 files: the top file and a chain of 15 child objects)
+OBJ
+  c : "gen_acc_obj_nesting_16__c01"
+PUB main()
+  return

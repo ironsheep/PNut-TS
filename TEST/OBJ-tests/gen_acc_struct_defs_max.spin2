@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_acc_struct_defs_max: generated from scripts/fixtures/fixtures.json row "acc_struct_defs_max"; edit the row, not this file. Covers: src/classes/spinResolver.ts m622 and the $20000-byte definition buffer (src/classes/objectStructures.ts "Data structure-definitions limit exceeded"): "Limit of 4096 data structure definitions exceeded" - at limit (4,096 definitions, each a 32-byte record, filling the buffer exactly)
+OBJ
+  c1 : "gen_acc_struct_defs_max__c1"
+  c2 : "gen_acc_struct_defs_max__c2"
+  c3 : "gen_acc_struct_defs_max__c3"
+CON
+  STRUCT s4095(long member_name_padding)
+PUB main()
+  return

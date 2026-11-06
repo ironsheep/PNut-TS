@@ -1,0 +1,21 @@
+'' gen_acc_spin_quit_next_levels: generated from scripts/fixtures/fixtures.json row "acc_spin_quit_next_levels"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "NEXT/QUIT level must be from 1 to 15" - at limit (both ends: level 1 and level 15)
+PUB main() | x
+  repeat
+   repeat
+    repeat
+     repeat
+      repeat
+       repeat
+        repeat
+         repeat
+          repeat
+           repeat
+            repeat
+             repeat
+              repeat
+               repeat
+                repeat
+                 repeat
+                  next 15
+                  quit 1
+                  quit 15

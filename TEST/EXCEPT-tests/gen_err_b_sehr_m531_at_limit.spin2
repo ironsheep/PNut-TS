@@ -1,0 +1,6 @@
+{Spin2_v52}
+'' gen_err_b_sehr_m531_at_limit: generated from scripts/fixtures/fixtures.json row "err_b_sehr_m531_at_limit"; edit the row, not this file. Covers: src/classes/objectStructures.ts m531: "Structure exceeds hub range of $FFFFF" (cumulative members) - one past the limit (a structure of exactly $100000 bytes)
+CON
+  STRUCT big(byte m00[$10000], byte m01[$10000], byte m02[$10000], byte m03[$10000], byte m04[$10000], byte m05[$10000], byte m06[$10000], byte m07[$10000], byte m08[$10000], byte m09[$10000], byte m10[$10000], byte m11[$10000], byte m12[$10000], byte m13[$10000], byte m14[$10000], byte z[$10000])
+PUB main()
+  return

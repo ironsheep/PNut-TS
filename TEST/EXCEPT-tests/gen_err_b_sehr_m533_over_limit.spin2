@@ -1,0 +1,9 @@
+{Spin2_v52}
+'' gen_err_b_sehr_m533_over_limit: generated from scripts/fixtures/fixtures.json row "err_b_sehr_m533_over_limit"; edit the row, not this file. Covers: src/classes/spinResolver.ts m533: "Structure exceeds hub range of $FFFFF" (variable index plus base) - just past the limit
+CON
+  STRUCT s(byte b[$10])
+VAR
+  long pad[4]
+  s v
+PUB main() | x
+  x := v[$FFFF].b[0]

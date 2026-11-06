@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_cor_spin_offsetof_past_bitfield: generated from scripts/fixtures/fixtures.json row "cor_spin_offsetof_past_bitfield"; edit the row, not this file. Covers: src/classes/spinResolver.ts get_offset_of_struct_member: OFFSETOF of a member that follows one carrying a bitfield chain
+CON
+  STRUCT sBF(LONG flags.ready[0].mode[3..2], WORD w)
+PUB main() | i
+  i := OFFSETOF(sBF.w)

@@ -216,6 +216,55 @@
       "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  sIo vio[4]", "PUB main() | i", "  i := vio[1][2].ready"]
     },
     {
+      "id": "err_b_eeol_struct_name_runtime_index",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "Bench 2026-11-06: PNut rejected this form with this text as line 19 of cor_spin_struct_name_address. compile_struct_setup's back_element (asm v52 p2com.asm 16992) reads the history that compiling the runtime index rewrote, so the source pointer resumes at the index's ']'.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], read of a member",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sPt[addr][i].y"]
+    },
+    {
+      "id": "err_b_struct_name_member_runtime_index",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "A runtime index on the member takes the same path as err_b_eeol_struct_name_runtime_index. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index on a member of struct_name[address]",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sPt[addr].y[i]"]
+    },
+    {
+      "id": "err_b_struct_name_runtime_index_assign",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "The same resume point seen from an assignment, whose caller reports something else. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], assignment to a member",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  sPt[addr][i].y := 3"]
+    },
+    {
+      "id": "err_b_struct_name_runtime_index_whole_read",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "No member, so the whole-structure read path sees the resume point. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], whole-structure read",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sPt[addr][i]"]
+    },
+    {
+      "id": "err_b_struct_name_runtime_index_multi_assign",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "The same resume point seen from a whole-structure multi-assign. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], multi-assign",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  sPt[addr][i] := 1, 2"]
+    },
+    {
+      "id": "err_b_struct_name_runtime_index_sizeof",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "SIZEOF of this form. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address] inside SIZEOF",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sizeof(sPt[addr][i].y)"]
+    },
+    {
+      "id": "err_b_struct_name_runtime_index_debug",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug", "expectLine": 5,
+      "note": "A DEBUG argument of this form. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address] as a DEBUG argument",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  debug(udec(sPt[addr][i].y))"]
+    },
+    {
       "id": "err_b_eaesn_m641",
       "suite": "EXCEPT-tests",
       "kind": "reject",
@@ -505,7 +554,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 7,
-      "covers": "src/classes/spinResolver.ts m661: \"Structure does not contain this BYTE/WORD/LONG/STRUCT name\" (member access)",
+      "covers": "src/classes/spinResolver.ts m661: \"Structure does not contain this name\" (member access)",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a)", "VAR", "  s v", "PUB main() | x", "  x := v.nosuch"]
     },
     {
@@ -523,7 +572,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 7,
-      "covers": "src/classes/spinResolver.ts m662: \"Structure does not contain this BYTE/WORD/LONG/STRUCT name\" (bitfield name)",
+      "covers": "src/classes/spinResolver.ts m662: \"Structure does not contain this name\" (bitfield name)",
       "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[3])", "VAR", "  s v", "PUB main() | x", "  x := v.y.nosuch"]
     },
     {
@@ -532,7 +581,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 7,
-      "covers": "src/classes/spinResolver.ts: \"Expected a structure bitfield name\"",
+      "covers": "src/classes/spinResolver.ts: \"Expected a structure member name\" (bitfield name)",
       "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[3])", "VAR", "  s v", "PUB main() | x", "  x := v.y.5"]
     },
     {
@@ -920,7 +969,7 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 3,
+      "expectLine": 4,
       "covers": "src/classes/spinResolver.ts m470: \"OTHER must be last case\"",
       "source": ["PUB main() | x, y", "  case x", "    other: x := 1", "    1: x := 2"]
     },
@@ -929,7 +978,7 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 3,
+      "expectLine": 4,
       "covers": "src/classes/spinResolver.ts m471: \"OTHER must be last case\" (CASE_FAST)",
       "source": ["PUB main() | x, y", "  case_fast x", "    other: x := 1", "    1: x := 2"]
     },
@@ -938,7 +987,7 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 258,
+      "expectLine": 259,
       "covers": "src/classes/spinResolver.ts: \"Limit of 256 CASE elements exceeded\"",
       "source": { "template": ["PUB main() | x\n  case x\n", { "repeat": 257, "text": "    ${i}: x := 1\n" }] }
     },
@@ -947,7 +996,7 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 258,
+      "expectLine": 259,
       "covers": "src/classes/spinResolver.ts: \"Limit of 256 CASE_FAST elements exceeded\"",
       "source": { "template": ["PUB main() | x\n  case_fast x\n", { "repeat": 257, "text": "    ${i}: x := 1\n" }] }
     },
@@ -983,7 +1032,7 @@
       "suite": "EXCEPT-tests",
       "kind": "reject",
       "goldSource": "pnut",
-      "expectLine": 6003,
+      "expectLine": 6004,
       "covers": "src/classes/spinResolver.ts: \"CASE_FAST block exceeds 64KB\"",
       "source": { "template": ["PUB main() | x, y, z\n  case_fast x\n    1:\n", { "repeat": 6000, "text": "      y := y + 1000000 + z - 1000001\n" }, "    2: x := 3\n"] }
     },
@@ -1724,7 +1773,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 3,
-      "covers": "src/classes/spinResolver.ts m450: \"Local variable must be LONG and within first 16 longs\" (PNut-TS wording differs from PNut)",
+      "covers": "src/classes/spinResolver.ts m450: \"For access via inline assembly, a local variable must be either a long ...\"",
       "source": ["PUB main() | byte b", "  org", "  mov b, #1", "  end"]
     },
     {
@@ -1733,7 +1782,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 3,
-      "covers": "src/classes/spinResolver.ts m451: \"Local variable must be LONG and within first 16 longs\" (PNut-TS wording differs from PNut)",
+      "covers": "src/classes/spinResolver.ts m451: \"For access via inline assembly, a local variable must be either a long ...\"",
       "source": ["PUB main() | v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16", "  org", "  mov v16, #1", "  end"]
     },
     {
@@ -2105,7 +2154,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 3,
-      "covers": "src/classes/spinResolver.ts: \"Expected a bitfield name\"",
+      "covers": "src/classes/spinResolver.ts: \"Expected a symbol\" (bitfield name)",
       "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.[3])"]
     },
     {
@@ -2169,7 +2218,7 @@
     {
       "id": "err_d_edend_m262",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
-      "expectLine": 6,
+      "expectLine": 5,
       "covers": "src/classes/spinResolver.ts m262: \"Expected DITTO END\" (a DITTO block still open when the next DAT block opens on an empty block)",
       "source": ["{Spin2_v52}", "DAT", "  ditto 2", "  long 0", "DAT", "PUB main()", "  return"]
     },
@@ -2325,8 +2374,8 @@
     {
       "id": "err_d_ohnawads",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
-      "expectLine": 3,
-      "covers": "src/classes/spinResolver.ts: \"ORGH not allowed within a DITTO block\" (the check hangs off the wrong branch, so PNut-TS accepts the source)",
+      "expectLine": 4,
+      "covers": "src/classes/spinResolver.ts: \"ORGH not allowed within a DITTO block\"",
       "source": ["{Spin2_v52}", "DAT", "  ditto 2", "  orgh", "  long 0", "  ditto end"]
     },
     {
@@ -2657,14 +2706,14 @@
       "id": "err_d_icaexl_m380",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 2,
-      "covers": "src/classes/spinResolver.ts m380: \"Inline cog address exceeds $120 limit\" (inline ORG start)",
+      "covers": "src/classes/spinResolver.ts m380: \"Inline cog address exceeds $11F limit\" (inline ORG start)",
       "source": ["PUB main()", "  org $121", "  nop", "  end"]
     },
     {
       "id": "err_d_icaexl_m381",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 2,
-      "covers": "src/classes/spinResolver.ts m381: \"Inline cog address exceeds $120 limit\" (inline ORG limit operand)",
+      "covers": "src/classes/spinResolver.ts m381: \"Inline cog address exceeds $11F limit\" (inline ORG limit operand)",
       "source": ["PUB main()", "  org 0,$121", "  nop", "  end"]
     },
     {
@@ -3728,9 +3777,9 @@
     {
       "id": "cor_spin_struct_name_address",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
-      "covers": "src/classes/spinResolver.ts compile_struct_setup: a STRUCT name given an address, struct_name[address] (member read, write and assign, constant and runtime index, @, whole-struct read and write, nameless single-BWL, compare, copy, swap, multi-assign, parameter) and SIZEOF of that form",
-      "note": "asm v52 p2com.asm 16870-16879 and 16903-16907 load the record for this operand as for any other. Unconfirmed until GOLD.",
-      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sBox(sPt a, sPt b)", "  STRUCT sBig(long a[20])", "VAR", "  long buf[8]", "  sPt vp, vq", "  sBig vb", "PUB main() | i, j, addr", "  i := sizeof(sPt[0])", "  i := sizeof(sBox[addr].b)", "  i := sPt[addr].y", "  sPt[addr].y := 3", "  sBox[@buf].b.x := i", "  i := sPt[addr][1].x", "  i := sPt[addr][i].y", "  i := @sPt[addr]", "  i := @sPt[addr].y", "  sPt[addr].y++", "  sIo[addr].ready := 1", "  i := sIo[addr].mode", "  i := sIo[addr][2]", "  vp := sPt[addr]", "  sPt[addr] := vp", "  i := sPt[addr] == vp", "  i := vp <> sPt[addr]", "  vb := sBig[addr]", "  sPt[addr] :=: vq", "  i, j := sPt[addr]", "  sPt[addr] := 1, 2", "  i := take(sPt[addr])", "  i := sPt[addr].x + sPt[addr + 4].y", "PRI take(a, b) : r"]
+      "covers": "src/classes/spinResolver.ts compile_struct_setup: a STRUCT name given an address, struct_name[address] (member read, write and assign, constant index, @, whole-struct read and write, nameless single-BWL, compare, copy, swap, multi-assign, parameter) and SIZEOF of that form",
+      "note": "asm v52 p2com.asm 16870-16879 and 16903-16907 load the record for this operand as for any other. A runtime index is rejected: err_b_eeol_struct_name_runtime_index. Unconfirmed until GOLD.",
+      "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sBox(sPt a, sPt b)", "  STRUCT sBig(long a[20])", "VAR", "  long buf[8]", "  sPt vp, vq", "  sBig vb", "PUB main() | i, j, addr", "  i := sizeof(sPt[0])", "  i := sizeof(sBox[addr].b)", "  i := sPt[addr].y", "  sPt[addr].y := 3", "  sBox[@buf].b.x := i", "  i := sPt[addr][1].x", "  i := @sPt[addr]", "  i := @sPt[addr].y", "  sPt[addr].y++", "  sIo[addr].ready := 1", "  i := sIo[addr].mode", "  i := sIo[addr][2]", "  vp := sPt[addr]", "  sPt[addr] := vp", "  i := sPt[addr] == vp", "  i := vp <> sPt[addr]", "  vb := sBig[addr]", "  sPt[addr] :=: vq", "  i, j := sPt[addr]", "  sPt[addr] := 1, 2", "  i := take(sPt[addr])", "  i := sPt[addr].x + sPt[addr + 4].y", "PRI take(a, b) : r"]
     },
     {
       "id": "cor_spin_offsetof_past_bitfield",

@@ -12,8 +12,8 @@
       - Produces:     lst, obj, bin
       - Patterns:     debug_* -> -cd; isp_* -> -cd; coverage_debug_* -> -cd
       - Per-file:     (none)
-      - Skip:         374 file(s), listed in -Skip below
-      - Expect fail:  338 file(s), listed in -ExpectFail below; Error.txt -> <base>.errout.GOLD
+      - Skip:         397 file(s), listed in -Skip below
+      - Expect fail:  349 file(s), listed in -ExpectFail below; Error.txt -> <base>.errout.GOLD
 
     Sourced from: src/tests/EXCEPT-tests/pnut-ts-except.test.ts. The test compiles
     {debug_,isp_,coverage_debug_}*.spin2 with -d and every other file without;
@@ -50,9 +50,15 @@ try {
         } `
         -Skip @(
             # child of a generated fixture, compiled through its parent
+            "gen_err_b_dsdle__c1.spin2"
+            "gen_err_b_dsdle__c2.spin2"
+            "gen_err_b_dsdle__c3.spin2"
             "gen_err_b_eas_m190__x.spin2"
             "gen_err_b_exportdef_filename__c.spin2"
             "gen_err_b_loxdsde_m621__c1.spin2"
+            "gen_err_b_loxdsde_m621__c2.spin2"
+            "gen_err_b_loxdsde_m622__c1.spin2"
+            "gen_err_b_loxdsde_m622__c2.spin2"
             "gen_err_b_loxoie__x.spin2"
             "gen_err_b_loxuoe__c000.spin2"
             "gen_err_b_loxuoe__c001.spin2"
@@ -310,6 +316,23 @@ try {
             "gen_err_b_loxuoe__c253.spin2"
             "gen_err_b_loxuoe__c254.spin2"
             "gen_err_b_loxuoe__c255.spin2"
+            "gen_err_b_obj_name_cut_missing__child.spin2"
+            "gen_err_b_obj_nesting_17__c01.spin2"
+            "gen_err_b_obj_nesting_17__c02.spin2"
+            "gen_err_b_obj_nesting_17__c03.spin2"
+            "gen_err_b_obj_nesting_17__c04.spin2"
+            "gen_err_b_obj_nesting_17__c05.spin2"
+            "gen_err_b_obj_nesting_17__c06.spin2"
+            "gen_err_b_obj_nesting_17__c07.spin2"
+            "gen_err_b_obj_nesting_17__c08.spin2"
+            "gen_err_b_obj_nesting_17__c09.spin2"
+            "gen_err_b_obj_nesting_17__c10.spin2"
+            "gen_err_b_obj_nesting_17__c11.spin2"
+            "gen_err_b_obj_nesting_17__c12.spin2"
+            "gen_err_b_obj_nesting_17__c13.spin2"
+            "gen_err_b_obj_nesting_17__c14.spin2"
+            "gen_err_b_obj_nesting_17__c15.spin2"
+            "gen_err_b_obj_nesting_17__c16.spin2"
             "gen_err_b_pasm_object__c.spin2"
             "gen_err_b_tmop__x.spin2"
             "gen_err_b_tmvsid_m602__c.spin2"
@@ -460,6 +483,8 @@ try {
             "pperr_unterminated_brace_comment.spin2"
             "pperr_unterminated_ifdef.spin2"
             "symbol_length_test_30max.spin2"
+            # fixtures.json row err_b_struct_name_runtime_index_debug is reject
+            "debug_gen_err_b_struct_name_runtime_index_debug.spin2"
             # fixtures.json row err_c_dditl_m150 is reject
             "debug_gen_err_c_dditl_m150.spin2"
             # fixtures.json row err_c_dditl_m151 is reject
@@ -524,8 +549,6 @@ try {
             "gen_err_b2_lbnceubn.spin2"
             # fixtures.json row err_b_bdmbifc is reject
             "gen_err_b_bdmbifc.spin2"
-            # fixtures.json row err_b_bnso is reject
-            "gen_err_b_bnso.spin2"
             # fixtures.json row err_b_cannotfind is reject
             "gen_err_b_cannotfind.spin2"
             # fixtures.json row err_b_cfbex is reject
@@ -584,6 +607,10 @@ try {
             "gen_err_b_eauvnsa_m242.spin2"
             # fixtures.json row err_b_eelcoeol is reject
             "gen_err_b_eelcoeol.spin2"
+            # fixtures.json row err_b_eeol_struct_name_runtime_index is reject
+            "gen_err_b_eeol_struct_name_runtime_index.spin2"
+            # fixtures.json row err_b_eeol_struct_nameless_two_index is reject
+            "gen_err_b_eeol_struct_nameless_two_index.spin2"
             # fixtures.json row err_b_eiconos is reject
             "gen_err_b_eiconos.spin2"
             # fixtures.json row err_b_eloe is reject
@@ -618,8 +645,6 @@ try {
             "gen_err_b_loxee.spin2"
             # fixtures.json row err_b_loxlve is reject
             "gen_err_b_loxlve.spin2"
-            # fixtures.json row err_b_loxnbe is reject
-            "gen_err_b_loxnbe.spin2"
             # fixtures.json row err_b_loxoie is reject
             "gen_err_b_loxoie.spin2"
             # fixtures.json row err_b_loxpe_m430 is reject
@@ -634,8 +659,6 @@ try {
             "gen_err_b_loxre_m441.spin2"
             # fixtures.json row err_b_loxrs is reject
             "gen_err_b_loxrs.spin2"
-            # fixtures.json row err_b_loxudfe is reject
-            "gen_err_b_loxudfe.spin2"
             # fixtures.json row err_b_loxuoe is reject
             "gen_err_b_loxuoe.spin2"
             # fixtures.json row err_b_nce_m460 is reject
@@ -648,6 +671,10 @@ try {
             "gen_err_b_nqlcmb.spin2"
             # fixtures.json row err_b_oaocbats is reject
             "gen_err_b_oaocbats.spin2"
+            # fixtures.json row err_b_obj_name_cut_missing is reject
+            "gen_err_b_obj_name_cut_missing.spin2"
+            # fixtures.json row err_b_obj_nesting_17 is reject
+            "gen_err_b_obj_nesting_17.spin2"
             # fixtures.json row err_b_ocmbf1tx is reject
             "gen_err_b_ocmbf1tx.spin2"
             # fixtures.json row err_b_ocmbf1tx_neg is reject
@@ -670,10 +697,16 @@ try {
             "gen_err_b_sehr_m530.spin2"
             # fixtures.json row err_b_sehr_m531 is reject
             "gen_err_b_sehr_m531.spin2"
+            # fixtures.json row err_b_sehr_m531_at_limit is reject
+            "gen_err_b_sehr_m531_at_limit.spin2"
             # fixtures.json row err_b_sehr_m532 is reject
             "gen_err_b_sehr_m532.spin2"
+            # fixtures.json row err_b_sehr_m532_over_limit is reject
+            "gen_err_b_sehr_m532_over_limit.spin2"
             # fixtures.json row err_b_sehr_m533 is reject
             "gen_err_b_sehr_m533.spin2"
+            # fixtures.json row err_b_sehr_m533_over_limit is reject
+            "gen_err_b_sehr_m533_over_limit.spin2"
             # fixtures.json row err_b_sehr_m534 is reject
             "gen_err_b_sehr_m534.spin2"
             # fixtures.json row err_b_sehr_m535 is reject
@@ -692,6 +725,16 @@ try {
             "gen_err_b_smbss_m581.spin2"
             # fixtures.json row err_b_stosmne is reject
             "gen_err_b_stosmne.spin2"
+            # fixtures.json row err_b_struct_name_member_runtime_index is reject
+            "gen_err_b_struct_name_member_runtime_index.spin2"
+            # fixtures.json row err_b_struct_name_runtime_index_assign is reject
+            "gen_err_b_struct_name_runtime_index_assign.spin2"
+            # fixtures.json row err_b_struct_name_runtime_index_multi_assign is reject
+            "gen_err_b_struct_name_runtime_index_multi_assign.spin2"
+            # fixtures.json row err_b_struct_name_runtime_index_sizeof is reject
+            "gen_err_b_struct_name_runtime_index_sizeof.spin2"
+            # fixtures.json row err_b_struct_name_runtime_index_whole_read is reject
+            "gen_err_b_struct_name_runtime_index_whole_read.spin2"
             # fixtures.json row err_b_tmop is reject
             "gen_err_b_tmop.spin2"
             # fixtures.json row err_b_tmvsid_m600 is reject
@@ -700,6 +743,8 @@ try {
             "gen_err_b_tmvsid_m601.spin2"
             # fixtures.json row err_b_tmvsid_m602 is reject
             "gen_err_b_tmvsid_m602.spin2"
+            # fixtures.json row err_b_tmvsid_m602_aligned_to_limit is reject
+            "gen_err_b_tmvsid_m602_aligned_to_limit.spin2"
             # fixtures.json row err_b_tmvsid_m603 is reject
             "gen_err_b_tmvsid_m603.spin2"
             # fixtures.json row err_c_ainafbf is reject
@@ -784,8 +829,6 @@ try {
             "gen_err_c_eequal.spin2"
             # fixtures.json row err_c_efrom is reject
             "gen_err_c_efrom.spin2"
-            # fixtures.json row err_c_eitc is reject
-            "gen_err_c_eitc.spin2"
             # fixtures.json row err_c_eleft is reject
             "gen_err_c_eleft.spin2"
             # fixtures.json row err_c_eleftb is reject
@@ -814,6 +857,8 @@ try {
             "gen_err_c_esc_m320.spin2"
             # fixtures.json row err_c_esc_m321 is reject
             "gen_err_c_esc_m321.spin2"
+            # fixtures.json row err_c_esc_zero is reject
+            "gen_err_c_esc_zero.spin2"
             # fixtures.json row err_c_esendd is reject
             "gen_err_c_esendd.spin2"
             # fixtures.json row err_c_esoeol is reject
@@ -888,8 +933,6 @@ try {
             "gen_err_c_spmcrmv_m591.spin2"
             # fixtures.json row err_c_spmcrmv_m592 is reject
             "gen_err_c_spmcrmv_m592.spin2"
-            # fixtures.json row err_c_stif is reject
-            "gen_err_c_stif.spin2"
             # fixtures.json row err_c_ticobu is reject
             "gen_err_c_ticobu.spin2"
             # fixtures.json row err_c_tmrmr is reject
@@ -1032,6 +1075,8 @@ try {
             "gen_err_d_rbeioor.spin2"
             # fixtures.json row err_d_rcex is reject
             "gen_err_d_rcex.spin2"
+            # fixtures.json row err_d_res_count_wrap is reject
+            "gen_err_d_res_count_wrap.spin2"
             # fixtures.json row err_d_rinaiom is reject
             "gen_err_d_rinaiom.spin2"
             # fixtures.json row err_d_smb0t1_m550 is reject

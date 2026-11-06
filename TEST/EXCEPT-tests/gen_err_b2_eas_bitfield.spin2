@@ -1,4 +1,4 @@
 {Spin2_v54}
-'' gen_err_b2_eas_bitfield: generated from scripts/fixtures/fixtures.json row "err_b2_eas_bitfield"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a bitfield name"
+'' gen_err_b2_eas_bitfield: generated from scripts/fixtures/fixtures.json row "err_b2_eas_bitfield"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a symbol" (bitfield name)
 CON
   STRUCT s(long y.[3])

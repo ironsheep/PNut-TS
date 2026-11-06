@@ -259,4 +259,5 @@ echo ""
 echo "Copied ${#TO_COPY[@]} GOLD(s) into TEST/$( [[ $HAVE_SUMMARY -eq 1 ]] && echo ', and TEST/gold-run-summary.txt' )."
 echo ""
 echo "Run 'git status' and 'git diff --stat' to review."
-git status -- TEST/ | head -30
+# head closing the pipe early must not turn a finished apply into a failure under pipefail
+git status -- TEST/ | head -30 || true

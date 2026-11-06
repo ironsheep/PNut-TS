@@ -1,5 +1,5 @@
 {Spin2_v54}
-'' gen_err_b2_easmn_bitfield: generated from scripts/fixtures/fixtures.json row "err_b2_easmn_bitfield"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a structure bitfield name"
+'' gen_err_b2_easmn_bitfield: generated from scripts/fixtures/fixtures.json row "err_b2_easmn_bitfield"; edit the row, not this file. Covers: src/classes/spinResolver.ts: "Expected a structure member name" (bitfield name)
 CON
   STRUCT s(long y.f[3])
 VAR

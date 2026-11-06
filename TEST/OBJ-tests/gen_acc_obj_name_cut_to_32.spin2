@@ -1,0 +1,5 @@
+'' gen_acc_obj_name_cut_to_32: generated from scripts/fixtures/fixtures.json row "acc_obj_name_cut_to_32"; edit the row, not this file. Covers: src/classes/spinFiles.ts addObjFile: an OBJ name longer than 32 characters is cut to 32 before the search (EditorUnit.pas 2473 ObjFilenames: string[32], then 2539-2544)
+OBJ
+  c : "gen_acc_obj_name_cut_to_32__xyzwEXTRA"
+PUB main()
+  return

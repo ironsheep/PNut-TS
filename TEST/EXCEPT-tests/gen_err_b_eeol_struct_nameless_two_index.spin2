@@ -1,0 +1,8 @@
+{Spin2_v55}
+'' gen_err_b_eeol_struct_nameless_two_index: generated from scripts/fixtures/fixtures.json row "err_b_eeol_struct_nameless_two_index"; edit the row, not this file. Covers: src/classes/spinResolver.ts getEndOfLine: "Expected end of line" (a second index on a nameless single-BWL STRUCT)
+CON
+  STRUCT sIo(LONG.ready[0].mode[3..2])
+VAR
+  sIo vio[4]
+PUB main() | i
+  i := vio[1][2].ready

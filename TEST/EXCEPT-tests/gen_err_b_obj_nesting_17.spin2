@@ -1,0 +1,5 @@
+'' gen_err_b_obj_nesting_17: generated from scripts/fixtures/fixtures.json row "err_b_obj_nesting_17"; edit the row, not this file. Covers: src/classes/compiler.ts: "Object nesting exceeds 16 levels - illegal circular reference may exist" - limit + 1 (17 files, no circular reference); EditorUnit.pas 2495-2496
+OBJ
+  c : "gen_err_b_obj_nesting_17__c01"
+PUB main()
+  return

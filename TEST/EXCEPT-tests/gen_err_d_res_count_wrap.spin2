@@ -1,0 +1,4 @@
+'' gen_err_d_res_count_wrap: generated from scripts/fixtures/fixtures.json row "err_d_res_count_wrap"; edit the row, not this file. Covers: src/classes/spinResolver.ts m114: "Cog address exceeds limit" (RES count above $400, which wrapped to 0 when shifted to a byte address)
+DAT
+  org
+x res $40000000

@@ -1,0 +1,6 @@
+{Spin2_v52}
+'' gen_acc_obj_structs_imp_1000: generated from scripts/fixtures/fixtures.json row "acc_obj_structs_imp_1000"; edit the row, not this file. Covers: src/classes/spinResolver.ts m621: "Limit of 4096 data structure definitions exceeded" (structures imported from child objects) - a large legal import (1,000 definitions)
+OBJ
+  c1 : "gen_acc_obj_structs_imp_1000__c1"
+PUB main()
+  return

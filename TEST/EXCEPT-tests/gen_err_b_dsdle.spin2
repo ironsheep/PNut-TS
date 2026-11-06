@@ -1,0 +1,10 @@
+{Spin2_v52}
+'' gen_err_b_dsdle: generated from scripts/fixtures/fixtures.json row "err_b_dsdle"; edit the row, not this file. Covers: src/classes/objectStructures.ts: "Data structure-definitions limit exceeded". asm v52 p2com.asm 6921-6924: the record byte past struct_def_limit 20000h (line 59) is the error, so the buffer may fill exactly.
+OBJ
+  c1 : "gen_err_b_dsdle__c1"
+  c2 : "gen_err_b_dsdle__c2"
+  c3 : "gen_err_b_dsdle__c3"
+CON
+  STRUCT s4095(long member_name_paddingx)
+PUB main()
+  return

@@ -12,7 +12,7 @@
       - Produces:     lst, obj, bin
       - Patterns:     (none)
       - Per-file:     (none)
-      - Skip:         277 file(s), listed in -Skip below
+      - Skip:         280 file(s), listed in -Skip below
       - Expect fail:  (none)
 
     Sourced from: src/tests/OBJ-tests/pnut-ts-obj.test.ts (glob *.spin2).
@@ -36,6 +36,7 @@ try {
             # child of a generated fixture, compiled through its parent
             "gen_acc_obj_count_range__x.spin2"
             "gen_acc_obj_instances_1024__x.spin2"
+            "gen_acc_obj_name_cut_to_32__xyzw.spin2"
             "gen_acc_obj_nesting_16__c01.spin2"
             "gen_acc_obj_nesting_16__c02.spin2"
             "gen_acc_obj_nesting_16__c03.spin2"
@@ -51,9 +52,8 @@ try {
             "gen_acc_obj_nesting_16__c13.spin2"
             "gen_acc_obj_nesting_16__c14.spin2"
             "gen_acc_obj_nesting_16__c15.spin2"
-            "gen_acc_obj_nesting_16__c16.spin2"
             "gen_acc_obj_params_16__x.spin2"
-            "gen_acc_obj_structs_imported_1000__c1.spin2"
+            "gen_acc_obj_structs_imp_1000__c1.spin2"
             "gen_acc_obj_unique_255__c000.spin2"
             "gen_acc_obj_unique_255__c001.spin2"
             "gen_acc_obj_unique_255__c002.spin2"
@@ -309,6 +309,9 @@ try {
             "gen_acc_obj_unique_255__c252.spin2"
             "gen_acc_obj_unique_255__c253.spin2"
             "gen_acc_obj_unique_255__c254.spin2"
+            "gen_acc_struct_defs_max__c1.spin2"
+            "gen_acc_struct_defs_max__c2.spin2"
+            "gen_acc_struct_defs_max__c3.spin2"
             "gen_cor_obj_include_sibling__incl.spin2"
             # fixtures.json row cor_obj_include_sibling is goldSource pnut-ts
             "gen_cor_obj_include_sibling.spin2"

@@ -1,0 +1,10 @@
+{Spin2_v55}
+'' gen_cor_dbg_tick_string_ends: generated from scripts/fixtures/fixtures.json row "cor_dbg_tick_string_ends"; edit the row, not this file. Covers: src/classes/spinResolver.ts tickStringEnd: a tick string with unbalanced ')' in its text, and one closed by a ')' before a line comment or a brace comment
+CON
+  _CLKFREQ = 160_000_000
+  _XTLFREQ = 20_000_000
+PUB main() | x
+  x := 5
+  debug(`a) b(c) d) `uhex(x))
+  debug(`e (f) g) ' comment
+  debug(`h) { comment }
