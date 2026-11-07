@@ -225,42 +225,42 @@
     {
       "id": "err_b_struct_name_member_runtime_index",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
-      "note": "A runtime index on the member takes the same path as err_b_eeol_struct_name_runtime_index. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "note": "A runtime index on the member takes the same path as err_b_eeol_struct_name_runtime_index. Predicted from the v52 asm. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index on a member of struct_name[address]",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sPt[addr].y[i]"]
     },
     {
       "id": "err_b_struct_name_runtime_index_assign",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
-      "note": "The same resume point seen from an assignment, whose caller reports something else. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "note": "The same resume point seen from an assignment, whose caller reports something else. Predicted from the v52 asm. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], assignment to a member",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  sPt[addr][i].y := 3"]
     },
     {
       "id": "err_b_struct_name_runtime_index_whole_read",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
-      "note": "No member, so the whole-structure read path sees the resume point. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "note": "No member, so the whole-structure read path sees the resume point. Predicted from the v52 asm. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], whole-structure read",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sPt[addr][i]"]
     },
     {
       "id": "err_b_struct_name_runtime_index_multi_assign",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
-      "note": "The same resume point seen from a whole-structure multi-assign. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "note": "The same resume point seen from a whole-structure multi-assign. Predicted from the v52 asm. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address], multi-assign",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  sPt[addr][i] := 1, 2"]
     },
     {
       "id": "err_b_struct_name_runtime_index_sizeof",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
-      "note": "SIZEOF of this form. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "note": "SIZEOF of this form. Predicted from the v52 asm. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address] inside SIZEOF",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  i := sizeof(sPt[addr][i].y)"]
     },
     {
       "id": "err_b_struct_name_runtime_index_debug",
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug", "expectLine": 5,
-      "note": "A DEBUG argument of this form. Predicted from the v52 asm. Unconfirmed until GOLD.",
+      "note": "A DEBUG argument of this form. Predicted from the v52 asm. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime index after struct_name[address] as a DEBUG argument",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | i, addr", "  debug(udec(sPt[addr][i].y))"]
     },
@@ -653,7 +653,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 1102,
-      "note": "Own definitions alone cannot reach 4096: each also goes into this object's 64 KB PUB/CON list (at least 14 record bytes plus type and name), and the list overflows first. Imported definitions take ids but no list space, so 3000 imported (asm v52 p2com.asm 4499-4512, before compile_con_blocks_2nd) plus 1097 own make this own definition the 4097th. Unconfirmed until GOLD.",
+      "note": "Own definitions alone cannot reach 4096: each also goes into this object's 64 KB PUB/CON list (at least 14 record bytes plus type and name), and the list overflows first. Imported definitions take ids but no list space, so 3000 imported (asm v52 p2com.asm 4499-4512, before compile_con_blocks_2nd) plus 1097 own make this own definition the 4097th. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts m622: \"Limit of 4096 data structure definitions exceeded\" (own STRUCT definitions)",
       "source": { "template": ["{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_loxdsde_m622__c1\"\n  c2 : \"gen_err_b_loxdsde_m622__c2\"\nCON\n", { "repeat": 1097, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB main()\n  return\n"] },
       "aux": [
@@ -666,7 +666,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 1,
-      "note": "One child cannot hold 4097 definitions (its 64 KB PUB/CON list overflows at 3277 of these), so two children of 2049 make the 4097th arrive during the import. Line 1 is a prediction: compile_done clears source_start (asm v52 p2com.asm 2969) and compile_obj_symbols runs first in the second pass. PNut-TS reports this at the end of the file. Unconfirmed until GOLD.",
+      "note": "One child cannot hold 4097 definitions (its 64 KB PUB/CON list overflows at 3277 of these), so two children of 2049 make the 4097th arrive during the import. Line 1 is a prediction: compile_done clears source_start (asm v52 p2com.asm 2969) and compile_obj_symbols runs first in the second pass. PNut-TS reports this at the end of the file. Settled by the GOLD.",
       "covers": "src/classes/spinResolver.ts m621: \"Limit of 4096 data structure definitions exceeded\" (structures imported from child objects)",
       "source": "{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_loxdsde_m621__c1\"\n  c2 : \"gen_err_b_loxdsde_m621__c2\"\nPUB main()\n  return",
       "aux": [
@@ -1094,7 +1094,7 @@
       "kind": "reject",
       "goldSource": "pnut",
       "expectLine": 7,
-      "note": "One object's own definitions cannot reach this: the same bytes also go into its 64 KB PUB/CON list. Imported definitions take no list space in the parent. Three children hold 4095 records of 32 bytes (6+4+1+1+19+1, each child's list 51,870 bytes), and one own record of 33 bytes (a 20-character member name) ends at 131073, one over struct_def_limit 20000h = 131072. Struct ids stay at struct_id_limit 1000h (4096). asm v52, unconfirmed until GOLD.",
+      "note": "One object's own definitions cannot reach this: the same bytes also go into its 64 KB PUB/CON list. Imported definitions take no list space in the parent. Three children hold 4095 records of 32 bytes (6+4+1+1+19+1, each child's list 51,870 bytes), and one own record of 33 bytes (a 20-character member name) ends at 131073, one over struct_def_limit 20000h = 131072. Struct ids stay at struct_id_limit 1000h (4096). asm v52, settled by the GOLD.",
       "covers": "src/classes/objectStructures.ts: \"Data structure-definitions limit exceeded\". asm v52 p2com.asm 6921-6924: the record byte past struct_def_limit 20000h (line 59) is the error, so the buffer may fill exactly.",
       "source": { "template": ["{Spin2_v52}\nOBJ\n  c1 : \"gen_err_b_dsdle__c1\"\n  c2 : \"gen_err_b_dsdle__c2\"\n  c3 : \"gen_err_b_dsdle__c3\"\nCON\n  STRUCT s4095(long member_name_paddingx)\nPUB main()\n  return\n"] },
       "aux": [
@@ -1218,7 +1218,7 @@
       "goldSource": "pnut",
       "flag": "debug",
       "expectLine": 43,
-      "note": "expectLine is the last DEBUG line. PNut raises error_dditl in collapse_debug_data after the whole compile, so the Windows GOLD gives the true line. Table 2*(42+1) = 86 bytes, plus 41 records of 255 bytes and one of 211 would be 10752; this row's last record is 212 bytes, so the total is 10753. Record length = characters + 4 (from the acc_dbg_size_limit_10752 note) is not re-derived here. asm v52, unconfirmed until GOLD.",
+      "note": "expectLine is the last DEBUG line. PNut raises error_dditl in collapse_debug_data after the whole compile, so the Windows GOLD gives the true line. Table 2*(42+1) = 86 bytes, plus 41 records of 255 bytes and one of 211 would be 10752; this row's last record is 212 bytes, so the total is 10753. Record length = characters + 4 (from the acc_dbg_size_limit_10752 note) is not re-derived here. asm v52, settled by the GOLD.",
       "covers": "PNut error_dditl at p2com.asm 6969-6970: after collapse_debug_data the debug table plus data must not exceed debug_size_limit 2A00h = 10752 (line 86). The collapsed table is 2*(n+1) bytes (6946-6962). 42 distinct DEBUG records = limit + 1 byte. No PNut-TS message at this size (debugData.ts m151 is the 16384 limit).",
       "source": { "template": ["PUB main()\n", { "repeat": 41, "from": 0, "text": "  debug(\"${i:3}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n" }, "  debug(\"041aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n"] }
     },
@@ -2118,7 +2118,7 @@
       "kind": "accept",
       "goldSource": "pnut",
       "covers": "PNut error_eitc \"Expression is too complex\" - at limit (15 levels: 16 pushes fill the math stack of 16; asm v52 p2com.asm 9626-9627, 10118)",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": { "template": ["CON\n  a = ", { "repeat": 15, "text": "1 + (" }, "1", { "repeat": 15, "text": ")" }, "\nPUB main()\n  return\n"] }
     },
     {
@@ -2205,7 +2205,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 4,
       "covers": "src/classes/spinResolver.ts m260: \"Expected DITTO END\" (DITTO block open at end of file)",
-      "note": "Reported at the last line of the file (the end-of-file element); PNut's position for an end-of-file error is unconfirmed.",
+      "note": "Reported at the last line of the file (the end-of-file element); PNut's position for an end-of-file error is in the GOLD.",
       "source": "{Spin2_v52}\nDAT\n  ditto 2\n  long 0"
     },
     {
@@ -2227,7 +2227,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 3,
       "covers": "src/classes/spinResolver.ts m270: \"Expected END\" (inline assembly open at end of file)",
-      "note": "Reported at the last line of the file (the end-of-file element); PNut's position for an end-of-file error is unconfirmed.",
+      "note": "Reported at the last line of the file (the end-of-file element); PNut's position for an end-of-file error is in the GOLD.",
       "source": "PUB main()\n  org\n  nop"
     },
     {
@@ -2615,14 +2615,14 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 3,
       "covers": "src/classes/spinResolver.ts m114: \"Cog address exceeds limit\" (RES count above $400, which wrapped to 0 when shifted to a byte address)",
-      "note": "D5. asm v52 p2com.asm 5099-5100 (unsigned compare, so a negative count also fails), unconfirmed until GOLD.",
+      "note": "D5. asm v52 p2com.asm 5099-5100 (unsigned compare, so a negative count also fails), settled by the GOLD.",
       "source": ["DAT", "  org", "x res $40000000"]
     },
     {
       "id": "acc_dat_res_lut_max",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m110/m114: RES - at limit (ORG $200 then RES $200 ends exactly at the $400 LUT limit)",
-      "note": "D5 accept limb. asm v52 p2com.asm 5099-5104, unconfirmed until GOLD.",
+      "note": "D5 accept limb. asm v52 p2com.asm 5099-5104, settled by the GOLD.",
       "source": ["DAT", "  org $200", "x res $200", "", "PUB main()", "  return"]
     },
     {
@@ -2721,7 +2721,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 4,
       "covers": "src/classes/spinResolver.ts: \"ORGH inline block exceeds $FFFF longs (including the added RET instruction)\"",
-      "note": "Reported at the END line, where the block length is known; PNut's position is unconfirmed.",
+      "note": "Reported at the END line, where the block length is known; PNut's position is in the GOLD.",
       "source": ["PUB main()", "  orgh", "  long 0[$10000]", "  end"]
     },
     {
@@ -2777,7 +2777,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DOWNLOAD_BAUD can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  download_baud = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2785,7 +2785,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DEBUG_PIN can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_pin = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2793,7 +2793,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DEBUG_PIN_TX can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_pin_tx = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2801,7 +2801,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DEBUG_PIN_RX can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_pin_rx = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2809,7 +2809,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DEBUG_BAUD can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_baud = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2817,7 +2817,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DEBUG_DISABLE can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_disable = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2825,7 +2825,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts: \"DEBUG_MASK can only be defined as an integer constant\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_mask = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2833,7 +2833,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug",
       "expectLine": 5,
       "covers": "src/classes/spin2Parser.ts: \"DEBUG_COGS can only be defined as an integer constant\" (checked only in a DEBUG compile)",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_cogs = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2841,7 +2841,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug",
       "expectLine": 5,
       "covers": "src/classes/spin2Parser.ts: \"DEBUG_DELAY can only be defined as an integer constant\" (checked only in a DEBUG compile)",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  debug_delay = 1.5\n\nPUB main()\n  return"
     },
     {
@@ -2849,7 +2849,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 7,
       "covers": "src/classes/spin2Parser.ts: \"_AUTOCLK can only be defined as an integer constant\" (checked only for a pure-PASM program with a clock setting, outside DEBUG)",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  _xtlfreq = 20_000_000\n  _autoclk = 1.5\n\nDAT\n  org\n  nop"
     },
     {
@@ -2857,7 +2857,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "flag": "debug",
       "expectLine": 5,
       "covers": "src/classes/spin2Parser.ts: \"DEBUG requires at least 10 MHz of crystal/external clocking\"",
-      "note": "Reported at the last line of the file; PNut's position is unconfirmed.",
+      "note": "Reported at the last line of the file; PNut's position is in the GOLD.",
       "source": "CON\n  _xtlfreq = 5_000_000\n\nPUB main()\n  return"
     },
     {
@@ -3027,63 +3027,63 @@
       "id": "acc_dat_bytefit_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"BYTEFIT values must range from -$80 to $FF\" - at limit (both ends: -$80 and $FF)",
-      "note": "asm v52 sR:3171 (REF-V52A p2com.asm 5885), unconfirmed until GOLD.",
+      "note": "asm v52 sR:3171 (REF-V52A p2com.asm 5885), settled by the GOLD.",
       "source": ["DAT", "  bytefit -$80, $FF"]
     },
     {
       "id": "acc_dat_wordfit_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"WORDFIT values must range from -$8000 to $FFFF\" - at limit (both ends: -$8000 and $FFFF)",
-      "note": "asm v52 (p2com.asm 5879), unconfirmed until GOLD.",
+      "note": "asm v52 (p2com.asm 5879), settled by the GOLD.",
       "source": ["DAT", "  wordfit -$8000, $FFFF"]
     },
     {
       "id": "acc_dat_ditto_zero",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"DITTO count must be a positive integer or zero\" - at limit (0, and 1)",
-      "note": "asm v52 p2com.asm 5129-5130 (signed compare, 0 is legal), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5129-5130 (signed compare, 0 is legal), settled by the GOLD.",
       "source": ["{Spin2_v50}", "DAT", "  org", "  ditto 0", "  long 1", "  ditto end", "  ditto 1", "  long 2", "  ditto end"]
     },
     {
       "id": "acc_dat_fit_hub",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Hub address exceeds FIT limit\" - at limit (hub address equals the FIT value)",
-      "note": "asm v52 p2com.asm 5114-5115 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5114-5115 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  orgh $400", "  long 0,0", "  fit $408"]
     },
     {
       "id": "acc_dat_fit_cog",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Cog address exceeds FIT limit\" - at limit (cog address equals the FIT value)",
-      "note": "asm v52 p2com.asm 5117-5119 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5117-5119 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  org $100", "  fit $100"]
     },
     {
       "id": "acc_dat_res_cog_limit",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m110: \"Cog address exceeds limit\" - RES up to exactly the default $1F8 limit",
-      "note": "asm v52 p2com.asm 5047-5048, 5099-5105 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5047-5048, 5099-5105 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  org", "  res $1F8"]
     },
     {
       "id": "acc_dat_orgf_cog_limit",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m111: \"Cog address exceeds limit\" - ORGF up to exactly the default $1F8 limit",
-      "note": "asm v52 p2com.asm 5081-5083 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5081-5083 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  org", "  orgf $1F8"]
     },
     {
       "id": "acc_dat_orgf_at_origin",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Origin already exceeds target\" - at limit (ORGF target equal to the current origin)",
-      "note": "asm v52 p2com.asm 5084-5085 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5084-5085 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  org", "x res 1", "  long 0,0", "  orgf 3"]
     },
     {
       "id": "acc_dat_file_cog_limit",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m112: \"Cog address exceeds limit\" - FILE data ending exactly at the ORG limit",
-      "note": "asm v52 p2com.asm 5064-5071, unconfirmed until GOLD. ORG $100,$108 holds eight longs; the file is 32 bytes.",
+      "note": "asm v52 p2com.asm 5064-5071, settled by the GOLD. ORG $100,$108 holds eight longs; the file is 32 bytes.",
       "source": ["DAT", "  org $100,$108", "  f file \"gen_acc_dat_file_cog_limit__d.bin\""],
       "aux": [{ "name": "d.bin", "sibling": true, "source": { "template": [{ "repeat": 32, "text": "x" }] } }]
     },
@@ -3091,56 +3091,56 @@
       "id": "acc_dat_data_cog_limit",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m113: \"Cog address exceeds limit\" - data ending exactly at the ORG limit",
-      "note": "asm v52 p2com.asm 5064-5071, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5064-5071, settled by the GOLD.",
       "source": ["DAT", "  org $100,$102", "  long 0,0"]
     },
     {
       "id": "acc_dat_org_limit_equal_start",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Cog address exceeds limit\" (ORG start above its limit) - at limit (start equal to limit)",
-      "note": "asm v52 p2com.asm 5064-5065 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5064-5065 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  org $100,$100"]
     },
     {
       "id": "acc_dat_org_max",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m120 and m121: \"Cog address exceeds $400 limit\" - at limit (ORG start $400, ORG limit operand $400)",
-      "note": "asm v52 p2com.asm 5052-5053, 5066-5067 (strict compare), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5052-5053, 5066-5067 (strict compare), settled by the GOLD.",
       "source": ["DAT", "  org $400", "  org 0,$400"]
     },
     {
       "id": "acc_dat_orgh_min",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Hub address below $400 limit\" - at limit (ORGH $400 in a Spin file)",
-      "note": "asm v52 p2com.asm 4989-4992, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 4989-4992, settled by the GOLD.",
       "source": ["DAT", "  orgh $400", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_dat_orgh_ceiling",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m360: \"Hub address exceeds $100000 ceiling\" - at limit (ORGH $100000, reached by the address operand only)",
-      "note": "asm v52 p2com.asm 4993-4994 (unsigned strict compare), unconfirmed until GOLD. In a Spin file ORGH moves the hub origin without filling.",
+      "note": "asm v52 p2com.asm 4993-4994 (unsigned strict compare), settled by the GOLD. In a Spin file ORGH moves the hub origin without filling.",
       "source": ["DAT", "  orgh $100000", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_dat_orgh_limit_ceiling",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m361: \"Hub address exceeds $100000 ceiling\" - at limit (ORGH limit operand $100000)",
-      "note": "asm v52 p2com.asm 5004-5005, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5004-5005, settled by the GOLD.",
       "source": ["DAT", "  orgh $400,$100000", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_dat_orgh_limit_equal_start",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m370: \"Hub address exceeds limit\" (ORGH limit below its address) - at limit (limit equal to address)",
-      "note": "asm v52 p2com.asm 5002-5003, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5002-5003, settled by the GOLD.",
       "source": ["DAT", "  orgh $500,$500"]
     },
     {
       "id": "acc_dat_file_hub_limit",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m371: \"Hub address exceeds limit\" - FILE data ending exactly at the ORGH limit",
-      "note": "unconfirmed until GOLD. ORGH $400,$500 holds 256 bytes; the file is 256 bytes.",
+      "note": "settled by the GOLD. ORGH $400,$500 holds 256 bytes; the file is 256 bytes.",
       "source": ["DAT", "  orgh $400,$500", "  f file \"gen_acc_dat_file_hub_limit__d.bin\""],
       "aux": [{ "name": "d.bin", "sibling": true, "source": { "template": [{ "repeat": 256, "text": "x" }] } }]
     },
@@ -3148,98 +3148,98 @@
       "id": "acc_dat_data_hub_limit",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m372: \"Hub address exceeds limit\" - data ending exactly at the ORGH limit",
-      "note": "unconfirmed until GOLD.",
+      "note": "settled by the GOLD.",
       "source": ["DAT", "  orgh $400,$410", "  long 0,0,0,0"]
     },
     {
       "id": "acc_dat_loc_addr_max",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m000: \"Address must not exceed $FFFFF\" (LOC) - at limit ($FFFFF, an address operand)",
-      "note": "asm v52 p2com.asm 5572-5573, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5572-5573, settled by the GOLD.",
       "source": ["DAT", "  org", "  loc pa,#\\$FFFFF"]
     },
     {
       "id": "acc_dat_jmp_addr_max",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m001: \"Address must not exceed $FFFFF\" (JMP/CALL) - at limit ($FFFFF, an address operand)",
-      "note": "asm v52 p2com.asm 6359, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6359, settled by the GOLD.",
       "source": ["DAT", "  org", "  jmp #\\$FFFFF"]
     },
     {
       "id": "acc_dat_rdlut_imm_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Constant must be from 0 to 255\" (RDLUT immediate) - at limit (both ends: 0 and 255)",
-      "note": "asm v52 p2com.asm 6187-6188, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6187-6188, settled by the GOLD.",
       "source": ["DAT", "  org", "x res 1", "  rdlut x,#0", "  rdlut x,#255"]
     },
     {
       "id": "acc_dat_reg_max",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Register cannot exceed $1FF\" - at limit (register $1FF)",
-      "note": "asm v52 p2com.asm 6212-6213, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6212-6213, settled by the GOLD.",
       "source": ["DAT", "  org", "x res 1", "  mov x,#$1FF", "  mov $1FF,x"]
     },
     {
       "id": "acc_dat_const9_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m130: \"Constant must be from 0 to 511\" (PASM) - at limit (both ends: 0 and 511)",
-      "note": "asm v52 p2com.asm 6218-6219, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6218-6219, settled by the GOLD.",
       "source": ["DAT", "  org", "x res 1", "  mov x,#0", "  mov x,#511"]
     },
     {
       "id": "acc_dat_ptr_index_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"PTRA/PTRB index constant must range from -32 to 31\" - at limit (both ends: -32 and 31)",
-      "note": "asm v52 (p2com.asm 6339), unconfirmed until GOLD.",
+      "note": "asm v52 (p2com.asm 6339), settled by the GOLD.",
       "source": ["DAT", "  org", "x res 1", "  rdlong x,ptra[-32]", "  rdlong x,ptra[31]"]
     },
     {
       "id": "acc_dat_ptr_update_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"PTRA/PTRB index constant must range from 1 to 16\" (updating pointer form) - at limit (both ends: 1 and 16)",
-      "note": "asm v52 (p2com.asm 6341), unconfirmed until GOLD.",
+      "note": "asm v52 (p2com.asm 6341), settled by the GOLD.",
       "source": ["DAT", "  org", "x res 1", "  rdlong x,ptra++[1]", "  rdlong x,ptra++[16]"]
     },
     {
       "id": "acc_dat_rel_range",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Relative address is out of range\" - at limit (both ends: forward +255 and backward -256 instructions)",
-      "note": "asm v52 p2com.asm 6150-6154, unconfirmed until GOLD. The first JMP reaches +255, the second -256.",
+      "note": "asm v52 p2com.asm 6150-6154, settled by the GOLD. The first JMP reaches +255, the second -256.",
       "source": ["DAT", "  org", "back jmp #fwd", "  long 0[254]", "  jmp #back", "fwd nop"]
     },
     {
       "id": "acc_dat_calld_rel9_cog",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m162: \"D register must be PA/PB/PTRA/PTRB\" (CALLD, cog mode, relative target) - at limit (both ends: +255 and -256 with an ordinary D register)",
-      "note": "asm v52 p2com.asm 5528-5531, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5528-5531, settled by the GOLD.",
       "source": ["DAT", "  org", "back calld $100,#fwd", "  long 0[254]", "  calld $100,#back", "fwd nop"]
     },
     {
       "id": "acc_dat_calld_rel9_hub",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m161: \"D register must be PA/PB/PTRA/PTRB\" (CALLD, hub mode, relative target) - at limit (both ends: +255 and -256 with an ordinary D register)",
-      "note": "asm v52 p2com.asm 5521-5531, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5521-5531, settled by the GOLD.",
       "source": ["DAT", "  orgh $400", "back calld $100,#fwd", "  long 0[254]", "  calld $100,#back", "fwd nop"]
     },
     {
       "id": "acc_dat_rep_block_max",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"REP block end is out of range\" - at limit (a block of 511 instructions)",
-      "note": "asm v52 p2com.asm 5427-5433 (block size minus one must not exceed $1FF), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 5427-5433 (block size minus one must not exceed $1FF), settled by the GOLD.",
       "source": ["DAT", "  orgh $400", "  rep @x,#1", "  long 0[$1FF]", "x nop"]
     },
     {
       "id": "acc_dat_symbols_9999",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 10k DAT symbols exceeded\" - at limit (9,999 DAT symbols, one fewer than the reject row)",
-      "note": "The boundary is PNut-TS's own (err_d_loxdse fails on the 10,000th); p2com.asm 5811 counts a four-digit local-symbol sequence. Unconfirmed until GOLD.",
+      "note": "The boundary is PNut-TS's own (err_d_loxdse fails on the 10,000th); p2com.asm 5811 counts a four-digit local-symbol sequence. Settled by the GOLD.",
       "source": { "template": ["DAT\n", { "repeat": 9999, "text": "s${i}\n" }] }
     },
     {
       "id": "acc_dat_files_255",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "PNut error_loxudfe \"Limit of 32 unique DAT files exceeded\" (PNut-TS shares the 255-object message) - at limit (255 distinct DAT files)",
-      "note": "asm v52 files_limit = 255 (p2com.asm 39, 4391-4393), unconfirmed until GOLD. The data files are one byte each.",
+      "note": "asm v52 files_limit = 255 (p2com.asm 39, 4391-4393), settled by the GOLD. The data files are one byte each.",
       "source": { "template": ["DAT\n", { "repeat": 255, "text": "  f${i:3} file \"gen_acc_dat_files_255__d${i:3}.txt\"\n" }] },
       "aux": [{ "name": "d${i:3}.txt", "sibling": true, "count": 255, "source": "x" }]
     },
@@ -3254,378 +3254,378 @@
       "id": "acc_con_clkfreq_min",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"_CLKFREQ must be from 3_333_333 to 500_000_000\" - at limit (3_333_333)",
-      "note": "REF-V52A has no such message: the range is PNut-TS's, unconfirmed until GOLD.",
+      "note": "REF-V52A has no such message: the range is PNut-TS's, settled by the GOLD.",
       "source": ["CON", "  _xinfreq = 3_333_333", "  _clkfreq = 3_333_333", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_con_clkfreq_max",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"_CLKFREQ must be from 3_333_333 to 500_000_000\" - at limit (500_000_000)",
-      "note": "REF-V52A has no such message: the range is PNut-TS's, unconfirmed until GOLD.",
+      "note": "REF-V52A has no such message: the range is PNut-TS's, settled by the GOLD.",
       "source": ["CON", "  _xinfreq = 20_000_000", "  _clkfreq = 500_000_000", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_con_xinfreq_min",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"_XINFREQ must be from 250_000 to 500_000_000\" - at limit (250_000)",
-      "note": "REF-V52A has no such message: the range is PNut-TS's, unconfirmed until GOLD.",
+      "note": "REF-V52A has no such message: the range is PNut-TS's, settled by the GOLD.",
       "source": ["CON", "  _xinfreq = 250_000", "  _clkfreq = 4_000_000", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_con_xinfreq_max",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"_XINFREQ must be from 250_000 to 500_000_000\" - at limit (500_000_000)",
-      "note": "REF-V52A has no such message: the range is PNut-TS's, unconfirmed until GOLD.",
+      "note": "REF-V52A has no such message: the range is PNut-TS's, settled by the GOLD.",
       "source": ["CON", "  _xinfreq = 500_000_000", "  _clkfreq = 500_000_000", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_con_pll_multiplier_max",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"PLL settings could not be achieved per _CLKFREQ\" - at limit (a multiplier of 1024 from a 250 kHz input)",
-      "note": "The 1024 multiplier ceiling is taken from the reject row's own note; unconfirmed until GOLD.",
+      "note": "The 1024 multiplier ceiling is taken from the reject row's own note; settled by the GOLD.",
       "source": ["CON", "  _xinfreq = 250_000", "  _clkfreq = 256_000_000", "", "PUB main()", "  return"]
     },
     {
       "id": "acc_spin_const32_max",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinElementizer.ts: \"Constant exceeds 32 bits\" - at limit ($FFFF_FFFF)",
-      "note": "asm v52 (error_ce32b), unconfirmed until GOLD.",
+      "note": "asm v52 (error_ce32b), settled by the GOLD.",
       "source": ["PUB main() | x", "  x := $FFFF_FFFF", "  x := -$8000_0000"]
     },
     {
       "id": "acc_spin_string_chars",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m510, m511, m512: \"STRING characters must range from 1 to 255\" - at limit (both ends: 1 and 255)",
-      "note": "asm v52 p2com.asm 13808-13812, 14331-14335, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13808-13812, 14331-14335, settled by the GOLD.",
       "source": ["PUB main() | x", "  x := @\"a\"", "  x := string(1, 255)"]
     },
     {
       "id": "acc_spin_lstring_chars",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"LSTRING characters must range from 0 to 255\" - at limit (both ends: 0 and 255)",
-      "note": "asm v52 p2com.asm 13844-13846, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13844-13846, settled by the GOLD.",
       "source": ["{Spin2_v52}", "PUB main() | x", "  x := lstring(0, 255)"]
     },
     {
       "id": "acc_spin_string_len_at",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m520: \"@\\\"string\\\"/STRING/LSTRING data cannot exceed 254 bytes\" (@\"string\") - at limit (254 characters)",
-      "note": "asm v52 p2com.asm 14326, 14340-14341 (the length counter starts at 1 and wraps at 255 characters), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 14326, 14340-14341 (the length counter starts at 1 and wraps at 255 characters), settled by the GOLD.",
       "source": { "template": ["PUB main() | x\n  x := @\"", { "repeat": 254, "text": "a" }, "\"\n"] }
     },
     {
       "id": "acc_spin_string_len_string",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m521: \"@\\\"string\\\"/STRING/LSTRING data cannot exceed 254 bytes\" (STRING()) - at limit (254 characters)",
-      "note": "asm v52 p2com.asm 13805-13816, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13805-13816, settled by the GOLD.",
       "source": { "template": ["PUB main() | x\n  x := string(\"", { "repeat": 254, "text": "a" }, "\")\n"] }
     },
     {
       "id": "acc_spin_string_len_lstring",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m522: \"@\\\"string\\\"/STRING/LSTRING data cannot exceed 254 bytes\" (LSTRING()) - at limit (254 characters)",
-      "note": "asm v52 p2com.asm 13841-13850, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13841-13850, settled by the GOLD.",
       "source": { "template": ["{Spin2_v52}\nPUB main() | x\n  x := lstring(\"", { "repeat": 254, "text": "a" }, "\")\n"] }
     },
     {
       "id": "acc_spin_bwl_data_255",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m011: \"BYTE/WORD/LONG data cannot exceed 255 bytes\" - at limit (255 bytes)",
-      "note": "asm v52 p2com.asm 13873, 13888-13889 (the byte counter wraps at 256), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13873, 13888-13889 (the byte counter wraps at 256), settled by the GOLD.",
       "source": { "template": ["PUB main() | x\n  x := byte(0", { "repeat": 254, "text": ",0" }, ")\n"] }
     },
     {
       "id": "acc_spin_nest_blocks_16",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "PNut error_loxnbe \"Limit of 16 nested blocks exceeded\" (no PNut-TS message) - at limit (16 nested REPEAT blocks). Counting as in err_b_loxnbe: asm v52 p2com.asm 11810-11811 and the pushes at 11107, 11181, 11316, 11588, 14078; the method body is not counted (11006).",
-      "note": "asm v52 block_nest_limit = 16 (p2com.asm 64), unconfirmed until GOLD.",
+      "note": "asm v52 block_nest_limit = 16 (p2com.asm 64), settled by the GOLD.",
       "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  x := 1"]
     },
     {
       "id": "acc_spin_bnso_4096",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "PNut error_bnso \"Blocknest stack overflow\" (no PNut-TS message) - at limit (15 nested IF = 15 x 272 = 4080 dwords, then 1 nested REPEAT = 16, total 4096 = block_stack_limit; asm v52 p2com.asm 11820-11822, 11106, 11587)",
-      "note": "asm v52 block_stack_limit = 1000h (p2com.asm 65), if_limit 256 (66). The check is 'ja', so exactly 4096 is accepted. Unconfirmed until GOLD. Under PNut-TS (current dist) this row did not finish compiling within 300 s (D15 class: nested IF).",
+      "note": "asm v52 block_stack_limit = 1000h (p2com.asm 65), if_limit 256 (66). The check is 'ja', so exactly 4096 is accepted. Settled by the GOLD. Under PNut-TS (current dist) this row did not finish compiling within 300 s (D15 class: nested IF).",
       "source": ["PUB main() | x", "  if x", "   if x", "    if x", "     if x", "      if x", "       if x", "        if x", "         if x", "          if x", "           if x", "            if x", "             if x", "              if x", "               if x", "                if x", "                 repeat", "                  x := 1"]
     },
     {
       "id": "acc_spin_quit_next_levels",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"NEXT/QUIT level must be from 1 to 15\" - at limit (both ends: level 1 and level 15)",
-      "note": "asm v52 p2com.asm 12135-12142, unconfirmed until GOLD. Level 15 needs 16 enclosing blocks.",
+      "note": "asm v52 p2com.asm 12135-12142, settled by the GOLD. Level 15 needs 16 enclosing blocks.",
       "source": ["PUB main() | x", "  repeat", "   repeat", "    repeat", "     repeat", "      repeat", "       repeat", "        repeat", "         repeat", "          repeat", "           repeat", "            repeat", "             repeat", "              repeat", "               repeat", "                repeat", "                 repeat", "                  next 15", "                  quit 1", "                  quit 15"]
     },
     {
       "id": "acc_spin_write_skip_range",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Constant must be from 1 to 15\" (the _[n] skip count) - at limit (both ends: 1 and 15)",
-      "note": "asm v52 p2com.asm 12497-12501, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 12497-12501, settled by the GOLD.",
       "source": ["PUB main() | x", "  x, _[1] := two()", "  x, _[15] := 1, fifteen()", "", "PUB two() : a, b", "  return 1, 2", "", "PUB fifteen() : a, b, c, d, e, f, g, h, i, j, k, l, m, n, o", "  return 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15"]
     },
     {
       "id": "acc_spin_reg_range",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m131: \"Constant must be from 0 to 511\" (REG[]) - at limit (both ends: 0 and 511)",
-      "note": "unconfirmed until GOLD.",
+      "note": "settled by the GOLD.",
       "source": ["PUB main() | x", "  x := reg[0]", "  x := reg[511]"]
     },
     {
       "id": "acc_spin_locals_max",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 64KB of local variables exceeded\" - at limit ($10237 bytes of locals)",
-      "note": "asm v52 p2com.asm 6622-6637 and method_locals_limit = $10000 + 127*4 + 15*4 = $10238 (p2com.asm 75): locals must stay below it, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6622-6637 and method_locals_limit = $10000 + 127*4 + 15*4 = $10238 (p2com.asm 75): locals must stay below it, settled by the GOLD.",
       "source": ["PUB main() | byte a[$10237]", "  a[0] := 1"]
     },
     {
       "id": "acc_spin_params_127",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m430: \"Limit of 127 parameters exceeded\" (method header) - at limit (127 parameters)",
-      "note": "asm v52 p2com.asm 4245-4248, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 4245-4248, settled by the GOLD.",
       "source": { "template": ["PUB main(a0", { "repeat": 126, "from": 1, "text": ",a${i}" }, ")\n  return\n"] }
     },
     {
       "id": "acc_spin_methodptr_params_127",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m431: \"Limit of 127 parameters exceeded\" (method-pointer call) - at limit (127 arguments)",
-      "note": "asm v52 p2com.asm 15685, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 15685, settled by the GOLD.",
       "source": { "template": ["PUB main() | mp, x\n  x := mp(1", { "repeat": 126, "text": ",1" }, "):1\n"] }
     },
     {
       "id": "acc_spin_results_15",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m440: \"Limit of 15 results exceeded\" (method header) - at limit (15 results)",
-      "note": "asm v52 p2com.asm 4269-4272, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 4269-4272, settled by the GOLD.",
       "source": ["PUB main() : a, b, c, d, e, f, g, h, i, j, k, l, m, n, o", "  return"]
     },
     {
       "id": "acc_spin_methodptr_results_15",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m441: \"Limit of 15 results exceeded\" (method-pointer call) - at limit (15 results)",
-      "note": "asm v52 p2com.asm 14792, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 14792, settled by the GOLD.",
       "source": ["PUB main() | mp, x, y", "  x, _[14] := mp():15"]
     },
     {
       "id": "acc_spin_methods_1024",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 1024 PUB/PRI methods exceeded\" - at limit (1,024 methods)",
-      "note": "asm v52 methods_limit = 1024 (p2com.asm 71), unconfirmed until GOLD.",
+      "note": "asm v52 methods_limit = 1024 (p2com.asm 71), settled by the GOLD.",
       "source": { "template": [{ "repeat": 1024, "text": "PUB m${i:4}()\n  return\n" }] }
     },
     {
       "id": "acc_spin_elseif_256",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 256 ELSEIF/ELSEIFNOTs exceeded\" - at limit (256 ELSEIF arms)",
-      "note": "asm v52 p2com.asm 11143-11145 (if_limit 256), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 11143-11145 (if_limit 256), settled by the GOLD.",
       "source": { "template": ["PUB main() | x\n  if x == 0\n    x := 1\n", { "repeat": 256, "from": 1, "text": "  elseif x == ${i}\n    x := 1\n" }] }
     },
     {
       "id": "acc_spin_case_256",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 256 CASE elements exceeded\" - at limit (256 elements)",
-      "note": "asm v52 p2com.asm 11223-11227 (the count starts at 0 and errors above 256), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 11223-11227 (the count starts at 0 and errors above 256), settled by the GOLD.",
       "source": { "template": ["PUB main() | x\n  case x\n", { "repeat": 256, "text": "    ${i}: x := 1\n" }] }
     },
     {
       "id": "acc_spin_case_fast_256",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 256 CASE_FAST elements exceeded\" - at limit (256 elements)",
-      "note": "asm v52 p2com.asm 11389-11392, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 11389-11392, settled by the GOLD.",
       "source": { "template": ["PUB main() | x\n  case_fast x\n", { "repeat": 256, "text": "    ${i}: x := 1\n" }] }
     },
     {
       "id": "acc_spin_call_result_count_exact",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Expected number of parameters exceeded\" - at limit (a single-result method supplying a single parameter)",
-      "note": "unconfirmed until GOLD.",
+      "note": "settled by the GOLD.",
       "source": ["PUB main()", "  f(g())", "", "PUB f(a)", "  return", "", "PUB g() : a", "  return 1"]
     },
     {
       "id": "acc_spin_orgh_inline_max",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"ORGH inline block exceeds $FFFF longs (including the added RET instruction)\" - at limit ($FFFE longs plus the RET)",
-      "note": "asm v52 p2com.asm 12401-12407, unconfirmed until GOLD. About 256 KB of image.",
+      "note": "asm v52 p2com.asm 12401-12407, settled by the GOLD. About 256 KB of image.",
       "source": ["PUB main()", "  orgh", "  long 0[$FFFE]", "  end"]
     },
     {
       "id": "acc_spin_inline_org_limit",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m380 and m381: \"Inline cog address exceeds $120 limit\" - at limit (ORG start $11E, ORG limit operand $120)",
-      "note": "asm v52 p2com.asm 12317-12325 (the compare allows $120, but no instruction fits at $120 and the block ends in an added RET, so the last start with an instruction is $11E), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 12317-12325 (the compare allows $120, but no instruction fits at $120 and the block ends in an added RET, so the last start with an instruction is $11E), settled by the GOLD.",
       "source": ["PUB main()", "  org $11E", "  nop", "  end", "  org 0,$120", "  nop", "  end"]
     },
     {
       "id": "acc_spin_case_fast_block_max",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"CASE_FAST block exceeds 64KB\" - at limit (a first case block of 65,520 bytes; 4,096 statements fail)",
-      "note": "asm v52 p2com.asm 11506-11511 (offset from the jump-table start must not exceed $FFFF). Each statement compiles to 16 bytes, so 4,095 statements is the largest first block; unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 11506-11511 (offset from the jump-table start must not exceed $FFFF). Each statement compiles to 16 bytes, so 4,095 statements is the largest first block; settled by the GOLD.",
       "source": { "template": ["PUB main() | x, y, z\n  case_fast x\n    1:\n", { "repeat": 4095, "text": "      y := y + 1000000 + z - 1000001\n" }, "    2: x := 3\n"] }
     },
     {
       "id": "acc_dbg_record_255",
       "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
       "covers": "src/classes/debugData.ts m150: \"DEBUG data is too long\" (record exceeds 255 bytes) - at limit (a 255-byte record: a 251-character string)",
-      "note": "asm v52 p2com.asm 13349-13356 (the record length is a byte, so 255 is the most). Record length = characters + 4, measured: 251 characters accepted, 252 rejected. Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13349-13356 (the record length is a byte, so 255 is the most). Record length = characters + 4, measured: 251 characters accepted, 252 rejected. Settled by the GOLD.",
       "source": { "template": ["PUB main()\n  debug(\"", { "repeat": 251, "text": "a" }, "\")\n"] }
     },
     {
       "id": "acc_dbg_size_limit_10752",
       "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
       "covers": "PNut error_dditl at p2com.asm 6969-6970 - at limit: debug table plus data after collapse = 2*(42+1) + 41 x 255 + 211 = 10752 = debug_size_limit 2A00h (line 86)",
-      "note": "42 distinct DEBUG records (distinct prefixes, so no record is shared; 2*(n+1) collapsed table per 6946-6962). Record length = characters + 4 is taken from the acc_dbg_* row note at the 255-byte record, not re-derived. Unconfirmed until GOLD; the one-byte-over row is err_c_dditl_size_limit_plus1.",
+      "note": "42 distinct DEBUG records (distinct prefixes, so no record is shared; 2*(n+1) collapsed table per 6946-6962). Record length = characters + 4 is taken from the acc_dbg_* row note at the 255-byte record, not re-derived. Settled by the GOLD; the one-byte-over row is err_c_dditl_size_limit_plus1.",
       "source": { "template": ["PUB main()\n", { "repeat": 41, "from": 0, "text": "  debug(\"${i:3}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n" }, "  debug(\"041aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n"] }
     },
     {
       "id": "acc_dbg_total_size",
       "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
       "covers": "src/classes/debugData.ts m151: \"DEBUG data is too long\" (total exceeds 16384 bytes) - at the PNut limit (41 records of 255 bytes)",
-      "note": "REF-V52A checks the collapsed table plus data against debug_size_limit $2A00 (p2com.asm 6969, 2*(n+1) + data), 41 x 255 + 84 = 10,539 bytes; PNut-TS checks 16,384 including a 512-byte table and accepts up to 62 such records (63 rejected), so the PNut limit is the lower one and this row is below both. Unconfirmed until GOLD.",
+      "note": "REF-V52A checks the collapsed table plus data against debug_size_limit $2A00 (p2com.asm 6969, 2*(n+1) + data), 41 x 255 + 84 = 10,539 bytes; PNut-TS checks 16,384 including a 512-byte table and accepts up to 62 such records (63 rejected), so the PNut limit is the lower one and this row is below both. Settled by the GOLD.",
       "source": { "template": ["PUB main()\n", { "repeat": 41, "text": "  debug(\"${i:3}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")\n" }] }
     },
     {
       "id": "acc_dbg_records_255",
       "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
       "covers": "src/classes/debugData.ts m153: \"DEBUG data is too long\" (too many records: max 255) - at limit (255 distinct records)",
-      "note": "asm v52 p2com.asm 13372-13383 (record indexes 1..255), unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13372-13383 (record indexes 1..255), settled by the GOLD.",
       "source": { "template": ["PUB main()\n", { "repeat": 255, "text": "  debug(\"r${i:3}\")\n" }] }
     },
     {
       "id": "acc_dbg_expressions_31",
       "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m152: \"DEBUG data is too long: too many expressions (> 31)\" - at limit (31 expressions)",
-      "note": "unconfirmed until GOLD.",
+      "note": "settled by the GOLD.",
       "source": ["PUB main() | x", "  debug(udec(x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x))"]
     },
     {
       "id": "acc_dbg_register_param_max",
       "suite": "DBG-tests", "kind": "accept", "flag": "debug", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Register parameter cannot exceed $3FF\" - at limit ($3FF)",
-      "note": "asm v52 p2com.asm 13133-13134, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13133-13134, settled by the GOLD.",
       "source": ["DAT", "  org", "  debug(udec_(1023))"]
     },
     {
       "id": "acc_struct_count_min",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Instance count cannot be less than 1\" - at limit (1)",
-      "note": "asm v52 p2com.asm 6851-6852, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6851-6852, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a[1])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_count_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Instance count cannot exceed $10000\" - at limit ($10000 bytes)",
-      "note": "asm v52 p2com.asm 6856-6857, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6856-6857, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte a[$10000])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_long_count_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectStructures.ts m530: \"Structure exceeds hub range of $FFFFF\" (one member) - at limit ($10000 longs = $40000 bytes, well inside $FFFFF)",
-      "note": "Survey DIV-1: asm v52 p2com.asm 6860-6868 accepts a 4-byte member with count $10000 (product $40000); PNut-TS rejected it with m530. Unconfirmed until GOLD.",
+      "note": "Survey DIV-1: asm v52 p2com.asm 6860-6868 accepts a 4-byte member with count $10000 (product $40000); PNut-TS rejected it with m530. Settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a[$10000])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_indexed_member_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectStructures.ts m400: \"Indexed structures cannot exceed $FFFF bytes in size\" (STRUCT member count) - at limit (a $FFFF-byte member used with count 2)",
-      "note": "asm v52 p2com.asm 6854-6855 tests the member's own size (not the running total). Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6854-6855 tests the member's own size (not the running total). Settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT a(byte x[$FFFF])", "  STRUCT c(a p, a q, a r[2])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_total_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectStructures.ts m531: \"Structure exceeds hub range of $FFFFF\" (cumulative members) - at limit (a structure of exactly $FFFFF bytes)",
-      "note": "asm v52 p2com.asm 6866-6868: the running offset must stay below $100000. Fifteen $10000-byte members plus one $FFFF-byte member. Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6866-6868: the running offset must stay below $100000. Fifteen $10000-byte members plus one $FFFF-byte member. Settled by the GOLD.",
       "source": { "template": ["{Spin2_v52}\nCON\n  STRUCT big(", { "repeat": 15, "text": "byte m${i:2}[$10000], " }, "byte z[$FFFF])\nPUB main()\n  return\n"] }
     },
     {
       "id": "acc_struct_member_product_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectStructures.ts m530: \"Structure exceeds hub range of $FFFFF\" (one member) - at limit (a 16-byte member with count $FFFF, product $FFFF0)",
-      "note": "asm v52 p2com.asm 6860-6865, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6860-6865, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT a(long x[4])", "  STRUCT s(a y[$FFFF])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_stack_15",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Structures transferred on the stack must not exceed 15 longs\" - at limit (15 longs)",
-      "note": "asm v52 p2com.asm 14950, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 14950, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT big(long a[15])", "VAR", "  big u", "PUB main()", "  f(u)", "PUB f(big x)", "  return"]
     },
     {
       "id": "acc_struct_runtime_index_3",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 3 runtime structure index expressions exceeded\" - at limit (3 runtime indexes)",
-      "note": "asm v52 p2com.asm 17107-17109, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17107-17109, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s1(long x[2])", "  STRUCT s2(s1 a[2])", "  STRUCT s3(s2 b[2])", "VAR", "  s3 v[2]", "PUB main() | i, x", "  x := v[i].b[i].a[i].x[1]"]
     },
     {
       "id": "acc_struct_var_index_range",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m671: \"Structure index must be from 0 to $FFFF\" (variable index) - at limit (both ends: 0 and $FFFF)",
-      "note": "asm v52 p2com.asm 17112-17114, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17112-17114, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(long a)", "VAR", "  s v", "PUB main() | x", "  x := v[0].a", "  x := v[$FFFF].a"]
     },
     {
       "id": "acc_struct_var_indexed_size_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m401: \"Indexed structures cannot exceed $FFFF bytes in size\" (variable index) - at limit (a $FFFF-byte structure indexed)",
-      "note": "asm v52 p2com.asm 17096-17098, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17096-17098, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT w(byte b[$FFFF])", "VAR", "  w v", "PUB main() | x", "  x := v[1].b[0]"]
     },
     {
       "id": "acc_struct_var_index_product_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m532 and m533: \"Structure exceeds hub range of $FFFFF\" (variable index times size, plus base) - at limit (index $FFFF of a 16-byte structure, offset $FFFF0 plus the variable base)",
-      "note": "asm v52 p2com.asm 17115-17120, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17115-17120, settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT s(byte b[$10])", "VAR", "  s v", "PUB main() | x", "  x := v[$FFFF].b[0]"]
     },
     {
       "id": "acc_struct_offsetof_index_range",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m670: \"Structure index must be from 0 to $FFFF\" (OFFSETOF index) - at limit (both ends: 0 and $FFFF)",
-      "note": "asm v52 p2com.asm 17112-17114, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17112-17114, settled by the GOLD.",
       "source": ["{Spin2_v53}", "CON", "  STRUCT pt(long a)", "PUB main() | x", "  x := offsetof(pt[0])", "  x := offsetof(pt[$FFFF])"]
     },
     {
       "id": "acc_struct_offsetof_indexed_size_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m402: \"Indexed structures cannot exceed $FFFF bytes in size\" (OFFSETOF index) - at limit (a $FFFC-byte structure indexed)",
-      "note": "asm v52 p2com.asm 17096-17098, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17096-17098, settled by the GOLD.",
       "source": ["{Spin2_v53}", "CON", "  STRUCT a(long x[$3FFF])", "  STRUCT b(a p)", "PUB main() | x", "  x := offsetof(b[1])"]
     },
     {
       "id": "acc_struct_offsetof_index_product_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m534: \"Structure exceeds hub range of $FFFFF\" (OFFSETOF index times size) - at limit (index 16 of a $FFFF-byte structure, product $FFFF0)",
-      "note": "asm v52 p2com.asm 17115-17117, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17115-17117, settled by the GOLD.",
       "source": ["{Spin2_v53}", "CON", "  STRUCT s(byte b[$FFFF])", "PUB main() | x", "  x := offsetof(s[16])"]
     },
     {
       "id": "acc_struct_offsetof_running_offset_max",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m535: \"Structure exceeds hub range of $FFFFF\" (OFFSETOF running offset) - at limit (a running offset of $F04B1)",
-      "note": "asm v52 p2com.asm 17118-17120, unconfirmed until GOLD. Index 16 would give $10 0 4A0 and is the reject row.",
+      "note": "asm v52 p2com.asm 17118-17120, settled by the GOLD. Index 16 would give $10 0 4A0 and is the reject row.",
       "source": ["{Spin2_v53}", "CON", "  STRUCT inner(byte b[$FFFF])", "  STRUCT outer(long pad[300], inner i)", "PUB main() | x", "  x := offsetof(outer.i[15])"]
     },
     {
       "id": "acc_struct_bitfield_bounds",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m680 and m681: \"Bit number exceeds BYTE/WORD/LONG boundary\" - at limit (both ends: bit 0 and the top bit of a long, word and byte)",
-      "note": "PNut v54 feature; not in REF-V52A. Unconfirmed until GOLD.",
+      "note": "PNut v54 feature; not in REF-V52A. Settled by the GOLD.",
       "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[31], long z.g[31..0], word w.h[15..0], byte b.k[7..0], long u.v[0])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_bitfield_equal",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Lower bit number cannot exceed upper bit number\" - at limit (equal bit numbers)",
-      "note": "PNut v54 feature; not in REF-V52A. Unconfirmed until GOLD.",
+      "note": "PNut v54 feature; not in REF-V52A. Settled by the GOLD.",
       "source": ["{Spin2_v54}", "CON", "  STRUCT s(long y.f[5..5])", "PUB main()", "  return"]
     },
     {
       "id": "acc_struct_defs_max",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m622 and the $20000-byte definition buffer (src/classes/objectStructures.ts \"Data structure-definitions limit exceeded\"): \"Limit of 4096 data structure definitions exceeded\" - at limit (4,096 definitions, each a 32-byte record, filling the buffer exactly)",
-      "note": "The one maximum-size row for both limits. asm v52 p2com.asm 6805-6819 and struct_def_limit $20000: a record is 6 + 4 + 1 + 1 + 19 (member name) + 1 = 32 bytes, so 4,096 records fill $20000 bytes exactly. One object's own definitions overflow its 64 KB PUB/CON list at 1,725 of these (38 list bytes each), so 4,095 are imported from three children and the last is the parent's own. Unconfirmed until GOLD.",
+      "note": "The one maximum-size row for both limits. asm v52 p2com.asm 6805-6819 and struct_def_limit $20000: a record is 6 + 4 + 1 + 1 + 19 (member name) + 1 = 32 bytes, so 4,096 records fill $20000 bytes exactly. One object's own definitions overflow its 64 KB PUB/CON list at 1,725 of these (38 list bytes each), so 4,095 are imported from three children and the last is the parent's own. Settled by the GOLD.",
       "source": { "template": ["{Spin2_v52}\nOBJ\n  c1 : \"gen_acc_struct_defs_max__c1\"\n  c2 : \"gen_acc_struct_defs_max__c2\"\n  c3 : \"gen_acc_struct_defs_max__c3\"\nCON\n  STRUCT s4095(long member_name_padding)\nPUB main()\n  return\n"] },
       "aux": [
         { "name": "c${i}.spin2", "sibling": true, "count": 3, "from": 1, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1365, "text": "  STRUCT s${i:4}(long member_name_padding)\n" }, "PUB go()\n  return\n"] } }
@@ -3635,21 +3635,21 @@
       "id": "acc_struct_indexed_member_count_one",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectStructures.ts m400: \"Indexed structures cannot exceed $FFFF bytes in size\" (STRUCT member count) - a $10000-byte member with count 1, which is not tested",
-      "note": "asm v52 p2com.asm 6851-6855: a count of exactly 1 skips the size test. err_b_iscexb_m400 is the same member with count 2. Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 6851-6855: a count of exactly 1 skips the size test. err_b_iscexb_m400 is the same member with count 2. Settled by the GOLD.",
       "source": ["{Spin2_v52}", "CON", "  STRUCT a(long x[$4000])", "  STRUCT c(a p, a r[1])", "PUB main()", "  return"]
     },
     {
       "id": "acc_pubcon_list_full",
       "suite": "LANG-FEAT-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectSymbols.ts: \"PUB/CON list overflow\" - at limit (the list filled to exactly 65,536 bytes)",
-      "note": "asm v52 p2com.asm 17464-17466: only the byte past the limit is the error. 2,047 constants of 32 bytes, one of 28 bytes (a 23-character name) and the 4-byte PUB entry make 65,536. Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17464-17466: only the byte past the limit is the error. 2,047 constants of 32 bytes, one of 28 bytes (a 23-character name) and the 4-byte PUB entry make 65,536. Settled by the GOLD.",
       "source": { "template": ["CON\n", { "repeat": 2047, "text": "  c${i:4}_abcdefghijklmnopqrstu = ${i}\n" }, "  z_abcdefghijklmnopqrstu = 1\nPUB m()\n  return\n"] }
     },
     {
       "id": "acc_obj_count_range",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Object count must be from 1 to 255\" - at limit (both ends: 1 and 255)",
-      "note": "asm v52 p2com.asm 4083-4087, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 4083-4087, settled by the GOLD.",
       "source": ["OBJ", "  a[1] : \"gen_acc_obj_count_range__x\"", "  b[255] : \"gen_acc_obj_count_range__x\"", "PUB main()", "  return"],
       "aux": [{ "name": "x.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
     },
@@ -3657,7 +3657,7 @@
       "id": "acc_obj_instances_1024",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts: \"Limit of 1024 OBJ instances exceeded\" - at limit (1,024 instances)",
-      "note": "asm v52 objs_limit = 1024 (p2com.asm 70, 4120-4122), unconfirmed until GOLD.",
+      "note": "asm v52 objs_limit = 1024 (p2com.asm 70, 4120-4122), settled by the GOLD.",
       "source": ["OBJ", "  a[255] : \"gen_acc_obj_instances_1024__x\"", "  b[255] : \"gen_acc_obj_instances_1024__x\"", "  c[255] : \"gen_acc_obj_instances_1024__x\"", "  d[255] : \"gen_acc_obj_instances_1024__x\"", "  e[4] : \"gen_acc_obj_instances_1024__x\"", "PUB main()", "  return"],
       "aux": [{ "name": "x.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
     },
@@ -3665,7 +3665,7 @@
       "id": "acc_obj_params_16",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinFiles.ts: \"Too many object parameters\" - at limit (16 parameters)",
-      "note": "asm v52 obj_params_limit = 16 (p2com.asm 41, 4140-4142), unconfirmed until GOLD.",
+      "note": "asm v52 obj_params_limit = 16 (p2com.asm 41, 4140-4142), settled by the GOLD.",
       "source": ["OBJ", "  a : \"gen_acc_obj_params_16__x\" | p1=1,p2=2,p3=3,p4=4,p5=5,p6=6,p7=7,p8=8,p9=9,p10=10,p11=11,p12=12,p13=13,p14=14,p15=15,p16=16", "PUB main()", "  return"],
       "aux": [{ "name": "x.spin2", "sibling": true, "source": { "template": ["CON\n", { "repeat": 16, "from": 1, "text": "  p${i} = 0\n" }, "PUB go()\n  return\n"] } }]
     },
@@ -3673,7 +3673,7 @@
       "id": "acc_obj_unique_255",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinFiles.ts: \"Limit of 255 unique objects exceeded\" - at limit (255 distinct child objects)",
-      "note": "asm v52 files_limit = 255 (p2com.asm 39, 4096-4098; PNut's message says 32), unconfirmed until GOLD.",
+      "note": "asm v52 files_limit = 255 (p2com.asm 39, 4096-4098; PNut's message says 32), settled by the GOLD.",
       "source": { "template": ["OBJ\n", { "repeat": 255, "text": "  o${i:3} : \"gen_acc_obj_unique_255__c${i:3}\"\n" }, "PUB main()\n  return\n"] },
       "aux": [{ "name": "c${i:3}.spin2", "sibling": true, "count": 255, "source": { "template": ["PUB go${i:3}()\n  return\n"] } }]
     },
@@ -3681,7 +3681,7 @@
       "id": "acc_obj_nesting_16",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/compiler.ts: \"Object nesting exceeds 16 levels - illegal circular reference may exist\" - at limit (16 files: the top file and a chain of 15 child objects)",
-      "note": "PNut counts the top file as level 1 (EditorUnit.pas 2494-2496, ObjStackLimit 16). The v55 GOLD for a 17-file chain was a rejection, so this row stops at 16 files. Unconfirmed until GOLD.",
+      "note": "PNut counts the top file as level 1 (EditorUnit.pas 2494-2496, ObjStackLimit 16). The v55 GOLD for a 17-file chain was a rejection, so this row stops at 16 files. Settled by the GOLD.",
       "source": ["OBJ", "  c : \"gen_acc_obj_nesting_16__c01\"", "PUB main()", "  return"],
       "aux": [
         { "name": "c${i:2}.spin2", "sibling": true, "count": 14, "from": 1, "source": { "template": ["OBJ\n  n : \"gen_acc_obj_nesting_16__c${i+1:2}\"\nPUB go${i:2}()\n  return\n"] } },
@@ -3693,7 +3693,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 2,
       "covers": "src/classes/compiler.ts: \"Object nesting exceeds 16 levels - illegal circular reference may exist\" - limit + 1 (17 files, no circular reference); EditorUnit.pas 2495-2496",
-      "note": "PNut's CLI writes an empty message for this Delphi-side error, so the GOLD asserts rejection only. Unconfirmed until GOLD.",
+      "note": "PNut's CLI writes an empty message for this Delphi-side error, so the GOLD asserts rejection only. Settled by the GOLD.",
       "source": ["OBJ", "  c : \"gen_err_b_obj_nesting_17__c01\"", "PUB main()", "  return"],
       "aux": [
         { "name": "c${i:2}.spin2", "sibling": true, "count": 15, "from": 1, "source": { "template": ["OBJ\n  n : \"gen_err_b_obj_nesting_17__c${i+1:2}\"\nPUB go${i:2}()\n  return\n"] } },
@@ -3704,7 +3704,7 @@
       "id": "acc_obj_name_cut_to_32",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinFiles.ts addObjFile: an OBJ name longer than 32 characters is cut to 32 before the search (EditorUnit.pas 2473 ObjFilenames: string[32], then 2539-2544)",
-      "note": "The name written has 37 characters; only the file with its first 32 exists. Read from the Pascal, unconfirmed until GOLD.",
+      "note": "The name written has 37 characters; only the file with its first 32 exists. Read from the Pascal, settled by the GOLD.",
       "source": ["OBJ", "  c : \"gen_acc_obj_name_cut_to_32__xyzwEXTRA\"", "PUB main()", "  return"],
       "aux": [{ "name": "xyzw.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
     },
@@ -3713,7 +3713,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 2,
       "covers": "src/classes/spinFiles.ts addObjFile: \"Cannot find\" names the name cut to 32 characters, reported on the OBJ line (EditorUnit.pas 2473, 2551)",
-      "note": "Only the file with the full name exists, so PNut's cut name finds nothing. The earlier 37-character acc_obj_structs_imp row was rejected this way. Unconfirmed until GOLD.",
+      "note": "Only the file with the full name exists, so PNut's cut name finds nothing. The earlier 37-character acc_obj_structs_imp row was rejected this way. Settled by the GOLD.",
       "source": ["OBJ", "  c : \"gen_err_b_obj_name_cut_missing__child\"", "PUB main()", "  return"],
       "aux": [{ "name": "child.spin2", "sibling": true, "source": ["PUB go()", "  return"] }]
     },
@@ -3721,7 +3721,7 @@
       "id": "acc_obj_structs_imp_1000",
       "suite": "OBJ-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts m621: \"Limit of 4096 data structure definitions exceeded\" (structures imported from child objects) - a large legal import (1,000 definitions)",
-      "note": "The 4,096 limit itself is not reachable through an import: each imported definition also sits in the child's 64 KB PUB/CON list (pubcon_list_limit $10000, p2com.asm 62), so about 2,000 is the most; 1,000 is well inside it. The 4,096 own-definition limit is acc_struct_defs_max. The child's name is 32 characters: the id is short so that it fits PNut's 32-character OBJ filename (EditorUnit.pas ObjFilenames is string[32]); the earlier 37-character name made PNut fail at the OBJ line. Unconfirmed until GOLD.",
+      "note": "The 4,096 limit itself is not reachable through an import: each imported definition also sits in the child's 64 KB PUB/CON list (pubcon_list_limit $10000, p2com.asm 62), so about 2,000 is the most; 1,000 is well inside it. The 4,096 own-definition limit is acc_struct_defs_max. The child's name is 32 characters: the id is short so that it fits PNut's 32-character OBJ filename (EditorUnit.pas ObjFilenames is string[32]); the earlier 37-character name made PNut fail at the OBJ line. Settled by the GOLD.",
       "source": ["{Spin2_v52}", "OBJ", "  c1 : \"gen_acc_obj_structs_imp_1000__c1\"", "PUB main()", "  return"],
       "aux": [{ "name": "c1.spin2", "sibling": true, "source": { "template": ["{Spin2_v52}\nCON\n", { "repeat": 1000, "text": "  STRUCT s${i:4}(long a)\n" }, "PUB go()\n  return\n"] } }]
     },
@@ -3729,105 +3729,105 @@
       "id": "cor_spin_quit_next_levels",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts ci_next_quit: QUIT 1 out of a plain REPEAT, NEXT 1 out of a counted REPEAT and out of a REPEAT FROM loop (level skipping and the pop count of a count loop)",
-      "note": "Unconfirmed until GOLD; the level operand is the v52a ci_next_quit form.",
+      "note": "Settled by the GOLD; the level operand is the v52a ci_next_quit form.",
       "source": ["{Spin2_v55}", "PUB main() | i, j", "  repeat", "    repeat", "      quit 1", "  repeat 3", "    repeat 2", "      next 1", "  repeat i from 0 to 3", "    repeat j from 0 to 3", "      next 1"]
     },
     {
       "id": "cor_spin_ptr_postdec_index",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts checkVariable: a pointer variable indexed by post-decrement, a constant and an expression (pl[--], pl[3], pl[i + 1]); spin2Parser.ts P2List: the pointer VAR symbol type in the listing",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "VAR", "  ^long pl", "PUB main() | i", "  i := pl[--]", "  i := pl[3]", "  i := pl[i + 1]"]
     },
     {
       "id": "cor_spin_case_fast_at_eof",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts blockCaseFast: a CASE_FAST block that is the last construct before the end of the file",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "PUB main() | i", "  fastc(i)", "PRI fastc(x)", "  case_fast x", "    1: x := 2", "    other: x := 3"]
     },
     {
       "id": "cor_spin_register_address_constant",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts getConstant: #PA, a register address used as a constant in a method",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "PUB main() | i", "  i := #PA", "DAT", "  org", "lbl nop"]
     },
     {
       "id": "cor_spin_method_pointer_in_struct",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts getMethodPointerVariable, scanToRightBracket, compileParameter: a method pointer held in a struct LONG member (called as a statement, in an expression, with multiple results and as a parameter) and a nested bracket in a local array size",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sTri(sPt sides[3])", "VAR", "  sPt vp", "PUB main() | i, j, a[OFFSETOF(sTri.sides[1]) / 4]", "  vp.x := @two", "  i := vp.x(3):1", "  vp.x(3)", "  i, j := vp.x(1):2", "  take(vp.x(1):2)", "  take(two(1))", "PRI two(a) : r, s", "  return a, a", "PRI take(a, b)"]
     },
     {
       "id": "cor_spin_struct_nameless_index",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT indexed by its one index (vio[1].ready, vio[i].mode, one[3].ready, one[i])",
-      "note": "The v54 nameless single-BWL STRUCT has no index of its own: the one index is the member's. err_b_eeol_struct_nameless_two_index is the rejected form. Unconfirmed until GOLD.",
+      "note": "The v54 nameless single-BWL STRUCT has no index of its own: the one index is the member's. err_b_eeol_struct_nameless_two_index is the rejected form. Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  sIo vio[4]", "  sIo one", "PUB main() | i", "  i := vio[1].ready", "  i := vio[i].mode", "  i := one[3].ready", "  i := one[i]"]
     },
     {
       "id": "cor_spin_struct_nameless_nested",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a nameless single-BWL STRUCT as a member of another STRUCT (vw.io, vw.io.mode, vw.io[i].ready, vw.io.[3])",
-      "note": "fwdspin2 p2com.asm 17062-17077 tests for the nameless member on every pass of @@structloop, nested records included. Unconfirmed until GOLD.",
+      "note": "fwdspin2 p2com.asm 17062-17077 tests for the nameless member on every pass of @@structloop, nested records included. Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sWrap(long pad, sIo io)", "VAR", "  sWrap vw", "PUB main() | i", "  i := vw.io", "  i := vw.io.mode", "  i := vw.io[i].ready", "  i := vw.io.[3]"]
     },
     {
       "id": "cor_spin_struct_name_address",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a STRUCT name given an address, struct_name[address] (member read, write and assign, constant index, @, whole-struct read and write, nameless single-BWL, compare, copy, swap, multi-assign, parameter) and SIZEOF of that form",
-      "note": "asm v52 p2com.asm 16870-16879 and 16903-16907 load the record for this operand as for any other. A runtime index is rejected: err_b_eeol_struct_name_runtime_index. Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 16870-16879 and 16903-16907 load the record for this operand as for any other. A runtime index is rejected: err_b_eeol_struct_name_runtime_index. Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sBox(sPt a, sPt b)", "  STRUCT sBig(long a[20])", "VAR", "  long buf[8]", "  sPt vp, vq", "  sBig vb", "PUB main() | i, j, addr", "  i := sizeof(sPt[0])", "  i := sizeof(sBox[addr].b)", "  i := sPt[addr].y", "  sPt[addr].y := 3", "  sBox[@buf].b.x := i", "  i := sPt[addr][1].x", "  i := @sPt[addr]", "  i := @sPt[addr].y", "  sPt[addr].y++", "  sIo[addr].ready := 1", "  i := sIo[addr].mode", "  i := sIo[addr][2]", "  vp := sPt[addr]", "  sPt[addr] := vp", "  i := sPt[addr] == vp", "  i := vp <> sPt[addr]", "  vb := sBig[addr]", "  sPt[addr] :=: vq", "  i, j := sPt[addr]", "  sPt[addr] := 1, 2", "  i := take(sPt[addr])", "  i := sPt[addr].x + sPt[addr + 4].y", "PRI take(a, b) : r"]
     },
     {
       "id": "cor_spin_offsetof_past_bitfield",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts get_offset_of_struct_member: OFFSETOF of a member that follows one carrying a bitfield chain",
-      "note": "fwdspin2 p2com.asm 17558-17565 skips the chain when a name does not match. Unconfirmed until GOLD.",
+      "note": "fwdspin2 p2com.asm 17558-17565 skips the chain when a name does not match. Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sBF(LONG flags.ready[0].mode[3..2], WORD w)", "PUB main() | i", "  i := OFFSETOF(sBF.w)"]
     },
     {
       "id": "cor_spin_struct_bitfield_runtime",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: a runtime .[expr] bitfield after a member that already carries a bitfield (vb.flags.[3], vb.flags.[i..0]) and a STRUCT instance held in DAT used from Spin",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "  STRUCT sBF(LONG flags.ready[0].mode[3..2], WORD w)", "VAR", "  sIo vio[4]", "  sBF vb", "DAT", "        orgh", "dpt     sPt", "PUB main() | i", "  i := vio[i].ready", "  i := vio[2].mode", "  i := vb.flags.[3]", "  i := vb.flags.[i..0]", "  dpt.x := 1", "  i := dpt.y"]
     },
     {
       "id": "cor_spin_pointer_step_sizes",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compileVariable, checkVariable: pre and post increment and decrement of BYTE, WORD and struct pointers, a size override with an index on a LONG pointer, and a struct pointer whose STRUCT has bitfields",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sIo(LONG.ready[0].mode[3..2])", "VAR", "  byte buf[64]", "  sIo vio[4]", "PUB main() | i", "  ptrs(@i, @buf, @buf, @vio)", "PRI ptrs(^long pLong, ^byte pByte, ^word pWord, ^sIo pIo) : r", "  r := pByte[++] + [--]pWord + pByte[--] + [++]pByte + pWord[++]", "  r := pLong.byte[2]", "  pLong.word[1] := 3", "  r := pLong.long[1]", "  r := pIo.ready", "  r := pIo[++].mode", "  r := [++]pIo.mode", "  r := [--]pIo.ready", "  r := pIo[--].ready"]
     },
     {
       "id": "cor_con_enum_forward_start",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_con_blocks: an enumeration whose start value is defined after it, so the CON pass runs again",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  #x_start, e1, e2", "  x_start = 3", "PUB main() | i", "  i := e2"]
     },
     {
       "id": "cor_con_float_corners",
       "suite": "CON-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/utils/pnutFloat.ts fp_pack, fp_add, fp_float, fp_rt, get_float: a denormal result, an addition with an exponent gap over 24, float(0), float(-5), round and trunc at .3 and .5, round(-2.5), a 13-digit literal and a denormal quotient",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  a = 1.0e10 +. 1.0", "  b = 1.0e-30 *. 1.0e-10", "  c = float(0)", "  d = float(-5)", "  e = round(0.3)", "  f = round(0.5)", "  g = trunc(0.5)", "  h = round(-2.5)", "  i = 1234567890123.0", "  j = 1.0e-30 /. 1.0e10", "PUB main() | x", "  x := a"]
     },
     {
       "id": "cor_dat_offsetof_member",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts getConstant: OFFSETOF(struct.member) as a DAT constant",
-      "note": "Unconfirmed until GOLD; OFFSETOF is v53.",
+      "note": "Settled by the GOLD; OFFSETOF is v53.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "DAT", "        long OFFSETOF(sPt.y)"]
     },
     {
       "id": "cor_dat_file_after_org",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_dat_blocks: FILE after ORG, so the cog origin advances by the file length",
-      "note": "Unconfirmed until GOLD; the file loop is p2com.asm @@file, which enters bytes in either mode.",
+      "note": "Settled by the GOLD; the file loop is p2com.asm @@file, which enters bytes in either mode.",
       "source": ["{Spin2_v55}", "DAT", "  org", "  file \"gen_cor_dat_file_after_org__data.bin\""],
       "aux": [{ "name": "data.bin", "sibling": true, "source": "abcd" }]
     },
@@ -3835,49 +3835,49 @@
       "id": "cor_dat_rcslow_autoclk",
       "suite": "DAT-PASM-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spin2Parser.ts P2InsertClockSetter, checkClockSetterInsert: a PASM-only program with _RCSLOW and _AUTOCLK, so the clock setter is inserted ahead of the code",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _RCSLOW = 1", "  _AUTOCLK = 1", "DAT", "  org", "  nop", "  jmp #$"]
     },
     {
       "id": "cor_dbg_struct_name_address",
       "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
       "covers": "src/classes/spinResolver.ts compile_struct_setup: struct_name[address] inside a DEBUG statement, where the element history must survive the deferred pop address",
-      "note": "asm v52 p2com.asm 17011-17020. Unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 17011-17020. Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  STRUCT sPt(long x, long y)", "PUB main() | addr", "  debug(udec(sPt[addr].y))"]
     },
     {
       "id": "cor_dbg_disable",
       "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
       "covers": "src/classes/spinResolver.ts determine_debug_enables: DEBUG_DISABLE set under -d, so the DEBUG statements are dropped",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  DEBUG_DISABLE = 1", "PUB main()", "  debug(\"dropped\")"]
     },
     {
       "id": "cor_dbg_config_symbols",
       "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
       "covers": "src/classes/spin2Parser.ts P2InsertDebugger: the DEBUG_COGS, DEBUG_COGINIT, DEBUG_MAIN, DEBUG_DELAY and DEBUG_TIMESTAMP configuration symbols patched into the debugger image",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "  DEBUG_COGS = %0000_1111", "  DEBUG_COGINIT = 1", "  DEBUG_MAIN = 1", "  DEBUG_DELAY = 100", "  DEBUG_TIMESTAMP = 1", "PUB main()", "  debug(\"hello\")"]
     },
     {
       "id": "cor_dbg_delay_clamp",
       "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
       "covers": "src/classes/spin2Parser.ts P2InsertDebugger: DEBUG_DELAY large enough that the patched delay is clamped to $FFFFFFFF",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "  DEBUG_DELAY = 100_000_000", "PUB main()", "  debug(\"hello\")"]
     },
     {
       "id": "cor_dbg_nested_paren_text",
       "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
       "covers": "src/classes/spinResolver.ts debugTickString: parentheses nested inside the backtick text of a DEBUG statement",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main() | x, y", "  x := 5", "  y := 6", "  debug(`txt (nested paren) `uhex(x) \" \"  `uhex(y))"]
     },
     {
       "id": "cor_dbg_tick_string_ends",
       "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
       "covers": "src/classes/spinResolver.ts tickStringEnd: a tick string with unbalanced ')' in its text, and one closed by a ')' before a line comment or a brace comment",
-      "note": "asm v52 p2com.asm 13305-13316, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 13305-13316, settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main() | x", "  x := 5", "  debug(`a) b(c) d) `uhex(x))", "  debug(`e (f) g) ' comment", "  debug(`h) { comment }"]
     },
     {
@@ -3891,14 +3891,14 @@
       "id": "cor_flash_tiny_image",
       "suite": "FLASH-tests", "kind": "accept", "goldSource": "pnut", "flag": "flash",
       "covers": "src/classes/spin2Parser.ts P2MakeFlashFileImage: -F on a PASM image shorter than $400 bytes whose length is not a multiple of four, so the image is padded",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "DAT", "  org", "  nop", "  byte 1,2,3"]
     },
     {
       "id": "cor_var_struct_defs_40",
       "suite": "VAR-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/objectStructures.ts ensureCapacity: more than 1024 bytes of STRUCT definitions (40 definitions of four longs), so the definition buffer grows once",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": { "template": ["{Spin2_v55}\nCON\n", { "repeat": 40, "from": 1, "text": "  STRUCT st${i:2}(long a, long b, long c, long d)\n" }, "VAR\n  st01 v1\n  st40 v40\nPUB main() | i\n  i := v1.a + v40.d\n"] }
     },
     {
@@ -3930,7 +3930,7 @@
       "id": "cor_var_header_at_eof",
       "suite": "VAR-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts compile_var_blocks: a VAR block header that is the last line of the file, so the block ends at the end of file",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "PUB main()", "  return", "VAR"]
     },
     {
@@ -3959,28 +3959,28 @@
       "id": "cor_con_int_fold_after_float_const",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts resolveExp: an integer fold of 1 + -3 in a method after a float constant was defined in CON (Spin2 constant folding is always integer)",
-      "note": "Unconfirmed until GOLD.",
+      "note": "Settled by the GOLD.",
       "source": ["{Spin2_v55}", "CON", "  f = 1.5", "PUB main() | x", "  x := 1 + -3"]
     },
     {
       "id": "cor_spin_escape_unknown",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinResolver.ts handleEscapeChr: an unrecognized escape (\\q) passes the backslash on and keeps the following character, and \\x01 and \\xFF are accepted",
-      "note": "Unconfirmed until GOLD; the unrecognized-escape behaviour follows the v52a handle_escape_chr.",
+      "note": "Settled by the GOLD; the unrecognized-escape behaviour follows the v52a handle_escape_chr.",
       "source": ["{Spin2_v55}", "PUB main() | x", "  x := @\\\"a\\qb\\x01\\xFF\""]
     },
     {
       "id": "cor_spin_version_42",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinDocument.ts getVersionFromHeader: {Spin2_v42} is a selectable level",
-      "note": "asm v52 p2com.asm 3754-3757 accepts every level from 41 to the current one, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 3754-3757 accepts every level from 41 to the current one, settled by the GOLD.",
       "source": ["{Spin2_v42}", "PUB main() | x", "  x := 1"]
     },
     {
       "id": "cor_spin_version_three_digits",
       "suite": "SPIN-tests", "kind": "accept", "goldSource": "pnut",
       "covers": "src/classes/spinDocument.ts getVersionFromHeader: {Spin2_v100} has three digits, so it is an ordinary comment and the file compiles at the default level",
-      "note": "asm v52 p2com.asm 3730-3747 takes exactly two digits before the closing brace, unconfirmed until GOLD.",
+      "note": "asm v52 p2com.asm 3730-3747 takes exactly two digits before the closing brace, settled by the GOLD.",
       "source": ["{Spin2_v100}", "PUB main() | x", "  x := 1"]
     },
     {
@@ -3995,7 +3995,7 @@
       "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut",
       "expectLine": 5,
       "covers": "src/classes/spinResolver.ts alignVar m602: \"Too much variable space is declared\" when alignment rounds the VAR pointer up to exactly the limit",
-      "note": "The VAR pointer starts at 4, so byte a[$FFFF9] ends at $FFFFD and aligns to $100000. asm v52 p2com.asm 4675-4680 tests with jae, unconfirmed until GOLD.",
+      "note": "The VAR pointer starts at 4, so byte a[$FFFF9] ends at $FFFFD and aligns to $100000. asm v52 p2com.asm 4675-4680 tests with jae, settled by the GOLD.",
       "source": ["VAR", "  byte a[$FFFF9]", "", "PUB main()", "  return"]
     },
     {

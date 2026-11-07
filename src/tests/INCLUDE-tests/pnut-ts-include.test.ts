@@ -90,7 +90,7 @@ describe('PNut_ts compiles the top-level file of an #include correctly', () => {
       whatFailed = appendDiagnosticString(whatFailed, 'Binary Files', ', ');
     }
     if (whatFailed.length > 0) {
-      fail(`Output mismatch for ${basename}.spin2: ${whatFailed}`);
+      throw new Error(`Output mismatch for ${basename}.spin2: ${whatFailed}`);
     }
 
     // cleanup

@@ -29,7 +29,7 @@ Run it:
 - [ ] At a PNut-parity release, run `npm run coverage`, then `npm run coverage -- --check`.
 
 ```bash
-npm run coverage              # builds, then measures the gated suite (about 40 minutes)
+npm run coverage              # builds, then measures the gated suite (about 25 minutes)
 npm run coverage -- --check   # exit 0 when every unexecuted line is on the review list
 ```
 
