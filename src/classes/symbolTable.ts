@@ -92,17 +92,6 @@ export class SymbolTable {
     }
   }
 
-  // support for...of iteration
-  [Symbol.iterator]() {
-    const entries = this.symbols.entries();
-    return {
-      next() {
-        const result = entries.next();
-        return { value: result.value, done: result.done };
-      }
-    };
-  }
-
   public remove(symbolName: string): boolean {
     const nameKey: string = symbolName.toUpperCase();
     let removeStatus: boolean = false;
