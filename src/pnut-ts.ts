@@ -665,8 +665,9 @@ export class PNutInTypeScript {
         }
       }
     } else {
-      if (this.requiresFilename) {
-        if (!this.options.verbose) {
+      // --cache-clear has already done its work, so it needs no source file
+      if (this.requiresFilename && !this.options.cacheClear) {
+        if (this.options.verbose) {
           console.log('arguments: %o', this.program.args);
           console.log('combArguments: %o', combinedArgs);
           console.log('options: %o', this.program.opts());

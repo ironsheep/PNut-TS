@@ -206,10 +206,27 @@ describe('PNut_ts command-line options and environment', () => {
     expect(result.output).toContain('Missing filename argument');
   });
 
-  test('a run with no filename and no -v prints the argument dump and the missing-filename error', () => {
+  test('a run with no filename prints the missing-filename error and no argument dump', () => {
     const result = runCompiler([]);
+    expect(result.status).toBe(1);
+    expect(result.output).not.toContain('combArguments:');
+    expect(result.output).toContain('Missing filename argument');
+  });
+
+  test('a run with no filename and -v adds the argument dump', () => {
+    const result = runCompiler(['-v']);
     expect(result.status).toBe(1);
     expect(result.output).toContain('combArguments:');
     expect(result.output).toContain('Missing filename argument');
+  });
+
+  test('--cache-clear with no source file empties the cache and exits 0', () => {
+    const cacheDir: string = path.join(workDir, 'mycache');
+    fs.mkdirSync(cacheDir);
+    fs.writeFileSync(path.join(cacheDir, 'entry'), 'x');
+    const result = runCompiler(['--cache-clear', '--cache-dir', cacheDir]);
+    expect(result.status).toBe(0);
+    expect(result.output).not.toContain('Missing filename argument');
+    expect(fs.existsSync(path.join(cacheDir, 'entry'))).toBe(false);
   });
 });
