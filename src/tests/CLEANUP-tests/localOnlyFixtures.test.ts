@@ -108,7 +108,9 @@ describe('every fixture a gated suite can glob is in the repository', () => {
     const rows: { suite: string; aux?: string[] }[] = JSON.parse(manifest);
     const missing = rows.flatMap((row) => (row.aux ?? []).map((name) => `TEST/${row.suite}/${name}`)).filter((name) => !trackedSet.has(name));
     if (missing.length > 0) {
-      throw new Error(`${missing.length} aux file(s) are not in the repository, so their rows fail on a clean clone:\n  ${missing.join('\n  ')}\nCommit them; a *.bin needs a negation in .gitignore.`);
+      throw new Error(
+        `${missing.length} aux file(s) are not in the repository, so their rows fail on a clean clone:\n  ${missing.join('\n  ')}\nCommit them; a *.bin needs a negation in .gitignore.`
+      );
     }
   });
 });
