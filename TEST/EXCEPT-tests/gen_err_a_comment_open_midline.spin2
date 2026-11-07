@@ -1,0 +1,4 @@
+{Spin2_v55}
+'' gen_err_a_comment_open_midline: generated from scripts/fixtures/fixtures.json row "err_a_comment_open_midline"; edit the row, not this file. Covers: src/classes/spinElementizer.ts skipToLineWithNonDocCommentClose: a brace comment opened mid-line and never closed
+PUB main()
+  return { oops

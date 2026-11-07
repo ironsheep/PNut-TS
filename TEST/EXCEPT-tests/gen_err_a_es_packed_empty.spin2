@@ -1,0 +1,4 @@
+{Spin2_v55}
+'' gen_err_a_es_packed_empty: generated from scripts/fixtures/fixtures.json row "err_a_es_packed_empty"; edit the row, not this file. Covers: src/classes/spinElementizer.ts packedAsciiConversion m022: "Empty string"
+CON
+  x = %""

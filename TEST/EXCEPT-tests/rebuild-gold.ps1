@@ -12,8 +12,8 @@
       - Produces:     lst, obj, bin
       - Patterns:     debug_* -> -cd; isp_* -> -cd; coverage_debug_* -> -cd
       - Per-file:     (none)
-      - Skip:         397 file(s), listed in -Skip below
-      - Expect fail:  349 file(s), listed in -ExpectFail below; Error.txt -> <base>.errout.GOLD
+      - Skip:         399 file(s), listed in -Skip below
+      - Expect fail:  358 file(s), listed in -ExpectFail below; Error.txt -> <base>.errout.GOLD
 
     Sourced from: src/tests/EXCEPT-tests/pnut-ts-except.test.ts. The test compiles
     {debug_,isp_,coverage_debug_}*.spin2 with -d and every other file without;
@@ -50,6 +50,7 @@ try {
         } `
         -Skip @(
             # child of a generated fixture, compiled through its parent
+            "gen_err_b_child_preproc_fatal__c.spin2"
             "gen_err_b_dsdle__c1.spin2"
             "gen_err_b_dsdle__c2.spin2"
             "gen_err_b_dsdle__c3.spin2"
@@ -337,6 +338,7 @@ try {
             "gen_err_b_tmop__x.spin2"
             "gen_err_b_tmvsid_m602__c.spin2"
             "gen_err_b_tmvsid_m603__c.spin2"
+            "gen_err_b_tmvsid_m603_total__c.spin2"
             "gen_err_c_eamn_m180__c.spin2"
             "gen_err_c_eamn_m181__c.spin2"
             "gen_err_c_eamn_m182__c.spin2"
@@ -523,10 +525,14 @@ try {
             "gen_err_a_bmbpbb.spin2"
             # fixtures.json row err_a_ce32b is reject
             "gen_err_a_ce32b.spin2"
+            # fixtures.json row err_a_comment_open_midline is reject
+            "gen_err_a_comment_open_midline.spin2"
             # fixtures.json row err_a_eatq is reject
             "gen_err_a_eatq.spin2"
             # fixtures.json row err_a_erbb is reject
             "gen_err_a_erbb.spin2"
+            # fixtures.json row err_a_es_packed_empty is reject
+            "gen_err_a_es_packed_empty.spin2"
             # fixtures.json row err_a_fpcmbw is reject
             "gen_err_a_fpcmbw.spin2"
             # fixtures.json row err_a_idbn is reject
@@ -557,6 +563,12 @@ try {
             "gen_err_b_cfiinu.spin2"
             # fixtures.json row err_b_cfvmbw is reject
             "gen_err_b_cfvmbw.spin2"
+            # fixtures.json row err_b_child_preproc_fatal is reject
+            "gen_err_b_child_preproc_fatal.spin2"
+            # fixtures.json row err_b_dat_line_starts_flex is reject
+            "gen_err_b_dat_line_starts_flex.spin2"
+            # fixtures.json row err_b_dat_line_starts_operator is reject
+            "gen_err_b_dat_line_starts_operator.spin2"
             # fixtures.json row err_b_datnotfound_preload is reject
             "gen_err_b_datnotfound_preload.spin2"
             # fixtures.json row err_b_dsdle is reject
@@ -747,6 +759,8 @@ try {
             "gen_err_b_tmvsid_m602_aligned_to_limit.spin2"
             # fixtures.json row err_b_tmvsid_m603 is reject
             "gen_err_b_tmvsid_m603.spin2"
+            # fixtures.json row err_b_tmvsid_m603_total is reject
+            "gen_err_b_tmvsid_m603_total.spin2"
             # fixtures.json row err_c_ainafbf is reject
             "gen_err_c_ainafbf.spin2"
             # fixtures.json row err_c_arina is reject
@@ -881,8 +895,14 @@ try {
             "gen_err_c_fpo_exp_pack.spin2"
             # fixtures.json row err_c_fpo_exp_shift is reject
             "gen_err_c_fpo_exp_shift.spin2"
+            # fixtures.json row err_c_fpo_fge is reject
+            "gen_err_c_fpo_fge.spin2"
+            # fixtures.json row err_c_fpo_fle is reject
+            "gen_err_c_fpo_fle.spin2"
             # fixtures.json row err_c_fpo_m342 is reject
             "gen_err_c_fpo_m342.spin2"
+            # fixtures.json row err_c_fpo_m343 is reject
+            "gen_err_c_fpo_m343.spin2"
             # fixtures.json row err_c_fpo_m344 is reject
             "gen_err_c_fpo_m344.spin2"
             # fixtures.json row err_c_fpo_pow is reject

@@ -243,7 +243,6 @@ export class SpinResolver {
   private readonly subs_limit: number = 1024; // max PUB/PRI count
   private readonly objs_limit: number = 1024; // max object count
   private readonly method_locals_limit: number = 0x10000 + this.method_params_limit * 4 + this.method_results_limit * 4;
-  private readonly obj_limit: number = OBJ_LIMIT; // max object size PNut obj_data_limit as of v49
   private readonly obj_size_limit: number = 0x100000;
 
   private context: Context;
@@ -5118,7 +5117,7 @@ export class SpinResolver {
         // update var pointer, check limit
         if (this.isLogging) this.logMessage(`  -- varPtr=(${this.varPtr}) += objVar[fileNumber](${objVar[fileNumber]})`);
         this.varPtr += objVar[fileNumber];
-        if (this.varPtr > this.obj_limit) {
+        if (this.varPtr > this.obj_size_limit) {
           // [error_tmvsid]
           throw new Error('Too much variable space is declared (m603)');
         }

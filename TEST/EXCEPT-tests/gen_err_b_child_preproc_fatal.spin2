@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_err_b_child_preproc_fatal: generated from scripts/fixtures/fixtures.json row "err_b_child_preproc_fatal"; edit the row, not this file. Covers: src/classes/compiler.ts Compile: the rethrow of a child object's fatal preprocessor error
+OBJ
+  a : "gen_err_b_child_preproc_fatal__c"
+PUB main()
+  a.go()

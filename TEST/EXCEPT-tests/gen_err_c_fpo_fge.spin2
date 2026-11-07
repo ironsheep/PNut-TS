@@ -1,0 +1,4 @@
+{Spin2_v55}
+'' gen_err_c_fpo_fge: generated from scripts/fixtures/fixtures.json row "err_c_fpo_fge"; edit the row, not this file. Covers: src/utils/pnutFloat.ts fp_fge: the compare overflows on float #>
+CON
+  a = 3.0e38 #> -3.0e38

@@ -4006,6 +4006,78 @@
       "expectLine": 2,
       "covers": "src/classes/spinResolver.ts m513: \"STRING characters must range from 1 to 255\" (the escape \\x00)",
       "source": ["PUB main() | x", "  x := @\\\"a\\x00b\""]
+    },
+    {
+      "id": "err_b_child_preproc_fatal",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 3,
+      "note": "A fatal preprocessor error inside a child object. PNut preprocesses each object (asm v52 p2com.asm 3491-3494, 3634-3635). GOLD names the child file at its line 2, the #endif.",
+      "covers": "src/classes/compiler.ts Compile: the rethrow of a child object's fatal preprocessor error",
+      "source": ["{Spin2_v55}", "OBJ", "  a : \"gen_err_b_child_preproc_fatal__c\"", "PUB main()", "  a.go()"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["{Spin2_v55}", "#endif", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "err_b_dat_line_starts_operator",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 4,
+      "note": "@@checkinst finds no instruction (asm v52 p2com.asm 5937, 6013-6072), so error_eaunbwlo. Confirmed by GOLD.",
+      "covers": "src/classes/spinResolver.ts checkInstruction: a DAT line beginning with an operator that is no instruction alias",
+      "source": ["{Spin2_v55}", "DAT", "  org", "  +  1"]
+    },
+    {
+      "id": "err_b_dat_line_starts_flex",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 4,
+      "note": "As err_b_dat_line_starts_operator, with a Spin method word. Confirmed by GOLD.",
+      "covers": "src/classes/spinResolver.ts checkInstruction: a DAT line beginning with a Spin flex word that is no instruction alias",
+      "source": ["{Spin2_v55}", "DAT", "  org", "  longfill  1"]
+    },
+    {
+      "id": "err_b_tmvsid_m603_total",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 5,
+      "note": "Each instance fits; the two together pass obj_size_limit, the limit PNut compares var_ptr against (asm v52 p2com.asm 6741-6744). GOLD reports end of file, written-file line 7, one past the last line; expectLine cannot go past the source, so it holds the last line.",
+      "covers": "src/classes/spinResolver.ts m603: \"Too much variable space is declared\" (instances of a child object together pass the limit)",
+      "source": ["{Spin2_v55}", "OBJ", "  a[2] : \"gen_err_b_tmvsid_m603_total__c\"", "PUB main()", "  return"],
+      "aux": [{ "name": "c.spin2", "sibling": true, "source": ["{Spin2_v55}", "VAR", "  byte pad[$FFFF0]", "PUB go()", "  return"] }]
+    },
+    {
+      "id": "cor_dbg_tick_string_three_lines",
+      "suite": "DBG-tests", "kind": "accept", "goldSource": "pnut", "flag": "debug",
+      "note": "PNut's scan copies every byte up to the terminator, line endings included (asm v52 p2com.asm 13285-13316). Confirmed by GOLD: the bin, lst and obj match.",
+      "covers": "src/classes/spinResolver.ts debugTickString: a tick string with a middle line holding no terminator",
+      "source": ["{Spin2_v55}", "CON", "  _CLKFREQ = 160_000_000", "  _XTLFREQ = 20_000_000", "PUB main()", "  debug(`first line", "  middle line", "  last line)"]
+    },
+    {
+      "id": "err_c_fpo_m343",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 3,
+      "note": "The compare's subtraction overflows (asm v52 p2com.asm 10073-10075). Confirmed by GOLD.",
+      "covers": "src/classes/spinResolver.ts floatCompare m343: \"Floating-point overflow\" (float comparison)",
+      "source": ["{Spin2_v55}", "CON", "  a = 3.0e38 >. -3.0e38"]
+    },
+    {
+      "id": "err_c_fpo_fge",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 3,
+      "note": "asm v52 p2com.asm 9961-9963. Confirmed by GOLD.",
+      "covers": "src/utils/pnutFloat.ts fp_fge: the compare overflows on float #>",
+      "source": ["{Spin2_v55}", "CON", "  a = 3.0e38 #> -3.0e38"]
+    },
+    {
+      "id": "err_c_fpo_fle",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 3,
+      "note": "asm v52 p2com.asm 9974-9976. Confirmed by GOLD.",
+      "covers": "src/utils/pnutFloat.ts fp_fle: the compare overflows on float <#",
+      "source": ["{Spin2_v55}", "CON", "  a = 3.0e38 <# -3.0e38"]
+    },
+    {
+      "id": "err_a_comment_open_midline",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 3,
+      "note": "The preprocessor tracks only a brace comment opening at the start of a line, so this one reaches the elementizer (asm v52 p2com.asm 8738-8741). GOLD reports end of file, written-file line 5, one past the last line; expectLine cannot go past the source, so it holds the last line.",
+      "covers": "src/classes/spinElementizer.ts skipToLineWithNonDocCommentClose: a brace comment opened mid-line and never closed",
+      "source": ["{Spin2_v55}", "PUB main()", "  return { oops"]
+    },
+    {
+      "id": "err_a_es_packed_empty",
+      "suite": "EXCEPT-tests", "kind": "reject", "goldSource": "pnut", "expectLine": 3,
+      "note": "error_es, asm v52 p2com.asm 8667-8669, 8751-8752. Confirmed by GOLD.",
+      "covers": "src/classes/spinElementizer.ts packedAsciiConversion m022: \"Empty string\"",
+      "source": ["{Spin2_v55}", "CON", "  x = %\"\""]
     }
   ]
 }

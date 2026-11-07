@@ -1,0 +1,4 @@
+{Spin2_v55}
+'' gen_err_c_fpo_m343: generated from scripts/fixtures/fixtures.json row "err_c_fpo_m343"; edit the row, not this file. Covers: src/classes/spinResolver.ts floatCompare m343: "Floating-point overflow" (float comparison)
+CON
+  a = 3.0e38 >. -3.0e38

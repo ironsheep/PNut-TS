@@ -1,0 +1,6 @@
+{Spin2_v55}
+'' gen_err_b_tmvsid_m603_total: generated from scripts/fixtures/fixtures.json row "err_b_tmvsid_m603_total"; edit the row, not this file. Covers: src/classes/spinResolver.ts m603: "Too much variable space is declared" (instances of a child object together pass the limit)
+OBJ
+  a[2] : "gen_err_b_tmvsid_m603_total__c"
+PUB main()
+  return

@@ -1,0 +1,5 @@
+{Spin2_v55}
+'' gen_err_b_dat_line_starts_operator: generated from scripts/fixtures/fixtures.json row "err_b_dat_line_starts_operator"; edit the row, not this file. Covers: src/classes/spinResolver.ts checkInstruction: a DAT line beginning with an operator that is no instruction alias
+DAT
+  org
+  +  1

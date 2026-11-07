@@ -1,0 +1,5 @@
+{Spin2_v55}
+VAR
+  byte pad[$FFFF0]
+PUB go()
+  return
