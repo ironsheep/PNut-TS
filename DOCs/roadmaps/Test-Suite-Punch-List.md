@@ -254,6 +254,6 @@ Item numbers are never reused, so references elsewhere stay valid.
 | 3, 8, 12, 13b, 13c, 13e, 13f, 17, 18 | `completed/2026-09-14-Punch-List-Archive.md` |
 | 6.4, 14 (14a, 14b), 16, 20, 21, 22, 23 (all closed in 1.55.8) | `completed/2026-09-19-Punch-List-Archive.md` |
 | 4, 6 (6.2) (closed 2026-11-06) | `completed/2026-11-06-Punch-List-Archive.md` |
-| 19 (closed 2026-11-05: the coverage rule is a maintainer step, `npm run coverage -- --check`, with no percentage gate; the old Coverage Mode is retired) | No archive file; closed in place by `PROCESS/Test-Hardening-Sprint-Plan.md` §14 and `DOCs/RELEASE-PROCESS.md` §2 |
+| 19 (closed 2026-11-05: the coverage rule is a maintainer step, `npm run coverage -- --check`, with no percentage gate; the old Coverage Mode is retired) | No archive file; closed in place by `PROCESS/completed/Test-Hardening-Sprint-Plan.md` §14 and `DOCs/RELEASE-PROCESS.md` §2 |
 
 ---
