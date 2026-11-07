@@ -36,7 +36,12 @@
  *     --emit-unlisted FILE
  *                        write the unlisted unexecuted lines as review-list entries
  *                        (class "unreviewed", which classifies nothing until edited)
- *     --trace REGEX      print the verdict of every src code line whose text matches
+ *     --merge-reviewed FILE
+ *                        fold reviewed entries into the review list and drop its stale
+ *                        entries (repeatable; needs a complete state). An entry still
+ *                        "unreviewed" or for a line now executed is not added; an entry
+ *                        with no reason is a hard error
+ *     --trace REGEX     print the verdict of every src code line whose text matches
  *     --file SPIN2 [compiler flags...]
  *                        single compile: report the throw sites and lines it executes
  *                        (must be the last option; everything after SPIN2 goes to the compiler)
@@ -865,6 +870,61 @@ function emitUnlisted(cls, file) {
   return byKey.size;
 }
 
+// Rewrites the review list: its stale entries go, reviewed entries for lines that
+// are still unexecuted come in. A reviewed entry replaces a listed one of the same key.
+function mergeReviewed(analysis, cls, files) {
+  const entryKey = (e) =>
+    `${e.file}\u0000${e.function}\u0000${normalizeText(e.text)}`;
+  const raw = cls.present
+    ? JSON.parse(fs.readFileSync(cls.path, 'utf8'))
+    : { version: 1, entries: [] };
+  const staleKeys = new Set(cls.stale.map(entryKey));
+  const merged = new Map();
+  for (const e of Array.isArray(raw) ? raw : raw.entries)
+    if (!staleKeys.has(entryKey(e))) merged.set(entryKey(e), e);
+  const unexecuted = new Set();
+  for (const row of analysis.src)
+    for (const l of row.lines)
+      if (!l.hit) unexecuted.add(`${row.file}\u0000${l.fn}\u0000${normalizeText(l.text)}`);
+  const tally = { added: 0, replaced: 0, executed: 0, unreviewed: 0 };
+  for (const file of files) {
+    const reviewed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    for (const e of Array.isArray(reviewed) ? reviewed : reviewed.entries) {
+      if (!e.file || e.function === undefined || !e.text || !e.class)
+        throw new HardError(
+          `${file}: entry lacks file/function/text/class: ${JSON.stringify(e)}`
+        );
+      if (e.class === UNREVIEWED) {
+        tally.unreviewed++;
+        continue;
+      }
+      if (!e.reason)
+        throw new HardError(`${file}: entry has no reason: ${JSON.stringify(e)}`);
+      const key = entryKey(e);
+      if (!unexecuted.has(key)) {
+        tally.executed++;
+        continue;
+      }
+      tally[merged.has(key) ? 'replaced' : 'added']++;
+      merged.set(key, e);
+    }
+  }
+  const entries = [...merged.values()].sort(
+    (a, b) =>
+      a.file.localeCompare(b.file) ||
+      a.function.localeCompare(b.function) ||
+      normalizeText(a.text).localeCompare(normalizeText(b.text))
+  );
+  fs.mkdirSync(path.dirname(cls.path), { recursive: true });
+  fs.writeFileSync(
+    cls.path,
+    `${JSON.stringify({ version: 1, entries }, null, 2)}\n`
+  );
+  console.log(
+    `  merged into ${rel(cls.path)}: ${tally.added} added, ${tally.replaced} replaced, ${cls.stale.length} stale dropped; not added: ${tally.executed} for lines now executed, ${tally.unreviewed} still unreviewed`
+  );
+}
+
 function classify(analysis, classifiedPath) {
   const result = {
     present: fs.existsSync(classifiedPath),
@@ -1229,6 +1289,7 @@ function parseArgs(argv) {
     classified: null,
     trace: null,
     emit: null,
+    merge: [],
     file: null,
     fileFlags: [],
     show: []
@@ -1280,6 +1341,9 @@ function parseArgs(argv) {
       case '--emit-unlisted':
         o.emit = path.resolve(value());
         break;
+      case '--merge-reviewed':
+        o.merge.push(path.resolve(value()));
+        break;
       case '--show':
         o.show.push(value());
         break;
@@ -1322,7 +1386,16 @@ function run(opts, wallStart) {
   }
   if (opts.reportOnly) for (const s of scopeLines(state)) console.log(`  ${s}`);
   const analysis = analyze(state);
-  const cls = classify(analysis, classifiedPath);
+  let cls = classify(analysis, classifiedPath);
+  if (opts.merge.length) {
+    // on a partial state a line another root runs looks unexecuted, and "stale" means nothing
+    if (!state.complete)
+      throw new HardError(
+        '--merge-reviewed needs a state covering every gated root unfiltered'
+      );
+    mergeReviewed(analysis, cls, opts.merge);
+    cls = classify(analysis, classifiedPath);
+  }
   const t = totals(analysis);
   const report = writeReport(outDir, state, analysis, cls, t, wallStart);
   if (!opts.reportOnly)

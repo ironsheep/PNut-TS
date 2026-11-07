@@ -40,7 +40,7 @@ The PNut-TS regression test suite validates compiler compatibility with the orig
 
 <!-- GENERATED:BEGIN (scripts/generate-coverage-report.js — do not hand-edit between these markers) -->
 
-> Measured 2026-09-17 by `npm run coverage-report`. This block is
+> Measured 2026-11-07 by `npm run coverage-report`. This block is
 > regenerated from the repo as committed — it is not hand-edited. Regenerate with
 > `npm run coverage-report` after adding or removing fixtures or suites. Everything
 > outside the GENERATED markers is hand-authored descriptive material — see the note
@@ -50,65 +50,67 @@ The PNut-TS regression test suite validates compiler compatibility with the orig
 
 | Category | .spin2 fixtures | Files with CON | VAR | DAT | OBJ | PUB | PRI |
 |---|---|---|---|---|---|---|---|
+| **EXCEPT-tests** | 765 | 126 | 30 | 167 | 50 | 636 | 0 |
+| **OBJ-tests** | 327 | 25 | 10 | 2 | 43 | 323 | 0 |
 | **LARGE-tests** | 91 | 90 | 52 | 60 | 62 | 90 | 61 |
 | **MAP-tests** | 59 | 22 | 54 | 22 | 36 | 56 | 3 |
+| **SPIN-tests** | 56 | 13 | 17 | 5 | 3 | 56 | 7 |
+| **DAT-PASM-tests** | 52 | 11 | 0 | 51 | 0 | 6 | 1 |
 | **WUMMI-tests** | 47 | 40 | 34 | 29 | 34 | 47 | 36 |
-| **OBJ-tests** | 37 | 16 | 10 | 2 | 21 | 35 | 0 |
-| **ENCODING-tests** | 32 | 20 | 0 | 32 | 0 | 13 | 0 |
-| **EXCEPT-tests** | 32 | 8 | 0 | 6 | 3 | 27 | 0 |
-| **DBG-tests** | 28 | 24 | 3 | 6 | 5 | 26 | 1 |
-| **PREPROC-tests** | 28 | 27 | 0 | 10 | 0 | 20 | 0 |
+| **DBG-tests** | 43 | 33 | 3 | 7 | 5 | 40 | 1 |
+| **ENCODING-tests** | 33 | 20 | 0 | 32 | 0 | 13 | 0 |
+| **PREPROC-tests** | 30 | 27 | 0 | 10 | 0 | 22 | 0 |
+| **LANG-FEAT-tests** | 28 | 28 | 14 | 3 | 0 | 28 | 9 |
 | **COV-tests** | 25 | 23 | 2 | 6 | 4 | 24 | 3 |
+| **CON-tests** | 23 | 21 | 1 | 13 | 0 | 11 | 1 |
 | **V52A-tests** | 20 | 19 | 19 | 2 | 1 | 19 | 9 |
-| **CON-tests** | 14 | 12 | 1 | 13 | 0 | 2 | 1 |
 | **LANG-VER-tests** | 14 | 10 | 6 | 4 | 2 | 13 | 5 |
-| **SPIN-tests** | 14 | 5 | 10 | 3 | 3 | 14 | 3 |
-| **DAT-PASM-tests** | 12 | 9 | 0 | 11 | 0 | 1 | 1 |
-| **LANG-FEAT-tests** | 9 | 9 | 9 | 3 | 0 | 9 | 9 |
 | **INCLUDE-tests** | 8 | 4 | 0 | 0 | 1 | 7 | 0 |
 | **EXT-tests** | 5 | 4 | 0 | 5 | 0 | 0 | 0 |
+| **VAR-tests** | 5 | 2 | 5 | 1 | 1 | 5 | 0 |
 | **LOADER-tests** | 4 | 4 | 1 | 0 | 1 | 4 | 0 |
 | **COL-tests** | 2 | 0 | 0 | 0 | 1 | 2 | 0 |
-| **VAR-tests** | 2 | 1 | 2 | 1 | 1 | 2 | 0 |
+| **FLASH-tests** | 2 | 1 | 1 | 1 | 1 | 1 | 0 |
 | **DBG-CROP-tests** | 1 | 1 | 0 | 0 | 0 | 1 | 1 |
-| **FLASH-tests** | 1 | 1 | 1 | 0 | 1 | 1 | 0 |
-| **ALLCODE-tests** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **485** | | | | | | |
+| **Total** | **1640** | | | | | | |
 
-Test categories (directories matching `TEST/*-tests`): **23**.
+Test categories (directories matching `TEST/*-tests`): **22**.
 
 ### Measured Jest suite count (`jest --listTests -c smm.jestconfig.js`)
 
-Total suite files (what `npm test` collects): **43**, across **23** `src/tests/*` directories.
+Total suite files (what `npm test` collects): **52**, across **26** `src/tests/*` directories.
 
 This is a *file* count, not an individual `it()`/`test()` case count — that requires
 a live run: `npx jest --runInBand --verbose -c smm.jestconfig.js`.
 
 | src/tests/ directory | suite files |
 |---|---|
-| MAP-tests | 8 |
+| MAP-tests | 9 |
 | CACHE-tests | 8 |
+| CLI-tests | 7 |
 | COV-tests | 4 |
-| CLI-tests | 4 |
+| FULL | 2 |
+| CLEANUP-tests | 2 |
+| EXCEPT-tests | 1 |
 | LARGE-tests | 1 |
 | SPIN-tests | 1 |
-| OBJ-tests | 1 |
-| ENCODING-tests | 1 |
-| DBG-tests | 1 |
-| V52A-tests | 1 |
-| LANG-VER-tests | 1 |
 | DAT-PASM-tests | 1 |
+| OBJ-tests | 1 |
+| DBG-tests | 1 |
+| ENCODING-tests | 1 |
+| LANG-FEAT-tests | 1 |
+| VAR-tests | 1 |
+| V52A-tests | 1 |
 | CON-tests | 1 |
+| LANG-VER-tests | 1 |
 | EXT-tests | 1 |
-| EXCEPT-tests | 1 |
-| LOADER-tests | 1 |
 | INCLUDE-tests | 1 |
 | PREPROC-tests | 1 |
+| LOADER-tests | 1 |
 | COL-tests | 1 |
-| VAR-tests | 1 |
-| CLEANUP-tests | 1 |
-| DBG-CROP-tests | 1 |
 | FLASH-tests | 1 |
+| SHORT | 1 |
+| DBG-CROP-tests | 1 |
 
 <!-- GENERATED:END -->
 
