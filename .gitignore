@@ -191,6 +191,12 @@ HOLD/
 *.tabl
 *.obj
 *.bin
+# data files that fixture rows read with FILE: inputs, not build products
+!TEST/DAT-PASM-tests/gen_acc_dat_file_cog_limit__d.bin
+!TEST/DAT-PASM-tests/gen_acc_dat_file_hub_limit__d.bin
+!TEST/DAT-PASM-tests/gen_cor_dat_file_after_org__data.bin
+!TEST/EXCEPT-tests/gen_err_d_cael_m112__d.bin
+!TEST/EXCEPT-tests/gen_err_d_hael_m371__d.bin
 *.lst
 TEST/preprocessTESTs/condCode.pre
 TEST/preprocessTESTs/include.pre

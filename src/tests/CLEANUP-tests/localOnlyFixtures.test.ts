@@ -93,4 +93,22 @@ describe('every fixture a gated suite can glob is in the repository', () => {
       );
     }
   });
+
+  // A table row's aux files are inputs whatever their suffix. A .bin that FILE reads
+  // falls under the *.bin ignore rule, so git add skips it without a word, and the
+  // row then fails on every clean clone.
+  checkOrSkip('every aux file a fixture row writes is in the repository', () => {
+    const trackedSet = tracked ?? new Set<string>();
+    const manifest: string = execFileSync('node', [path.join(repoRoot, 'scripts/fixtures/generate.js'), '--manifest'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+    const rows: { suite: string; aux?: string[] }[] = JSON.parse(manifest);
+    const missing = rows.flatMap((row) => (row.aux ?? []).map((name) => `TEST/${row.suite}/${name}`)).filter((name) => !trackedSet.has(name));
+    if (missing.length > 0) {
+      throw new Error(`${missing.length} aux file(s) are not in the repository, so their rows fail on a clean clone:\n  ${missing.join('\n  ')}\nCommit them; a *.bin needs a negation in .gitignore.`);
+    }
+  });
 });
