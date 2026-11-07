@@ -548,7 +548,7 @@ DAT     ORG
 
 **Case Sensitivity:** Symbols are case-insensitive (internally converted to uppercase)
 
-**Maximum Length:** 30 characters (original PNut limit; PNut-TS has no limit)
+**Maximum Length:** 30 characters (`Symbol exceeds 30 characters` beyond that; PNut-TS enforces the same limit as PNut)
 
 **Examples:**
 ```spin2
@@ -723,12 +723,12 @@ EVENT_XRL       ' Execute RAM long
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `Cog address exceeds $400 limit` | ORG/ORGF > $400 | Keep COG addresses in [0..$400] |
-| `Cog address exceeds limit` | Code exceeds COG limit | Reduce code or increase limit |
-| `Hub address exceeds $100000 ceiling` | ORGH > $FFFFF | Keep Hub addresses in [$400..$FFFFF] |
+| `Cog address exceeds $400 limit` | ORG address or limit > $400 | Keep COG addresses in [0..$400] |
+| `Cog address exceeds limit` | Code, RES, or ORGF exceeds COG limit; `ORG start, limit` with start > limit; RES count > $400 or negative | Reduce code or increase limit |
+| `Hub address exceeds $100000 ceiling` | ORGH address or limit > $100000 | Keep Hub addresses in [$400..$100000] |
 | `Hub address below $400 limit` | ORGH < $400 (Spin2 mode) | Use ORGH >= $400 |
 | `Hub address cannot decrease` | ORGH address < current | Use monotonically increasing addresses |
-| `Inline cog address exceeds $120 limit` | Inline ORG too large | Keep inline code < $120 longs |
+| `Inline cog address exceeds $11F limit` | Inline ORG address or limit > $120 | Keep inline code < $120 longs |
 
 ### 10.2 FIT Errors
 
@@ -750,8 +750,8 @@ EVENT_XRL       ' Execute RAM long
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `Constant must be from 0 to 511` | Immediate > 9 bits | Use ## for extended immediate |
-| `PTRA/PTRB index must range from -32 to 31` | Index out of range | Use valid index or ##extended |
-| `PTRA/PTRB post-index must range from 1 to 16` | Post-mod index invalid | Use 1-16 for post-modification |
+| `PTRA/PTRB index constant must range from -32 to 31` | Index out of range | Use valid index or ##extended |
+| `PTRA/PTRB index constant must range from 1 to 16` | Pre/post-mod index invalid | Use 1-16 for pre/post-modification |
 
 ### 10.5 Symbol Errors
 
@@ -766,8 +766,9 @@ EVENT_XRL       ' Execute RAM long
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `ORG not allowed within inline assembly` | Nested ORG | Use single ORG level |
-| `ORG not allowed within DITTO block` | ORG inside DITTO | Place ORG outside DITTO |
+| `ORG not allowed within inline assembly code` | Nested ORG | Use single ORG level |
+| `ORG not allowed within a DITTO block` | ORG inside DITTO | Place ORG outside DITTO |
+| `ORGH not allowed within a DITTO block` | ORGH inside DITTO | Place ORGH outside DITTO |
 | `RES is not allowed in ORGH mode` | RES in Hub mode | Use RES in COG mode only |
 | `ORGF is not allowed in ORGH mode` | ORGF in Hub mode | Use ORGF in COG mode only |
 
@@ -775,9 +776,9 @@ EVENT_XRL       ' Execute RAM long
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `DITTO count must be positive integer or zero` | Negative count | Use non-negative integer |
+| `DITTO count must be a positive integer or zero` | Negative count | Use non-negative integer |
 | `Expected DITTO END` | Missing END | Add DITTO END |
-| `"$$" only allowed within DITTO block` | $$ outside DITTO | Use $$ only inside DITTO |
+| `"$$" (DITTO index) is only allowed within a DITTO block, inside a DAT block` | $$ outside DITTO | Use $$ only inside DITTO |
 
 ### 10.8 Instruction-Specific Errors
 
@@ -795,7 +796,7 @@ EVENT_XRL       ' Execute RAM long
 | `BYTEFIT values must range from -$80 to $FF` | Value exceeds byte | Use byte-sized values |
 | `WORDFIT values must range from -$8000 to $FFFF` | Value exceeds word | Use word-sized values |
 | `STRING characters must range from 1 to 255` | Invalid string char | Avoid null in strings |
-| `String data cannot exceed 254 bytes` | String too long | Split into multiple strings |
+| `@"string"/STRING/LSTRING data cannot exceed 254 bytes` | String too long | Split into multiple strings |
 
 ### 10.10 Critical Constraints Summary
 

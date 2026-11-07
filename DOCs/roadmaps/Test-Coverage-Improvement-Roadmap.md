@@ -1,5 +1,7 @@
 # Test Coverage Improvement Roadmap
 
+> **Superseded (2026-11-06).** The percentages and gap lists below are a v1.51.7 snapshot from a coverage tool since retired, kept as history. For current coverage run `npm run coverage`; see [`Coverage.md`](../../Coverage.md).
+
 ## Executive Summary
 
 This roadmap identifies opportunities to improve PNut-TS compiler test coverage based on analysis of both test file coverage (what language features are tested) and code coverage (what compiler code is executed during tests).

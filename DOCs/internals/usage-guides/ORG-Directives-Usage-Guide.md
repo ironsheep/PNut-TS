@@ -373,6 +373,8 @@ DAT
 | Inside inline assembly | `ORG not allowed within inline assembly code` |
 | Inside DITTO block | `ORG not allowed within a DITTO block` |
 | Address > $400 | `Cog address exceeds $400 limit` |
+| Limit > $400 | `Cog address exceeds $400 limit` |
+| Address > limit (`ORG start, limit`) | `Cog address exceeds limit` |
 | Cannot precede with symbol | `This directive cannot be preceded by a symbol` |
 
 ### ORGH Restrictions

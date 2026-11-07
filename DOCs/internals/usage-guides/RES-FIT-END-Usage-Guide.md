@@ -81,6 +81,7 @@ taskptr RES     $20             ' Reserve 32 longs for task pointer list
 |-------------|--------------|
 | Used in ORGH mode | `RES is not allowed in ORGH mode` |
 | Exceeds limit | `Cog address exceeds limit` |
+| Count above $400, or negative | `Cog address exceeds limit` |
 
 ### RES vs LONG for Data
 

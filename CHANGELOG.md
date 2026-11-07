@@ -4,6 +4,98 @@ All notable changes to the "Pnut - A reimplementation in TypeScript" are documen
 
 Versions are numbered `Major.PNutVersion.Patch`: the middle number is the PNut language version a release tracks (1.55.x tracks PNut v55), and the last number is ours, reset to 0 when PNut advances. New features can arrive in a patch release.
 
+## v1.55.11 (2026-11-06)
+
+Errors now use PNut's wording and lines, PNut's limits apply in both directions, and `-F` writes a complete flash image for PASM-only programs.
+
+### Breaking Changes
+
+- **BREAKING**: `pnut-ts a.spin2 b.spin2` stops with an error and a non-zero exit,
+  writing nothing. It used to compile only `b.spin2` and ignore `a.spin2`
+  silently, so such builds were already missing a file.
+
+### Improvements
+
+- **Deeply nested blocks** compile in moments: 16 nested `IF`s used to take over
+  ten minutes. Output is unchanged.
+- **`Porting.md`** ships with each release: what PNut-TS accepts that PNut does
+  not, and the limits they share.
+
+### Fixes that change compiled output
+
+- **`-F` with no Spin methods** wrote a `.flash` missing the flash loader, short
+  if under `$400` bytes; it now includes it, as PNut does. Spin programs were
+  unaffected.
+- **A `debug()` tick string with parentheses in its text** ended early, losing the
+  rest; it now ends where PNut ends it. Text without parentheses was unaffected.
+- **`DEBUG_DELAY` with a clock that is not a whole number of kHz** patched a
+  different delay from PNut's. Other clock values were unaffected.
+- **A runtime index or bitfield on a nameless `STRUCT` member**, such as
+  `vio[i].ready`, emitted different bytecode from PNut's.
+- **`-o` with an absolute path** lost its leading slash, so the binary landed
+  somewhere else. Relative names were unaffected.
+
+### Fixes to errors and warnings
+
+- **`STRUCT` sizes and definition counts at PNut's limits**, and a child object
+  with more than about 145 `STRUCT`s, were refused; they now compile. Smaller
+  structures were unaffected.
+- **`struct_name[address]`, `sizeof(sPt[0])`, `OFFSETOF` past a bitfield and nested
+  nameless members** failed with internal or wrong errors; they now compile, as in
+  PNut.
+- **A runtime index after `struct_name[address]`, or a second index on a nameless
+  member,** is now an error, with PNut's message for each context.
+- **A `debug()` tick string running over several lines** failed on its second line;
+  it now continues, as in PNut. An unterminated one compiled silently, and now
+  reports `Open string`.
+- **`x := 1 / 0`, and `x := 1 + -3` with a float constant in `CON`,** failed with an
+  internal stack error. The first reports `Divide by zero`; the second compiles.
+- **The 257th `ELSEIF` in a chain** crashed with a `BigInt` error, as did the 256th;
+  256 now compile and the 257th gets PNut's limit error.
+- **`ORGH` inside a `DITTO` block, or above `$100000`,** compiled silently; both are
+  now errors on that line, as in PNut. Other `ORGH` uses were unaffected.
+- **`ORG start,limit` with the start beyond the limit** is reported on the `ORG`
+  line, not at the first instruction that overflows.
+- **A `RES` count above `$400` or negative** compiled, with the count wrapping to
+  zero; it is now an error, as in PNut.
+- **A negative `DITTO` count** reported `Hub address exceeds limit` on a later line
+  after seconds of repeats; it now gets PNut's message on the `DITTO` line.
+- **`\x00` in a string** compiled and is now rejected, as in PNut. An unknown escape
+  such as `\q` was an error and now compiles, as in PNut.
+- **The 1,025th method, a 17th nested object, and `DEBUG` data over 10,752 bytes**
+  compiled; each now gets PNut's error.
+- **An `OBJ` filename over 32 characters** could not be found under PNut's name; it
+  is now cut to 32 characters, as PNut does. Shorter names were unaffected.
+- **A child object's instances together over 1 MB of `VAR`** reported a hub RAM
+  error and left a `.obj` behind; they now report `Too much variable space is
+  declared`, writing nothing.
+- **Many error messages for shared constructs** now use PNut's text, including
+  version directives, unknown directives and function-like `#define`.
+  **Action:** update any script matching the old text.
+- **Clock-setup errors, `CASE` limits, `OTHER` misuse, an unclosed `#ifdef` and
+  oversized child `VAR`** are reported on the line PNut reports.
+- **`{Spin2_v42}`** was refused and is now accepted, as PNut allows every level from
+  41. A version comment without exactly two digits is an ordinary comment.
+- **A UTF-16 source with a `{Spin2_vNN}` header** ignored it and compiled as v41,
+  refusing newer language features. UTF-8 sources were unaffected.
+- **A relative `-I` folder with the source in another directory** did not find
+  `DAT FILE` data. Every search now uses that folder from the current directory.
+- **`--cache-clear` with no source file** cleared the cache, then failed with
+  `Missing filename argument`. It now exits 0. Builds naming a source were unaffected.
+
+### Fixes to reports and listings
+
+- **The `.lst` `DEBUG data` line** reported a capacity of 15,872 bytes; it now
+  reports the space PNut's limit leaves. The binary was unaffected.
+- **`.lst` for an object instance numbered `$80` or higher** wrote its number as two
+  bytes. Lower instance numbers were unaffected.
+- **`--pass elementize` and `--pass con-block`** ended with an internal error and
+  exit 1; they now stop after the named pass and exit 0.
+- **`-v`** printed a fixed Node version when no external `node` was on the path, and
+  never showed the `PNUT_DEVELOP_MODE` notice. Both are now reported correctly.
+- **A run with no source file** printed an internal argument dump before its error;
+  the dump now appears only with `-v`.
+
 ## v1.55.10 (2026-11-04)
 
 `FVARS` accepts zero and positive values, and encodes every value byte for byte as PNut does.
@@ -218,10 +310,6 @@ defines are rejected rather than silently ignored.
 
 ### Breaking Changes
 
-- **BREAKING**: A function-like `#define`, such as `SQ(x) ((x)*(x))`, is now an
-  error — `#define does not support arguments`. It previously compiled and
-  never expanded, so every use site kept the literal text. A parenthesized
-  value like `MASK (1<<3)` is unaffected.
 - **BREAKING**: A multi-word `#define` value now substitutes in full — `#define
   MSG hello there world` expands to all three words, matching C and FlexSpin.
   It previously kept only the first word, silently. Output changes only where a
@@ -246,18 +334,17 @@ defines are rejected rather than silently ignored.
   silently, so every later `#ifdef __P2__` took the wrong branch. They now
   stay defined; `-D` symbols are still removable.
 
+### Fixes to errors and warnings
+
+- **A function-like `#define`, such as `SQ(x) ((x)*(x))`,** compiled and never
+  expanded. It is now an error, as in PNut. A parenthesized value like
+  `MASK (1<<3)` is unaffected.
+
 ## v1.55.2 (2026-08-08)
 
 Preprocessor problems are now reported instead of silently tolerated, errors are
 emitted once as plain text on stderr, and a failed build no longer leaves output
 files behind.
-
-### Breaking Changes
-
-- **BREAKING**: Malformed preprocessor directives — a stray `#endif`, an
-  unclosed `#ifdef`, a directive missing its symbol, an unknown directive, or an
-  unsupported `{Spin2_vNN}` — now stop the build as errors. They were recorded
-  and silently discarded before, so the build succeeded on the wrong lines.
 
 ### New Features
 
@@ -283,6 +370,9 @@ files behind.
 
 ### Fixes to errors and warnings
 
+- **A stray `#endif`, an unclosed `#ifdef`, a directive missing its symbol, or an
+  unknown directive** was silently discarded, building the wrong lines. Each now
+  stops the build, as in PNut.
 - **`#error`/`#warn` inside an untaken `#else` branch** fired regardless of
   which branch was selected, so the documented board-selection idiom broke on
   every build.

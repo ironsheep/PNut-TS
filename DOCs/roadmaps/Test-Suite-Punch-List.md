@@ -14,16 +14,18 @@ produce a wrong program (`.bin` / `.obj` / `.flash`)?
 
 | # | Item | Compiled output | Status |
 |---|---|---|---|
-| 4 | Dead flash/RAM download code | no | open |
+| 4 | Dead flash/RAM download code | no | closed 2026-11-06: the helpers are removed from `src/` |
 | 5 | Object-cache hardening | no observed defect | open, deferred by trigger |
-| 6 | GOLD-regen workflow cleanup | no | open — only 6.2 (EXCEPT errout format) left; 6.4 closed by the Windows regen and archived 2026-09-19 |
+| 6 | GOLD-regen workflow cleanup | no | closed 2026-11-06: 6.2 resolved (below); 6.4 closed by the Windows regen and archived 2026-09-19 |
 | 10 | Language-spec extraction pipeline | no | open — measured 2026-09-17, Stephen's decision (repair vs retire) |
 
 ---
 
-## 4. Dead flash/RAM download infrastructure (partial cleanup remaining)
+## 4. Dead flash/RAM download infrastructure (closed 2026-11-06)
 
-> **Compiled output: no** — dead code. Re-checked 2026-09-14: `P2InsertFlashLoader` and `LoadHardware` still present in `spin2Parser.ts`.
+> **Closed.** Re-checked 2026-11-06: `P2InsertFlashLoader`, `LoadHardware` and `flashLoaderLength` no longer appear in `src/`. The text below is the original item.
+
+> **Compiled output: no** — dead code.
 
 v1.54.3 removed the user-facing `--flash` / `--ram` / `--both` / `--plug` /
 `--dvcnodes` CLI options (none ever went live), the dead branches that
@@ -169,8 +171,8 @@ purity anyway).
 > `{Spin2_vNN}`, which this file has never carried) — it silently
 > no-opped (commander prints "unknown option" but PNut-TS's error handler
 > falls through and compiles anyway) and has been removed as dead/misleading
-> test code. 6.2 (EXCEPT-tests errout format) and 6.4 (TOF GOLDs) remain
-> open: both need a Windows PNut session that hasn't happened yet.
+> test code. 6.2 (EXCEPT-tests errout format) and 6.4 (TOF GOLDs) were both
+> later closed by Windows PNut sessions.
 
 **Context:** A unified GOLD-regen workflow was built in `scripts/gold/`
 (library + driver + bundle/apply scripts + 26 per-suite `rebuild-gold.ps1`
@@ -180,7 +182,13 @@ to Windows" process. The following cleanup items were deferred so the
 workflow could be built and verified end-to-end without touching unrelated
 state.
 
-### 6.2 EXCEPT-tests errout-format resolution
+### 6.2 EXCEPT-tests errout-format resolution (closed 2026-11-06)
+
+> **Closed.** Windows PNut's `Error.txt` is `path:line:error:message`, so
+> EXCEPT-tests joined the Windows regen and its `.errout.GOLD` files now come from
+> PNut, apart from fixtures for PNut-TS-only behaviour. The orphan
+> `TEST/CON-tests/symbol_length_test.errout.GOLD` is deleted. The text below is the
+> original item.
 
 `scripts/gold/investigate-errout.ps1` was written to capture Windows PNut's
 `Error.txt` format for the 7 EXCEPT test sources + the CON `symbol_length_test`

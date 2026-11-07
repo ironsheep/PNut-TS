@@ -64,7 +64,7 @@ A trailing tick (`'`) or brace (`{`) comment on the directive line is not part o
 Note that, unlike the traditional preprocessors, **this preprocessor** does not accept arguments. Only simple defines are permitted. A function-like define is a compile error, not a silent no-op:
 
 ```
-myfile.spin2:1:error:#define does not support arguments — only simple symbol definitions
+myfile.spin2:1:error:Expected end of line
 ```
 
 *(As of v1.55.3 — earlier versions accepted `#define SQ(x) ((x)*(x))` without a diagnostic and the macro never expanded, so every use site was silently wrong.)*
@@ -161,7 +161,7 @@ Included files are searched in the following order:
 
 The `-I` option accepts both absolute and relative paths:
 - **Absolute paths**: `/home/user/libs/spin2` - used as-is
-- **Relative paths**: `libs/includes` - resolved relative to the current working directory first, then relative to the source file's directory if not found
+- **Relative paths**: `libs/includes` - resolved relative to the current working directory, wherever the source file is
 
 If the included file cannot be found in any of the search locations, compilation stops with an error.
 
@@ -266,20 +266,20 @@ An error stops the compile and **the output files are deleted**, so a failed bui
 
 | Situation | Result |
 | --- | --- |
-| `#ifdef`/`#ifndef` never closed by `#endif` | error `Expected #ENDIF`, reported against the line that **opened** the block |
+| `#ifdef`/`#ifndef` never closed by `#endif` | error `Expected #ENDIF`, reported at the **end of the file** |
 | `#else`, `#endif`, `#elseifdef` or `#elseifndef` with no open conditional | error `Must be preceeded by #IFDEF or #IFNDEF` |
 | A directive that needs a symbol, written without one | error `Expected a preprocessor symbol` |
 | `#if` or `#elseif` (C-style, unsupported here) *(v1.55.8)* | error naming the supported spelling (`#ifdef`/`#ifndef`, `#elseifdef`/`#elseifndef`), reported on the line that wrote it |
-| `{Spin2_vNN}` naming a version this compiler does not support | error, citing the line the directive is on |
+| `{Spin2_vNN}` naming a version this compiler does not support | error `Highest selectable Spin2 version is v55` (or `Lowest selectable Spin2 version is v41`), citing the line the directive is on. `NN` must be exactly two digits; `{Spin2_v5}` is an ordinary comment |
 | `#include` with an unsupported filetype, or a filename whose quotes are missing | error describing the actual problem |
 | A preprocessor symbol (from `-D` or `#pragma exportdef`) written where a quoted filename belongs, e.g. `DAT ... FILE SYMBOL` *(v1.55.8)* | error `Invalid filename: "SYMBOL" is a preprocessor symbol (from -D or #pragma exportdef); such symbols carry presence only and cannot be used as a value here -- use a quoted filename` |
 | `#undef` of a symbol that was never defined | **warning**; build continues |
 | `#undef` of a predefined `__*__` symbol *(v1.55.3)* | **warning** `cannot undefine built-in symbol [...]`; the symbol stays defined and the build continues |
-| Function-like `#define NAME(args)` *(v1.55.3)* | error `#define does not support arguments — only simple symbol definitions` |
+| Function-like `#define NAME(args)` *(v1.55.3)* | error `Expected end of line` |
 | `-D SYMBOL=value` or `-U SYMBOL=value` on the command line *(v1.55.8)* | error naming the option and the unsupported form, non-zero exit — `-D`/`-U` take a presence-only symbol name |
 | `-D`/`-U` given a name that is not a legal symbol name (leading digit, a character other than letter/digit/underscore, or empty) *(v1.55.8)* | error `... is not a valid preprocessor symbol name`, non-zero exit |
 
-An unrecognized directive spelling, such as `#definee` or `#ifdeff`, is not caught as a preprocessor problem by name — it falls through to being parsed as Spin2, and fails there (typically `Expected "," or end of line`) because a bare `#` followed by identifiers is otherwise the start of a CON enumeration.
+An unrecognized directive spelling, such as `#definee` or `#ifdeff`, is not caught as a preprocessor problem by name — it falls through to being parsed as Spin2, and fails there (`Undefined symbol` for a lone `#foo`, `Expected "," or end of line` when more follows it) because a bare `#` followed by identifiers is otherwise the start of a CON enumeration.
 
 Bare directives — `#define`, `#ifdef`, `#include` and friends written with no argument — used to be swallowed silently, because a CON enumeration start also begins with `#`. They are now caught. Valid CON enumeration starts are unaffected.
 
