@@ -173,7 +173,7 @@ run `npm run gen-rebuild-scripts`.
 | INCLUDE-tests (top level) | Tests `#include` / `-I` resolution, which PNut does not have; its `flattened/` twins are in scope |
 | FULL/pnut-ts-resolver | Tests pnut-ts `--regression resolver`; pnut-ts-only output |
 | CACHE-tests | Byte-equivalence (warm-vs-cold cache) self-test; no GOLDs |
-| ALLCODE-tests, MAP-tests | No `.GOLD` files / no `rebuild-gold.ps1` |
+| MAP-tests | No `.GOLD` files / no `rebuild-gold.ps1` |
 
 ## Adding a new test suite
 

@@ -23,7 +23,7 @@
 #   - .lst, .obj, .bin, .flash, .elem, .errout intermediates
 #   - __pre.spin2 outputs
 #   - legacy <SUITE>-rebuild-v52/ scaffolding
-#   - dirs without rebuild-gold.ps1 (PREPROC, FULL/, SHORT/, INCLUDE, CACHE, ALLCODE, MAP)
+#   - dirs without rebuild-gold.ps1 (PREPROC, FULL/, SHORT/, INCLUDE, CACHE, MAP)
 #
 # Usage:
 #   ./scripts/gold/bundle.sh

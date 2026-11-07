@@ -33,7 +33,7 @@ Additional pages:
 - [PNut-TS Preprocessor](Preprocessor.md) - conditional compilation support
 - [PNut-TS Porting Guide](Porting.md) - what PNut-TS accepts that PNut does not
 - [PNut-TS Repository notes](https://github.com/ironsheep/PNut-TS/blob/main/BUILD-RUN.md) - how to build, run tests, etc.
-- [PNut-TS Coverage notes](https://github.com/ironsheep/PNut-TS/blob/main/Coverage.md) - latest coverage status, how to run coverage, etc.
+- [PNut-TS Coverage notes](https://github.com/ironsheep/PNut-TS/blob/main/Coverage.md) - how to run coverage
 - [PNut-TS Project Goals](https://github.com/ironsheep/PNut-TS/blob/main/Goals.md) - our thoughts as we started this project
 - [PNut-TS ChangeLog](CHANGELOG.md) - history of releases (Including what's new in this release!)
 - [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo

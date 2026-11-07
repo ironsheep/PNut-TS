@@ -17,7 +17,6 @@ Creating and using your own copy of this repository.
 On this Page:
 
 - [Starting with this Repository](#starting-with-this-repository) - creating your own local copy of this repo so you can build and test the compiler and any changes you make.<br>(See also [Contributing...]() below.)
-- [Container Modes](#container-modes) - understanding the two modes this contain can be in: Coverage and Otherwise (Regression)
 - [Reference: Container Built-in Commands](#reference-container-built-in-commands) - the build and test commands used in this container.
 - [Reminder: getting latest from repository](#reminder-getting-latest-from-repository) - steps to updating your local copy from the main repostory.
 - [Contributing changes to PNut-TS](#contributing-changes-to-pnut-ts) - how to contribute changes you've made back to the PNut-TS project.
@@ -27,7 +26,7 @@ Additional pages:
 - [Repository README](README.md) - top level page
 - [Pnut-TS Command-line](CommandLine.md) - command line reference
 - [Pnut-TS Preprocessor](Preprocessor.md) - conditional compilation support
-- [PNut-TS coverage notes](Coverage.md) - latest coverage status, how to run coverage, etc.
+- [PNut-TS coverage notes](Coverage.md) - how to run coverage
 - [P2\_PNut_Public](https://github.com/parallaxinc/P2_PNut_Public) - Pnut (for Windows) source is currently found in the Parallax Repo
 
 ## Starting with this Repository
@@ -170,20 +169,14 @@ available via `npm run`:
     npm run build && jest -c jest-config/jest-full-only-config.json
   test-short-only
     npm run build && jest -c jest-config/jest-short-only-config.json
-  cov-setup
-    ./scripts/toCov
-  cov-chk
-    ./scripts/modeCov
   coverage
-    npx jest --coverage --verbose
-  cov-teardown
-    ./scripts/fmCov
+    node scripts/coverage/run-coverage.js
   jest-clear
-    rm -rf jest-coverage && jest --clearCache
+    jest --clearCache
   jest-show
-    jest --showConfig
+    jest -c smm.jestconfig.js --showConfig
   jest-only
-    jest
+    jest -c smm.jestconfig.js
   watch
     tsc -b -w
   lint
@@ -224,22 +217,6 @@ The regression test output should end with somthing like this:
 
 NOTE: the last test `Compile file: TOF/demo_180degrFOV.spin2 (11056 ms)` actually takes a long time to compile. The test suite has a built-in max time for a test to run. On slower machines this test will fail with exceeded timeout of 20000 ms. If this happens you are just on a slower machine, you should not have to worry about this failure.  *The time on 11056 ms cited above is on my 26-core Mac Studio. Most of us do not have this kind of machine!*
 
-## Container Modes
-
-The container is configured by scripts to be in one of two modes.
-
-1. **Regression Mode**: normal everday state, ready for work, regression testing, and committing changes
-2. **Coverage Mode**: special state only used for running the coverage tests. <BR>**WARNING do not commit changes to repository while in this Coverage Mode!**
-
-To determine which mode the container is in you can always run:
-
-```bash
-# npm run cov-chk
-```
-
-For more about container modes and running coverage, see: [Running Coverage](Coverage.md#running-coverage)
-
-
 ## Reference: Container Built-in Commands
 
 We have a number of built-in commands we use to build code, lint our code, format our code, run tests, etc.
@@ -278,14 +255,12 @@ These are used by other commands:
 
 ### Coverage Testing
 
-The coverage environment must be setup for running the coverage tests. 
+Coverage needs no special setup. For what the results mean, see [Running coverage](Coverage.md#running-coverage).
 
 | Coverage Commands | Description
 | --- | --- |
-| npm run cov-setup | prepare scripts and folders in order to run coverage
-| npm run coveage | run the coverage tests and generate HTML reports
-| npm run cov-teardown | restore scripts and folder to their non-coverage state
-| npm run cov-chk | determine if the container is in coverage mode (**Coverage Mode**) or not (**Regression Mode**)
+| npm run coverage | measure which compiler lines the regression suite executes and write the report
+| npm run coverage -- --check | also check every unexecuted line against the maintainers' review list
 
 
 

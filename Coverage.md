@@ -10,140 +10,62 @@
 
 [![GitHub issues][Issues-shield]](https://github.com/ironsheep/PNut-TS/issues)
 
-## Coverage Status (each release)
+## Running coverage
 
-The current coverage status is versioned at our repository. To view the full detail of our coverage reports:
+One command measures which compiler lines the regression suite executes:
 
-- Create a local copy of our repository
- - Navigate to the directory you want to contain the repo clone.
- - Execute `git clone git@github.com:ironsheep/PNut-TS.git` to make your local copy 
- - The `clone` command makes the folder `./PNut-TS/`
-- Navigate to `./PNut-TS/jest-coverage/lcov-report` within the newly cloned folder
-- Open the file `index.html` in this folder with a web brawser. This is the Coverage Top level page
-- Click on `src/classes` to get to the various class files making up PNut TS
-- Click on `spinResolver.ts` to view the coverage for **SpinResolver Class** which does nearly all of our code generation
+```bash
+npm run coverage
+```
 
-## Coverage Status v1.52.x
+It builds the compiler, runs every test root the regression suite gates on, and writes its report to `PROCESS/coverage/Regression-Coverage-Baseline.md`. It takes about 25 minutes. It needs no special setup, it changes no tracked files, and you can commit normally afterwards.
 
+To also check every unexecuted line against the review list:
 
-This is our coverage stataus at the v1.52.0 release.  Since the last release we've increased coverage of PASM instructions and constants in the compiler.
+```bash
+npm run coverage -- --check
+```
 
-### Page: Top level
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Clean. Every unexecuted compiler line is on the review list. |
+| 1 | At least one unexecuted line is not on the review list. |
+| 2 | Not evaluable. The review list is absent. |
+| 3 | Hard error: a failing test, a changed build, or an unreadable dump. |
 
-Here are the coverage categories:
+The review list, `PROCESS/coverage/classified.json`, is kept by the maintainers and is not in the repository. On a fresh clone `--check` therefore exits 2, which is expected and not a failure.
+
+Maintainers run this at each PNut-parity release and when hunting thin spots. It does not block a release. See [the release process](DOCs/RELEASE-PROCESS.md).
+
+For a summary of the regression suite by test category, see the [Regression Test Coverage Report](DOCs/Regression-Test-Coverage-Report.md).
+
+## Earlier coverage reports
+
+The reports below are kept as history. They came from a coverage tool we have since retired, so they do not describe the current compiler or test suite.
+
+### v1.52.x
+
+This is our coverage status at the v1.52.0 release. Since the last release we've increased coverage of PASM instructions and constants in the compiler.
 
 ![Patreon](./DOCs/images/v1.52.1-top.png)<br>**FIGURE 1.52-1**: v1.52.1 `top-level` coverage report view.
 
-This page shows that there are three pages below this one (`src`, `src/classes`, and `src/Utils` each with their own page of details.  Click on one of the three names to view the page for that group.
-
-### Page: src/classes
-Here is the `src/classes` status:
-
 ![Patreon](./DOCs/images/v1.52.1-classes.png)<br>**FIGURE 1.52-2**: v1.52.1 `src/classes` coverage report view.
 
-Again, this is our results at v1.52.1 for our release build.
+### v1.51.x
 
-## Coverage Status v1.51.x
-
-
-This is our coverage stataus at the v1.51.0 release.  In this release coverage effort we focused on the most important areas which would yield the best certification of the compiler in general. We didn't test many of the more extreme (infrequently exercised cases.) We did try to cover all regions that affect actual code generation.
-
-### Page: Top level
-Here are the coverage categories:
+This is our coverage status at the v1.51.0 release. In this release coverage effort we focused on the most important areas which would yield the best certification of the compiler in general. We didn't test many of the more extreme (infrequently exercised) cases. We did try to cover all regions that affect actual code generation.
 
 ![Patreon](./DOCs/images/v1.51.0-top.png)<br>**FIGURE 1.50-1**: v1.51.0 `top-level` coverage report view.
 
-This page shows that there are three pages below this one (`src`, `src/classes`, and `src/Utils` each with their own page of details.  Click on one of the three names to view the page for that group.
-
-### Page: src/classes
-Here is the `src/classes` status:
-
 ![Patreon](./DOCs/images/v1.51.0-classes.png)<br>**FIGURE 1.50-2**: v1.51.0 `src/classes` coverage report view.
 
-Again, this is our results at v1.51.0 for our release build.
+### v1.43.x
 
-## Coverage Status v1.43.x
-
-This is our coverage stataus at the v1.43.0 testing release.  In this first coverage effort we focused on the most important areas which would yield the best certification of the compiler in general. We didn't test many of the more extreme (infrequently exercised cases.) We did try to cover all regions that affect actual code generation.
-
-### Page: Top level
-Here are the coverage categories:
+This is our coverage status at the v1.43.0 testing release. In this first coverage effort we focused on the most important areas which would yield the best certification of the compiler in general. We didn't test many of the more extreme (infrequently exercised) cases. We did try to cover all regions that affect actual code generation.
 
 ![Patreon](./DOCs/images/v1.43.0-top.png)<br>**FIGURE 1.43-1**: v1.43.0 `top-level` coverage report view.
 
-This page shows that there are three pages below this one (`src`, `src/classes`, and `src/Utils` each with their own page of details.  Click on one of the three names to view the page for that group.
-
-### Page: src/classes
-Here is the `src/classes` status:
-
 ![Patreon](./DOCs/images/v1.43.0-classes.png)<br>**FIGURE 1.43-2**: v1.43.0 `src/classes` coverage report view.
-
-Again, this is our results at v1.43.0 our initial test release.
-
-## DEVELOPER NOTES - Running coverage
-
-Running our coverage is a three step process.
-
-## Step 1
-
-Set up for running coverage with the command:
-
-```bash
-# npm run cov-setup
-```
-
-This step renames scripts and copies test files into place so that coverage can be run.
-
-## Step 2
-
-Run coverage with the command:
-
-```bash
-# npm run coverage
-```
-
-This step actually runs the coverage tests and ends by generating a full coverage report.
-
-To review the report open `~/jest-coverage/lcov-report/index.html` with your browser.
-
-
-## Step 3
-
-Cleanup the coverage setup with the command:
-
-```bash
-# npm run cov-teardown
-```
-
-This restores the container to normal non-coverage mode. In this state you do normal builds and run the regression test suite, etc.
-
-## Ensure you are NOT in coverage mode
-
-**WARNING!**  When you are committing changes to the repostory please make sure that the repository is NOT in coverage mode. Many files are setup badly in this mode we don't want to check them in in this state! To see which mode the container is in just run:
-
-```bash
-# npm run cov-chk  # determine which mode the container is in
-
-> p2-pnut-ts@0.43.0 cov-chk
-> ./scripts/modeCov
-
-
-modeCov: TEST/ALLCODE-tests is set up!  (Coverage Mode)
-```
-
-If you are seeing `Coverage Mode` then please run `cov-teardown` before committing any changes.  
-
-```bash
-# npm run cov-chk
-
-> p2-pnut-ts@0.43.0 cov-chk
-> ./scripts/modeCov
-
-
-modeCov: TEST/ALLCODE-tests is torn down!  (Regression Mode)
-```
-
-If, instead you are seeing `Regression Mode` then coverage mode is NOT setup and you are ready to commit changes.
 
 ---
 

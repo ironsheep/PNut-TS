@@ -762,8 +762,8 @@ Based on the December 2025 coverage analysis, these are priority items for the n
 
 ## References
 
-- Coverage reports: `jest-coverage/lcov-report/index.html`
+- Coverage report: `PROCESS/coverage/Regression-Coverage-Baseline.md` (local to the maintainers)
 - Coverage methodology: `Coverage.md`
-- Test runner: `npm run coverage` (after `npm run cov-setup`)
+- Test runner: `npm run coverage`
 - PASM2 instruction database: `DOCs/language-specification/databases/PASM2-Instruction-Database.json`
 - Technical debt: `TECHNICAL-DEBT.md`
