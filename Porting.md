@@ -41,7 +41,7 @@ PNut-TS stops at the same point as PNut for these, so they need no special care 
 | `OBJ` file name | 32 characters are used, in both compilers; anything longer is ignored, so `"a_very_long_name…"` looks for the file named by its first 32 characters |
 | `DEBUG` data, after the compiler packs it | 10,752 bytes |
 | `OBJ` instances | 1,024 |
-| Unique files named in `OBJ` | 255 (the message says 32) |
+| Unique files named in `OBJ` | 255. Both compilers report `Limit of 32 unique objects exceeded` at the 256th file: that is PNut's text, kept for parity, and its 32 is not the limit |
 | `PUB` and `CON` names exported by one object | 64 KB of list space; a source with many `CON` symbols reaches this first, so the symbol table limit above applies mainly to other symbols |
 | `STRUCT` definitions | 4,096, and 128 KB of definition data |
 | `DAT` symbols | 10,000 |

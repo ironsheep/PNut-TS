@@ -96,6 +96,11 @@ Errors now use PNut's wording and lines, PNut's limits apply in both directions,
 - **A run with no source file** printed an internal argument dump before its error;
   the dump now appears only with `-v`.
 
+### Known Issues
+
+- **The 256th unique `OBJ` file** reports `Limit of 32 unique objects exceeded`.
+  That is PNut's own text, kept for parity; the real limit is 255 in both compilers.
+
 ## v1.55.10 (2026-11-04)
 
 `FVARS` accepts zero and positive values, and encodes every value byte for byte as PNut does.
