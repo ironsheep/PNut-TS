@@ -254,6 +254,7 @@ Error codes follow the pattern `(mGGI)` where:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.55.12 | 2026-11-12 | Speed — large programs compile up to three times faster; output unchanged |
 | 1.55.11 | 2026-11-06 | Test hardening — errors use PNut's wording and lines; PNut's limits apply both ways; `-F` writes the flash loader for PASM-only programs; deep nesting compiles in moments; two source files are refused |
 | 1.55.10 | 2026-11-04 | DAT `FVARS` — zero and positive values were refused with `FVAR/FVARS data is too big`; now accepted and encoded byte for byte as PNut v55 does |
 | 1.55.9 | 2026-10-31 | Preprocessor — `{`/`}` in a comment or string on a line starting with a column-1 `{…}` comment dropped source lines; unclosed `{` now gives PNut's `Expected "}"` |

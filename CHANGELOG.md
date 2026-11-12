@@ -4,7 +4,7 @@ All notable changes to the "Pnut - A reimplementation in TypeScript" are documen
 
 Versions are numbered `Major.PNutVersion.Patch`: the middle number is the PNut language version a release tracks (1.55.x tracks PNut v55), and the last number is ours, reset to 0 when PNut advances. New features can arrive in a patch release.
 
-## v1.55.12 (2026-11-11)
+## v1.55.12 (2026-11-12)
 
 Large programs compile up to three times faster, with unchanged output.
 

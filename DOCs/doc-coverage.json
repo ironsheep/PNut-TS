@@ -119,7 +119,7 @@
       "covers": [
         "cli"
       ],
-      "verified": "1.55.11"
+      "verified": "1.55.12"
     },
     "CHANGELOG.md": {
       "class": "shipped",
@@ -132,7 +132,7 @@
       "covers": [
         "cli"
       ],
-      "verified": "1.55.11",
+      "verified": "1.55.12",
       "note": "Help transcript is pasted from the shipping build \u2014 regenerate, do not hand-edit"
     },
     "Preprocessor.md": {
@@ -352,7 +352,7 @@
         "compiler-core",
         "diagnostics"
       ],
-      "verified": "1.55.11",
+      "verified": "1.55.12",
       "note": "ABORT/trap semantics rewritten 2026-09-14 against v55 interpreter source + compiled examples; hardware-confirmed 69/69 on P2 (TEST/HW-probes/abort-trap/logs)"
     },
     "DOCs/internals/usage-guides-new/Floating-Point-Usage-Guide.md": {
@@ -508,14 +508,14 @@
       "covers": [
         "compiler-core"
       ],
-      "verified": "1.55.11"
+      "verified": "1.55.12"
     },
     "DOCs/internals/usage-guides/PASM2-Authoring-Guide.md": {
       "class": "governed",
       "covers": [
         "compiler-core"
       ],
-      "verified": "1.55.11"
+      "verified": "1.55.12"
     },
     "DOCs/internals/usage-guides/Pointer-Usage-Guide.md": {
       "class": "governed",
@@ -536,7 +536,7 @@
       "covers": [
         "compiler-core"
       ],
-      "verified": "1.55.11"
+      "verified": "1.55.12"
     },
     "DOCs/internals/usage-guides/STRUCT-Usage-Guide.md": {
       "class": "governed",
