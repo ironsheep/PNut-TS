@@ -4,6 +4,15 @@ All notable changes to the "Pnut - A reimplementation in TypeScript" are documen
 
 Versions are numbered `Major.PNutVersion.Patch`: the middle number is the PNut language version a release tracks (1.55.x tracks PNut v55), and the last number is ours, reset to 0 when PNut advances. New features can arrive in a patch release.
 
+## v1.55.12 (2026-11-11)
+
+Large programs compile up to three times faster, with unchanged output.
+
+### Improvements
+
+- **Large programs** compile up to three times faster: `demo_hub75_7seg.spin2`
+  went from 2.4 to 0.9 seconds. Output is unchanged.
+
 ## v1.55.11 (2026-11-06)
 
 Errors now use PNut's wording and lines, PNut's limits apply in both directions, and `-F` writes a complete flash image for PASM-only programs.

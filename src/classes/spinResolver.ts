@@ -5749,7 +5749,7 @@ export class SpinResolver {
     const nextElement: SpinElement = this.peekNextElement();
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
     if (this.isLogging) this.logMessage(`*==* compileExpression() at elem=[${this.currElement.toString()}] - ENTRY`);
-    this.logMessageConditional(bIsDesiredLine, `*==* compileExpression() nextelem=[${nextElement.toString()}] - ENTRY`);
+    if (bIsDesiredLine) this.logMessageForced(`*==* compileExpression() nextelem=[${nextElement.toString()}] - ENTRY`);
     const tryExpressionResult = this.trySpin2ConExpression(); // XYZZY BUG HERE
     if (tryExpressionResult.isResolved) {
       this.compileConstant(tryExpressionResult.value);
@@ -5757,7 +5757,7 @@ export class SpinResolver {
       this.compileSubExpression(this.lowestPrecedence);
     }
     if (this.isLogging) this.logMessage(`*==* compileExpression() - EXIT`);
-    this.logMessageConditional(bIsDesiredLine, `*==* compileExpression() - EXIT`);
+    if (bIsDesiredLine) this.logMessageForced(`*==* compileExpression() - EXIT`);
     return tryExpressionResult;
   }
 
@@ -5847,7 +5847,7 @@ export class SpinResolver {
     // PNut compile_inst: or new compile_instruction:
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
     if (this.isLogging) this.logMessage(`*==* compileInstruction() at elem=[${this.currElement.toString()}]`);
-    this.logMessageConditional(bIsDesiredLine, `*==* compileInstruction() at elem=[${this.currElement.toString()}]`);
+    if (bIsDesiredLine) this.logMessageForced(`*==* compileInstruction() at elem=[${this.currElement.toString()}]`);
     if (this.currElement.type == eElementType.type_back) {
       this.ct_try(eResultRequirements.RR_None, eByteCode.bc_drop_trap);
     } else if (this.currElement.type == eElementType.type_obj) {
@@ -5996,7 +5996,7 @@ export class SpinResolver {
       }
     }
     if (this.isLogging) this.logMessage(`*==* compileInstruction() EXIT`);
-    this.logMessageConditional(bIsDesiredLine, `*==* compileInstruction() EXIT`);
+    if (bIsDesiredLine) this.logMessageForced(`*==* compileInstruction() EXIT`);
   }
 
   private compileVariableMultiple(startElementIndex: number) {
@@ -7556,14 +7556,14 @@ export class SpinResolver {
   private compileParameters(parameterCount: number) {
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
     if (this.isLogging) this.logMessage(`* compileParameters(${parameterCount}) elem=[${this.currElement.toString()}]`);
-    this.logMessageConditional(bIsDesiredLine, `* compileParameters(${parameterCount}) elem=[${this.currElement.toString()}]`);
+    if (bIsDesiredLine) this.logMessageForced(`* compileParameters(${parameterCount}) elem=[${this.currElement.toString()}]`);
     this.getLeftParen();
     if (parameterCount > 0) {
       this.compileParametersNoParens(parameterCount);
     }
     if (this.isLogging) this.logMessage(`* compileParameters() returned from compileParametersNoParens(), get right`);
     this.getRightParen();
-    this.logMessageConditional(bIsDesiredLine, `* compileParameters(${parameterCount}) EXIT at [${this.currElement.toString()}]`);
+    if (bIsDesiredLine) this.logMessageForced(`* compileParameters(${parameterCount}) EXIT at [${this.currElement.toString()}]`);
   }
 
   private compileParametersNoParens(parameterCount: number) {
@@ -9458,7 +9458,7 @@ private checkDec(): boolean {
 
   private getEndOfLine() {
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
-    this.logMessageConditional(bIsDesiredLine, `*-- getENdOfLine()`);
+    if (bIsDesiredLine) this.logMessageForced(`*-- getENdOfLine()`);
     this.getElement();
     if (this.currElement.type != eElementType.type_end) {
       // [error_eeol]
@@ -10194,7 +10194,7 @@ private checkDec(): boolean {
 
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
     if (this.isLogging) this.logMessage(`* checkVariable() ENTRY at [${this.currElement.toString()}]`);
-    this.logMessageConditional(bIsDesiredLine, `* checkVariable() ENTRY at [${this.currElement.toString()}]`);
+    if (bIsDesiredLine) this.logMessageForced(`* checkVariable() ENTRY at [${this.currElement.toString()}]`);
 
     // preserve initial values (PNut al,ebx)
     let variableType: eElementType = this.currElement.type;
@@ -11347,7 +11347,7 @@ private checkDec(): boolean {
     // if we are found an OBJ trio and found a constant return leaf element resolved as non-obj constant
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
     if (this.isLogging) this.logMessage(`  *-- GETeleObj() ENTRY at [${this.currElement.toString()}]`);
-    this.logMessageConditional(bIsDesiredLine, `  *-- GETeleObj() ENTRY at [${this.currElement.toString()}] nextElemIdx=(${this.nextElementIndex})`);
+    if (bIsDesiredLine) this.logMessageForced(`  *-- GETeleObj() ENTRY at [${this.currElement.toString()}] nextElemIdx=(${this.nextElementIndex})`);
     this.getElement(); // now have OBJECT as current
     if (this.isLogging) this.logMessage(`   -- GETeleObj() at [${this.currElement.toString()}]`);
     if (this.currElement.type != eElementType.type_end) {
@@ -11363,7 +11363,7 @@ private checkDec(): boolean {
           // if public method of object then back out and let compiler
           if (objSymType == eElementType.type_obj_pub) {
             // let compiler discover OBJ.PUB
-            this.logMessageConditional(bIsDesiredLine, `                  BACKUP!! 3... go forward 1`);
+            if (bIsDesiredLine) this.logMessageForced(`                  BACKUP!! 3... go forward 1`);
             this.backElement(); // move from Symbol back to DOT
             this.backElement(); // move from DOT back to OBJ
             this.backElement();
@@ -11371,26 +11371,22 @@ private checkDec(): boolean {
           } else {
             // we have obj type_obj_con_int, type_obj_con_float, or type_obj_con_struct
             // mark our DOT as part
-            this.logMessageConditional(bIsDesiredLine, `                  OBJ is [${savedObjElement.toString()}]`);
+            if (bIsDesiredLine) this.logMessageForced(`                  OBJ is [${savedObjElement.toString()}]`);
             this.spinElements[savedDotElementIdx].setPartOfObjReference(true); // mark dot for skip when backing up
-            this.logMessageConditional(
-              bIsDesiredLine,
-              `                  marked as dot to skip over [${this.spinElements[savedDotElementIdx].toString()}]`
-            );
-            this.logMessageConditional(
-              bIsDesiredLine,
-              `                  objSymType=[${eElementType[objSymType]}] at [${this.currElement.toString()}]`
-            );
+            if (bIsDesiredLine)
+              this.logMessageForced(`                  marked as dot to skip over [${this.spinElements[savedDotElementIdx].toString()}]`);
+            if (bIsDesiredLine)
+              this.logMessageForced(`                  objSymType=[${eElementType[objSymType]}] at [${this.currElement.toString()}]`);
             // create copy of constant ref element
             this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.currElement);
             // replace the type and value with the symbol information
             this.currElement.setType(objSymType); // for new type
             this.currElement.setValue(objSymValue); // for new type
             // override the location info with that of the obj-reference object
-            this.logMessageConditional(
-              bIsDesiredLine,
-              `                  replaced srcCol(${this.currElement.sourceCharacterOffset}) with srcCol(${savedObjElement.sourceCharacterOffset})`
-            );
+            if (bIsDesiredLine)
+              this.logMessageForced(
+                `                  replaced srcCol(${this.currElement.sourceCharacterOffset}) with srcCol(${savedObjElement.sourceCharacterOffset})`
+              );
 
             this.currElement.setAlternateSourceLocation(
               savedObjElement.sourceLineIndex,
@@ -11398,10 +11394,10 @@ private checkDec(): boolean {
               savedObjElement.sourceColumnOffset
             );
 
-            this.logMessageConditional(bIsDesiredLine, `                  replaced WITH [${this.currElement.toString()}]`);
+            if (bIsDesiredLine) this.logMessageForced(`                  replaced WITH [${this.currElement.toString()}]`);
           }
         } else {
-          this.logMessageConditional(bIsDesiredLine, `*-- GETeleObj() backup 2... go forward 1`);
+          if (bIsDesiredLine) this.logMessageForced(`*-- GETeleObj() backup 2... go forward 1`);
           this.backElement(); // move from dot back to obj
           this.backElement();
           this.getElement(); // to do type_obj insertion
@@ -11409,7 +11405,7 @@ private checkDec(): boolean {
       }
     }
     if (this.isLogging) this.logMessage(`  *-- GETeleObj() EXIT at [${this.currElement.toString()}]`);
-    this.logMessageConditional(bIsDesiredLine, `  *-- GETeleObj() EXIT at [${this.currElement.toString()}] nextElemIdx=(${this.nextElementIndex})`);
+    if (bIsDesiredLine) this.logMessageForced(`  *-- GETeleObj() EXIT at [${this.currElement.toString()}] nextElemIdx=(${this.nextElementIndex})`);
     return this.currElement;
   }
 
@@ -11436,18 +11432,18 @@ private checkDec(): boolean {
         this.replacedName = element.stringValue;
         const symbolLength = element.symbolLength;
         if (this.isLogging) this.logMessage(`    * GETele REPLACING element=[${element.toString()}]`);
-        this.logMessageConditional(bIsDesiredLine, `    * GETele REPLACING element=[${element.toString()}]`);
+        if (bIsDesiredLine) this.logMessageForced(`    * GETele REPLACING element=[${element.toString()}]`);
         element = new SpinElement(-1, eElementType.type_undefined, '', -1, -1, element);
         element.setType(foundSymbol.type);
         element.setValue(foundSymbol.value);
         element.setSymbolLength(symbolLength);
         if (this.isLogging) this.logMessage(`    *       with element=[${element.toString()}] moveAside=["${this.replacedName}"]`);
-        this.logMessageConditional(bIsDesiredLine, `    *       with element=[${element.toString()}] moveAside=["${this.replacedName}"]`);
+        if (bIsDesiredLine) this.logMessageForced(`    *       with element=[${element.toString()}] moveAside=["${this.replacedName}"]`);
       }
     }
     //*
     if (this.isLogging) this.logMessage(`    * GETele GOT i#${this.nextElementIndex - 1}, e=[${element.toString()}]`);
-    this.logMessageConditional(bIsDesiredLine, `    * GETele GOT i#${this.nextElementIndex - 1}, e=[${element.toString()}]`);
+    if (bIsDesiredLine) this.logMessageForced(`    * GETele GOT i#${this.nextElementIndex - 1}, e=[${element.toString()}]`);
     if (element.type != eElementType.type_end_file) {
       //if (this.isLogging) this.logMessage(`*        NEXT i#${this.nextElementIndex}, e=[${this.spinElements[this.nextElementIndex].toString()}]`);
     } else {
@@ -11482,7 +11478,7 @@ private checkDec(): boolean {
     const bIsDesiredLine: boolean = this.determineInRange(this.currElement.sourceLineNumber);
     this.nextElementIndex -= this.nextElementIndex > 2 ? 2 : this.nextElementIndex;
     if (this.isLogging) this.logMessage(`* BACKele nextElemIdx=(${this.nextElementIndex})`);
-    this.logMessageConditional(bIsDesiredLine, `* BACKele nextElemIdx=(${this.nextElementIndex})`);
+    if (bIsDesiredLine) this.logMessageForced(`* BACKele nextElemIdx=(${this.nextElementIndex})`);
     const currElementIdx: number = this.nextElementIndex;
     this.currElement = new SpinElement(0, eElementType.type_undefined, '', 0, 0, this.spinElements[this.nextElementIndex++]);
     // and make sure our column offset into the line is set
@@ -11490,7 +11486,7 @@ private checkDec(): boolean {
     // if i'm sitting at DOT which is part of obj.constant then back up one more
     if (this.currElement.isPartOfObjReference) {
       this.spinElements[currElementIdx].setPartOfObjReference(false);
-      this.logMessageConditional(bIsDesiredLine, `* BACKele ExtraObject (cleared DOT) nextElemIdx=(${this.nextElementIndex})`);
+      if (bIsDesiredLine) this.logMessageForced(`* BACKele ExtraObject (cleared DOT) nextElemIdx=(${this.nextElementIndex})`);
       this.backElement(); // off dot to object
       this.backElement(); // prior to object
     }
@@ -12047,12 +12043,6 @@ private checkDec(): boolean {
 
   private logMessageForced(message: string): void {
     this.context.logger.logMessage(message);
-  }
-
-  private logMessageConditional(condition: boolean, message: string) {
-    if (condition) {
-      this.logMessageForced(message);
-    }
   }
 
   private logMessageOutline(message: string): void {
